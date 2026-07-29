@@ -47,7 +47,7 @@ option(BUILD_WITH_CODE_COVERAGE "Enable code coverage with gconv" OFF)
 option(BUILD_UNITTESTS          "Enable Unittests with Google C++ Unittest" OFF)
 option(BUILD_BENCHMARKS         "Build benchmarks with Google Benchmark" OFF)
 option(BUILD_OPENMW_MP          "Build OpenMW-MP" ON)
-option(BUILD_BROWSER            "Build tes3mp Server Browser" OFF)
+option(BUILD_BROWSER            "Build tes3mp Server Browser" ON)
 option(BUILD_MASTER             "Build tes3mp Master Server" ON)
 
 set(OpenGL_GL_PREFERENCE LEGACY)  # Use LEGACY as we use GL2; GLNVD is for GL3 and up.
