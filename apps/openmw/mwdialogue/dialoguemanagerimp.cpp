@@ -19,6 +19,7 @@
 
 #include <components/interpreter/interpreter.hpp>
 #include <components/interpreter/defines.hpp>
+#include <components/misc/rng.hpp>
 #include <components/settings/settings.hpp>
 
 /*
@@ -474,8 +475,13 @@ namespace MWDialogue
             if (dialogue && dialogue->mType == ESM::Dialogue::Topic)
             {
                 const bool voicePlayed = executeTopic (keyword, callback);
+                // Unvoiced dialogue topics used to trigger an idle voice line after
+                // every click. Keep the cinematic reaction, but make it occasional
+                // so browsing several topics does not make the NPC talk constantly.
+                constexpr int unvoicedTopicReactionChance = 35;
                 if (!voicePlayed
-                    && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+                    && !MWBase::Environment::get().getSoundManager()->sayActive(mActor)
+                    && Misc::Rng::roll0to99() < unvoicedTopicReactionChance)
                     say(mActor, "idle");
             }
         }

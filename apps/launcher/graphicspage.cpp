@@ -881,6 +881,10 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const int anisotropy[] = { 0, 2, 4, 8, 12, 16 };
     static const int antialiasing[] = { 0, 0, 2, 2, 4, 4 };
     static const int waterRtt[] = { 256, 256, 256, 512, 512, 512 };
+    // Minimum already reflects world objects. Higher presets progressively add
+    // actors and groundcover; the limited 0..5 setting range means adjacent
+    // presets intentionally share a detail tier.
+    static const int waterReflectionDetail[] = { 3, 3, 4, 4, 5, 5 };
     static const int shadowDistance[] = { 0, 2048, 4096, 6144, 8192, 12288 };
     // Shadow-map sizes below 512 are intentionally not used by any quality preset.
     static const int shadowResolution[] = { 512, 512, 1024, 2048, 4096, 8192 };
@@ -964,9 +968,14 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     // lighting is never selected by a preset, including the minimum profile.
     Settings::Manager::setString("lighting method", "Shaders", "shaders compatibility");
 
+    // Every preset uses shader water so its reflection/refraction tier is
+    // applied even when an older user profile explicitly disabled the shader.
+    Settings::Manager::setBool("shader", "Water", true);
     Settings::Manager::setInt("rtt size", "Water", waterRtt[level]);
-    Settings::Manager::setBool("refraction", "Water", level >= 2);
-    Settings::Manager::setInt("reflection detail", "Water", level <= 1 ? 1 : (level <= 3 ? 2 : 3));
+    // Low and every higher preset use refraction. Minimum keeps it disabled,
+    // while still reflecting objects as requested.
+    Settings::Manager::setBool("refraction", "Water", level >= 1);
+    Settings::Manager::setInt("reflection detail", "Water", waterReflectionDetail[level]);
 
     Settings::Manager::setBool("enable shadows", "Shadows", level >= 1);
     Settings::Manager::setBool("player shadows", "Shadows", level >= 1);
