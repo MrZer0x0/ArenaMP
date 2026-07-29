@@ -12,6 +12,7 @@ set(SHADER_FILES
     bloom_extract_horizontal.frag
     bloom_vertical.frag
     bloom_composite.frag
+    ripples.glsl
     ripples_blobber.frag
     ripples_simulate.frag
     groundcover_vertex.glsl
