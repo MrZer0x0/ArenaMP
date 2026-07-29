@@ -7,6 +7,7 @@
 #include <MyGUI_RenderManager.h>
 
 #include <components/esm/esmwriter.hpp>
+#include <components/esm/loadbook.hpp>
 #include <components/esm/quickkeys.hpp>
 
 /*
@@ -267,6 +268,19 @@ namespace MWGui
     {
         assert(mSelected);
 
+        // Enchanted scrolls are castable magic items. Assigning one through the
+        // generic item picker must not make its quick key open the reading GUI.
+        // Treat it exactly like an item selected from the magic picker.
+        if (item.getTypeName() == typeid(ESM::Book).name())
+        {
+            const MWWorld::LiveCellRef<ESM::Book>* book = item.get<ESM::Book>();
+            if (book->mBase->mData.mIsScroll && !book->mBase->mEnchant.empty())
+            {
+                onAssignMagicItem(item);
+                return;
+            }
+        }
+
         while (mSelected->button->getChildCount()) // Destroy number label
             MyGUI::Gui::getInstance().destroyWidget(mSelected->button->getChildAt(0));
 
@@ -462,6 +476,20 @@ namespace MWGui
 
             if (key->type == Type_Item)
             {
+                // Backward compatibility for saves where an enchanted scroll was
+                // already stored as a normal item quick key. Such a scroll must be
+                // prepared for casting, not opened for reading.
+                if (item.getTypeName() == typeid(ESM::Book).name())
+                {
+                    const MWWorld::LiveCellRef<ESM::Book>* book = item.get<ESM::Book>();
+                    if (book->mBase->mData.mIsScroll && !book->mBase->mEnchant.empty())
+                    {
+                        mwmp::Main::get().getLocalPlayer()->sendItemUse(
+                            item, true, MWMechanics::DrawState_Spell);
+                        return;
+                    }
+                }
+
                 bool isWeapon = item.getTypeName() == typeid(ESM::Weapon).name();
                 bool isTool = item.getTypeName() == typeid(ESM::Probe).name() ||
                     item.getTypeName() == typeid(ESM::Lockpick).name();
