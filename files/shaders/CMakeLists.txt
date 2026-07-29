@@ -7,6 +7,7 @@ set(SDIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(DDIRRELATIVE resources/shaders)
 
 set(SHADER_FILES
+    atmosphere.glsl
     lib/water/ripples.glsl
     fullscreen_tri.vert
     bloom_extract_horizontal.frag
