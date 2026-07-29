@@ -2,27 +2,27 @@
 #define OPENMW_FACTIONAPI_HPP
 
 #define FACTIONAPI \
-    {"ClearFactionChanges",      FactionFunctions::ClearFactionChanges},\
+    SCRIPT_API_ENTRY("ClearFactionChanges", FactionFunctions::ClearFactionChanges),\
     \
-    {"GetFactionChangesSize",    FactionFunctions::GetFactionChangesSize},\
-    {"GetFactionChangesAction",  FactionFunctions::GetFactionChangesAction},\
+    SCRIPT_API_ENTRY("GetFactionChangesSize", FactionFunctions::GetFactionChangesSize),\
+    SCRIPT_API_ENTRY("GetFactionChangesAction", FactionFunctions::GetFactionChangesAction),\
     \
-    {"GetFactionId",             FactionFunctions::GetFactionId},\
-    {"GetFactionRank",           FactionFunctions::GetFactionRank},\
-    {"GetFactionExpulsionState", FactionFunctions::GetFactionExpulsionState},\
-    {"GetFactionReputation",     FactionFunctions::GetFactionReputation},\
+    SCRIPT_API_ENTRY("GetFactionId", FactionFunctions::GetFactionId),\
+    SCRIPT_API_ENTRY("GetFactionRank", FactionFunctions::GetFactionRank),\
+    SCRIPT_API_ENTRY("GetFactionExpulsionState", FactionFunctions::GetFactionExpulsionState),\
+    SCRIPT_API_ENTRY("GetFactionReputation", FactionFunctions::GetFactionReputation),\
     \
-    {"SetFactionChangesAction",  FactionFunctions::SetFactionChangesAction},\
-    {"SetFactionId",             FactionFunctions::SetFactionId},\
-    {"SetFactionRank",           FactionFunctions::SetFactionRank},\
-    {"SetFactionExpulsionState", FactionFunctions::SetFactionExpulsionState},\
-    {"SetFactionReputation",     FactionFunctions::SetFactionReputation},\
+    SCRIPT_API_ENTRY("SetFactionChangesAction", FactionFunctions::SetFactionChangesAction),\
+    SCRIPT_API_ENTRY("SetFactionId", FactionFunctions::SetFactionId),\
+    SCRIPT_API_ENTRY("SetFactionRank", FactionFunctions::SetFactionRank),\
+    SCRIPT_API_ENTRY("SetFactionExpulsionState", FactionFunctions::SetFactionExpulsionState),\
+    SCRIPT_API_ENTRY("SetFactionReputation", FactionFunctions::SetFactionReputation),\
     \
-    {"AddFaction",               FactionFunctions::AddFaction},\
+    SCRIPT_API_ENTRY("AddFaction", FactionFunctions::AddFaction),\
     \
-    {"SendFactionChanges",       FactionFunctions::SendFactionChanges},\
+    SCRIPT_API_ENTRY("SendFactionChanges", FactionFunctions::SendFactionChanges),\
     \
-    {"InitializeFactionChanges", FactionFunctions::InitializeFactionChanges}
+    SCRIPT_API_ENTRY("InitializeFactionChanges", FactionFunctions::InitializeFactionChanges)
 
 class FactionFunctions
 {

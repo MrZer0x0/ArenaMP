@@ -2,6 +2,8 @@
 
 #include "mainwizard.hpp"
 
+#include <components/config/buildmanifest.hpp>
+
 #include <QDebug>
 
 Wizard::LanguageSelectionPage::LanguageSelectionPage(QWidget *parent) :
@@ -16,6 +18,9 @@ Wizard::LanguageSelectionPage::LanguageSelectionPage(QWidget *parent) :
 
 void Wizard::LanguageSelectionPage::initializePage()
 {
+    const QString requestedLanguage = Config::BuildManifest::canonicalLanguage(
+        field(QLatin1String("installation.language")).toString());
+    languageComboBox->clear();
     QStringList languages;
     languages << QLatin1String("English")
               << QLatin1String("French")
@@ -26,6 +31,9 @@ void Wizard::LanguageSelectionPage::initializePage()
               << QLatin1String("Spanish");
 
     languageComboBox->addItems(languages);
+    const int index = languageComboBox->findText(requestedLanguage, Qt::MatchFixedString);
+    if (index >= 0)
+        languageComboBox->setCurrentIndex(index);
 }
 
 int Wizard::LanguageSelectionPage::nextId() const

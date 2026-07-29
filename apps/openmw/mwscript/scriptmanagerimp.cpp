@@ -39,6 +39,31 @@ namespace MWScript
         std::sort (mScriptBlacklist.begin(), mScriptBlacklist.end());
     }
 
+    void ScriptManager::invalidate (const std::string& name)
+    {
+        const std::string loweredName = Misc::StringUtils::lowerCase(name);
+
+        for (auto iter = mScripts.begin(); iter != mScripts.end();)
+        {
+            if (Misc::StringUtils::lowerCase(iter->first) == loweredName)
+                iter = mScripts.erase(iter);
+            else
+                ++iter;
+        }
+
+        for (auto iter = mOtherLocals.begin(); iter != mOtherLocals.end();)
+        {
+            if (Misc::StringUtils::lowerCase(iter->first) == loweredName)
+                iter = mOtherLocals.erase(iter);
+            else
+                ++iter;
+        }
+
+        // A dynamically blanked global script must not get one more update from
+        // an already-running GlobalScripts entry before it is compiled again.
+        mGlobalScripts.removeScript(name);
+    }
+
     bool ScriptManager::compile (const std::string& name)
     {
         mParser.reset();

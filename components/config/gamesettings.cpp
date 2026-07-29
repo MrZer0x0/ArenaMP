@@ -8,6 +8,7 @@
 #include <components/files/configurationmanager.hpp>
 
 const char Config::GameSettings::sContentKey[] = "content";
+const char Config::GameSettings::sGroundcoverKey[] = "groundcover";
 
 Config::GameSettings::GameSettings(Files::ConfigurationManager &cfg)
     : mCfgMgr(cfg)
@@ -488,6 +489,18 @@ QStringList Config::GameSettings::getContentList() const
 {
     // QMap returns multiple rows in LIFO order, so need to reverse
     return Config::LauncherSettings::reverse(values(sContentKey));
+}
+
+void Config::GameSettings::setGroundcoverList(const QStringList& fileNames)
+{
+    remove(sGroundcoverKey);
+    for (const QString& fileName : fileNames)
+        setMultiValue(sGroundcoverKey, fileName);
+}
+
+QStringList Config::GameSettings::getGroundcoverList() const
+{
+    return Config::LauncherSettings::reverse(values(sGroundcoverKey));
 }
 
 void Config::GameSettings::clear()

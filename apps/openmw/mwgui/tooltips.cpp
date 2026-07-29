@@ -306,6 +306,14 @@ namespace MWGui
         {
             if (!mFocusObject.isEmpty())
             {
+                if (Settings::Manager::getBool("target info panel", "GUI")
+                    && mFocusObject.getClass().isActor()
+                    && mFocusObject != MWMechanics::getPlayer())
+                {
+                    mDynamicToolTipBox->setVisible(false);
+                    return;
+                }
+
                 MyGUI::IntSize tooltipSize = getToolTipViaPtr(mFocusObject.getRefData().getCount(), true, checkOwned());
 
                 setCoord(viewSize.width/2 - tooltipSize.width/2,

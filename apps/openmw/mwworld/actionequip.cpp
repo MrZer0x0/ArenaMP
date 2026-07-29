@@ -1,15 +1,72 @@
 #include "actionequip.hpp"
 
+#include <algorithm>
+#include <limits>
+
 #include "../mwbase/environment.hpp"
 #include "../mwbase/windowmanager.hpp"
 
 #include "../mwmechanics/actorutil.hpp"
+#include "../mwmechanics/weapontype.hpp"
 
 #include <components/compiler/locals.hpp>
+#include <components/esm/loadweap.hpp>
 
 #include "inventorystore.hpp"
 #include "player.hpp"
 #include "class.hpp"
+
+namespace
+{
+    void autoEquipCompatibleAmmunition(MWWorld::InventoryStore& invStore, const MWWorld::Ptr& actor,
+        const MWWorld::Ptr& weapon)
+    {
+        // NPC combat already selects ammunition using its own rating logic. Keep this helper local
+        // to the player so it cannot interfere with actor authority or scripted equipment packets.
+        if (actor != MWMechanics::getPlayer() || weapon.getTypeName() != typeid(ESM::Weapon).name())
+            return;
+
+        const ESM::Weapon* weaponRecord = weapon.get<ESM::Weapon>()->mBase;
+        const int ammunitionType = MWMechanics::getWeaponType(weaponRecord->mData.mType)->mAmmoType;
+        if (ammunitionType != ESM::Weapon::Arrow && ammunitionType != ESM::Weapon::Bolt)
+            return;
+
+        MWWorld::ContainerStoreIterator current
+            = invStore.getSlot(MWWorld::InventoryStore::Slot_Ammunition);
+        if (current != invStore.end() && current.getType() == MWWorld::ContainerStore::Type_Weapon
+            && current->getRefData().getCount() > 0
+            && current->get<ESM::Weapon>()->mBase->mData.mType == ammunitionType)
+        {
+            // Respect the ammunition explicitly chosen by the player when it is compatible.
+            return;
+        }
+
+        MWWorld::ContainerStoreIterator best = invStore.end();
+        int bestDamage = std::numeric_limits<int>::min();
+        for (MWWorld::ContainerStoreIterator it(invStore.begin(MWWorld::ContainerStore::Type_Weapon));
+             it != invStore.end(); ++it)
+        {
+            if (it->getRefData().getCount() <= 0)
+                continue;
+
+            const ESM::Weapon* ammunition = it->get<ESM::Weapon>()->mBase;
+            if (ammunition->mData.mType != ammunitionType)
+                continue;
+
+            const int damage = std::max({ static_cast<int>(ammunition->mData.mChop[1]),
+                static_cast<int>(ammunition->mData.mSlash[1]),
+                static_cast<int>(ammunition->mData.mThrust[1]) });
+            if (best == invStore.end() || damage > bestDamage)
+            {
+                best = it;
+                bestDamage = damage;
+            }
+        }
+
+        if (best != invStore.end())
+            invStore.equip(MWWorld::InventoryStore::Slot_Ammunition, best, actor);
+    }
+}
 
 namespace MWWorld
 {
@@ -77,7 +134,10 @@ namespace MWWorld
         {
             // if the item is equipped already, nothing to do
             if (invStore.getSlot(*slot) == it)
+            {
+                autoEquipCompatibleAmmunition(invStore, actor, object);
                 return;
+            }
 
             if (invStore.getSlot(*slot) == invStore.end())
             {
@@ -116,5 +176,7 @@ namespace MWWorld
                 invStore.setSelectedEnchantItem(enchItem);
             }
         }
+
+        autoEquipCompatibleAmmunition(invStore, actor, object);
     }
 }

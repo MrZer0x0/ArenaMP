@@ -81,6 +81,8 @@ namespace SceneUtil {
 
         virtual void setShadowFadeStart(float shadowFadeStart);
 
+        virtual void setMaximumShadowMapDistance(float maximumShadowMapDistance);
+
         virtual void enableFrontFaceCulling();
 
         virtual void disableFrontFaceCulling();

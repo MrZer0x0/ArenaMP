@@ -10,10 +10,12 @@
  */
 
 #include "CCRakNetSlidingWindow.h"
+#include <limits>
 
 #if USE_SLIDING_WINDOW_CONGESTION_CONTROL == 1
 
 static const double UNSET_TIME_US = -1;
+static constexpr CCTimeType UNSET_CC_TIME = std::numeric_limits<CCTimeType>::max();
 
 #if CC_TIME_TYPE_BYTES == 4
 static const CCTimeType SYN = 10;
@@ -88,7 +90,7 @@ bool CCRakNetSlidingWindow::ShouldSendACKs(CCTimeType curTime, CCTimeType estima
     CCTimeType rto = GetSenderRTOForACK();
     (void) estimatedTimeToNextTick;
 
-    if (rto == (CCTimeType) UNSET_TIME_US)
+    if (rto == UNSET_CC_TIME)
     {
         // Unknown how long until the remote system will retransmit, so better send right away
         return true;
@@ -383,7 +385,7 @@ uint64_t CCRakNetSlidingWindow::GetBytesPerSecondLimitByCongestionControl() cons
 CCTimeType CCRakNetSlidingWindow::GetSenderRTOForACK() const
 {
     if (lastRtt == UNSET_TIME_US)
-        return (CCTimeType) UNSET_TIME_US;
+        return UNSET_CC_TIME;
     return (CCTimeType) (lastRtt + SYN);
 }
 

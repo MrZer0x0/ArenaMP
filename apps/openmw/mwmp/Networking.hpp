@@ -50,9 +50,11 @@ namespace mwmp
         ActorList *getActorList();
         ObjectList *getObjectList();
         Worldstate *getWorldstate();
+        const std::string& getStartLocation() const;
 
     private:
         bool connected;
+        std::string startLocation;
         RakNet::RakPeerInterface *peer;
         RakNet::SystemAddress serverAddr;
         RakNet::BitStream bsOut;

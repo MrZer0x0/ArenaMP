@@ -4,48 +4,97 @@
 #include "../Types.hpp"
 
 #define MECHANICSAPI \
-    {"ClearAlliedPlayersForPlayer", MechanicsFunctions::ClearAlliedPlayersForPlayer},\
+    SCRIPT_API_ENTRY("ClearAlliedPlayersForPlayer", MechanicsFunctions::ClearAlliedPlayersForPlayer),\
+    SCRIPT_API_ENTRY("SetFriendlyFireMode", MechanicsFunctions::SetFriendlyFireMode),\
+    SCRIPT_API_ENTRY("GetFriendlyFireMode", MechanicsFunctions::GetFriendlyFireMode),\
+    SCRIPT_API_ENTRY("ArePlayersAllied", MechanicsFunctions::ArePlayersAllied),\
+    SCRIPT_API_ENTRY("IsFriendlyFireAllowed", MechanicsFunctions::IsFriendlyFireAllowed),\
     \
-    {"GetMiscellaneousChangeType",  MechanicsFunctions::GetMiscellaneousChangeType},\
+    SCRIPT_API_ENTRY("GetMiscellaneousChangeType", MechanicsFunctions::GetMiscellaneousChangeType),\
     \
-    {"GetMarkCell",                 MechanicsFunctions::GetMarkCell},\
-    {"GetMarkPosX",                 MechanicsFunctions::GetMarkPosX},\
-    {"GetMarkPosY",                 MechanicsFunctions::GetMarkPosY},\
-    {"GetMarkPosZ",                 MechanicsFunctions::GetMarkPosZ},\
-    {"GetMarkRotX",                 MechanicsFunctions::GetMarkRotX},\
-    {"GetMarkRotZ",                 MechanicsFunctions::GetMarkRotZ},\
-    {"GetSelectedSpellId",          MechanicsFunctions::GetSelectedSpellId},\
+    SCRIPT_API_ENTRY("GetMarkCell", MechanicsFunctions::GetMarkCell),\
+    SCRIPT_API_ENTRY("GetMarkPosX", MechanicsFunctions::GetMarkPosX),\
+    SCRIPT_API_ENTRY("GetMarkPosY", MechanicsFunctions::GetMarkPosY),\
+    SCRIPT_API_ENTRY("GetMarkPosZ", MechanicsFunctions::GetMarkPosZ),\
+    SCRIPT_API_ENTRY("GetMarkRotX", MechanicsFunctions::GetMarkRotX),\
+    SCRIPT_API_ENTRY("GetMarkRotZ", MechanicsFunctions::GetMarkRotZ),\
+    SCRIPT_API_ENTRY("GetSelectedSpellId", MechanicsFunctions::GetSelectedSpellId),\
     \
-    {"DoesPlayerHavePlayerKiller",  MechanicsFunctions::DoesPlayerHavePlayerKiller},\
-    {"GetPlayerKillerPid",          MechanicsFunctions::GetPlayerKillerPid},\
-    {"GetPlayerKillerRefId",        MechanicsFunctions::GetPlayerKillerRefId},\
-    {"GetPlayerKillerRefNum",       MechanicsFunctions::GetPlayerKillerRefNum},\
-    {"GetPlayerKillerMpNum",        MechanicsFunctions::GetPlayerKillerMpNum},\
-    {"GetPlayerKillerName",         MechanicsFunctions::GetPlayerKillerName},\
+    SCRIPT_API_ENTRY("DoesPlayerHavePlayerKiller", MechanicsFunctions::DoesPlayerHavePlayerKiller),\
+    SCRIPT_API_ENTRY("GetPlayerKillerPid", MechanicsFunctions::GetPlayerKillerPid),\
+    SCRIPT_API_ENTRY("GetPlayerKillerRefId", MechanicsFunctions::GetPlayerKillerRefId),\
+    SCRIPT_API_ENTRY("GetPlayerKillerRefNum", MechanicsFunctions::GetPlayerKillerRefNum),\
+    SCRIPT_API_ENTRY("GetPlayerKillerMpNum", MechanicsFunctions::GetPlayerKillerMpNum),\
+    SCRIPT_API_ENTRY("GetPlayerKillerName", MechanicsFunctions::GetPlayerKillerName),\
     \
-    {"GetDrawState",                MechanicsFunctions::GetDrawState},\
-    {"GetSneakState",               MechanicsFunctions::GetSneakState},\
+    SCRIPT_API_ENTRY("GetDrawState", MechanicsFunctions::GetDrawState),\
+    SCRIPT_API_ENTRY("GetSneakState", MechanicsFunctions::GetSneakState),\
     \
-    {"SetMarkCell",                 MechanicsFunctions::SetMarkCell},\
-    {"SetMarkPos",                  MechanicsFunctions::SetMarkPos},\
-    {"SetMarkRot",                  MechanicsFunctions::SetMarkRot},\
-    {"SetSelectedSpellId",          MechanicsFunctions::SetSelectedSpellId},\
+    SCRIPT_API_ENTRY("SetMarkCell", MechanicsFunctions::SetMarkCell),\
+    SCRIPT_API_ENTRY("SetMarkPos", MechanicsFunctions::SetMarkPos),\
+    SCRIPT_API_ENTRY("SetMarkRot", MechanicsFunctions::SetMarkRot),\
+    SCRIPT_API_ENTRY("SetSelectedSpellId", MechanicsFunctions::SetSelectedSpellId),\
     \
-    {"AddAlliedPlayerForPlayer",    MechanicsFunctions::AddAlliedPlayerForPlayer},\
+    SCRIPT_API_ENTRY("AddAlliedPlayerForPlayer", MechanicsFunctions::AddAlliedPlayerForPlayer),\
     \
-    {"SendMarkLocation",            MechanicsFunctions::SendMarkLocation},\
-    {"SendSelectedSpell",           MechanicsFunctions::SendSelectedSpell},\
-    {"SendAlliedPlayers",           MechanicsFunctions::SendAlliedPlayers},\
+    SCRIPT_API_ENTRY("SendMarkLocation", MechanicsFunctions::SendMarkLocation),\
+    SCRIPT_API_ENTRY("SendSelectedSpell", MechanicsFunctions::SendSelectedSpell),\
+    SCRIPT_API_ENTRY("SendAlliedPlayers", MechanicsFunctions::SendAlliedPlayers),\
     \
-    {"Jail",                        MechanicsFunctions::Jail},\
-    {"Resurrect",                   MechanicsFunctions::Resurrect},\
+    SCRIPT_API_ENTRY("Jail", MechanicsFunctions::Jail),\
+    SCRIPT_API_ENTRY("Resurrect", MechanicsFunctions::Resurrect),\
     \
-    {"GetDeathReason",              MechanicsFunctions::GetDeathReason},\
-    {"GetPlayerKillerRefNumIndex",  MechanicsFunctions::GetPlayerKillerRefNumIndex}
+    SCRIPT_API_ENTRY("GetDeathReason", MechanicsFunctions::GetDeathReason),\
+    SCRIPT_API_ENTRY("GetPlayerKillerRefNumIndex", MechanicsFunctions::GetPlayerKillerRefNumIndex)
 
 class MechanicsFunctions
 {
 public:
+
+    /**
+    * \brief Set the server-wide friendly fire mode.
+    *
+    * Supported canonical values are "disabled", "enabled" and "group".
+    * Common aliases such as "off", "on", "party" and "allies" are accepted.
+    *
+    * \param mode The requested friendly fire mode.
+    * \return Whether the mode was valid and has been applied.
+    */
+    static bool SetFriendlyFireMode(const char* mode) noexcept;
+
+    /**
+    * \brief Get the current server-wide friendly fire mode.
+    *
+    * \return One of "disabled", "enabled" or "group".
+    */
+    static const char* GetFriendlyFireMode() noexcept;
+
+    /**
+    * \brief Check whether two connected players are in the same alliance/group.
+    *
+    * The check is intentionally symmetric: either player's ally list is enough
+    * to regard the pair as grouped. This protects players while alliance updates
+    * are still propagating to all clients.
+    *
+    * \param firstPid The first player ID.
+    * \param secondPid The second player ID.
+    * \return Whether the players are grouped.
+    */
+    static bool ArePlayersAllied(unsigned short firstPid, unsigned short secondPid) noexcept;
+
+    /**
+    * \brief Check whether one connected player may damage another according to
+    *        the current friendly fire mode.
+    *
+    * Self-targeted effects are always allowed. In "disabled" mode all damage
+    * between different players is denied. In "enabled" mode it is always
+    * allowed. In "group" mode it is denied only between allied players.
+    *
+    * \param attackerPid The attacking/casting player ID.
+    * \param targetPid The target player ID.
+    * \return Whether player-to-player damage is allowed.
+    */
+    static bool IsFriendlyFireAllowed(unsigned short attackerPid, unsigned short targetPid) noexcept;
 
     /**
     * \brief Clear the list of players who will be regarded as being player's allies.

@@ -12,6 +12,11 @@ namespace mwmp
         {
             BPP_INIT(ID_OBJECT_ROTATE)
         }
+
+        void Do(ObjectPacket &packet, Player &player, BaseObjectList &objectList) override
+        {
+            SendToLoadedCell(packet, objectList);
+        }
     };
 }
 

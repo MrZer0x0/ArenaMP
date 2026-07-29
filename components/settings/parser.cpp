@@ -142,8 +142,33 @@ void Settings::SettingsFileParser::saveSettingsFile(const std::string& file, con
         // There were at least some comments in the input file.
         existing = true;
 
-        // Copy comments.
+        // Copy comments. Old ArenaMP builds could repeatedly turn valid
+        // fork-specific entries into "# invalid setting:" comments when the
+        // launcher and client used different settings files/default presets.
+        // Remove such stale comments only when the corresponding setting is
+        // currently known; the active value will be written normally below.
         if (line[i] == '#') {
+            const std::string invalidPrefix = "# invalid setting:";
+            const std::string trimmedLine = line.substr(i);
+            if (trimmedLine.compare(0, invalidPrefix.size(), invalidPrefix) == 0
+                && !currentCategory.empty())
+            {
+                std::string oldEntry = trimmedLine.substr(invalidPrefix.size());
+                Misc::StringUtils::trim(oldEntry);
+                const std::size_t equals = oldEntry.find('=');
+                if (equals != std::string::npos)
+                {
+                    std::string oldSetting = oldEntry.substr(0, equals);
+                    Misc::StringUtils::trim(oldSetting);
+                    const CategorySetting oldKey = std::make_pair(currentCategory, oldSetting);
+                    if (written.find(oldKey) != written.end())
+                    {
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+
             ostream << line << std::endl;
             continue;
         }
@@ -224,13 +249,13 @@ void Settings::SettingsFileParser::saveSettingsFile(const std::string& file, con
         CategorySetting key = std::make_pair(currentCategory, setting);
         CategorySettingStatusMap::iterator finder = written.find(key);
 
-        // Settings not in the written map are definitely invalid.  Currently, this can only
-        // happen if the player edited the file while playing, because loadSettingsFile()
-        // will accept anything and pass it along in the map, but in the future, we might
-        // want to handle invalid settings more gracefully here.
+        // Preserve settings that are unknown to the currently running binary.
+        // ArenaMP packages can contain launcher/client components from adjacent
+        // revisions, and destructively commenting such keys made settings.cfg
+        // appear corrupted after one launch. A newer compatible binary can use
+        // the entry again, while truly obsolete keys remain harmless.
         if (finder == written.end()) {
-            ostream << "# invalid setting: " << line << std::endl;
-            changed = true;
+            ostream << line << std::endl;
             continue;
         }
 

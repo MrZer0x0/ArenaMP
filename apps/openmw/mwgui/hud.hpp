@@ -48,6 +48,7 @@ namespace MWGui
         void setCrosshairOwned(bool owned);
 
         void onFrame(float dt) override;
+        void onResChange(int width, int height) override;
 
         void setCellName(const std::string& cellName);
 
@@ -57,12 +58,16 @@ namespace MWGui
 
         void setEnemy(const MWWorld::Ptr& enemy);
         void resetEnemy();
+        void setFocusObject(const MWWorld::Ptr& focus);
+        void setFocusObjectScreenCoords(float min_x, float min_y, float max_x, float max_y);
 
         void clear() override;
 
     private:
         MyGUI::ProgressBar *mHealth, *mMagicka, *mStamina, *mEnemyHealth, *mDrowning;
-        MyGUI::Widget* mHealthFrame;
+        MyGUI::TextBox *mHealthText, *mMagickaText, *mStaminaText, *mFpsBox;
+        MyGUI::TextBox *mEnemyName, *mEnemySummary;
+        MyGUI::Widget *mHealthFrame, *mMagickaFrame, *mFatigueFrame;
         MyGUI::Widget *mWeapBox, *mSpellBox, *mSneakBox;
         ItemWidget *mWeapImage;
         SpellWidget *mSpellImage;
@@ -73,6 +78,7 @@ namespace MWGui
         MyGUI::ImageBox* mCrosshair;
         MyGUI::TextBox* mCellNameBox;
         MyGUI::TextBox* mWeaponSpellBox;
+        MyGUI::TextBox* mGameTimeBox;
         MyGUI::Widget *mDrowningFrame, *mDrowningFlash;
 
         // bottom left elements
@@ -88,6 +94,7 @@ namespace MWGui
         std::string mWeaponName;
         std::string mSpellName;
         float mWeaponSpellTimer;
+        float mGameTimeUpdateTimer;
 
         bool mMapVisible;
         bool mWeaponVisible;
@@ -99,9 +106,36 @@ namespace MWGui
 
         int mEnemyActorId;
         float mEnemyHealthTimer;
+        MWWorld::Ptr mFocusActor;
+        float mFocusActorScreenX;
+        float mFocusActorScreenY;
+
+        float mFpsUpdateTimer;
+        float mFpsAccumulatedTime;
+        int mFpsFrameCount;
 
         bool  mIsDrowning;
         float mDrowningFlashTheta;
+
+
+        struct AutoHideBarState
+        {
+            int current = 0;
+            int modified = 0;
+            float idleTimer = 0.f;
+            float alpha = 1.f;
+            bool initialized = false;
+        };
+
+        AutoHideBarState mHealthBarState;
+        AutoHideBarState mMagickaBarState;
+        AutoHideBarState mStaminaBarState;
+        bool mHmsBaseVisible;
+
+        void registerBarChange(AutoHideBarState& state, int current, int modified);
+        void updateAutoHideBar(MyGUI::Widget* frame, AutoHideBarState& state, float dt, bool forceVisible,
+            MyGUI::Widget* persistentIcon = nullptr);
+        void applyBarAlpha(MyGUI::Widget* widget, float alpha);
 
         void onWorldClicked(MyGUI::Widget* _sender);
         void onWorldMouseOver(MyGUI::Widget* _sender, int x, int y);
@@ -116,6 +150,7 @@ namespace MWGui
         void doorMarkerCreated(MyGUI::Widget* marker) override;
 
         void updateEnemyHealthBar();
+        bool isFocusedTargetTooClose() const;
 
         void updatePositions();
     };

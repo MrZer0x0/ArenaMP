@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <regex>
+#include <chrono>
 
 #ifndef CASE_INSENSITIVE_EQUALS_AND_HASH
 #define CASE_INSENSITIVE_EQUALS_AND_HASH
@@ -196,14 +197,14 @@ namespace SimpleWeb
         virtual void start()
         {
             if (!io_service)
-                io_service = std::make_shared<boost::asio::io_service>();
+                io_service = std::make_shared<boost::asio::io_context>();
 
             if (io_service->stopped())
-                io_service->reset();
+                io_service->restart();
 
             boost::asio::ip::tcp::endpoint endpoint;
             if (config.address.size() > 0)
-                endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(config.address),
+                endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(config.address),
                                                           config.port);
             else
                 endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), config.port);
@@ -258,9 +259,9 @@ namespace SimpleWeb
             });
         }
 
-        /// If you have your own boost::asio::io_service, store its pointer here before running start().
+        /// If you have your own boost::asio::io_context, store its pointer here before running start().
         /// You might also want to set config.thread_pool_size to 0.
-        std::shared_ptr<boost::asio::io_service> io_service;
+        std::shared_ptr<boost::asio::io_context> io_service;
     protected:
         std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor;
         std::vector<std::thread> threads;
@@ -270,14 +271,14 @@ namespace SimpleWeb
 
         virtual void accept()=0;
 
-        std::shared_ptr<boost::asio::deadline_timer>
+        std::shared_ptr<boost::asio::steady_timer>
         get_timeout_timer(const std::shared_ptr<socket_type> &socket, long seconds)
         {
             if (seconds == 0)
                 return nullptr;
 
-            auto timer = std::make_shared<boost::asio::deadline_timer>(*io_service);
-            timer->expires_from_now(boost::posix_time::seconds(seconds));
+            auto timer = std::make_shared<boost::asio::steady_timer>(*io_service);
+            timer->expires_after(std::chrono::seconds(seconds));
             timer->async_wait([socket](const boost::system::error_code &ec)
                               {
                                   if (!ec)

@@ -27,6 +27,37 @@ namespace
             pathname.end() );
     }
 
+    std::string::size_type findExtension(const std::string& path)
+    {
+        const std::string::size_type slashPos = path.find_last_of("\\/");
+        const std::string::size_type dotPos = path.rfind('.');
+        if (dotPos == std::string::npos)
+            return std::string::npos;
+        if (slashPos != std::string::npos && dotPos < slashPos)
+            return std::string::npos;
+        return dotPos;
+    }
+
+    std::string getLODMeshNameImpl(const std::string& resPath, const std::string& pattern)
+    {
+        const std::string::size_type pos = findExtension(resPath);
+        if (pos == std::string::npos)
+            return resPath;
+
+        std::string result = resPath;
+        result.insert(pos, pattern);
+        return result;
+    }
+
+    std::string getBestLODMeshName(const std::string& resPath, const VFS::Manager* vfs, const std::string& pattern)
+    {
+        std::string result = getLODMeshNameImpl(resPath, pattern);
+        vfs->normalizeFilename(result);
+        if (vfs->exists(result))
+            return result;
+        return resPath;
+    }
+
 }
 
 bool Misc::ResourceHelpers::changeExtensionToDds(std::string &path)
@@ -137,4 +168,32 @@ std::string Misc::ResourceHelpers::correctActorModelPath(const std::string &resP
         return resPath;
     }
     return mdlname;
+}
+
+
+std::string Misc::ResourceHelpers::getLODMeshName(const std::string &resPath, const VFS::Manager* vfs, unsigned char lod)
+{
+    static const char* patterns[] = { "_dist", "_far", "_lod" };
+
+    std::string normalizedPath = resPath;
+    vfs->normalizeFilename(normalizedPath);
+
+    for (std::size_t patternIndex = 0; patternIndex < sizeof(patterns) / sizeof(patterns[0]); ++patternIndex)
+    {
+        const std::string pattern = patterns[patternIndex];
+        for (int level = static_cast<int>(lod); level >= 0; --level)
+        {
+            std::stringstream stream;
+            stream << pattern << "_" << level;
+            const std::string candidate = getBestLODMeshName(normalizedPath, vfs, stream.str());
+            if (candidate != normalizedPath)
+                return candidate;
+        }
+
+        const std::string candidate = getBestLODMeshName(normalizedPath, vfs, pattern);
+        if (candidate != normalizedPath)
+            return candidate;
+    }
+
+    return normalizedPath;
 }

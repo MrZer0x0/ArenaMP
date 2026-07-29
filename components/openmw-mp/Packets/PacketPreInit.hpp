@@ -18,11 +18,15 @@ namespace mwmp
 
         virtual void Packet(RakNet::BitStream *newBitstream, bool send);
         void setChecksums(PluginContainer *checksums);
+        void setStartLocation(const std::string& location);
+        const std::string& getStartLocation() const;
     private:
         PluginContainer *checksums;
+        std::string startLocation;
         const static uint32_t maxPlugins = 1000;
         const static uint32_t pluginNameMaxLength = 256;
         const static uint32_t maxHashes = 50;
+        const static uint32_t startLocationMaxLength = 256;
     };
 }
 

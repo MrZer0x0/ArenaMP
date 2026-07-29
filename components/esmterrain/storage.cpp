@@ -544,7 +544,18 @@ namespace ESMTerrain
         return 0;
     }
 
-    Terrain::LayerInfo Storage::getLayerInfo(const std::string& texture)
+    void Storage::setAutoUseMaterialMaps(bool normalMaps, bool specularMaps)
+{
+    std::lock_guard<std::mutex> lock(mLayerInfoMutex);
+    if (mAutoUseNormalMaps == normalMaps && mAutoUseSpecularMaps == specularMaps)
+        return;
+
+    mAutoUseNormalMaps = normalMaps;
+    mAutoUseSpecularMaps = specularMaps;
+    mLayerInfoMap.clear();
+}
+
+Terrain::LayerInfo Storage::getLayerInfo(const std::string& texture)
     {
         std::lock_guard<std::mutex> lock(mLayerInfoMutex);
 

@@ -46,6 +46,7 @@ namespace MWInput
 
         void quickKey (int index);
         void showQuickKeysMenu();
+        void showPlayerAnimationMenu();
 
         void resetIdleTime();
 

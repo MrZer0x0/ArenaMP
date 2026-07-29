@@ -625,6 +625,17 @@ namespace MWClass
         if(otherstats.isDead()) // Can't hit dead actors
             return;
 
+        /*
+            ArenaMP friendly fire
+
+            Stop locally calculated player-versus-player hits before hit chance,
+            durability loss, enchantment use, disease contact or packet target
+            assignment. The receiving client performs the same check again when
+            processing the attack packet.
+        */
+        if (!MechanicsHelper::isFriendlyFireAllowed(ptr, victim))
+            return;
+
         if(ptr == MWMechanics::getPlayer())
             MWBase::Environment::get().getWindowManager()->setEnemy(victim);
 
@@ -657,7 +668,7 @@ namespace MWClass
                         hitchance = hitchance - 15;
                     }
                 }
-                if (weaponType == ESM::Weapon::ShortBladeOneHand)
+                if (weaponType == ESM::Weapon::SpearTwoWide || weaponType == ESM::Weapon::ShortBladeOneHand)
                 {
                     hitchance += 10;
                 }
@@ -806,6 +817,11 @@ namespace MWClass
 
     void Npc::onHit(const MWWorld::Ptr &ptr, float damage, bool ishealth, const MWWorld::Ptr &object, const MWWorld::Ptr &attacker, const osg::Vec3f &hitPosition, bool successful) const
     {
+        // Final defensive gate for player-versus-player weapon damage. This is
+        // deliberately before combat reactions, knockdown and durability logic.
+        if (!MechanicsHelper::isFriendlyFireAllowed(attacker, ptr))
+            return;
+
         MWBase::SoundManager *sndMgr = MWBase::Environment::get().getSoundManager();
         MWMechanics::CreatureStats& stats = getCreatureStats(ptr);
         bool wasDead = stats.isDead();
@@ -1905,15 +1921,14 @@ namespace MWClass
 
         float athleticsswimmod = 0.01f;
 
-        //EncoreMP swim speed athletics scaling
         float athleticsholder = getSkill(ptr, ESM::Skill::Athletics);
 
         if (ptr == player)
         {
             athleticsswimmod = 0.03f;
-            if (athleticsholder > 166.0f)
+            if (athleticsholder > 500.0f)
             {
-                athleticsholder = 166.0f;
+                athleticsholder = 500.0f;
             }
         }
 

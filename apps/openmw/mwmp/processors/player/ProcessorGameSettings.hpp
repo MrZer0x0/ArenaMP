@@ -3,6 +3,7 @@
 
 #include "apps/openmw/mwbase/environment.hpp"
 #include "apps/openmw/mwworld/worldimp.hpp"
+#include "apps/openmw/mwworld/class.hpp"
 #include "apps/openmw/mwgui/windowmanagerimp.hpp"
 
 #include "../PlayerProcessor.hpp"
@@ -56,6 +57,13 @@ namespace mwmp
                 {
                     Settings::Manager::setString(setting.first, GAME_SETTING_CATEGORY, setting.second);
                 }
+
+                // A live friendly-fire mode change must immediately rebuild
+                // cached active effects so hostile player DoTs are suspended
+                // or resumed according to the new rule.
+                MWWorld::Ptr localPlayerPtr = MWBase::Environment::get().getWorld()->getPlayerPtr();
+                if (localPlayerPtr)
+                    localPlayerPtr.getClass().getCreatureStats(localPlayerPtr).getActiveSpells().refreshEffects();
 
                 // Only read VR settings for players using a VR build
 #ifdef USE_OPENXR

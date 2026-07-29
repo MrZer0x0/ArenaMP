@@ -6,6 +6,7 @@
 #include <MyGUI_ControllerRepeatClick.h>
 
 #include <components/widgets/numericeditbox.hpp>
+#include <components/settings/settings.hpp>
 
 /*
     Start of tes3mp addition
@@ -28,6 +29,9 @@
 #include "../mwworld/class.hpp"
 #include "../mwworld/containerstore.hpp"
 #include "../mwworld/esmstore.hpp"
+#include "../mwworld/interactionanimation.hpp"
+
+#include "../mwrender/animation.hpp"
 
 #include "../mwmechanics/actorutil.hpp"
 #include "../mwmechanics/creaturestats.hpp"
@@ -328,13 +332,17 @@ namespace MWGui
 
         bool offerAccepted = mTrading.haggle(player, mPtr, mCurrentBalance, mCurrentMerchantOffer);
 
-        // apply disposition change if merchant is NPC
+        // Apply disposition and play a voiced reaction if the merchant is an NPC.
+        // Persuasion voice topics provide race/gender-specific positive and angry lines,
+        // while DialogueManager handles subtitles and TES3MP actor-sound synchronization.
         if (mPtr.getClass().isNpc()) {
             int dispositionDelta = offerAccepted
                 ? gmst.find("iBarterSuccessDisposition")->mValue.getInteger()
                 : gmst.find("iBarterFailDisposition")->mValue.getInteger();
 
             MWBase::Environment::get().getDialogueManager()->applyBarterDispositionChange(dispositionDelta);
+            MWBase::Environment::get().getDialogueManager()->say(mPtr,
+                offerAccepted ? "Admire Success" : "Taunt Success");
         }
 
         // display message on haggle failure
@@ -467,6 +475,25 @@ namespace MWGui
 
         /// end of EncoreMP xp gain system
 
+
+        if (mCurrentBalance != 0
+            && Settings::Manager::getBool("animated interactions", "GUI")
+            && Settings::Manager::getBool("animated barter handoff", "GUI"))
+        {
+            if (mCurrentBalance < 0)
+            {
+                MWWorld::InteractionAnimation::playOneShot("give-to-player",
+                    MWRender::Animation::BlendMask_UpperBody, 2.f, 0.8325f, 1,
+                    MWWorld::InteractionAnimation::Prop_Gold);
+            }
+            else
+            {
+                MWWorld::InteractionAnimation::playOneShot("loot1",
+                    MWRender::Animation::BlendMask_Torso
+                        | MWRender::Animation::BlendMask_RightArm,
+                    0.7f, 1.f);
+            }
+        }
 
         eventTradeDone();
 

@@ -119,53 +119,44 @@ namespace MWGui
 
             int priceaddition = 10;
 
-            // these control non-linear scaling
-            int over20Mult = 0;
-            int over30Mult = 2;
-            int over50Mult = 8;
-            int over70Mult = 3;
-            int over80Mult = 4;
-            int over90Mult = 20;
-
             if (baseskillforprice > 20)
             {
                 int baseover20 = (baseskillforprice - 20);
-                baseover20 *= over20Mult;
                 priceaddition += baseover20;
             }
 
             if (baseskillforprice > 30)
             {
                 int baseover30 = (baseskillforprice - 30);
-                baseover30 *= over30Mult;
+                baseover30 *= 3;
                 priceaddition += baseover30;
             }
 
             if (baseskillforprice > 50)
             {
                 int baseover50 = (baseskillforprice - 50);
-                baseover50 *= over50Mult;
+                baseover50 *= 10;
                 priceaddition += baseover50;
             }
 
             if (baseskillforprice > 70)
             {
                 int baseover70 = (baseskillforprice - 70);
-                baseover70 *= over70Mult;
+                baseover70 *= 5;
                 priceaddition += baseover70;
             }
 
             if (baseskillforprice > 80)
             {
                 int baseover80 = (baseskillforprice - 80);
-                baseover80 *= over80Mult;
+                baseover80 *= 5;
                 priceaddition += baseover80;
             }
 
             if (baseskillforprice > 90)
             {
-                int baseover90 = (baseskillforprice - 90);
-                baseover90 *= over90Mult;
+                int baseover90 = (baseskillforprice - 80);
+                baseover90 *= 35;
                 priceaddition += baseover90;
             }
 
@@ -221,53 +212,44 @@ namespace MWGui
 
         int priceaddition = 10;
 
-        // these control non-linear scaling
-        int over20Mult = 0;
-        int over30Mult = 2;
-        int over50Mult = 8;
-        int over70Mult = 3;
-        int over80Mult = 4;
-        int over90Mult = 20;
-
         if (baseskillforprice > 20)
         {
             int baseover20 = (baseskillforprice - 20);
-            baseover20 *= over20Mult;
             priceaddition += baseover20;
         }
 
         if (baseskillforprice > 30)
         {
             int baseover30 = (baseskillforprice - 30);
-            baseover30 *= over30Mult;
+            baseover30 *= 3;
             priceaddition += baseover30;
         }
 
         if (baseskillforprice > 50)
         {
             int baseover50 = (baseskillforprice - 50);
-            baseover50 *= over50Mult;
+            baseover50 *= 10;
             priceaddition += baseover50;
         }
 
         if (baseskillforprice > 70)
         {
             int baseover70 = (baseskillforprice - 70);
-            baseover70 *= over70Mult;
+            baseover70 *= 5;
             priceaddition += baseover70;
         }
 
         if (baseskillforprice > 80)
         {
             int baseover80 = (baseskillforprice - 80);
-            baseover80 *= over80Mult;
+            baseover80 *= 5;
             priceaddition += baseover80;
         }
 
         if (baseskillforprice > 90)
         {
-            int baseover90 = (baseskillforprice - 90);
-            baseover90 *= over90Mult;
+            int baseover90 = (baseskillforprice - 80);
+            baseover90 *= 35;
             priceaddition += baseover90;
         }
 

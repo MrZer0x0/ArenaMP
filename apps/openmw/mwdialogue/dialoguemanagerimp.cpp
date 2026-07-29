@@ -174,11 +174,7 @@ namespace MWDialogue
                 if (const ESM::DialInfo *info = filter.search (*it, false))
                 {
                     creatureStats.talkedToPlayer();
-
-                    if (!info->mSound.empty())
-                    {
-                        // TODO play sound
-                    }
+                    const bool voicePlayed = playVoice(*info);
 
                     MWScript::InterpreterContext interpreterContext(&mActor.getRefData().getLocals(),mActor);
                     callback->addResponse("", Interpreter::fixDefinesDialog(info->mResponse, interpreterContext));
@@ -186,6 +182,13 @@ namespace MWDialogue
                     mLastTopic = it->mId;
 
                     parseText (info->mResponse);
+
+                    // Some greeting records only contain text. In that case use
+                    // the actor's normal filtered greeting bank so the cinematic
+                    // dialogue does not open in complete silence.
+                    if (!voicePlayed
+                        && !MWBase::Environment::get().getSoundManager()->sayActive(actor))
+                        say(actor, "hello");
 
                     return true;
                 }
@@ -303,7 +306,37 @@ namespace MWDialogue
         return false;
     }
 
-    void DialogueManager::executeTopic (const std::string& topic, ResponseCallback* callback)
+    bool DialogueManager::playVoice(const ESM::DialInfo& info)
+    {
+        if (info.mSound.empty() || mActor.isEmpty())
+            return false;
+
+        MWBase::SoundManager* soundManager = MWBase::Environment::get().getSoundManager();
+        if (soundManager->sayActive(mActor))
+            return false;
+
+        if (mActor.getClass().isNpc()
+            && MWBase::Environment::get().getWorld()->isSwimming(mActor))
+            return false;
+
+        if (mActor.getClass().getCreatureStats(mActor).getKnockedDown())
+            return false;
+
+        soundManager->say(mActor, info.mSound);
+
+        // Keep the voiced response synchronized with the other clients when
+        // this client owns the actor, just like DialogueManager::say().
+        if (mwmp::Main::get().getCellController()->isLocalActor(mActor))
+        {
+            mwmp::LocalActor* localActor
+                = mwmp::Main::get().getCellController()->getLocalActor(mActor);
+            localActor->sound = info.mSound;
+        }
+
+        return true;
+    }
+
+    bool DialogueManager::executeTopic (const std::string& topic, ResponseCallback* callback)
     {
         Filter filter (mActor, mChoice, mTalkedTo);
 
@@ -335,6 +368,7 @@ namespace MWDialogue
 
             MWScript::InterpreterContext interpreterContext(&mActor.getRefData().getLocals(),mActor);
             callback->addResponse(title, Interpreter::fixDefinesDialog(info->mResponse, interpreterContext));
+            const bool voicePlayed = playVoice(*info);
 
             if (dialogue.mType == ESM::Dialogue::Topic)
             {
@@ -356,7 +390,10 @@ namespace MWDialogue
             executeScript (info->mResultScript, mActor);
 
             parseText (info->mResponse);
+            return voicePlayed;
         }
+
+        return false;
     }
 
     const ESM::Dialogue *DialogueManager::searchDialogue(const std::string& id)
@@ -436,7 +473,10 @@ namespace MWDialogue
             const ESM::Dialogue* dialogue = searchDialogue(keyword);
             if (dialogue && dialogue->mType == ESM::Dialogue::Topic)
             {
-                executeTopic (keyword, callback);
+                const bool voicePlayed = executeTopic (keyword, callback);
+                if (!voicePlayed
+                    && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+                    say(mActor, "idle");
             }
         }
     }
@@ -485,6 +525,7 @@ namespace MWDialogue
 
                     MWScript::InterpreterContext interpreterContext(&mActor.getRefData().getLocals(),mActor);
                     callback->addResponse("", Interpreter::fixDefinesDialog(text, interpreterContext));
+                    const bool voicePlayed = playVoice(*info);
 
                     if (dialogue->mType == ESM::Dialogue::Topic)
                     {
@@ -502,6 +543,9 @@ namespace MWDialogue
                     }
 
                     executeScript (info->mResultScript, mActor);
+                    if (!voicePlayed
+                        && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+                        say(mActor, "idle");
                 }
                 else
                 {
@@ -541,6 +585,7 @@ namespace MWDialogue
     {
         bool success;
         float temp, perm;
+        const float previousTemporaryDisposition = mTemporaryDispositionChange;
         MWBase::Environment::get().getMechanicsManager()->getPersuasionDispositionChange(
                     mActor, MWBase::MechanicsManager::PersuasionType(type),
                     success, temp, perm);
@@ -553,6 +598,8 @@ namespace MWDialogue
             mTemporaryDispositionChange = -curDisp;
         else if (curDisp + mTemporaryDispositionChange > 100)
             mTemporaryDispositionChange = 100 - curDisp;
+        const float appliedDispositionChange
+            = mTemporaryDispositionChange - previousTemporaryDisposition;
 
         MWWorld::Ptr player = MWMechanics::getPlayer();
         player.getClass().skillUsageSucceeded(player, ESM::Skill::Speechcraft, success ? 0 : 1);
@@ -586,7 +633,18 @@ namespace MWDialogue
             text = "Bribe";
         }
 
-        executeTopic (text + (success ? " Success" : " Fail"), callback);
+        const bool voicePlayed = executeTopic (text + (success ? " Success" : " Fail"), callback);
+        if (!voicePlayed
+            && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+        {
+            // Positive disposition changes use the filtered greeting bank;
+            // negative changes use the actor's lower-disposition idle bank.
+            // The actual ESM persuasion response remains the visible answer.
+            const bool positiveReaction
+                = appliedDispositionChange > 0.f
+                || (appliedDispositionChange == 0.f && success);
+            say(mActor, positiveReaction ? "hello" : "idle");
+        }
     }
 
     int DialogueManager::getTemporaryDispositionChange() const
@@ -623,8 +681,12 @@ namespace MWDialogue
             MWScript::InterpreterContext interpreterContext(&mActor.getRefData().getLocals(),mActor);
 
             callback->addResponse(gmsts.find ("sServiceRefusal")->mValue.getString(), Interpreter::fixDefinesDialog(info->mResponse, interpreterContext));
+            const bool voicePlayed = playVoice(*info);
 
             executeScript (info->mResultScript, mActor);
+            if (!voicePlayed
+                && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+                say(mActor, "idle");
             return true;
         }
         return false;

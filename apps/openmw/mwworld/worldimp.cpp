@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <new>
 #include "worldimp.hpp"
 
 #include <stdio.h>
@@ -38,6 +40,7 @@
 #include <components/esm/cellref.hpp>
 
 #include <components/misc/constants.hpp>
+#include <components/misc/stringops.hpp>
 #include <components/misc/resourcehelpers.hpp>
 #include <components/misc/rng.hpp>
 #include <components/misc/convert.hpp>
@@ -288,20 +291,61 @@ namespace MWWorld
                 ESM::Position pos;
 
                 /*
-                    Start of tes3mp change (major)
+                    Start of ArenaMP change
 
-                    Spawn at 0, -7 by default
+                    Use the server-provided authentication location when one was
+                    explicitly configured. "default" keeps TES3MP's built-in
+                    exterior spawn at 0, -7.
                 */
-                const int cellSize = Constants::CellSizeInUnits;
-                pos.pos[0] = cellSize / 2;
-                pos.pos[1] = cellSize * -7 + cellSize / 2;
-                pos.pos[2] = 0;
-                pos.rot[0] = 0;
-                pos.rot[1] = 0;
-                pos.rot[2] = 0;
-                mWorldScene->changeToExteriorCell(pos, true);
+                const std::string& configuredStartLocation
+                    = mwmp::Main::get().getNetworking()->getStartLocation();
+                bool startLocationApplied = false;
+
+                if (!configuredStartLocation.empty()
+                    && !Misc::StringUtils::ciEqual(configuredStartLocation, "default"))
+                {
+                    try
+                    {
+                        if (findExteriorPosition(configuredStartLocation, pos))
+                        {
+                            changeToExteriorCell(pos, true);
+                            adjustPosition(getPlayerPtr(), false);
+                            startLocationApplied = true;
+                        }
+                        else if (findInteriorPosition(configuredStartLocation, pos))
+                        {
+                            changeToInteriorCell(configuredStartLocation, pos, true);
+                            startLocationApplied = true;
+                        }
+                    }
+                    catch (const std::exception& exception)
+                    {
+                        LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN,
+                            "Failed to use server start location '%s': %s",
+                            configuredStartLocation.c_str(), exception.what());
+                    }
+
+                    if (!startLocationApplied)
+                    {
+                        LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN,
+                            "Invalid server start location '%s'; falling back to exterior cell 0, -7",
+                            configuredStartLocation.c_str());
+                    }
+                }
+
+                if (!startLocationApplied)
+                {
+                    const int cellSize = Constants::CellSizeInUnits;
+                    pos.pos[0] = cellSize / 2;
+                    pos.pos[1] = cellSize * -7 + cellSize / 2;
+                    pos.pos[2] = 0;
+                    pos.rot[0] = 0;
+                    pos.rot[1] = 0;
+                    pos.rot[2] = 0;
+                    mWorldScene->changeToExteriorCell(pos, true);
+                }
                 /*
-                    End of tes3mp change (major)
+                    End of ArenaMP change
                 */
             }
         }
@@ -2261,8 +2305,14 @@ namespace MWWorld
 
     MWWorld::Ptr World::getFacedObject(float maxDistance, bool ignorePlayer)
     {
-        const float camDist = mRendering->getCamera()->getCameraDistance();
-        maxDistance += camDist;
+        const float camDist = std::max(0.f, mRendering->getCamera()->getCameraDistance());
+        // The activation ray starts at the third-person camera rather than at the
+        // player. Compensate for that offset and add a small capped reach margin,
+        // so over-the-shoulder framing does not require touching an NPC or item.
+        const float thirdPersonGrace = camDist > 0.f
+            ? std::min(96.f, std::max(24.f, camDist * 0.25f))
+            : 0.f;
+        maxDistance += camDist + thirdPersonGrace;
         MWWorld::Ptr facedObject;
         MWRender::RenderingManager::RayResult rayToObject;
 
@@ -2285,7 +2335,7 @@ namespace MWWorld
             }
         }
         if (rayToObject.mHit)
-            mDistanceToFacedObject = (rayToObject.mRatio * maxDistance) - camDist;
+            mDistanceToFacedObject = (rayToObject.mRatio * maxDistance) - camDist - thirdPersonGrace;
         else
             mDistanceToFacedObject = -1;
         return facedObject;
@@ -2622,6 +2672,8 @@ namespace MWWorld
     void World::processChangedSettings(const Settings::CategorySettingVector& settings)
     {
         mRendering->processChangedSettings(settings);
+        if (mWorldScene)
+            mWorldScene->processChangedSettings(settings);
     }
 
     bool World::isFlying(const MWWorld::Ptr &ptr) const
@@ -2777,6 +2829,16 @@ namespace MWWorld
     void World::adjustCameraDistance(float dist)
     {
         mRendering->getCamera()->adjustCameraDistance(dist);
+    }
+
+    void World::setDialogueCameraTarget(const MWWorld::Ptr& target)
+    {
+        mRendering->getCamera()->setDialogueTarget(target);
+    }
+
+    void World::clearDialogueCameraTarget()
+    {
+        mRendering->getCamera()->clearDialogueTarget();
     }
 
     void World::saveLoaded()
@@ -3460,14 +3522,31 @@ namespace MWWorld
         {
             boost::filesystem::path filename(file);
             const Files::MultiDirCollection& col = fileCollections.getCollection(filename.extension().string());
-            if (col.doesExist(file))
+            if (!col.doesExist(file))
+            {
+                Log(Debug::Warning) << "Skipping groundcover file '" << file
+                    << "': the file does not exist";
+                idx++;
+                continue;
+            }
+
+            try
             {
                 contentLoader.load(col.getPath(file), idx);
             }
-            else
+            catch (const std::bad_alloc&)
             {
-                std::string message = "Failed loading " + file + ": the groundcover file does not exist";
-                throw std::runtime_error(message);
+                // A real process-wide memory shortage is not safe to ignore.
+                throw std::runtime_error("Out of memory while loading groundcover file '" + file
+                    + "'. Disable this groundcover plugin or reduce the active content set.");
+            }
+            catch (const std::exception& e)
+            {
+                // Groundcover is visual-only.  A malformed grass plugin should
+                // not prevent the client from reaching the server.  Keep the
+                // already loaded game content and continue without the damaged
+                // groundcover file, while logging the exact parser error.
+                Log(Debug::Error) << "Skipping invalid groundcover file '" << file << "': " << e.what();
             }
             idx++;
         }

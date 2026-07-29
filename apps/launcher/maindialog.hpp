@@ -18,8 +18,8 @@
 class QListWidgetItem;
 class QStackedWidget;
 class QStringList;
-class QStringListModel;
 class QString;
+class QLabel;
 
 namespace Launcher
 {
@@ -29,6 +29,7 @@ namespace Launcher
     class UnshieldThread;
     class SettingsPage;
     class AdvancedPage;
+    class ServerDialog;
 
     enum FirstRunDialogResult
     {
@@ -57,11 +58,19 @@ namespace Launcher
     public slots:
         void changePage(QListWidgetItem *current, QListWidgetItem *previous);
         void play();
+        void runServer();
+        void stopServer();
         void help();
 
     private slots:
         void wizardStarted();
         void wizardFinished(int exitCode, QProcess::ExitStatus exitStatus);
+        void launchClient();
+        void autoStartServerChanged(bool enabled);
+        void autoRestartServerChanged(bool enabled);
+        void vanillaServerCompatibilityChanged(bool enabled);
+        void hideChatHistoryChanged(bool enabled);
+        void serverRunningChanged(bool running, const QString& address, const QString& port);
 
     private:
         bool setup();
@@ -73,8 +82,15 @@ namespace Launcher
         bool setupGameSettings();
         bool setupGraphicsSettings();
         bool setupGameData();
+        bool loadBuildManifest();
+        bool writeBuildManifest();
+        void applyBuildManifestRestrictions();
+        QString primaryDataDirectory() const;
+        bool isLocalServerAddress(const QString& address) const;
+        void writeClientEndpoint(const QString& address, const QString& port) const;
 
         void setVersionLabel();
+        void updateWatermarkPosition();
 
         void loadSettings();
         void saveSettings();
@@ -83,6 +99,7 @@ namespace Launcher
         bool startProgram(const QString &name, const QStringList &arguments, bool detached = false);
 
         void closeEvent(QCloseEvent *event) override;
+        void resizeEvent(QResizeEvent *event) override;
 
         PlayPage *mPlayPage;
         GraphicsPage *mGraphicsPage;
@@ -92,6 +109,23 @@ namespace Launcher
 
         Process::ProcessInvoker *mGameInvoker;
         Process::ProcessInvoker *mWizardInvoker;
+        ServerDialog *mServerDialog;
+        QLabel *mWatermarkLabel;
+
+        bool mBuildManifestLoaded;
+        QString mBuildManifestPath;
+        QString mBuildName;
+        QString mBuildDataPath;
+        QString mBuildServerAddress;
+        QString mBuildServerPort;
+        bool mBuildVanillaServerCompatibility;
+        bool mBuildServerAddressSpecified;
+        bool mBuildServerPortSpecified;
+        bool mBuildComplete;
+        bool mPendingVanillaServerCompatibility;
+        bool mPendingHideChatHistory;
+        QString mPendingClientAddress;
+        QString mPendingClientPort;
 
         Files::ConfigurationManager mCfgMgr;
 

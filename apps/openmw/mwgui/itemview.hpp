@@ -21,6 +21,18 @@ namespace MWGui
         /// Takes ownership of \a model
         void setModel (ItemModel* model);
 
+        /// Return the currently owned model. Used by lightweight HUD item views.
+        ItemModel* getModel() const { return mModel; }
+
+        /// Compatibility hook for list-style views. ItemView has no header.
+        void disableHeader(bool) {}
+
+        /// Clamp and visually focus an item. Returns the actual focused index.
+        int forceItemFocused(int index);
+
+        /// Height requested by the current item grid, including its inner margins.
+        int requestListSize() const;
+
         typedef MyGUI::delegates::CMultiDelegate1<ItemModel::ModelIndex> EventHandle_ModelIndex;
         typedef MyGUI::delegates::CMultiDelegate0 EventHandle_Void;
         /// Fired when an item was clicked

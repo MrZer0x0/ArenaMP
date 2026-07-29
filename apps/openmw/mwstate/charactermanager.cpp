@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <sstream>
+#include <stdexcept>
 
 #include <boost/filesystem.hpp>
 

@@ -85,3 +85,8 @@ moc_*.cxx
 *.[ao]
 *.so
 venv/
+
+# ArenaMP bundled server core
+# The generic `data` rule above also matches server/data. Re-include this
+# directory so its seed files and empty runtime folders are committed.
+!/server/data/

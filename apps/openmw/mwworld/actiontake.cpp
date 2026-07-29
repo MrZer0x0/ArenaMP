@@ -21,6 +21,7 @@
 
 #include "class.hpp"
 #include "containerstore.hpp"
+#include "interactionanimation.hpp"
 
 namespace MWWorld
 {
@@ -28,7 +29,7 @@ namespace MWWorld
 
     void ActionTake::executeImp (const Ptr& actor)
     {
-        // When in GUI mode, we should use drag and drop
+        // When in GUI mode, we should use drag and drop.
         if (actor == MWBase::Environment::get().getWorld()->getPlayerPtr())
         {
             MWGui::GuiMode mode = MWBase::Environment::get().getWindowManager()->getMode();
@@ -39,26 +40,9 @@ namespace MWWorld
             }
         }
 
-        MWBase::Environment::get().getMechanicsManager()->itemTaken(
-                    actor, getTarget(), MWWorld::Ptr(), getTarget().getRefData().getCount());
-        MWWorld::Ptr newitem = *actor.getClass().getContainerStore (actor).add (getTarget(), getTarget().getRefData().getCount(), actor);
+        if (InteractionAnimation::queueTake(getTarget(), actor))
+            return;
 
-        /*
-            Start of tes3mp addition
-
-            Send an ID_OBJECT_DELETE packet every time an item is taken from the world
-            by the player outside of the inventory screen
-        */
-        mwmp::ObjectList *objectList = mwmp::Main::get().getNetworking()->getObjectList();
-        objectList->reset();
-        objectList->packetOrigin = mwmp::CLIENT_GAMEPLAY;
-        objectList->addObjectGeneric(getTarget());
-        objectList->sendObjectDelete();
-        /*
-            End of tes3mp addition
-        */
-
-        MWBase::Environment::get().getWorld()->deleteObject (getTarget());
-        setTarget(newitem);
+        InteractionAnimation::takeImmediately(getTarget(), actor);
     }
 }

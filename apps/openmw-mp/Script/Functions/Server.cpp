@@ -162,6 +162,11 @@ void ServerFunctions::SetServerPassword(const char *password) noexcept
     mwmp::Networking::getPtr()->setServerPassword(password);
 }
 
+void ServerFunctions::SetStartLocation(const char *location) noexcept
+{
+    mwmp::Networking::getPtr()->setStartLocation(location == nullptr ? "default" : location);
+}
+
 void ServerFunctions::SetDataFileEnforcementState(bool state) noexcept
 {
     mwmp::Networking::getPtr()->setDataFileEnforcementState(state);

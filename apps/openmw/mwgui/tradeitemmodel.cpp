@@ -1,7 +1,6 @@
 #include "tradeitemmodel.hpp"
 
 #include <components/misc/stringops.hpp>
-#include <components/settings/settings.hpp>
 
 #include "../mwworld/class.hpp"
 #include "../mwworld/containerstore.hpp"
@@ -140,9 +139,14 @@ namespace MWGui
                 throw std::runtime_error("The borrowed item disappeared");
 
             const ItemStack& item = sourceModel->getItem(i);
-            static const bool prevent = Settings::Manager::getBool("prevent merchant equipping", "Game");
-            // copy the borrowed items to our model
-            copyItem(item, itemStack.mCount, !prevent);
+
+            // A non-empty merchant pointer identifies the merchant-side trade model.
+            // Items sold by the player must be added as stock only: allowing the
+            // InventoryStore to auto-equip here makes merchants immediately wear
+            // robes, armour or weapons whenever the corresponding slot is empty.
+            // The player-side model keeps normal inventory behaviour for purchases.
+            const bool allowAutoEquip = mMerchant.isEmpty();
+            copyItem(item, itemStack.mCount, allowAutoEquip);
             // then remove them from the source model
             sourceModel->removeItem(item, itemStack.mCount);
         }

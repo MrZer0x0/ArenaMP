@@ -34,7 +34,8 @@ static bool dataFileEnforcementState = true;
 static bool scriptErrorIgnoringState = false;
 bool killLoop = false;
 
-Networking::Networking(RakNet::RakPeerInterface *peer) : mclient(nullptr)
+Networking::Networking(RakNet::RakPeerInterface *peer)
+    : startLocation("default"), mclient(nullptr)
 {
     sThis = this;
     this->peer = peer;
@@ -87,6 +88,16 @@ void Networking::setServerPassword(std::string password) noexcept
 bool Networking::isPassworded() const
 {
     return serverPassword != TES3MP_DEFAULT_PASSW;
+}
+
+void Networking::setStartLocation(const std::string& location)
+{
+    startLocation = location.empty() ? "default" : location;
+}
+
+const std::string& Networking::getStartLocation() const
+{
+    return startLocation;
 }
 
 void Networking::processSystemPacket(RakNet::Packet *packet)
@@ -175,6 +186,8 @@ void Networking::processPlayerPacket(RakNet::Packet *packet)
 
         myPacket->setPlayer(player);
         myPacket->Read();
+        player->language = player->language == "RU" ? "RU" : "EN";
+        LOG_APPEND(TimedLog::LOG_INFO, "- Client language: %s", player->language.c_str());
         myPacket->Send(true);
     }
 
@@ -278,6 +291,7 @@ bool Networking::preInit(RakNet::Packet *packet, RakNet::BitStream &bsIn)
     }
     RakNet::BitStream bs;
     packetPreInit.SetSendStream(&bs);
+    packetPreInit.setStartLocation(startLocation);
 
     // If the loop above was broken, then the client's data files do not match the server's
     if (dataFileEnforcementState && dataFile != dataFiles.end())

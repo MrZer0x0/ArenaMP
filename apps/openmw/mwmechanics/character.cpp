@@ -41,6 +41,7 @@
 #include "../mwmp/DedicatedPlayer.hpp"
 #include "../mwmp/CellController.hpp"
 #include "../mwmp/MechanicsHelper.hpp"
+#include "../mwmp/InteractionAnimationSync.hpp"
 /*
     End of tes3mp addition
 */
@@ -511,7 +512,25 @@ void CharacterController::refreshMovementAnims(const std::string& weapShortGroup
     if(movestate != sMovementListEnd)
     {
         movementAnimName = movestate->groupname;
-        if(!weapShortGroup.empty())
+        const std::string dynamicMovement
+            = mwmp::getDynamicMovementAnimation(mPtr, movementAnimName);
+        if (!dynamicMovement.empty() && mAnimation->hasAnimation(dynamicMovement))
+        {
+            movementAnimName = dynamicMovement;
+
+            // The supplied walk cycles are authored as general animation
+            // groups. In a weapon or spell stance keep them on the legs so
+            // weapon, shield and casting controllers continue to own the
+            // upper body.
+            if (!weapShortGroup.empty())
+            {
+                movemask = MWRender::Animation::BlendMask_LowerBody;
+                if (idle == CharState_None)
+                    idle = CharState_Idle;
+                resetIdle = false;
+            }
+        }
+        else if(!weapShortGroup.empty())
         {
             std::string::size_type swimpos = movementAnimName.find("swim");
             if (swimpos == std::string::npos)

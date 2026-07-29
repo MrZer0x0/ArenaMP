@@ -28,6 +28,11 @@ namespace MWRender
 
     private:
         MWWorld::Ptr mTrackingPtr;
+        MWWorld::Ptr mDialogueTarget;
+        bool mDialogueCameraActive;
+        bool mDialogueViewInitialized;
+        osg::Vec3d mDialogueCurrentPosition;
+        osg::Vec3d mDialogueCurrentLookAt;
         osg::ref_ptr<const osg::Node> mTrackingNode;
         float mHeightScale;
 
@@ -52,6 +57,16 @@ namespace MWRender
         bool mVanityToggleQueuedValue;
         bool mViewModeToggleQueued;
 
+        // Smooth first/third-person blend used by the TAB view switch.
+        bool mViewTransitionActive;
+        bool mViewTransitionTargetFirstPerson;
+        bool mViewTransitionViewModeApplied;
+        float mViewTransitionElapsed;
+        float mViewTransitionDuration;
+        osg::Vec3d mViewTransitionStartPosition;
+        osg::Vec3d mViewTransitionStartLookAt;
+        osg::Vec3d mViewTransitionStartUp;
+
         float mCameraDistance;
         float mMaxNextCameraDistance;
 
@@ -74,11 +89,37 @@ namespace MWRender
 
         bool mHeadBobbingEnabled;
         float mHeadBobbingOffset;
+        float mHeadBobbingRoll;
         float mHeadBobbingWeight; // Value from 0 to 1 for smooth enabling/disabling.
         float mTotalMovement; // Needed for head bobbing.
         void updateHeadBobbing(float duration);
 
+        // Native ArenaMP port of the stable camera-motion part of Dynamic Camera.
+        // It deliberately does not depend on Lua or OMWFX shaders.
+        bool mDynamicCameraEnabled;
+        bool mDynamicCameraStateInitialized;
+        bool mDynamicCameraWasOnGround;
+        osg::Vec3d mDynamicCameraPreviousPosition;
+        float mDynamicCameraPreviousYaw;
+        float mDynamicCameraPreviousVerticalSpeed;
+        float mDynamicCameraPitch;
+        float mDynamicCameraPitchImpulse;
+        float mDynamicCameraRoll;
+        float mDynamicCameraStrafeRollStrength;
+        float mDynamicCameraLookRollStrength;
+        float mDynamicCameraJumpPitchStrength;
+        float mDynamicCameraLandingPitchStrength;
+        float mDynamicCameraSmoothing;
+        void updateDynamicCamera(float duration);
+        void resetDynamicCameraState();
+
         void updateFocalPointOffset(float duration);
+        osg::Vec3d getFocalPointForView(bool firstPerson) const;
+        void getPositionForView(bool firstPerson, osg::Vec3d& focal, osg::Vec3d& camera) const;
+        void getCurrentViewPose(osg::Vec3d& position, osg::Vec3d& lookAt, osg::Vec3d& up) const;
+        void retargetViewTransition(bool targetFirstPerson);
+        void preserveViewTransitionPoseAfterZoom(const osg::Vec3d& position, const osg::Vec3d& lookAt, const osg::Vec3d& up);
+        void applyViewTransitionMode();
         void updatePosition();
         float getCameraDistanceCorrection() const;
 
@@ -101,8 +142,14 @@ namespace MWRender
         void setFocalPointTransitionSpeed(float v) { mFocalPointTransitionSpeedCoef = v; }
         void setFocalPointTargetOffset(osg::Vec2d v);
         void instantTransition();
+        void setDialogueTarget(const MWWorld::Ptr& target);
+        void clearDialogueTarget();
+        bool isDialogueCameraActive() const { return mDialogueCameraActive; }
         void enableDynamicCameraDistance(bool v) { mDynamicCameraDistanceEnabled = v; }
         void enableCrosshairInThirdPersonMode(bool v) { mShowCrosshairInThirdPersonMode = v; }
+
+        /// Reload camera options that are safe to apply while the game is running.
+        void reloadSettings();
 
         /// Update the view matrix of \a cam
         void updateCamera(osg::Camera* cam);

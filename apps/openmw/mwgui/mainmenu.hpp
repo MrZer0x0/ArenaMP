@@ -45,6 +45,9 @@ namespace MWGui
 
             MyGUI::Widget* mButtonBox;
             MyGUI::TextBox* mVersionText;
+            MyGUI::TextBox* mPauseBrandText;
+            MyGUI::EditBox* mChatHistory;
+            std::string mLastChatHistory;
 
             BackgroundImage* mBackground;
 
@@ -60,6 +63,8 @@ namespace MWGui
             void showBackground(bool show);
 
             void updateMenu();
+            void updateChatGeometry();
+            void updateChatHistory();
 
             SaveGameDialog* mSaveGameDialog;
     };

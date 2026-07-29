@@ -2,84 +2,85 @@
 #define OPENMW_STATAPI_HPP
 
 #define STATAPI \
-    {"GetAttributeCount",       StatsFunctions::GetAttributeCount},\
-    {"GetSkillCount",           StatsFunctions::GetSkillCount},\
-    {"GetAttributeId",          StatsFunctions::GetAttributeId},\
-    {"GetSkillId",              StatsFunctions::GetSkillId},\
-    {"GetAttributeName",        StatsFunctions::GetAttributeName},\
-    {"GetSkillName",            StatsFunctions::GetSkillName},\
+    SCRIPT_API_ENTRY("GetAttributeCount", StatsFunctions::GetAttributeCount),\
+    SCRIPT_API_ENTRY("GetSkillCount", StatsFunctions::GetSkillCount),\
+    SCRIPT_API_ENTRY("GetAttributeId", StatsFunctions::GetAttributeId),\
+    SCRIPT_API_ENTRY("GetSkillId", StatsFunctions::GetSkillId),\
+    SCRIPT_API_ENTRY("GetAttributeName", StatsFunctions::GetAttributeName),\
+    SCRIPT_API_ENTRY("GetSkillName", StatsFunctions::GetSkillName),\
     \
-    {"GetName",                 StatsFunctions::GetName},\
-    {"GetRace",                 StatsFunctions::GetRace},\
-    {"GetHead",                 StatsFunctions::GetHead},\
-    {"GetHair",                 StatsFunctions::GetHairstyle},\
-    {"GetIsMale",               StatsFunctions::GetIsMale},\
-    {"GetModel",                StatsFunctions::GetModel},\
-    {"GetBirthsign",            StatsFunctions::GetBirthsign},\
+    SCRIPT_API_ENTRY("GetName", StatsFunctions::GetName),\
+    SCRIPT_API_ENTRY("GetRace", StatsFunctions::GetRace),\
+    SCRIPT_API_ENTRY("GetHead", StatsFunctions::GetHead),\
+    SCRIPT_API_ENTRY("GetHair", StatsFunctions::GetHairstyle),\
+    SCRIPT_API_ENTRY("GetIsMale", StatsFunctions::GetIsMale),\
+    SCRIPT_API_ENTRY("GetModel", StatsFunctions::GetModel),\
+    SCRIPT_API_ENTRY("GetBirthsign", StatsFunctions::GetBirthsign),\
+    SCRIPT_API_ENTRY("GetLanguage", StatsFunctions::GetLanguage),\
     \
-    {"GetLevel",                StatsFunctions::GetLevel},\
-    {"GetLevelProgress",        StatsFunctions::GetLevelProgress},\
+    SCRIPT_API_ENTRY("GetLevel", StatsFunctions::GetLevel),\
+    SCRIPT_API_ENTRY("GetLevelProgress", StatsFunctions::GetLevelProgress),\
     \
-    {"GetHealthBase",           StatsFunctions::GetHealthBase},\
-    {"GetHealthCurrent",        StatsFunctions::GetHealthCurrent},\
+    SCRIPT_API_ENTRY("GetHealthBase", StatsFunctions::GetHealthBase),\
+    SCRIPT_API_ENTRY("GetHealthCurrent", StatsFunctions::GetHealthCurrent),\
     \
-    {"GetMagickaBase",          StatsFunctions::GetMagickaBase},\
-    {"GetMagickaCurrent",       StatsFunctions::GetMagickaCurrent},\
+    SCRIPT_API_ENTRY("GetMagickaBase", StatsFunctions::GetMagickaBase),\
+    SCRIPT_API_ENTRY("GetMagickaCurrent", StatsFunctions::GetMagickaCurrent),\
     \
-    {"GetFatigueBase",          StatsFunctions::GetFatigueBase},\
-    {"GetFatigueCurrent",       StatsFunctions::GetFatigueCurrent},\
+    SCRIPT_API_ENTRY("GetFatigueBase", StatsFunctions::GetFatigueBase),\
+    SCRIPT_API_ENTRY("GetFatigueCurrent", StatsFunctions::GetFatigueCurrent),\
     \
-    {"GetAttributeBase",        StatsFunctions::GetAttributeBase},\
-    {"GetAttributeModifier",    StatsFunctions::GetAttributeModifier},\
-    {"GetAttributeDamage",      StatsFunctions::GetAttributeDamage},\
+    SCRIPT_API_ENTRY("GetAttributeBase", StatsFunctions::GetAttributeBase),\
+    SCRIPT_API_ENTRY("GetAttributeModifier", StatsFunctions::GetAttributeModifier),\
+    SCRIPT_API_ENTRY("GetAttributeDamage", StatsFunctions::GetAttributeDamage),\
     \
-    {"GetSkillBase",            StatsFunctions::GetSkillBase},\
-    {"GetSkillModifier",        StatsFunctions::GetSkillModifier},\
-    {"GetSkillDamage",          StatsFunctions::GetSkillDamage},\
-    {"GetSkillProgress",        StatsFunctions::GetSkillProgress},\
-    {"GetSkillIncrease",        StatsFunctions::GetSkillIncrease},\
+    SCRIPT_API_ENTRY("GetSkillBase", StatsFunctions::GetSkillBase),\
+    SCRIPT_API_ENTRY("GetSkillModifier", StatsFunctions::GetSkillModifier),\
+    SCRIPT_API_ENTRY("GetSkillDamage", StatsFunctions::GetSkillDamage),\
+    SCRIPT_API_ENTRY("GetSkillProgress", StatsFunctions::GetSkillProgress),\
+    SCRIPT_API_ENTRY("GetSkillIncrease", StatsFunctions::GetSkillIncrease),\
     \
-    {"GetBounty",               StatsFunctions::GetBounty},\
+    SCRIPT_API_ENTRY("GetBounty", StatsFunctions::GetBounty),\
     \
-    {"SetName",                 StatsFunctions::SetName},\
-    {"SetRace",                 StatsFunctions::SetRace},\
-    {"SetHead",                 StatsFunctions::SetHead},\
-    {"SetHair",                 StatsFunctions::SetHairstyle},\
-    {"SetIsMale",               StatsFunctions::SetIsMale},\
-    {"SetModel",                StatsFunctions::SetModel},\
-    {"SetBirthsign",            StatsFunctions::SetBirthsign},\
-    {"SetResetStats",           StatsFunctions::SetResetStats},\
+    SCRIPT_API_ENTRY("SetName", StatsFunctions::SetName),\
+    SCRIPT_API_ENTRY("SetRace", StatsFunctions::SetRace),\
+    SCRIPT_API_ENTRY("SetHead", StatsFunctions::SetHead),\
+    SCRIPT_API_ENTRY("SetHair", StatsFunctions::SetHairstyle),\
+    SCRIPT_API_ENTRY("SetIsMale", StatsFunctions::SetIsMale),\
+    SCRIPT_API_ENTRY("SetModel", StatsFunctions::SetModel),\
+    SCRIPT_API_ENTRY("SetBirthsign", StatsFunctions::SetBirthsign),\
+    SCRIPT_API_ENTRY("SetResetStats", StatsFunctions::SetResetStats),\
     \
-    {"SetLevel",                StatsFunctions::SetLevel},\
-    {"SetLevelProgress",        StatsFunctions::SetLevelProgress},\
+    SCRIPT_API_ENTRY("SetLevel", StatsFunctions::SetLevel),\
+    SCRIPT_API_ENTRY("SetLevelProgress", StatsFunctions::SetLevelProgress),\
     \
-    {"SetHealthBase",           StatsFunctions::SetHealthBase},\
-    {"SetHealthCurrent",        StatsFunctions::SetHealthCurrent},\
-    {"SetMagickaBase",          StatsFunctions::SetMagickaBase},\
-    {"SetMagickaCurrent",       StatsFunctions::SetMagickaCurrent},\
-    {"SetFatigueBase",          StatsFunctions::SetFatigueBase},\
-    {"SetFatigueCurrent",       StatsFunctions::SetFatigueCurrent},\
+    SCRIPT_API_ENTRY("SetHealthBase", StatsFunctions::SetHealthBase),\
+    SCRIPT_API_ENTRY("SetHealthCurrent", StatsFunctions::SetHealthCurrent),\
+    SCRIPT_API_ENTRY("SetMagickaBase", StatsFunctions::SetMagickaBase),\
+    SCRIPT_API_ENTRY("SetMagickaCurrent", StatsFunctions::SetMagickaCurrent),\
+    SCRIPT_API_ENTRY("SetFatigueBase", StatsFunctions::SetFatigueBase),\
+    SCRIPT_API_ENTRY("SetFatigueCurrent", StatsFunctions::SetFatigueCurrent),\
     \
-    {"SetAttributeBase",        StatsFunctions::SetAttributeBase},\
-    {"ClearAttributeModifier",  StatsFunctions::ClearAttributeModifier},\
-    {"SetAttributeDamage",      StatsFunctions::SetAttributeDamage},\
+    SCRIPT_API_ENTRY("SetAttributeBase", StatsFunctions::SetAttributeBase),\
+    SCRIPT_API_ENTRY("ClearAttributeModifier", StatsFunctions::ClearAttributeModifier),\
+    SCRIPT_API_ENTRY("SetAttributeDamage", StatsFunctions::SetAttributeDamage),\
     \
-    {"SetSkillBase",            StatsFunctions::SetSkillBase},\
-    {"ClearSkillModifier",      StatsFunctions::ClearSkillModifier},\
-    {"SetSkillDamage",          StatsFunctions::SetSkillDamage},\
-    {"SetSkillProgress",        StatsFunctions::SetSkillProgress},\
-    {"SetSkillIncrease",        StatsFunctions::SetSkillIncrease},\
+    SCRIPT_API_ENTRY("SetSkillBase", StatsFunctions::SetSkillBase),\
+    SCRIPT_API_ENTRY("ClearSkillModifier", StatsFunctions::ClearSkillModifier),\
+    SCRIPT_API_ENTRY("SetSkillDamage", StatsFunctions::SetSkillDamage),\
+    SCRIPT_API_ENTRY("SetSkillProgress", StatsFunctions::SetSkillProgress),\
+    SCRIPT_API_ENTRY("SetSkillIncrease", StatsFunctions::SetSkillIncrease),\
     \
-    {"SetBounty",               StatsFunctions::SetBounty},\
-    {"SetCharGenStage",         StatsFunctions::SetCharGenStage},\
+    SCRIPT_API_ENTRY("SetBounty", StatsFunctions::SetBounty),\
+    SCRIPT_API_ENTRY("SetCharGenStage", StatsFunctions::SetCharGenStage),\
     \
-    {"SendBaseInfo",            StatsFunctions::SendBaseInfo},\
+    SCRIPT_API_ENTRY("SendBaseInfo", StatsFunctions::SendBaseInfo),\
     \
-    {"SendStatsDynamic",        StatsFunctions::SendStatsDynamic},\
-    {"SendAttributes",          StatsFunctions::SendAttributes},\
-    {"SendSkills",              StatsFunctions::SendSkills},\
-    {"SendLevel",               StatsFunctions::SendLevel},\
-    {"SendBounty",              StatsFunctions::SendBounty}
+    SCRIPT_API_ENTRY("SendStatsDynamic", StatsFunctions::SendStatsDynamic),\
+    SCRIPT_API_ENTRY("SendAttributes", StatsFunctions::SendAttributes),\
+    SCRIPT_API_ENTRY("SendSkills", StatsFunctions::SendSkills),\
+    SCRIPT_API_ENTRY("SendLevel", StatsFunctions::SendLevel),\
+    SCRIPT_API_ENTRY("SendBounty", StatsFunctions::SendBounty)
 
 class StatsFunctions
 {
@@ -198,6 +199,14 @@ public:
     * \return The birthsign of the player.
     */
     static const char *GetBirthsign(unsigned short pid) noexcept;
+
+    /**
+    * \brief Get the normalized language reported by a player client.
+    *
+    * \param pid The player ID.
+    * \return "RU" for Russian clients, otherwise "EN".
+    */
+    static const char *GetLanguage(unsigned short pid) noexcept;
 
     /**
     * \brief Get the character level of a player.

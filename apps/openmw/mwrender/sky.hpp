@@ -166,6 +166,8 @@ namespace MWRender
 
         void setSunDirection(const osg::Vec3f& direction);
 
+        void reloadAtmosphereSettings();
+
         void setMasserState(const MoonState& state);
         void setSecundaState(const MoonState& state);
 

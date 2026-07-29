@@ -4,12 +4,17 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 #include <RakNetTypes.h>
 #include "Utils.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
+#endif
+
+#ifndef SCRIPT_API_ENTRY
+#define SCRIPT_API_ENTRY(name, function) {name, function}
 #endif
 
 #ifdef _WIN32
@@ -98,22 +103,35 @@ struct CallbackIdentity
 
 struct ScriptFunctionPointer : public ScriptIdentity
 {
-    void *addr;
-#if (!defined(__clang__) && defined(__GNUC__))
     template<typename R, typename... Types>
-    constexpr ScriptFunctionPointer(Function<R, Types...> addr) : ScriptIdentity(addr), addr((void*)(addr)) {}
-#else
-    template<typename R, typename... Types>
-    constexpr ScriptFunctionPointer(Function<R, Types...> addr) : ScriptIdentity(addr), addr(addr) {}
-#endif
+    constexpr ScriptFunctionPointer(Function<R, Types...> function) : ScriptIdentity(function) {}
 };
 
+// Function pointers cannot be type-erased with reinterpret_cast in a C++17
+// constant expression. Keep the constexpr signature metadata above and
+// initialise the address table normally at program startup instead.
+struct ScriptFunctionAddress
+{
+    void* addr;
+
+    template<typename R, typename... Types>
+    ScriptFunctionAddress(const char*, Function<R, Types...> function) : addr(nullptr)
+    {
+        static_assert(sizeof(function) <= sizeof(addr),
+            "A script function pointer does not fit into the type-erased address storage");
+        std::memcpy(&addr, &function, sizeof(function));
+    }
+};
 struct ScriptFunctionData
 {
     const char* name;
     const ScriptFunctionPointer func;
 
-    constexpr ScriptFunctionData(const char* name, ScriptFunctionPointer func) : name(name), func(func) {}
+    template<typename R, typename... Types>
+    constexpr ScriptFunctionData(const char* name, Function<R, Types...> function)
+        : name(name), func(function)
+    {
+    }
 };
 
 struct ScriptCallbackData

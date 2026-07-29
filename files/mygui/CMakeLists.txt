@@ -66,6 +66,8 @@ set(MYGUI_FILES
     openmw_windows.skin.xml
     openmw_quickkeys_menu.layout
     openmw_quickkeys_menu_assign.layout
+    openmw_quickloot.layout
+    openmw_player_animation_menu.layout
     openmw_itemselection_dialog.layout
     openmw_magicselection_dialog.layout
     openmw_spell_buying_window.layout
@@ -97,7 +99,8 @@ set(MYGUI_FILES
     # End of tes3mp addition
     OpenMWResourcePlugin.xml
     skins.xml
-
+    Ayembedt.ttf
+	Pelagiad.ttf
     tes3mp_login.layout
     tes3mp_login.skin.xml
     tes3mp_dialog_list.layout

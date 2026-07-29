@@ -1,6 +1,10 @@
 #ifndef GAME_STATE_CHARACTER_H
 #define GAME_STATE_CHARACTER_H
 
+#include <ctime>
+#include <string>
+#include <vector>
+
 #include <boost/filesystem/path.hpp>
 
 #include <components/esm/savedgame.hpp>

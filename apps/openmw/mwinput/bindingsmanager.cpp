@@ -258,7 +258,7 @@ namespace MWInput
         std::map<int, SDL_Scancode> defaultKeyBindings;
 
         //Gets the Keyvalue from the Scancode; gives the button in the same place reguardless of keyboard format
-        defaultKeyBindings[A_Activate] = SDL_SCANCODE_SPACE;
+        defaultKeyBindings[A_Activate] = SDL_SCANCODE_E;
         defaultKeyBindings[A_MoveBackward] = SDL_SCANCODE_S;
         defaultKeyBindings[A_MoveForward] = SDL_SCANCODE_W;
         defaultKeyBindings[A_MoveLeft] = SDL_SCANCODE_A;
@@ -275,7 +275,7 @@ namespace MWInput
         defaultKeyBindings[A_Run] = SDL_SCANCODE_LSHIFT;
         defaultKeyBindings[A_Sneak] = SDL_SCANCODE_LCTRL;
         defaultKeyBindings[A_AutoMove] = SDL_SCANCODE_Q;
-        defaultKeyBindings[A_Jump] = SDL_SCANCODE_E;
+        defaultKeyBindings[A_Jump] = SDL_SCANCODE_SPACE;
         defaultKeyBindings[A_Journal] = SDL_SCANCODE_J;
         defaultKeyBindings[A_Rest] = SDL_SCANCODE_T;
         defaultKeyBindings[A_GameMenu] = SDL_SCANCODE_ESCAPE;
@@ -296,6 +296,7 @@ namespace MWInput
         defaultKeyBindings[A_AlwaysRun] = SDL_SCANCODE_CAPSLOCK;
         defaultKeyBindings[A_QuickSave] = SDL_SCANCODE_F5;
         defaultKeyBindings[A_QuickLoad] = SDL_SCANCODE_F9;
+        defaultKeyBindings[A_PlayerAnimationMenu] = SDL_SCANCODE_Z;
 
         std::map<int, int> defaultMouseButtonBindings;
         defaultMouseButtonBindings[A_Inventory] = SDL_BUTTON_RIGHT;
@@ -512,6 +513,8 @@ namespace MWInput
                 return "#{sQuickSaveCmd}";
             case A_QuickLoad:
                 return "#{sQuickLoadCmd}";
+            case A_PlayerAnimationMenu:
+                return "Player animation menu";
             default:
                 return std::string(); // not configurable
         }
@@ -572,7 +575,7 @@ namespace MWInput
             A_Run, A_AlwaysRun, A_Sneak, A_Activate, A_Use, A_ToggleWeapon, A_ToggleSpell,
             A_CycleSpellLeft, A_CycleSpellRight, A_CycleWeaponLeft, A_CycleWeaponRight, A_AutoMove,
             A_Jump, A_Inventory, A_Journal, A_Rest, A_Console, A_QuickSave, A_QuickLoad,
-            A_ToggleHUD, A_Screenshot, A_QuickKeysMenu, A_QuickKey1, A_QuickKey2, A_QuickKey3,
+            A_ToggleHUD, A_Screenshot, A_QuickKeysMenu, A_PlayerAnimationMenu, A_QuickKey1, A_QuickKey2, A_QuickKey3,
             A_QuickKey4, A_QuickKey5, A_QuickKey6, A_QuickKey7, A_QuickKey8, A_QuickKey9, A_QuickKey10
         };
 
@@ -584,7 +587,7 @@ namespace MWInput
         {
             A_TogglePOV, A_ZoomIn, A_ZoomOut, A_Sneak, A_Activate, A_Use, A_ToggleWeapon, A_ToggleSpell,
             A_AutoMove, A_Jump, A_Inventory, A_Journal, A_Rest, A_QuickSave, A_QuickLoad, A_ToggleHUD,
-            A_Screenshot, A_QuickKeysMenu, A_QuickKey1, A_QuickKey2, A_QuickKey3, A_QuickKey4,
+            A_Screenshot, A_QuickKeysMenu, A_PlayerAnimationMenu, A_QuickKey1, A_QuickKey2, A_QuickKey3, A_QuickKey4,
             A_QuickKey5, A_QuickKey6, A_QuickKey7, A_QuickKey8, A_QuickKey9, A_QuickKey10,
             A_CycleSpellLeft, A_CycleSpellRight, A_CycleWeaponLeft, A_CycleWeaponRight
         };

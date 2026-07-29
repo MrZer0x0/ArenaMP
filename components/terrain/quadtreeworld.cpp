@@ -4,6 +4,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/PolygonMode>
 
+#include <algorithm>
 #include <limits>
 #include <sstream>
 
@@ -269,6 +270,18 @@ QuadTreeWorld::QuadTreeWorld(osg::Group *parent, Storage *storage, unsigned int 
 
 QuadTreeWorld::~QuadTreeWorld()
 {
+}
+
+void QuadTreeWorld::setLodSettings(int compMapResolution, float compMapLevel, float lodFactor,
+    int vertexLodMod, float maxCompGeometrySize)
+{
+    std::lock_guard<std::mutex> lock(mQuadTreeMutex);
+    mLodFactor = lodFactor;
+    mVertexLodMod = vertexLodMod;
+    mChunkManager->setCompositeMapSize(std::max(1, compMapResolution));
+    mChunkManager->setCompositeMapLevel(compMapLevel);
+    mChunkManager->setMaxCompositeGeometrySize(std::max(1.f, maxCompGeometrySize));
+    mChunkManager->clearCache();
 }
 
 /// get the level of vertex detail to render this node at, expressed relative to the native resolution of the data set.

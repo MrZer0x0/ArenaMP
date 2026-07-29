@@ -1,5 +1,11 @@
 #include "obstacle.hpp"
 
+#include <algorithm>
+
+#include <osg/Math>
+
+#include <components/misc/rng.hpp>
+
 #include <components/sceneutil/positionattitudetransform.hpp>
 
 #include "../mwworld/class.hpp"
@@ -9,18 +15,11 @@
 
 namespace MWMechanics
 {
-    // NOTE: determined empirically but probably need further tweaking
-    static const float DIST_SAME_SPOT = 0.5f;
-    static const float DURATION_SAME_SPOT = 1.5f;
-    static const float DURATION_TO_EVADE = 0.4f;
-
-    const float ObstacleCheck::evadeDirections[NUM_EVADE_DIRECTIONS][2] =
-    {
-        { 1.0f, 0.0f },     // move to side
-        { 1.0f, -1.0f },    // move to side and backwards
-        { -1.0f, 0.0f },    // move to other side
-        { -1.0f, -1.0f }    // move to side and backwards
-    };
+    // Short detection and a turn-in-place response avoid rapidly switching
+    // between walk/strafe/backpedal animation groups when an actor is blocked.
+    static const float DIST_SAME_SPOT = 0.35f;
+    static const float DURATION_SAME_SPOT = 0.65f;
+    static const float DURATION_TO_TURN_AWAY = 0.55f;
 
     bool proximityToDoor(const MWWorld::Ptr& actor, float minDist)
     {
@@ -74,19 +73,22 @@ namespace MWMechanics
 
     ObstacleCheck::ObstacleCheck()
       : mWalkState(WalkState::Initial)
-      , mStateDuration(0)
-      , mEvadeDirectionIndex(0)
+      , mStateDuration(0.f)
+      , mEvasionAngle(0.f)
+      , mPathRebuildPending(false)
     {
     }
 
     void ObstacleCheck::clear()
     {
         mWalkState = WalkState::Initial;
+        mStateDuration = 0.f;
+        mPathRebuildPending = false;
     }
 
     bool ObstacleCheck::isEvading() const
     {
-        return mWalkState == WalkState::Evade;
+        return mWalkState == WalkState::TurnAway;
     }
 
     /*
@@ -95,92 +97,99 @@ namespace MWMechanics
      *
      * Walking state transitions (player greeting check not shown):
      *
-     * Initial ----> Norm  <--------> CheckStuck -------> Evade ---+
-     *               ^ ^ | f             ^   |       t    ^   |    |
-     *               | | |               |   |            |   |    |
-     *               | +-+               +---+            +---+    | u
-     *               | any                < t              < u     |
-     *               +---------------------------------------------+
+     * Initial -> Norm <-> CheckStuck -> TurnAway -> Norm
      *
-     * f = one reaction time
-     * t = how long before considered stuck
-     * u = how long to move sideways
+     * The actor first stops, turns in place toward one stable random
+     * direction, and only after the turn requests a path rebuild.
      *
      */
     void ObstacleCheck::update(const MWWorld::Ptr& actor, const osg::Vec3f& destination, float duration)
     {
-        const auto position = actor.getRefData().getPosition().asVec3();
+        const osg::Vec3f position = actor.getRefData().getPosition().asVec3();
 
         if (mWalkState == WalkState::Initial)
         {
             mWalkState = WalkState::Norm;
-            mStateDuration = 0;
+            mStateDuration = 0.f;
             mPrev = position;
             mInitialDistance = (destination - position).length();
             return;
         }
 
-        if (mWalkState != WalkState::Evade)
+        if (mWalkState == WalkState::TurnAway)
         {
-            const float distSameSpot = DIST_SAME_SPOT * actor.getClass().getCurrentSpeed(actor) * duration;
-            const float prevDistance = (destination - mPrev).length();
-            const float currentDistance = (destination - position).length();
-            const float movedDistance = prevDistance - currentDistance;
-            const float movedFromInitialDistance = mInitialDistance - currentDistance;
-
-            mPrev = position;
-
-            if (movedDistance >= distSameSpot && movedFromInitialDistance >= distSameSpot)
+            mStateDuration += duration;
+            if (mStateDuration >= DURATION_TO_TURN_AWAY)
             {
                 mWalkState = WalkState::Norm;
-                mStateDuration = 0;
-                return;
-            }
-
-            if (mWalkState == WalkState::Norm)
-            {
-                mWalkState = WalkState::CheckStuck;
-                mStateDuration = duration;
+                mStateDuration = 0.f;
+                mPrev = position;
                 mInitialDistance = (destination - position).length();
-                return;
+                mPathRebuildPending = true;
             }
+            return;
+        }
 
-            mStateDuration += duration;
-            if (mStateDuration < DURATION_SAME_SPOT)
-            {
-                return;
-            }
+        const float distSameSpot = DIST_SAME_SPOT * actor.getClass().getCurrentSpeed(actor) * duration;
+        const float prevDistance = (destination - mPrev).length();
+        const float currentDistance = (destination - position).length();
+        const float movedDistance = prevDistance - currentDistance;
+        const float movedFromInitialDistance = mInitialDistance - currentDistance;
+        mPrev = position;
 
-            mWalkState = WalkState::Evade;
-            mStateDuration = 0;
-            chooseEvasionDirection();
+        if (movedDistance >= distSameSpot && movedFromInitialDistance >= distSameSpot)
+        {
+            mWalkState = WalkState::Norm;
+            mStateDuration = 0.f;
+            mInitialDistance = currentDistance;
+            return;
+        }
+
+        if (mWalkState == WalkState::Norm)
+        {
+            mWalkState = WalkState::CheckStuck;
+            mStateDuration = duration;
+            mInitialDistance = currentDistance;
             return;
         }
 
         mStateDuration += duration;
-        if(mStateDuration >= DURATION_TO_EVADE)
-        {
-            // tried to evade, assume all is ok and start again
-            mWalkState = WalkState::Norm;
-            mStateDuration = 0;
-            mPrev = position;
-        }
+        if (mStateDuration < DURATION_SAME_SPOT)
+            return;
+
+        // Stop, choose one stable random turn and rebuild the path once. This
+        // replaces the old per-frame side/back impulses that caused animation
+        // groups to flicker when an NPC touched a wall or another collider.
+        mWalkState = WalkState::TurnAway;
+        mStateDuration = 0.f;
+        mPrev = position;
+        mPathRebuildPending = false;
+        chooseEvasionAngle(actor);
     }
 
     void ObstacleCheck::takeEvasiveAction(MWMechanics::Movement& actorMovement) const
     {
-        actorMovement.mPosition[0] = evadeDirections[mEvadeDirectionIndex][0];
-        actorMovement.mPosition[1] = evadeDirections[mEvadeDirectionIndex][1];
+        actorMovement.mPosition[0] = 0.f;
+        actorMovement.mPosition[1] = 0.f;
     }
 
-    void ObstacleCheck::chooseEvasionDirection()
+    float ObstacleCheck::getEvasionAngle() const
     {
-        // change direction if attempt didn't work
-        ++mEvadeDirectionIndex;
-        if (mEvadeDirectionIndex == NUM_EVADE_DIRECTIONS)
-        {
-            mEvadeDirectionIndex = 0;
-        }
+        return mEvasionAngle;
+    }
+
+    bool ObstacleCheck::consumePathRebuildRequest()
+    {
+        const bool result = mPathRebuildPending;
+        mPathRebuildPending = false;
+        return result;
+    }
+
+    void ObstacleCheck::chooseEvasionAngle(const MWWorld::Ptr& actor)
+    {
+        const float direction = Misc::Rng::rollProbability() < 0.5f ? -1.f : 1.f;
+        const float degrees = 55.f + 70.f * Misc::Rng::rollClosedProbability();
+        mEvasionAngle = actor.getRefData().getPosition().rot[2] + direction * osg::DegreesToRadians(degrees);
     }
 
 }

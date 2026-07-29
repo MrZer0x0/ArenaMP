@@ -31,6 +31,17 @@ namespace MWRender
         mCamera->setFocalPointTargetOffset(offset);
     }
 
+    ViewOverShoulderController::~ViewOverShoulderController()
+    {
+        if (!mCamera)
+            return;
+
+        mCamera->enableDynamicCameraDistance(false);
+        mCamera->enableCrosshairInThirdPersonMode(false);
+        mCamera->setFocalPointTransitionSpeed(5.f);
+        mCamera->setFocalPointTargetOffset({0, 0});
+    }
+
     void ViewOverShoulderController::update()
     {
         if (mCamera->isFirstPerson())

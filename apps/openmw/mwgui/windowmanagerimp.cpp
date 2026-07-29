@@ -89,6 +89,7 @@
 #include "statswindow.hpp"
 #include "messagebox.hpp"
 #include "tooltips.hpp"
+#include "quickloot.hpp"
 #include "scrollwindow.hpp"
 #include "bookwindow.hpp"
 #include "hud.hpp"
@@ -102,6 +103,7 @@
 #include "alchemywindow.hpp"
 #include "spellwindow.hpp"
 #include "quickkeysmenu.hpp"
+#include "playeranimationmenu.hpp"
 #include "loadingscreen.hpp"
 #include "levelupdialog.hpp"
 #include "waitdialog.hpp"
@@ -125,6 +127,7 @@
 #include "spellview.hpp"
 #include "draganddrop.hpp"
 #include "container.hpp"
+#include "arenalocalization.hpp"
 #include "controllers.hpp"
 #include "jailscreen.hpp"
 #include "itemchargeview.hpp"
@@ -149,6 +152,7 @@ namespace MWGui
       , mMap(nullptr)
       , mLocalMapRender(nullptr)
       , mToolTips(nullptr)
+      , mQuickLoot(nullptr)
       , mStatsWindow(nullptr)
       , mMessageBoxManager(nullptr)
       , mConsole(nullptr)
@@ -163,6 +167,7 @@ namespace MWGui
       , mConfirmationDialog(nullptr)
       , mSpellWindow(nullptr)
       , mQuickKeysMenu(nullptr)
+      , mPlayerAnimationMenu(nullptr)
       , mLoadingScreen(nullptr)
       , mWaitDialog(nullptr)
       , mSoulgemDialog(nullptr)
@@ -207,6 +212,7 @@ namespace MWGui
 
         createTextures();
 
+        mArenaLocalization.reset(new ArenaLocalization(resourceSystem->getVFS(), encoding));
         MyGUI::LanguageManager::getInstance().eventRequestTag = MyGUI::newDelegate(this, &WindowManager::onRetrieveTag);
 
         // Load fonts
@@ -383,6 +389,7 @@ namespace MWGui
         mWindows.push_back(mHud);
 
         mToolTips = new ToolTips();
+        mQuickLoot = new QuickLoot();
 
         mScrollWindow = new ScrollWindow();
         mWindows.push_back(mScrollWindow);
@@ -414,6 +421,10 @@ namespace MWGui
         mQuickKeysMenu = new QuickKeysMenu();
         mWindows.push_back(mQuickKeysMenu);
         mGuiModeStates[GM_QuickKeysMenu] = GuiModeState(mQuickKeysMenu);
+
+        mPlayerAnimationMenu = new PlayerAnimationMenu();
+        mWindows.push_back(mPlayerAnimationMenu);
+        mGuiModeStates[GM_PlayerAnimationMenu] = GuiModeState(mPlayerAnimationMenu);
 
         LevelupDialog* levelupDialog = new LevelupDialog();
         mWindows.push_back(levelupDialog);
@@ -545,6 +556,7 @@ namespace MWGui
 
             mKeyboardNavigation.reset();
 
+            delete mQuickLoot;
             cleanupGarbage();
 
             mFontLoader.reset();
@@ -909,6 +921,7 @@ namespace MWGui
             mMessageBoxManager->onFrame(frameDuration);
 
         mToolTips->onFrame(frameDuration);
+        mQuickLoot->onFrame(frameDuration);
 
         if (mLocalMapRender)
             mLocalMapRender->cleanupCameras();
@@ -1022,6 +1035,9 @@ namespace MWGui
     void WindowManager::setFocusObject(const MWWorld::Ptr& focus)
     {
         mToolTips->setFocusObject(focus);
+        mQuickLoot->setFocusObject(focus);
+        if (mHud)
+            mHud->setFocusObject(focus);
 
         if(mHud && (mShowOwned == 2 || mShowOwned == 3))
         {
@@ -1033,6 +1049,35 @@ namespace MWGui
     void WindowManager::setFocusObjectScreenCoords(float min_x, float min_y, float max_x, float max_y)
     {
         mToolTips->setFocusObjectScreenCoords(min_x, min_y, max_x, max_y);
+        mQuickLoot->setFocusObjectScreenCoords(min_x, min_y, max_x, max_y);
+        if (mHud)
+            mHud->setFocusObjectScreenCoords(min_x, min_y, max_x, max_y);
+    }
+
+    bool WindowManager::activateQuickLoot()
+    {
+        return mQuickLoot && mQuickLoot->activateSelected();
+    }
+
+    bool WindowManager::handlePlayerAnimationMenuMouseWheel(int rel)
+    {
+        return mPlayerAnimationMenu && getMode() == GM_PlayerAnimationMenu
+            && mPlayerAnimationMenu->handleMouseWheel(rel);
+    }
+
+    bool WindowManager::handleQuickLootMouseWheel(int rel)
+    {
+        return mQuickLoot && mQuickLoot->handleMouseWheel(rel);
+    }
+
+    bool WindowManager::handleQuickLootKeyPress(MyGUI::KeyCode key)
+    {
+        return mQuickLoot && mQuickLoot->handleKeyPress(key);
+    }
+
+    bool WindowManager::isQuickLootVisible() const
+    {
+        return mQuickLoot && mQuickLoot->isVisible();
     }
 
     bool WindowManager::toggleFullHelp()
@@ -1100,8 +1145,15 @@ namespace MWGui
 
         std::string tokenToFind = "sCell=";
         size_t tokenLength = tokenToFind.length();
-        
-        if(tag.compare(0, MyGuiPrefixLength, MyGuiPrefix) == 0)
+
+        const std::string arenaPrefix = "arenamp=";
+        if (tag.compare(0, arenaPrefix.length(), arenaPrefix) == 0)
+        {
+            _result = mArenaLocalization
+                ? mArenaLocalization->translate(tag.substr(arenaPrefix.length()))
+                : tag.substr(arenaPrefix.length());
+        }
+        else if(tag.compare(0, MyGuiPrefixLength, MyGuiPrefix) == 0)
         {
             tag = tag.substr(MyGuiPrefixLength, tag.length());
             size_t comma_pos = tag.find(',');
@@ -1148,6 +1200,14 @@ namespace MWGui
                 mSubtitlesEnabled = Settings::Manager::getBool ("subtitles", "GUI");
             else if (setting.first == "GUI" && setting.second == "menu transparency")
                 setMenuTransparency(Settings::Manager::getFloat("menu transparency", "GUI"));
+            else if (setting.first == "GUI" && setting.second == "scaling factor")
+                setScalingFactor(Settings::Manager::getFloat("scaling factor", "GUI"));
+            else if (setting.first == "GUI" && (setting.second == "quick loot mode"
+                    || setting.second == "quick loot"))
+                mQuickLoot->setEnabled(Settings::Manager::getString("quick loot mode", "GUI") != "disabled");
+            else if (setting.first == "GUI" && setting.second == "quick loot stationary delay")
+                mQuickLoot->setStationaryDelay(
+                    Settings::Manager::getFloat("quick loot stationary delay", "GUI"));
             else if (setting.first == "Video" && (
                     setting.second == "resolution x"
                     || setting.second == "resolution y"
@@ -1173,13 +1233,11 @@ namespace MWGui
 
     void WindowManager::windowResized(int x, int y)
     {
-        // Note: this is a side effect of resolution change or window resize.
-        // There is no need to track these changes.
-        Settings::Manager::setInt("resolution x", "Video", x);
-        Settings::Manager::setInt("resolution y", "Video", y);
-        Settings::Manager::resetPendingChange("resolution x", "Video");
-        Settings::Manager::resetPendingChange("resolution y", "Video");
-
+        // SDL can emit startup resize events using a temporary/logical window
+        // size (especially with Windows DPI scaling). Do not write that runtime
+        // size back to settings.cfg: it would silently replace the resolution
+        // selected in the launcher. Explicit resolution changes still go
+        // through SettingsWindow and remain persistent.
         mGuiPlatform->getRenderManagerPtr()->setViewSize(x, y);
 
         // scaled size
@@ -1218,6 +1276,11 @@ namespace MWGui
     bool WindowManager::isWindowVisible()
     {
         return mWindowVisible;
+    }
+
+    std::string WindowManager::getArenaLanguage() const
+    {
+        return mArenaLocalization ? mArenaLocalization->getLanguage() : "en";
     }
 
     void WindowManager::windowVisibilityChange(bool visible)
@@ -1418,6 +1481,18 @@ namespace MWGui
     float WindowManager::getScalingFactor()
     {
         return mScalingFactor;
+    }
+
+    void WindowManager::setScalingFactor(float factor)
+    {
+        factor = std::clamp(factor, 0.5f, 3.0f);
+        if (std::abs(factor - mScalingFactor) < 0.001f)
+            return;
+        mScalingFactor = factor;
+        mGuiPlatform->getRenderManagerPtr()->setScalingFactor(factor);
+        const int width = Settings::Manager::getInt("resolution x", "Video");
+        const int height = Settings::Manager::getInt("resolution y", "Video");
+        windowResized(width, height);
     }
 
     void WindowManager::executeInConsole (const std::string& path)
@@ -1813,6 +1888,7 @@ namespace MWGui
         mMessageBoxManager->clear();
 
         mToolTips->clear();
+        mQuickLoot->clear();
 
         mSelectedSpell.clear();
         mCustomMarkers.clear();
@@ -2336,6 +2412,9 @@ namespace MWGui
 
     bool WindowManager::injectKeyPress(MyGUI::KeyCode key, unsigned int text, bool repeat)
     {
+        if (getMode() == GM_Dialogue && mDialogueWindow && mDialogueWindow->handleKeyPress(key, repeat))
+            return true;
+
         if (!mKeyboardNavigation->injectKeyPress(key, text, repeat))
         {
             MyGUI::Widget* focus = MyGUI::InputManager::getInstance().getKeyFocusWidget();

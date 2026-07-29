@@ -1,7 +1,10 @@
 #include "spellbuyingwindow.hpp"
 
+#include <algorithm>
+
 #include <MyGUI_Gui.h>
 #include <MyGUI_Button.h>
+#include <MyGUI_ImageBox.h>
 #include <MyGUI_ScrollView.h>
 
 /*
@@ -25,6 +28,8 @@
 #include "../mwworld/class.hpp"
 #include "../mwworld/containerstore.hpp"
 #include "../mwworld/esmstore.hpp"
+
+#include <components/esm/loadmgef.hpp>
 
 #include "../mwmechanics/creaturestats.hpp"
 #include "../mwmechanics/actorutil.hpp"
@@ -61,31 +66,91 @@ namespace MWGui
         MWWorld::Ptr player = MWMechanics::getPlayer();
         int playerGold = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
 
-        // TODO: refactor to use MyGUI::ListBox
+        // Native SpellTrader-style row: first-effect icon, spell name, price,
+        // existing vanilla tooltip, and a highlight for effects the player has
+        // not learned yet. No additional localisation strings are required.
+        const int lineHeight = std::max(22,
+            MWBase::Environment::get().getWindowManager()->getFontHeight() + 4);
+        const int iconSize = 18;
+        const int iconLeft = 2;
+        const ESM::MagicEffect* firstEffect = nullptr;
+        if (!spell.mEffects.mList.empty())
+            firstEffect = store.get<ESM::MagicEffect>().search(spell.mEffects.mList.front().mEffectID);
+        const bool hasIcon = firstEffect && !firstEffect->mIcon.empty();
+        const int textLeft = hasIcon ? iconLeft + iconSize + 4 : 0;
+        const int rowWidth = mSpellsView->getWidth();
 
-        int lineHeight = MWBase::Environment::get().getWindowManager()->getFontHeight() + 2;
+        const bool affordable = price <= playerGold;
+        const bool unknownEffect = hasUnknownEffect(spell);
+        const char* rowSkin = !affordable ? "SandTextButtonDisabled"
+            : (unknownEffect ? "SpellTraderUnknownButton" : "SandTextButton");
 
         MyGUI::Button* toAdd =
             mSpellsView->createWidget<MyGUI::Button>(
-                price <= playerGold ? "SandTextButton" : "SandTextButtonDisabled", // can't use setEnabled since that removes tooltip
-                0,
+                rowSkin, // can't use setEnabled since that removes tooltip
+                textLeft,
                 mCurrentY,
-                200,
+                std::max(1, rowWidth - textLeft),
                 lineHeight,
                 MyGUI::Align::Default
             );
+
+        if (hasIcon)
+        {
+            MyGUI::ImageBox* icon = mSpellsView->createWidget<MyGUI::ImageBox>(
+                "ImageBox", iconLeft, mCurrentY + std::max(0, (lineHeight - iconSize) / 2),
+                iconSize, iconSize, MyGUI::Align::Default);
+            icon->setImageTexture(MWBase::Environment::get().getWindowManager()->correctIconPath(firstEffect->mIcon));
+            icon->setUserData(price);
+            icon->setUserString("ToolTipType", "Spell");
+            icon->setUserString("Spell", spell.mId);
+            icon->setUserString("SpellCost", std::to_string(spell.mData.mCost));
+            icon->eventMouseWheel += MyGUI::newDelegate(this, &SpellBuyingWindow::onMouseWheel);
+            icon->eventMouseButtonClick += MyGUI::newDelegate(this, &SpellBuyingWindow::onSpellButtonClick);
+            if (!affordable)
+                icon->setAlpha(0.45f);
+            mSpellsWidgetMap.insert(std::make_pair(icon, spell.mId));
+        }
 
         mCurrentY += lineHeight;
 
         toAdd->setUserData(price);
         toAdd->setCaptionWithReplacing(spell.mName+"   -   "+MyGUI::utility::toString(price)+"#{sgp}");
-        toAdd->setSize(mSpellsView->getWidth(), lineHeight);
+        toAdd->setSize(std::max(1, rowWidth - textLeft), lineHeight);
         toAdd->eventMouseWheel += MyGUI::newDelegate(this, &SpellBuyingWindow::onMouseWheel);
         toAdd->setUserString("ToolTipType", "Spell");
         toAdd->setUserString("Spell", spell.mId);
         toAdd->setUserString("SpellCost", std::to_string(spell.mData.mCost));
         toAdd->eventMouseButtonClick += MyGUI::newDelegate(this, &SpellBuyingWindow::onSpellButtonClick);
         mSpellsWidgetMap.insert(std::make_pair (toAdd, spell.mId));
+
+    }
+
+    void SpellBuyingWindow::rebuildKnownEffectIds()
+    {
+        mKnownEffectIds.clear();
+
+        const MWWorld::Ptr player = MWMechanics::getPlayer();
+        const MWMechanics::Spells& spells = player.getClass().getCreatureStats(player).getSpells();
+        for (MWMechanics::Spells::TIterator it = spells.begin(); it != spells.end(); ++it)
+        {
+            const ESM::Spell* knownSpell = it->first;
+            if (!knownSpell || knownSpell->mData.mType != ESM::Spell::ST_Spell)
+                continue;
+
+            for (const ESM::ENAMstruct& effect : knownSpell->mEffects.mList)
+                mKnownEffectIds.insert(effect.mEffectID);
+        }
+    }
+
+    bool SpellBuyingWindow::hasUnknownEffect(const ESM::Spell& spell) const
+    {
+        for (const ESM::ENAMstruct& effect : spell.mEffects.mList)
+        {
+            if (mKnownEffectIds.find(effect.mEffectID) == mKnownEffectIds.end())
+                return true;
+        }
+        return false;
     }
 
     void SpellBuyingWindow::clearSpells()
@@ -107,6 +172,7 @@ namespace MWGui
         center();
         mPtr = actor;
         clearSpells();
+        rebuildKnownEffectIds();
 
         MWMechanics::Spells& merchantSpells = actor.getClass().getCreatureStats (actor).getSpells();
 

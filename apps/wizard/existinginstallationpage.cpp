@@ -5,6 +5,10 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFile>
+#include <QDir>
+#include <QStringList>
+
+#include <components/config/buildmanifest.hpp>
 
 #include "mainwizard.hpp"
 
@@ -16,7 +20,7 @@ Wizard::ExistingInstallationPage::ExistingInstallationPage(QWidget *parent) :
     setupUi(this);
 
     // Add a placeholder item to the list of installations
-    QListWidgetItem *emptyItem = new QListWidgetItem(tr("No existing installations detected"));
+    QListWidgetItem *emptyItem = new QListWidgetItem(tr("No existing Data Files folders detected"));
     emptyItem->setFlags(Qt::NoItemFlags);
 
     installationsList->insertItem(0, emptyItem);
@@ -49,98 +53,53 @@ void Wizard::ExistingInstallationPage::initializePage()
 
 bool Wizard::ExistingInstallationPage::validatePage()
 {
-    // See if Morrowind.ini is detected, if not, ask the user
-    // It can be missing entirely
-    // Or failed to be detected due to the target being a symlink
-
-    QString path(field(QLatin1String("installation.path")).toString());
-    QFile file(mWizard->mInstallations[path].iniPath);
-
-    if (!file.exists()) {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle(tr("Error detecting Morrowind configuration"));
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setStandardButtons(QMessageBox::Cancel);
-        msgBox.setText(QObject::tr("<br><b>Could not find Morrowind.ini</b><br><br> \
-                                   The Wizard needs to update settings in this file.<br><br> \
-                                   Press \"Browse...\" to specify the location manually.<br>"));
-
-        QAbstractButton *browseButton2 =
-                msgBox.addButton(QObject::tr("B&rowse..."), QMessageBox::ActionRole);
-
-        msgBox.exec();
-
-        QString iniFile;
-        if (msgBox.clickedButton() == browseButton2) {
-            iniFile = QFileDialog::getOpenFileName(
-                        this,
-                        QObject::tr("Select configuration file"),
-                        QDir::currentPath(),
-                        QString(tr("Morrowind configuration file (*.ini)")));
-        }
-
-        if (iniFile.isEmpty()) {
-            return false; // Cancel was clicked;
-        }
-
-        // A proper Morrowind.ini was selected, set it
-        QFileInfo info(iniFile);
-        mWizard->mInstallations[path].iniPath = info.absoluteFilePath();
+    const QString path = field(QLatin1String("installation.path")).toString();
+    const QFileInfo info(path);
+    if (!info.exists() || !info.isDir())
+    {
+        QMessageBox::warning(this, tr("Invalid Data Files folder"),
+            tr("The selected Data Files folder does not exist or is not a directory."));
+        return false;
     }
 
+    // Morrowind.ini, Morrowind.esm and Morrowind.bsa are not mandatory at this
+    // stage. Existing base masters and all BSA archives are detected separately.
     return true;
 }
 
 void Wizard::ExistingInstallationPage::on_browseButton_clicked()
 {
-    QString selectedFile = QFileDialog::getOpenFileName(
-                this,
-                tr("Select Morrowind.esm (located in Data Files)"),
-                QDir::currentPath(),
-                QString(tr("Morrowind master file (Morrowind.esm)")),
-                nullptr,
-                QFileDialog::DontResolveSymlinks);
+    const QString selectedDirectory = QFileDialog::getExistingDirectory(
+        this,
+        tr("Select the Morrowind Data Files folder"),
+        QDir::currentPath(),
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
-    if (selectedFile.isEmpty())
+    if (selectedDirectory.isEmpty())
         return;
 
-    QFileInfo info(selectedFile);
-
-    if (!info.exists())
+    const QFileInfo info(selectedDirectory);
+    if (!info.exists() || !info.isDir())
         return;
 
-    if (!mWizard->findFiles(QLatin1String("Morrowind"), info.absolutePath()))
-    {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle(tr("Error detecting Morrowind files"));
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.setText(QObject::tr(
-            "<b>Morrowind.bsa</b> is missing!<br>\
-            Make sure your Morrowind installation is complete."
-        ));
-        msgBox.exec();
-        return;
-    }
-
-    QString path(QDir::toNativeSeparators(info.absolutePath()));
+    const QString path = QDir::toNativeSeparators(QDir::cleanPath(info.absoluteFilePath()));
     QList<QListWidgetItem*> items = installationsList->findItems(path, Qt::MatchExactly);
 
-    if (items.isEmpty()) {
-        // Path is not yet in the list, add it
+    if (items.isEmpty())
+    {
         mWizard->addInstallation(path);
-
-        // Hide the default item
         installationsList->item(0)->setHidden(true);
 
         QListWidgetItem *item = new QListWidgetItem(path);
         installationsList->addItem(item);
-        installationsList->setCurrentItem(item); // Select it too
-    } else {
+        installationsList->setCurrentItem(item);
+    }
+    else
+    {
         installationsList->setCurrentItem(items.first());
     }
 
-    // Update the button
+    updateDetectedFiles(path);
     emit completeChanged();
 }
 
@@ -149,7 +108,63 @@ void Wizard::ExistingInstallationPage::textChanged(const QString &text)
     // Set the installation path manually, as registerField doesn't work
     // Because it doesn't accept two widgets operating on a single field
     if (!text.isEmpty())
+    {
         mWizard->setField(QLatin1String("installation.path"), text);
+        mWizard->configureDataFiles(text);
+        updateDetectedFiles(text);
+    }
+}
+
+void Wizard::ExistingInstallationPage::updateDetectedFiles(const QString& path)
+{
+    QDir dir(path);
+    if (!dir.exists())
+    {
+        detectedFilesLabel->clear();
+        return;
+    }
+
+    QStringList masters;
+    QStringList archives;
+    const QStringList files = dir.entryList(QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
+    for (const QString& fileName : files)
+    {
+        if (fileName.compare(QStringLiteral("Morrowind.esm"), Qt::CaseInsensitive) == 0
+            || fileName.compare(QStringLiteral("Tribunal.esm"), Qt::CaseInsensitive) == 0
+            || fileName.compare(QStringLiteral("Bloodmoon.esm"), Qt::CaseInsensitive) == 0)
+            masters.append(fileName);
+        else if (fileName.endsWith(QLatin1String(".bsa"), Qt::CaseInsensitive))
+            archives.append(fileName);
+    }
+
+    QString summary;
+    const QString manifestPath = Config::BuildManifest::findForDataDir(path);
+    if (!manifestPath.isEmpty())
+    {
+        Config::BuildManifest manifest;
+        if (manifest.read(manifestPath))
+        {
+            summary = tr("build.ini detected: %1. Plugins: %2, groundcover: %3, BSA archives: %4, server: %5:%6. The stored order will be applied automatically.")
+                .arg(manifest.buildName)
+                .arg(manifest.contentFiles.size())
+                .arg(manifest.groundcoverFiles.size())
+                .arg(manifest.archives.size())
+                .arg(manifest.serverAddress)
+                .arg(manifest.serverPort);
+            detectedFilesLabel->setText(summary);
+            return;
+        }
+    }
+
+    summary = tr("Base masters found: %1. BSA archives found: %2.")
+        .arg(masters.isEmpty() ? tr("none") : masters.join(QStringLiteral(", ")))
+        .arg(archives.size());
+    if (masters.isEmpty())
+        summary += tr(" You can continue, but the launcher will require at least one ESM before starting the game.");
+    else
+        summary += tr(" Existing base ESM files will be enabled automatically. Base BSA files load first, followed by all other BSA files alphabetically.");
+
+    detectedFilesLabel->setText(summary);
 }
 
 bool Wizard::ExistingInstallationPage::isComplete() const
@@ -163,5 +178,31 @@ bool Wizard::ExistingInstallationPage::isComplete() const
 
 int Wizard::ExistingInstallationPage::nextId() const
 {
+    const QString path = field(QLatin1String("installation.path")).toString();
+    const QString manifestPath = Config::BuildManifest::findForDataDir(path);
+    if (!manifestPath.isEmpty())
+    {
+        Config::BuildManifest manifest;
+        if (manifest.read(manifestPath) && manifest.languageSpecified)
+        {
+            // The build author already selected the encoding/language. Apply the
+            // canonical spelling (for example russian -> Russian) and skip the
+            // redundant page without letting its English default take over.
+            mWizard->setField(QLatin1String("installation.language"),
+                Config::BuildManifest::canonicalLanguage(manifest.language));
+
+            const QString nativePath = QDir::toNativeSeparators(QDir::cleanPath(path));
+            const auto installation = mWizard->mInstallations.constFind(nativePath);
+            if (installation != mWizard->mInstallations.constEnd()
+                && installation->hasMorrowind
+                && installation->hasTribunal
+                && installation->hasBloodmoon)
+            {
+                return MainWizard::Page_Import;
+            }
+            return MainWizard::Page_ComponentSelection;
+        }
+    }
+
     return MainWizard::Page_LanguageSelection;
 }

@@ -10,6 +10,7 @@ namespace MWRender
     {
         public:
             ViewOverShoulderController(Camera* camera);
+            ~ViewOverShoulderController();
 
             void update();
 

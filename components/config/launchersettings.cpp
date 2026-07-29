@@ -11,6 +11,8 @@ const char Config::LauncherSettings::sCurrentContentListKey[] = "Profiles/curren
 const char Config::LauncherSettings::sLauncherConfigFileName[] = "launcher.cfg";
 const char Config::LauncherSettings::sContentListsSectionPrefix[] = "Profiles/";
 const char Config::LauncherSettings::sContentListSuffix[] = "/content";
+const char Config::LauncherSettings::sGroundcoverSuffix[] = "/groundcover";
+const char Config::LauncherSettings::sGroundcoverEnabledSuffix[] = "/groundcover-enabled";
 
 QStringList Config::LauncherSettings::subKeys(const QString &key)
 {
@@ -93,34 +95,40 @@ QString Config::LauncherSettings::makeContentListKey(const QString& contentListN
 
 void Config::LauncherSettings::setContentList(const GameSettings& gameSettings)
 {
-    // obtain content list from game settings (if present)
-    const QStringList files(gameSettings.getContentList());
+    const QStringList contentFiles(gameSettings.getContentList());
+    const QStringList groundcoverFiles(gameSettings.getGroundcoverList());
 
-    // if openmw.cfg has no content, exit so we don't create an empty content list.
+    QStringList files(contentFiles);
+    files.append(groundcoverFiles);
+
+    // Do not create an empty launcher profile.
     if (files.isEmpty())
-    {
         return;
-    }
 
-    // if any existing profile in launcher matches the content list, make that profile the default
+    const bool groundcoverEnabled = !groundcoverFiles.isEmpty();
+
+    // Reuse an existing profile only when both normal content and groundcover state match.
     for (const QString &listName : getContentLists())
     {
-        if (isEqual(files, getContentListFiles(listName)))
+        if (isEqual(files, getContentListFiles(listName))
+            && isEqual(groundcoverFiles, getGroundcoverFiles(listName))
+            && groundcoverEnabled == isGroundcoverEnabled(listName))
         {
             setCurrentContentListName(listName);
             return;
         }
     }
 
-    // otherwise, add content list
     QString newContentListName(makeNewContentListName());
     setCurrentContentListName(newContentListName);
-    setContentList(newContentListName, files);
+    setContentList(newContentListName, files, groundcoverFiles, groundcoverEnabled);
 }
 
 void Config::LauncherSettings::removeContentList(const QString &contentListName)
 {
     remove(makeContentListKey(contentListName));
+    remove(QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverSuffix));
+    remove(QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverEnabledSuffix));
 }
 
 void Config::LauncherSettings::setCurrentContentListName(const QString &contentListName)
@@ -129,14 +137,26 @@ void Config::LauncherSettings::setCurrentContentListName(const QString &contentL
     setValue(QString(sCurrentContentListKey), contentListName);
 }
 
-void Config::LauncherSettings::setContentList(const QString& contentListName, const QStringList& fileNames)
+void Config::LauncherSettings::setContentList(const QString& contentListName, const QStringList& fileNames,
+                                              const QStringList& groundcoverFileNames, bool groundcoverEnabled)
 {
     removeContentList(contentListName);
-    QString key = makeContentListKey(contentListName);
+
+    const QString contentKey = makeContentListKey(contentListName);
     for (const QString& fileName : fileNames)
     {
-        setMultiValue(key, fileName);
+        if (!groundcoverFileNames.contains(fileName, Qt::CaseInsensitive))
+            setMultiValue(contentKey, fileName);
     }
+
+    const QString groundcoverKey
+        = QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverSuffix);
+    for (const QString& fileName : groundcoverFileNames)
+        setMultiValue(groundcoverKey, fileName);
+
+    const QString enabledKey
+        = QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverEnabledSuffix);
+    setValue(enabledKey, groundcoverEnabled ? QLatin1String("true") : QLatin1String("false"));
 }
 
 QString Config::LauncherSettings::getCurrentContentListName() const
@@ -146,8 +166,23 @@ QString Config::LauncherSettings::getCurrentContentListName() const
 
 QStringList Config::LauncherSettings::getContentListFiles(const QString& contentListName) const
 {
-    // QMap returns multiple rows in LIFO order, so need to reverse
-    return reverse(getSettings().values(makeContentListKey(contentListName)));
+    // QMap returns multiple rows in LIFO order, so reverse both lists.
+    QStringList result = reverse(getSettings().values(makeContentListKey(contentListName)));
+    result.append(getGroundcoverFiles(contentListName));
+    return result;
+}
+
+QStringList Config::LauncherSettings::getGroundcoverFiles(const QString& contentListName) const
+{
+    const QString key = QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverSuffix);
+    return reverse(getSettings().values(key));
+}
+
+bool Config::LauncherSettings::isGroundcoverEnabled(const QString& contentListName) const
+{
+    const QString key
+        = QString(sContentListsSectionPrefix) + contentListName + QString(sGroundcoverEnabledSuffix);
+    return value(key) == QLatin1String("true");
 }
 
 QStringList Config::LauncherSettings::reverse(const QStringList& toReverse)

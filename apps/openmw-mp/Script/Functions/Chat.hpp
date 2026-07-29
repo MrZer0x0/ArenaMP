@@ -4,9 +4,10 @@
 #include "../Types.hpp"
 
 #define CHATAPI \
-    {"SendMessage",       ChatFunctions::SendMessage},\
-    {"CleanChatForPid",   ChatFunctions::CleanChatForPid},\
-    {"CleanChat",         ChatFunctions::CleanChat}
+    SCRIPT_API_ENTRY("SendMessage", ChatFunctions::SendMessage),\
+    SCRIPT_API_ENTRY("SendMessageTo", ChatFunctions::SendMessageTo),\
+    SCRIPT_API_ENTRY("CleanChatForPid", ChatFunctions::CleanChatForPid),\
+    SCRIPT_API_ENTRY("CleanChat", ChatFunctions::CleanChat)
 
 class ChatFunctions
 {
@@ -24,6 +25,18 @@ public:
     * \return void
     */
     static void SendMessage(unsigned short pid, const char *message, bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept;
+
+    /**
+    * \brief Send a chat message owned by one player to one specific recipient.
+    *
+    * This preserves the original attached player for chat speaker, TTS and voice
+    * integrations while allowing server-side per-recipient localization.
+    *
+    * \param sourcePid The player attached to the chat packet.
+    * \param targetPid The only player who should receive the packet.
+    * \param message The contents of the message.
+    */
+    static void SendMessageTo(unsigned short sourcePid, unsigned short targetPid, const char *message) noexcept;
 
     /**
     * \brief Remove all messages from chat for a certain player.

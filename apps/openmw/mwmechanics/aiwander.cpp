@@ -21,6 +21,7 @@
 #include "pathgrid.hpp"
 #include "creaturestats.hpp"
 #include "movement.hpp"
+#include "steering.hpp"
 #include "actorutil.hpp"
 
 namespace MWMechanics
@@ -509,6 +510,9 @@ namespace MWMechanics
 
     void AiWander::evadeObstacles(const MWWorld::Ptr& actor, AiWanderStorage& storage)
     {
+        if (mObstacleCheck.consumePathRebuildRequest())
+            mPathFinder.clearPath();
+
         if (mUsePathgrid)
         {
             const auto halfExtents = MWBase::Environment::get().getWorld()->getHalfExtents(actor);
@@ -529,9 +533,17 @@ namespace MWMechanics
                 stopWalking(actor);
                 storage.setState(AiWanderStorage::Wander_MoveNow);
             }
+            else
+            {
+                auto& movement = actor.getClass().getMovementSettings(actor);
+                mObstacleCheck.takeEvasiveAction(movement);
+                zTurn(actor, mObstacleCheck.getEvasionAngle(), osg::DegreesToRadians(3.f));
+            }
 
-           storage.mStuckCount++;  // TODO: maybe no longer needed
+            storage.mStuckCount++;
         }
+        else
+            storage.mStuckCount = 0;
 
         // if stuck for sufficiently long, act like current location was the destination
         if (storage.mStuckCount >= getCountBeforeReset(actor)) // something has gone wrong, reset

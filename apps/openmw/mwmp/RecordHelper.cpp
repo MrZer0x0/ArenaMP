@@ -1,5 +1,6 @@
 #include <components/openmw-mp/TimedLog.hpp>
 
+#include "../mwbase/scriptmanager.hpp"
 #include "../mwworld/cellstore.hpp"
 #include "../mwworld/worldimp.hpp"
 
@@ -1344,6 +1345,12 @@ void RecordHelper::overrideRecord(const mwmp::ScriptRecord& record)
         LOG_APPEND(TimedLog::LOG_INFO, "-- Ignoring record override with invalid baseId %s", record.baseId.c_str());
         return;
     }
+
+    // Script records can be compiled before the server sends its dynamic
+    // overrides. Without invalidation, the old bytecode keeps running even
+    // though ESMStore already contains the replacement (including blanked
+    // scripts from disabledClientScriptIds).
+    MWBase::Environment::get().getScriptManager()->invalidate(recordData.mId);
 }
 
 void RecordHelper::overrideRecord(const mwmp::SoundRecord& record)

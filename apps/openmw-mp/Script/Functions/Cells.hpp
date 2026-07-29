@@ -4,23 +4,23 @@
 #include "../Types.hpp"
 
 #define CELLAPI \
-    {"GetCellStateChangesSize", CellFunctions::GetCellStateChangesSize},\
+    SCRIPT_API_ENTRY("GetCellStateChangesSize", CellFunctions::GetCellStateChangesSize),\
     \
-    {"GetCellStateType",        CellFunctions::GetCellStateType},\
-    {"GetCellStateDescription", CellFunctions::GetCellStateDescription},\
+    SCRIPT_API_ENTRY("GetCellStateType", CellFunctions::GetCellStateType),\
+    SCRIPT_API_ENTRY("GetCellStateDescription", CellFunctions::GetCellStateDescription),\
     \
-    {"GetCell",                 CellFunctions::GetCell},\
-    {"GetExteriorX",            CellFunctions::GetExteriorX},\
-    {"GetExteriorY",            CellFunctions::GetExteriorY},\
-    {"IsInExterior",            CellFunctions::IsInExterior},\
+    SCRIPT_API_ENTRY("GetCell", CellFunctions::GetCell),\
+    SCRIPT_API_ENTRY("GetExteriorX", CellFunctions::GetExteriorX),\
+    SCRIPT_API_ENTRY("GetExteriorY", CellFunctions::GetExteriorY),\
+    SCRIPT_API_ENTRY("IsInExterior", CellFunctions::IsInExterior),\
     \
-    {"GetRegion",               CellFunctions::GetRegion},\
-    {"IsChangingRegion",        CellFunctions::IsChangingRegion},\
+    SCRIPT_API_ENTRY("GetRegion", CellFunctions::GetRegion),\
+    SCRIPT_API_ENTRY("IsChangingRegion", CellFunctions::IsChangingRegion),\
     \
-    {"SetCell",                 CellFunctions::SetCell},\
-    {"SetExteriorCell",         CellFunctions::SetExteriorCell},\
+    SCRIPT_API_ENTRY("SetCell", CellFunctions::SetCell),\
+    SCRIPT_API_ENTRY("SetExteriorCell", CellFunctions::SetExteriorCell),\
     \
-    {"SendCell",                CellFunctions::SendCell}
+    SCRIPT_API_ENTRY("SendCell", CellFunctions::SendCell)
 
 
 class CellFunctions

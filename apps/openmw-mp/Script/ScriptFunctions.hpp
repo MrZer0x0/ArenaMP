@@ -36,7 +36,7 @@
 
 #define GET_PLAYER(pid, pl, retvalue) \
      pl = Players::getPlayer(pid); \
-     if (player == 0) {\
+     if (pl == 0) {\
         LOG_MESSAGE_SIMPLE(TimedLog::LOG_ERROR, "%s: Player with pid \'%d\' not found\n", __PRETTY_FUNCTION__, pid);\
         /*ScriptFunctions::StopServer(1);*/ \
         return retvalue;\
@@ -151,6 +151,45 @@ public:
             OBJECTAPI,
             WORLDSTATEAPI
     };
+
+    inline static const ScriptFunctionAddress functionAddresses[]{
+            {"CreateTimer",         ScriptFunctions::CreateTimer},
+            {"CreateTimerEx",       ScriptFunctions::CreateTimerEx},
+            {"MakePublic",          ScriptFunctions::MakePublic},
+            {"CallPublic",          ScriptFunctions::CallPublic},
+
+            {"StartTimer",          ScriptFunctions::StartTimer},
+            {"StopTimer",           ScriptFunctions::StopTimer},
+            {"RestartTimer",        ScriptFunctions::RestartTimer},
+            {"FreeTimer",           ScriptFunctions::FreeTimer},
+            {"IsTimerElapsed",      ScriptFunctions::IsTimerElapsed},
+
+            ACTORAPI,
+            BOOKAPI,
+            CELLAPI,
+            CHARCLASSAPI,
+            CHATAPI,
+            DIALOGUEAPI,
+            FACTIONAPI,
+            GUIAPI,
+            ITEMAPI,
+            MECHANICSAPI,
+            MISCELLANEOUSAPI,
+            POSITIONAPI,
+            QUESTAPI,
+            RECORDSDYNAMICAPI,
+            SHAPESHIFTAPI,
+            SERVERAPI,
+            SETTINGSAPI,
+            SPELLAPI,
+            STATAPI,
+            OBJECTAPI,
+            WORLDSTATEAPI
+    };
+
+    static_assert(sizeof(functionAddresses) / sizeof(functionAddresses[0])
+            == sizeof(functions) / sizeof(functions[0]),
+        "Function signature and address tables must stay in sync");
 
     static constexpr ScriptCallbackData callbacks[]{
             {"OnServerInit",             Callback<>()},

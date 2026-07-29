@@ -118,7 +118,8 @@ void LocalActor::updateAnimFlags(bool forceUpdate)
     using namespace MWMechanics;
 
     bool isRunning = ptrCreatureStats.getMovementFlag(CreatureStats::Flag_Run);
-    bool isSneaking = ptrCreatureStats.getMovementFlag(CreatureStats::Flag_Sneak);
+    bool isSneaking = ptrCreatureStats.getMovementFlag(CreatureStats::Flag_Sneak)
+        || ptrCreatureStats.getMovementFlag(CreatureStats::Flag_ForceSneak);
     bool isForceJumping = ptrCreatureStats.getMovementFlag(CreatureStats::Flag_ForceJump);
     bool isForceMoveJumping = ptrCreatureStats.getMovementFlag(CreatureStats::Flag_ForceMoveJump);
 

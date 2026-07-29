@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <cmath>
+#include <exception>
+#include <sstream>
 #include <boost/algorithm/clamp.hpp>
 #include <components/openmw-mp/TimedLog.hpp>
 #include <apps/openmw/mwmechanics/steering.hpp>
@@ -19,6 +23,7 @@
 #include "../mwmechanics/movement.hpp"
 #include "../mwmechanics/npcstats.hpp"
 #include "../mwmechanics/mechanicsmanagerimp.hpp"
+#include "../mwmechanics/character.hpp"
 #include "../mwmechanics/spellcasting.hpp"
 
 #include "../mwstate/statemanagerimp.hpp"
@@ -30,13 +35,124 @@
 #include "../mwworld/player.hpp"
 #include "../mwworld/worldimp.hpp"
 
+#include "../mwrender/animation.hpp"
+
 #include "DedicatedPlayer.hpp"
 #include "Main.hpp"
 #include "GUIController.hpp"
 #include "CellController.hpp"
 #include "MechanicsHelper.hpp"
+#include "InteractionAnimationSync.hpp"
 #include "RecordHelper.hpp"
 
+
+
+namespace
+{
+    int getPlayerPoseBlendMask(const MWWorld::Ptr& ptr, int requestedMask)
+    {
+        int result = requestedMask;
+        if (!ptr.isEmpty() && ptr.getClass().hasInventoryStore(ptr))
+        {
+            MWWorld::InventoryStore& store = ptr.getClass().getInventoryStore(ptr);
+            MWWorld::ContainerStoreIterator carried = store.getSlot(MWWorld::InventoryStore::Slot_CarriedLeft);
+            if (carried != store.end()
+                && (carried.getType() == MWWorld::ContainerStore::Type_Armor
+                    || carried.getType() == MWWorld::ContainerStore::Type_Light))
+            {
+                result &= ~MWRender::Animation::BlendMask_LeftArm;
+            }
+        }
+        return result;
+    }
+
+    bool playerPoseIsBlocked(const MWWorld::Ptr& ptr, bool jumping)
+    {
+        if (ptr.isEmpty())
+            return true;
+
+        const MWMechanics::CreatureStats& stats = ptr.getClass().getCreatureStats(ptr);
+        const MWMechanics::Movement& movement = ptr.getClass().getMovementSettings(ptr);
+        const bool moving = std::abs(movement.mPosition[0]) > 0.05f
+            || std::abs(movement.mPosition[1]) > 0.05f
+            || std::abs(movement.mPosition[2]) > 0.05f;
+
+        return jumping || moving || stats.isDead() || stats.getKnockedDown()
+            || !ptr.getRefData().getAnimationState().mScriptedAnims.empty()
+            || stats.getAiSequence().isInCombat()
+            || stats.getDrawState() != MWMechanics::DrawState_Nothing
+            || MWBase::Environment::get().getWorld()->isSwimming(ptr);
+    }
+
+    bool playPlayerPose(const MWWorld::Ptr& ptr, const std::string& group, int blendMask, float speed)
+    {
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
+        if (!animation || group.empty() || blendMask == 0 || !animation->hasAnimation(group))
+            return false;
+
+        MWRender::Animation::AnimPriority priority(MWMechanics::Priority_Default);
+        if (blendMask & MWRender::Animation::BlendMask_LowerBody)
+            priority[MWRender::Animation::BoneGroup_LowerBody] = MWMechanics::Priority_Weapon;
+        if (blendMask & MWRender::Animation::BlendMask_Torso)
+            priority[MWRender::Animation::BoneGroup_Torso] = MWMechanics::Priority_Weapon;
+        if (blendMask & MWRender::Animation::BlendMask_LeftArm)
+            priority[MWRender::Animation::BoneGroup_LeftArm] = MWMechanics::Priority_Weapon;
+        if (blendMask & MWRender::Animation::BlendMask_RightArm)
+            priority[MWRender::Animation::BoneGroup_RightArm] = MWMechanics::Priority_Weapon;
+
+        if (animation->isPlaying(group))
+            animation->disable(group);
+        animation->play(group, priority, blendMask, false, speed, "start", "stop", 0.f, 1000000, true);
+        return animation->isPlaying(group);
+    }
+
+    void stopPlayerPose(const MWWorld::Ptr& ptr, const std::string& group)
+    {
+        if (group.empty())
+            return;
+        if (MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr))
+        {
+            if (animation->isPlaying(group))
+                animation->disable(group);
+        }
+    }
+
+    const char* sPlayerPosePrefix = "arenamp_pose|";
+
+    std::string encodePlayerPose(const std::string& group, int blendMask, float speed)
+    {
+        std::ostringstream stream;
+        stream << sPlayerPosePrefix << blendMask << '|' << speed << '|' << group;
+        return stream.str();
+    }
+
+    bool decodePlayerPose(const std::string& value, std::string& group, int& blendMask, float& speed)
+    {
+        const std::string prefix(sPlayerPosePrefix);
+        if (value.compare(0, prefix.size(), prefix) != 0)
+            return false;
+
+        const size_t maskEnd = value.find('|', prefix.size());
+        if (maskEnd == std::string::npos)
+            return false;
+        const size_t speedEnd = value.find('|', maskEnd + 1);
+        if (speedEnd == std::string::npos)
+            return false;
+
+        try
+        {
+            blendMask = std::stoi(value.substr(prefix.size(), maskEnd - prefix.size()));
+            speed = std::stof(value.substr(maskEnd + 1, speedEnd - maskEnd - 1));
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+
+        group = value.substr(speedEnd + 1);
+        return true;
+    }
+}
 
 using namespace mwmp;
 
@@ -67,11 +183,24 @@ DedicatedPlayer::DedicatedPlayer(RakNet::RakNetGUID guid) : BasePlayer(guid)
 
     isJumping = false;
     wasJumping = false;
+
+    mPersistentAnimationActive = false;
+    mPersistentAnimationPlaying = false;
+    mPersistentAnimationBlendMask = MWRender::Animation::BlendMask_All;
+    mPersistentAnimationAppliedMask = 0;
+    mPersistentAnimationSpeed = 1.f;
+
+    mWalkAnimationStyle.clear();
+
+    mInteractionAnimationActive = false;
+    mInteractionAnimationTime = 0.f;
 }
+
 
 DedicatedPlayer::~DedicatedPlayer()
 {
-
+    if (!ptr.isEmpty())
+        clearWalkAnimationStyle(ptr);
 }
 
 void DedicatedPlayer::update(float dt)
@@ -82,6 +211,9 @@ void DedicatedPlayer::update(float dt)
         move(dt);
         setAnimFlags();
     }
+
+    updateInteractionAnimation(dt);
+    updatePersistentAnimation(dt);
 
     MWMechanics::CreatureStats *ptrCreatureStats = &ptr.getClass().getCreatureStats(ptr);
 
@@ -447,8 +579,134 @@ void DedicatedPlayer::setCell()
 
 void DedicatedPlayer::playAnimation()
 {
+    InteractionAnimationData interactionData;
+    if (decodeInteractionAnimation(animation.groupname, interactionData))
+    {
+        if (interactionData.stop)
+        {
+            cancelInteractionAnimation();
+            return;
+        }
+
+        // Periodic AOI refreshes keep the held book/scroll visible for players
+        // who arrived after reading started. Do not restart an identical animation.
+        if (mInteractionAnimationActive
+            && sameInteractionAnimation(mInteractionAnimation, interactionData))
+        {
+            ensureInteractionAnimationProp(getPtr(), mInteractionAnimation);
+            mInteractionAnimationTime = std::max(mInteractionAnimationTime, interactionData.duration);
+            return;
+        }
+
+        if (mPersistentAnimationPlaying)
+            stopPlayerPose(getPtr(), mPersistentAnimationGroup);
+        mPersistentAnimationPlaying = false;
+        mPersistentAnimationAppliedMask = 0;
+        cancelInteractionAnimation();
+        mInteractionAnimation = interactionData;
+        mInteractionAnimationActive = mwmp::playInteractionAnimation(getPtr(), mInteractionAnimation);
+        mInteractionAnimationTime = mInteractionAnimationActive ? interactionData.duration : 0.f;
+        return;
+    }
+
+    std::string walkStyle;
+    if (decodeWalkAnimationStyle(animation.groupname, walkStyle))
+    {
+        mWalkAnimationStyle = walkStyle;
+        mwmp::setWalkAnimationStyle(getPtr(), mWalkAnimationStyle);
+        return;
+    }
+
+    std::string poseGroup;
+    int poseMask = 0;
+    float poseSpeed = 1.f;
+    if (decodePlayerPose(animation.groupname, poseGroup, poseMask, poseSpeed))
+    {
+        stopPlayerPose(getPtr(), mPersistentAnimationGroup);
+        mPersistentAnimationGroup = poseGroup;
+        mPersistentAnimationBlendMask = poseMask;
+        mPersistentAnimationSpeed = poseSpeed;
+        mPersistentAnimationActive = !poseGroup.empty();
+        mPersistentAnimationPlaying = false;
+        mPersistentAnimationAppliedMask = 0;
+        updatePersistentAnimation(0.f);
+        return;
+    }
+
     MWBase::Environment::get().getMechanicsManager()->playAnimationGroup(getPtr(),
         animation.groupname, animation.mode, animation.count, animation.persist);
+}
+
+void DedicatedPlayer::cancelInteractionAnimation()
+{
+    if (!mInteractionAnimationActive)
+        return;
+
+    stopInteractionAnimation(getPtr(), mInteractionAnimation);
+    mInteractionAnimation = InteractionAnimationData();
+    mInteractionAnimationActive = false;
+    mInteractionAnimationTime = 0.f;
+}
+
+void DedicatedPlayer::updateInteractionAnimation(float dt)
+{
+    if (!mInteractionAnimationActive)
+        return;
+
+    ensureInteractionAnimationProp(getPtr(), mInteractionAnimation);
+
+    mInteractionAnimationTime -= std::max(0.f, dt);
+    if (mInteractionAnimationTime <= 0.f)
+        cancelInteractionAnimation();
+}
+
+void DedicatedPlayer::updatePersistentAnimation(float)
+{
+    if (mInteractionAnimationActive)
+    {
+        if (mPersistentAnimationPlaying)
+            stopPlayerPose(getPtr(), mPersistentAnimationGroup);
+        mPersistentAnimationPlaying = false;
+        mPersistentAnimationAppliedMask = 0;
+        return;
+    }
+
+    if (!mPersistentAnimationActive || getPtr().isEmpty())
+        return;
+
+    const MWWorld::Ptr actor = getPtr();
+    MWRender::Animation* renderer = MWBase::Environment::get().getWorld()->getAnimation(actor);
+    if (!renderer)
+        return;
+
+    if (playerPoseIsBlocked(actor, isJumping))
+    {
+        if (mPersistentAnimationPlaying || renderer->isPlaying(mPersistentAnimationGroup))
+            renderer->disable(mPersistentAnimationGroup);
+        mPersistentAnimationPlaying = false;
+        mPersistentAnimationAppliedMask = 0;
+        return;
+    }
+
+    const int effectiveMask = getPlayerPoseBlendMask(actor, mPersistentAnimationBlendMask);
+    if (effectiveMask == 0)
+    {
+        if (renderer->isPlaying(mPersistentAnimationGroup))
+            renderer->disable(mPersistentAnimationGroup);
+        mPersistentAnimationPlaying = false;
+        mPersistentAnimationAppliedMask = 0;
+        return;
+    }
+
+    if (effectiveMask != mPersistentAnimationAppliedMask
+        || !mPersistentAnimationPlaying || !renderer->isPlaying(mPersistentAnimationGroup))
+    {
+        if (renderer->isPlaying(mPersistentAnimationGroup))
+            renderer->disable(mPersistentAnimationGroup);
+        mPersistentAnimationPlaying = playPlayerPose(actor, mPersistentAnimationGroup,
+            effectiveMask, mPersistentAnimationSpeed);
+        mPersistentAnimationAppliedMask = mPersistentAnimationPlaying ? effectiveMask : 0;
+    }
 }
 
 void DedicatedPlayer::playSpeech()
@@ -603,6 +861,7 @@ void DedicatedPlayer::deleteReference()
     MWBase::World *world = MWBase::Environment::get().getWorld();
 
     LOG_APPEND(TimedLog::LOG_INFO, "- Deleting reference");
+    clearWalkAnimationStyle(ptr);
     world->deleteObject(ptr);
     delete reference;
     reference = nullptr;
@@ -620,7 +879,11 @@ MWWorld::ManualRef *DedicatedPlayer::getRef()
 
 void DedicatedPlayer::setPtr(const MWWorld::Ptr& newPtr)
 {
+    if (!ptr.isEmpty())
+        clearWalkAnimationStyle(ptr);
     ptr = newPtr;
+    if (!ptr.isEmpty())
+        mwmp::setWalkAnimationStyle(ptr, mWalkAnimationStyle);
 }
 
 void DedicatedPlayer::reloadPtr()

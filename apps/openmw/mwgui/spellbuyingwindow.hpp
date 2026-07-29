@@ -4,6 +4,8 @@
 #include "windowbase.hpp"
 #include "referenceinterface.hpp"
 
+#include <set>
+
 namespace ESM
 {
     struct Spell;
@@ -37,12 +39,15 @@ namespace MWGui
             MyGUI::ScrollView* mSpellsView;
 
             std::map<MyGUI::Widget*, std::string> mSpellsWidgetMap;
+            std::set<short> mKnownEffectIds;
 
             void onCancelButtonClicked(MyGUI::Widget* _sender);
             void onSpellButtonClick(MyGUI::Widget* _sender);
             void onMouseWheel(MyGUI::Widget* _sender, int _rel);
             void addSpell(const ESM::Spell& spell);
             void clearSpells();
+            void rebuildKnownEffectIds();
+            bool hasUnknownEffect(const ESM::Spell& spell) const;
             int mCurrentY;
 
             void updateLabels();

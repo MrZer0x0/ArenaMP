@@ -53,127 +53,57 @@ LangLua::~LangLua()
 
 }
 
-// LuaFunctionDispatcher template struct for Lua function dispatch
-template <unsigned int ArgIndex, unsigned int FunctionIndex>
-struct LuaFunctionDispatcher {
-    // Dispatch Lua function with the given arguments
-    template <typename ReturnType, typename... Args>
-    inline static ReturnType Dispatch(lua_State*&& lua, Args&&... args) noexcept {
-        // Retrieve function data
-        constexpr ScriptFunctionData const& functionData = ScriptFunctions::functions[FunctionIndex];
-        // Retrieve argument from the Lua stack
-        auto argument = luabridge::Stack<typename CharType<functionData.func.types[ArgIndex - 1]>::type>::get(lua, ArgIndex);
-        // Recursively dispatch the Lua function
-        return LuaFunctionDispatcher<ArgIndex - 1, FunctionIndex>::template Dispatch<ReturnType>(
-            std::forward<lua_State*>(lua), argument, std::forward<Args>(args)...);
-    }
-};
-
-// Specialization for LuaFunctionDispatcher when ArgIndex is 0
-template <unsigned int FunctionIndex>
-struct LuaFunctionDispatcher<0, FunctionIndex> {
-    // Dispatch Lua function with the given arguments
-    template <typename ReturnType, typename... Args>
-    inline static ReturnType Dispatch(lua_State*&&, Args&&... args) noexcept {
-        // Retrieve function data
-        constexpr ScriptFunctionData const& functionData = ScriptFunctions::functions[FunctionIndex];
-        // Call the C++ function using reinterpret_cast
-        return reinterpret_cast<FunctionEllipsis<ReturnType>>(functionData.func.addr)(std::forward<Args>(args)...);
-    }
-};
-
-// Lua function wrapper for functions returning 'void'
-template <unsigned int FunctionIndex>
-static typename std::enable_if<ScriptFunctions::functions[FunctionIndex].func.ret == 'v', int>::type LuaFunctionWrapper(lua_State* lua) noexcept {
-    // Dispatch the Lua function
-    LuaFunctionDispatcher<ScriptFunctions::functions[FunctionIndex].func.numargs, FunctionIndex>::template Dispatch<void>(std::forward<lua_State*>(lua));
-    return 0;
-}
-
-// Lua function wrapper for functions with non-void return types
-template <unsigned int FunctionIndex>
-static typename std::enable_if<ScriptFunctions::functions[FunctionIndex].func.ret != 'v', int>::type LuaFunctionWrapper(lua_State* lua) noexcept {
-    // Dispatch the Lua function
-    auto result = LuaFunctionDispatcher<ScriptFunctions::functions[FunctionIndex].func.numargs, FunctionIndex>::template Dispatch<
-        typename CharType<ScriptFunctions::functions[FunctionIndex].func.ret>::type>(std::forward<lua_State*>(lua));
-    // Push the result onto the Lua stack
-    luabridge::Stack<typename CharType<ScriptFunctions::functions[FunctionIndex].func.ret>::type>::push(lua, result);
-    return 1;
-}
-
-// Struct for defining Lua functions with names and wrappers
-template <unsigned int FunctionIndex>
-struct LuaFunctionDefinition {
-    static constexpr LuaFunctionData FunctionInfo{
-       ScriptFunctions::functions[FunctionIndex].name, LuaFunctionWrapper<FunctionIndex>
-    };
-};
-
-template<> struct LuaFunctionDefinition<0> { static constexpr LuaFunctionData FunctionInfo{"CreateTimer", LangLua::CreateTimer}; };
-template<> struct LuaFunctionDefinition<1> { static constexpr LuaFunctionData FunctionInfo{"CreateTimerEx", LangLua::CreateTimerEx}; };
-template<> struct LuaFunctionDefinition<2> { static constexpr LuaFunctionData FunctionInfo{"MakePublic", LangLua::MakePublic}; };
-template<> struct LuaFunctionDefinition<3> { static constexpr LuaFunctionData FunctionInfo{"CallPublic", LangLua::CallPublic}; };
-
-
-#ifdef __arm__
-template<std::size_t... Is>
-struct indices {};
-template<std::size_t N, std::size_t... Is>
-struct build_indices : build_indices<N-1, N-1, Is...> {};
-template<std::size_t... Is>
-struct build_indices<0, Is...> : indices<Is...> {};
-template<std::size_t N>
-using IndicesFor = build_indices<N>;
-
-template<size_t... Indices>
-LuaFuctionData *functions(indices<Indices...>)
+namespace
 {
-
-    static LuaFuctionData functions_[sizeof...(Indices)]{
-            F_<Indices>::F...
-    };
-
-    static_assert(
-            sizeof(functions_) / sizeof(functions_[0]) ==
-            sizeof(ScriptFunctions::functions) / sizeof(ScriptFunctions::functions[0]),
-            "Not all functions have been mapped to Lua");
-
-    return functions_;
-}
-#else
-template<unsigned int I>
-struct LuaFunctionInitializer
-{
-    constexpr static void Initialize(LuaFunctionData *functions_)
+    void registerLuaFunctions(luabridge::Namespace& tes3mp)
     {
-        functions_[I] = LuaFunctionDefinition<I>::FunctionInfo;
-        LuaFunctionInitializer<I - 1>::Initialize(functions_);
+        // These four functions need custom Lua stack handling and therefore
+        // remain regular lua_CFunction bindings.
+        tes3mp.addCFunction("CreateTimer", LangLua::CreateTimer);
+        tes3mp.addCFunction("CreateTimerEx", LangLua::CreateTimerEx);
+        tes3mp.addCFunction("MakePublic", LangLua::MakePublic);
+        tes3mp.addCFunction("CallPublic", LangLua::CallPublic);
+
+        // All regular API functions are bound with their exact C++ signatures.
+        // The previous dispatcher erased the signatures and called every
+        // function through R(*)(...), which is not ABI-safe on Apple Silicon.
+        tes3mp.addFunction("StartTimer", ScriptFunctions::StartTimer);
+        tes3mp.addFunction("StopTimer", ScriptFunctions::StopTimer);
+        tes3mp.addFunction("RestartTimer", ScriptFunctions::RestartTimer);
+        tes3mp.addFunction("FreeTimer", ScriptFunctions::FreeTimer);
+        tes3mp.addFunction("IsTimerElapsed", ScriptFunctions::IsTimerElapsed);
+
+#undef SCRIPT_API_ENTRY
+#define SCRIPT_API_ENTRY(name, function) (tes3mp.addFunction(name, function), 0)
+        const int registeredFunctions[] = {
+            ACTORAPI,
+            BOOKAPI,
+            CELLAPI,
+            CHARCLASSAPI,
+            CHATAPI,
+            DIALOGUEAPI,
+            FACTIONAPI,
+            GUIAPI,
+            ITEMAPI,
+            MECHANICSAPI,
+            MISCELLANEOUSAPI,
+            POSITIONAPI,
+            QUESTAPI,
+            RECORDSDYNAMICAPI,
+            SHAPESHIFTAPI,
+            SERVERAPI,
+            SETTINGSAPI,
+            SPELLAPI,
+            STATAPI,
+            OBJECTAPI,
+            WORLDSTATEAPI
+        };
+#undef SCRIPT_API_ENTRY
+#define SCRIPT_API_ENTRY(name, function) {name, function}
+
+        (void)registeredFunctions;
     }
-};
-
-template<>
-struct LuaFunctionInitializer<0>
-{
-    constexpr static void Initialize(LuaFunctionData *functions_)
-    {
-        functions_[0] = LuaFunctionDefinition<0>::FunctionInfo;
-    }
-};
-
-template<size_t LastI>
-LuaFunctionData *GetLuaFunctions()
-{
-    static LuaFunctionData functions_[LastI];
-    LuaFunctionInitializer<LastI - 1>::Initialize(functions_);
-
-    static_assert(
-        sizeof(functions_) / sizeof(functions_[0]) ==
-        sizeof(ScriptFunctions::functions) / sizeof(ScriptFunctions::functions[0]),
-        "Not all functions have been mapped to Lua");
-
-    return functions_;
 }
-#endif
 
 void LangLua::LoadProgram(const char *filename)
 {
@@ -183,19 +113,9 @@ void LangLua::LoadProgram(const char *filename)
         throw std::runtime_error("Lua script " + std::string(filename) + " error (" + std::to_string(err) + "): \"" +
                             std::string(lua_tostring(lua, -1)) + "\"");
 
-    constexpr auto functions_n = sizeof(ScriptFunctions::functions) / sizeof(ScriptFunctions::functions[0]);
-
-#ifdef __arm__
-    LuaFunctionData *functions_ = GetLuaFunctions(IndicesFor<functions_n>{});
-#else
-    LuaFunctionData *functions_ = GetLuaFunctions<sizeof(ScriptFunctions::functions) / sizeof(ScriptFunctions::functions[0])>();
-#endif
-luabridge::Namespace tes3mp = luabridge::getGlobalNamespace(lua).beginNamespace("tes3mp");
-
-for (unsigned i = 0; i < functions_n; i++)
-    tes3mp.addCFunction(functions_[i].name, functions_[i].func);
-
-tes3mp.endNamespace();
+    luabridge::Namespace tes3mp = luabridge::getGlobalNamespace(lua).beginNamespace("tes3mp");
+    registerLuaFunctions(tes3mp);
+    tes3mp.endNamespace();
 
 if ((err = lua_pcall(lua, 0, 0, 0)) != 0) // Run once script for load in memory.
     throw std::runtime_error("Lua script " + std::string(filename) + " error (" + std::to_string(err) + "): \"" +
@@ -260,7 +180,7 @@ boost::any LangLua::Call(const char *name, const char *argl, int buf, ...)
                 break;
 
             default:
-                throw std::runtime_error("C++ call: Unknown argument identifier " + argl[index]);
+                throw std::runtime_error(std::string("C++ call: Unknown argument identifier ") + argl[index]);
         }
     }
 
@@ -312,7 +232,7 @@ boost::any LangLua::Call(const char *name, const char *argl, const std::vector<b
                 luabridge::Stack<bool>::push(lua, boost::any_cast<int>(args.at(index)));
                 break;
             default:
-                throw std::runtime_error("Lua call: Unknown argument identifier " + argl[index]);
+                throw std::runtime_error(std::string("Lua call: Unknown argument identifier ") + argl[index]);
         }
     }
 

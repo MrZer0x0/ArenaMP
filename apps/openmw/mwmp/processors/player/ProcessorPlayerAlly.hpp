@@ -4,6 +4,9 @@
 #include "../PlayerProcessor.hpp"
 #include "apps/openmw/mwmp/Main.hpp"
 #include "apps/openmw/mwmp/LocalPlayer.hpp"
+#include "apps/openmw/mwbase/environment.hpp"
+#include "apps/openmw/mwbase/world.hpp"
+#include "apps/openmw/mwworld/class.hpp"
 
 namespace mwmp
 {
@@ -58,6 +61,13 @@ namespace mwmp
                     ++iter;
                 }
             }
+
+            // Group mode depends on the latest ally lists. Rebuild local
+            // active effects so harmful player effects react immediately when
+            // an alliance is created or removed.
+            MWWorld::Ptr localPlayerPtr = MWBase::Environment::get().getWorld()->getPlayerPtr();
+            if (localPlayerPtr)
+                localPlayerPtr.getClass().getCreatureStats(localPlayerPtr).getActiveSpells().refreshEffects();
         }
     };
 }

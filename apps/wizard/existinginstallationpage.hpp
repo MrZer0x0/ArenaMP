@@ -23,6 +23,7 @@ namespace Wizard
 
 
     private:
+        void updateDetectedFiles(const QString& path);
         MainWizard *mWizard;
 
     protected:

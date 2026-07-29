@@ -13,6 +13,7 @@
 
 #include "../mwworld/actiontake.hpp"
 #include "../mwworld/class.hpp"
+#include "../mwworld/interactionanimation.hpp"
 
 #include "formatting.hpp"
 
@@ -44,6 +45,7 @@ namespace MWGui
     void ScrollWindow::setPtr (const MWWorld::Ptr& scroll)
     {
         mScroll = scroll;
+        MWWorld::InteractionAnimation::playReading(mScroll);
 
         MWWorld::Ptr player = MWMechanics::getPlayer();
         bool showTakeButton = scroll.getContainerStore() != &player.getClass().getContainerStore(player);
@@ -107,4 +109,9 @@ namespace MWGui
 
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Scroll, true);
     }
+    void ScrollWindow::onClose()
+    {
+        MWWorld::InteractionAnimation::stopReading();
+    }
+
 }

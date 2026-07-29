@@ -193,7 +193,7 @@ std::string listComparison(PacketPreInit::PluginContainer checksums, PacketPreIn
     return sstr.str();
 }
 
-Networking::Networking(): peer(RakNet::RakPeerInterface::GetInstance()), systemPacketController(peer),
+Networking::Networking(): startLocation("default"), peer(RakNet::RakPeerInterface::GetInstance()), systemPacketController(peer),
     playerPacketController(peer), actorPacketController(peer), objectPacketController(peer),
     worldstatePacketController(peer)
 {
@@ -277,9 +277,24 @@ void Networking::connect(const std::string &ip, unsigned short port, std::vector
 
     std::stringstream sstr;
     sstr << TES3MP_VERSION;
-    sstr << TES3MP_PROTO_VERSION;
-    std::string commitHashString = Version::getOpenmwVersion(Main::getResDir()).mCommitHash;
-    // Remove carriage returns added to version file on Windows
+
+    const int advertisedProtocol = Main::useVanillaBuildServer()
+        ? TES3MP_VANILLA_PROTO_VERSION
+        : TES3MP_PROTO_VERSION;
+    sstr << advertisedProtocol;
+
+    std::string commitHashString;
+    if (Main::useVanillaBuildServer())
+    {
+        commitHashString = TES3MP_VANILLA_COMMIT_HASH;
+        LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN,
+            "Vanilla server compatibility enabled: advertising protocol %i and TES3MP commit %.10s",
+            advertisedProtocol, TES3MP_VANILLA_COMMIT_HASH);
+    }
+    else
+        commitHashString = Version::getOpenmwVersion(Main::getResDir()).mCommitHash;
+
+    // Remove carriage returns added to version files on Windows.
     commitHashString.erase(std::remove(commitHashString.begin(), commitHashString.end(), '\r'), commitHashString.end());
     sstr << commitHashString;
 
@@ -405,6 +420,8 @@ void Networking::preInit(std::vector<std::string> &content, Files::Collections &
                 bsIn.IgnoreBytes((unsigned) RakNet::RakNetGUID::size());
                 packetPreInit.setChecksums(&checksumsResponse);
                 packetPreInit.Packet(&bsIn, false);
+                if (packetPreInit.isPacketValid())
+                    startLocation = packetPreInit.getStartLocation();
                 done = true;
                 break;
         }
@@ -508,4 +525,9 @@ Worldstate *Networking::getWorldstate()
 bool Networking::isConnected()
 {
     return connected;
+}
+
+const std::string& Networking::getStartLocation() const
+{
+    return startLocation;
 }

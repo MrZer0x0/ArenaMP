@@ -47,12 +47,13 @@ void TimedLog::SetLevel(int level)
 
 const char* getTime()
 {
-    time_t t = time(0);
-    struct tm *tm = localtime(&t);
-    static char result[20];
-    sprintf(result, "%.4d-%.2d-%.2d %.2d:%.2d:%.2d",
-            1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
-            tm->tm_hour, tm->tm_min, tm->tm_sec);
+    const std::time_t now = std::time(nullptr);
+    const std::tm* local = std::localtime(&now);
+    static char result[20] = "0000-00-00 00:00:00";
+
+    if (local != nullptr)
+        std::strftime(result, sizeof(result), "%Y-%m-%d %H:%M:%S", local);
+
     return result;
 }
 

@@ -58,6 +58,34 @@ namespace MWMechanics
         bool mUseCustomDestination;
         osg::Vec3f mCustomDestination;
 
+        enum TacticalState
+        {
+            Tactical_None,
+            Tactical_StrafeLeft,
+            Tactical_StrafeRight,
+            Tactical_CircleLeft,
+            Tactical_CircleRight,
+            Tactical_Retreat,
+            Tactical_JumpDodge,
+            Tactical_SneakApproach,
+            Tactical_Unstuck
+        };
+
+        TacticalState mTacticalState;
+        float mTacticalTimer;
+        float mTacticalCooldown;
+        float mTacticalDecisionTimer;
+        float mJumpTimer;
+        float mSneakTimer;
+        float mStuckCheckTimer;
+        float mStuckDuration;
+        osg::Vec3f mLastActorPos;
+        bool mHasLastActorPos;
+        osg::Vec3f mCombatOrigin;
+        const MWWorld::CellStore* mCombatOriginCell;
+        bool mCombatOriginSet;
+        float mLeashExceededTimer;
+
         AiCombatStorage():
         mAttackCooldown(0.0f),
         mTimerCombatMove(0.0f),
@@ -78,7 +106,21 @@ namespace MWMechanics
         mUpdateLOSTimer(0.0f),
         mFleeBlindRunTimer(0.0f),
         mUseCustomDestination(false),
-        mCustomDestination()
+        mCustomDestination(),
+        mTacticalState(Tactical_None),
+        mTacticalTimer(0.0f),
+        mTacticalCooldown(0.0f),
+        mTacticalDecisionTimer(0.0f),
+        mJumpTimer(0.0f),
+        mSneakTimer(0.0f),
+        mStuckCheckTimer(0.0f),
+        mStuckDuration(0.0f),
+        mLastActorPos(),
+        mHasLastActorPos(false),
+        mCombatOrigin(),
+        mCombatOriginCell(nullptr),
+        mCombatOriginSet(false),
+        mLeashExceededTimer(0.0f)
         {}
 
         void startCombatMove(bool isDistantCombat, float distToTarget, float rangeAttack, const MWWorld::Ptr& actor, const MWWorld::Ptr& target);
@@ -92,6 +134,8 @@ namespace MWMechanics
         void startFleeing();
         void stopFleeing();
         bool isFleeing();
+        bool hasTacticalMovement() const;
+        bool suppressesAttack() const;
     };
 
     /// \brief Causes the actor to fight another actor
@@ -131,6 +175,10 @@ namespace MWMechanics
             void updateLOS(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, float duration, AiCombatStorage& storage);
 
             void updateFleeing(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, float duration, AiCombatStorage& storage);
+            void updateTacticalMovement(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, float duration,
+                AiCombatStorage& storage, CharacterController& characterController);
+            void clearTacticalMovement(const MWWorld::Ptr& actor, AiCombatStorage& storage);
+            bool updatePursuitLeash(const MWWorld::Ptr& actor, float duration, AiCombatStorage& storage);
 
             /// Transfer desired movement (from AiCombatStorage) to Actor
             void updateActorsMovement(const MWWorld::Ptr& actor, float duration, AiCombatStorage& storage);

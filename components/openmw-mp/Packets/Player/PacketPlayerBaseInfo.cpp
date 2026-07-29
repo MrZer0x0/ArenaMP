@@ -21,6 +21,7 @@ void PacketPlayerBaseInfo::Packet(RakNet::BitStream *newBitstream, bool send)
     RW(player->npc.mFlags, send);
 
     RW(player->birthsign, send, true);
+    RW(player->language, send, true);
 
     RW(player->resetStats, send);
 }

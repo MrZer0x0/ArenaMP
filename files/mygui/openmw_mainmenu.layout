@@ -10,5 +10,25 @@
             <Property key="ReadOnly" value="true"/>
             <Property key="MultiLine" value="true"/>
         </Widget>
+        <Widget type="TextBox" skin="SandText" position="370 48 500 28" align="Center Top" name="PauseBrandText">
+            <Property key="Visible" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="NeedKey" value="false"/>
+            <Property key="TextAlign" value="Center"/>
+            <Property key="TextShadow" value="true"/>
+            <Property key="TextShadowColour" value="0 0 0"/>
+        </Widget>
+        <Widget type="EditBox" skin="TES3MP_ChatHistory" position="20 80 520 190" align="Default" name="MenuChatHistory">
+            <Property key="Visible" value="false"/>
+            <Property key="MultiLine" value="true"/>
+            <Property key="ReadOnly" value="true"/>
+            <Property key="NeedMouse" value="true"/>
+            <Property key="NeedKey" value="true"/>
+            <Property key="FontName" value="Russo"/>
+            <Property key="TextAlign" value="Left Top"/>
+            <Property key="TextColour" value="1 1 1"/>
+            <Property key="InvertSelected" value="false"/>
+            <Property key="WordWrap" value="true"/>
+        </Widget>
     </Widget>
 </MyGUI>

@@ -17,6 +17,7 @@
 
 namespace ESM
 {
+    struct DialInfo;
     struct Dialogue;
 }
 
@@ -58,7 +59,8 @@ namespace MWDialogue
             bool compile (const std::string& cmd, std::vector<Interpreter::Type_Code>& code, const MWWorld::Ptr& actor);
             void executeScript (const std::string& script, const MWWorld::Ptr& actor);
 
-            void executeTopic (const std::string& topic, ResponseCallback* callback);
+            bool playVoice(const ESM::DialInfo& info);
+            bool executeTopic (const std::string& topic, ResponseCallback* callback);
 
             const ESM::Dialogue* searchDialogue(const std::string& id);
 

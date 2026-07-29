@@ -16,6 +16,7 @@ namespace mwmp
     public:
 
         virtual void Do(ObjectPacket &packet, Player &player, BaseObjectList &objectList);
+        static void SendToLoadedCell(ObjectPacket &packet, BaseObjectList &objectList);
 
         static bool Process(RakNet::Packet &packet, BaseObjectList &objectList) noexcept;
     };

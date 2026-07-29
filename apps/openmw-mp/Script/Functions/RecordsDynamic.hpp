@@ -4,139 +4,139 @@
 #include "../Types.hpp"
 
 #define RECORDSDYNAMICAPI \
-    {"ClearRecords",                            RecordsDynamicFunctions::ClearRecords},\
+    SCRIPT_API_ENTRY("ClearRecords", RecordsDynamicFunctions::ClearRecords),\
     \
-    {"GetRecordType",                           RecordsDynamicFunctions::GetRecordType},\
-    {"GetRecordCount",                          RecordsDynamicFunctions::GetRecordCount},\
-    {"GetRecordEffectCount",                    RecordsDynamicFunctions::GetRecordEffectCount},\
+    SCRIPT_API_ENTRY("GetRecordType", RecordsDynamicFunctions::GetRecordType),\
+    SCRIPT_API_ENTRY("GetRecordCount", RecordsDynamicFunctions::GetRecordCount),\
+    SCRIPT_API_ENTRY("GetRecordEffectCount", RecordsDynamicFunctions::GetRecordEffectCount),\
     \
-    {"GetRecordId",                             RecordsDynamicFunctions::GetRecordId},\
-    {"GetRecordBaseId",                         RecordsDynamicFunctions::GetRecordBaseId},\
+    SCRIPT_API_ENTRY("GetRecordId", RecordsDynamicFunctions::GetRecordId),\
+    SCRIPT_API_ENTRY("GetRecordBaseId", RecordsDynamicFunctions::GetRecordBaseId),\
     \
-    {"GetRecordSubtype",                        RecordsDynamicFunctions::GetRecordSubtype},\
-    {"GetRecordName",                           RecordsDynamicFunctions::GetRecordName},\
-    {"GetRecordModel",                          RecordsDynamicFunctions::GetRecordModel},\
-    {"GetRecordIcon",                           RecordsDynamicFunctions::GetRecordIcon},\
-    {"GetRecordScript",                         RecordsDynamicFunctions::GetRecordScript},\
-    {"GetRecordEnchantmentId",                  RecordsDynamicFunctions::GetRecordEnchantmentId},\
-    {"GetRecordEnchantmentCharge",              RecordsDynamicFunctions::GetRecordEnchantmentCharge},\
+    SCRIPT_API_ENTRY("GetRecordSubtype", RecordsDynamicFunctions::GetRecordSubtype),\
+    SCRIPT_API_ENTRY("GetRecordName", RecordsDynamicFunctions::GetRecordName),\
+    SCRIPT_API_ENTRY("GetRecordModel", RecordsDynamicFunctions::GetRecordModel),\
+    SCRIPT_API_ENTRY("GetRecordIcon", RecordsDynamicFunctions::GetRecordIcon),\
+    SCRIPT_API_ENTRY("GetRecordScript", RecordsDynamicFunctions::GetRecordScript),\
+    SCRIPT_API_ENTRY("GetRecordEnchantmentId", RecordsDynamicFunctions::GetRecordEnchantmentId),\
+    SCRIPT_API_ENTRY("GetRecordEnchantmentCharge", RecordsDynamicFunctions::GetRecordEnchantmentCharge),\
     \
-    {"GetRecordAutoCalc",                       RecordsDynamicFunctions::GetRecordAutoCalc},\
-    {"GetRecordCharge",                         RecordsDynamicFunctions::GetRecordCharge},\
-    {"GetRecordCost",                           RecordsDynamicFunctions::GetRecordCost},\
-    {"GetRecordFlags",                          RecordsDynamicFunctions::GetRecordFlags},\
-    {"GetRecordValue",                          RecordsDynamicFunctions::GetRecordValue},\
-    {"GetRecordWeight",                         RecordsDynamicFunctions::GetRecordWeight},\
-    {"GetRecordQuantity",                       RecordsDynamicFunctions::GetRecordQuantity},\
+    SCRIPT_API_ENTRY("GetRecordAutoCalc", RecordsDynamicFunctions::GetRecordAutoCalc),\
+    SCRIPT_API_ENTRY("GetRecordCharge", RecordsDynamicFunctions::GetRecordCharge),\
+    SCRIPT_API_ENTRY("GetRecordCost", RecordsDynamicFunctions::GetRecordCost),\
+    SCRIPT_API_ENTRY("GetRecordFlags", RecordsDynamicFunctions::GetRecordFlags),\
+    SCRIPT_API_ENTRY("GetRecordValue", RecordsDynamicFunctions::GetRecordValue),\
+    SCRIPT_API_ENTRY("GetRecordWeight", RecordsDynamicFunctions::GetRecordWeight),\
+    SCRIPT_API_ENTRY("GetRecordQuantity", RecordsDynamicFunctions::GetRecordQuantity),\
     \
-    {"GetRecordEffectId",                       RecordsDynamicFunctions::GetRecordEffectId},\
-    {"GetRecordEffectAttribute",                RecordsDynamicFunctions::GetRecordEffectAttribute},\
-    {"GetRecordEffectSkill",                    RecordsDynamicFunctions::GetRecordEffectSkill},\
-    {"GetRecordEffectRangeType",                RecordsDynamicFunctions::GetRecordEffectRangeType},\
-    {"GetRecordEffectArea",                     RecordsDynamicFunctions::GetRecordEffectArea},\
-    {"GetRecordEffectDuration",                 RecordsDynamicFunctions::GetRecordEffectDuration},\
-    {"GetRecordEffectMagnitudeMax",             RecordsDynamicFunctions::GetRecordEffectMagnitudeMax},\
-    {"GetRecordEffectMagnitudeMin",             RecordsDynamicFunctions::GetRecordEffectMagnitudeMin},\
+    SCRIPT_API_ENTRY("GetRecordEffectId", RecordsDynamicFunctions::GetRecordEffectId),\
+    SCRIPT_API_ENTRY("GetRecordEffectAttribute", RecordsDynamicFunctions::GetRecordEffectAttribute),\
+    SCRIPT_API_ENTRY("GetRecordEffectSkill", RecordsDynamicFunctions::GetRecordEffectSkill),\
+    SCRIPT_API_ENTRY("GetRecordEffectRangeType", RecordsDynamicFunctions::GetRecordEffectRangeType),\
+    SCRIPT_API_ENTRY("GetRecordEffectArea", RecordsDynamicFunctions::GetRecordEffectArea),\
+    SCRIPT_API_ENTRY("GetRecordEffectDuration", RecordsDynamicFunctions::GetRecordEffectDuration),\
+    SCRIPT_API_ENTRY("GetRecordEffectMagnitudeMax", RecordsDynamicFunctions::GetRecordEffectMagnitudeMax),\
+    SCRIPT_API_ENTRY("GetRecordEffectMagnitudeMin", RecordsDynamicFunctions::GetRecordEffectMagnitudeMin),\
     \
-    {"SetRecordType",                           RecordsDynamicFunctions::SetRecordType},\
+    SCRIPT_API_ENTRY("SetRecordType", RecordsDynamicFunctions::SetRecordType),\
     \
-    {"SetRecordId",                             RecordsDynamicFunctions::SetRecordId},\
-    {"SetRecordBaseId",                         RecordsDynamicFunctions::SetRecordBaseId},\
-    {"SetRecordInventoryBaseId",                RecordsDynamicFunctions::SetRecordInventoryBaseId},\
+    SCRIPT_API_ENTRY("SetRecordId", RecordsDynamicFunctions::SetRecordId),\
+    SCRIPT_API_ENTRY("SetRecordBaseId", RecordsDynamicFunctions::SetRecordBaseId),\
+    SCRIPT_API_ENTRY("SetRecordInventoryBaseId", RecordsDynamicFunctions::SetRecordInventoryBaseId),\
     \
-    {"SetRecordSubtype",                        RecordsDynamicFunctions::SetRecordSubtype},\
-    {"SetRecordName",                           RecordsDynamicFunctions::SetRecordName},\
-    {"SetRecordModel",                          RecordsDynamicFunctions::SetRecordModel},\
-    {"SetRecordIcon",                           RecordsDynamicFunctions::SetRecordIcon},\
-    {"SetRecordScript",                         RecordsDynamicFunctions::SetRecordScript},\
-    {"SetRecordEnchantmentId",                  RecordsDynamicFunctions::SetRecordEnchantmentId},\
-    {"SetRecordEnchantmentCharge",              RecordsDynamicFunctions::SetRecordEnchantmentCharge},\
+    SCRIPT_API_ENTRY("SetRecordSubtype", RecordsDynamicFunctions::SetRecordSubtype),\
+    SCRIPT_API_ENTRY("SetRecordName", RecordsDynamicFunctions::SetRecordName),\
+    SCRIPT_API_ENTRY("SetRecordModel", RecordsDynamicFunctions::SetRecordModel),\
+    SCRIPT_API_ENTRY("SetRecordIcon", RecordsDynamicFunctions::SetRecordIcon),\
+    SCRIPT_API_ENTRY("SetRecordScript", RecordsDynamicFunctions::SetRecordScript),\
+    SCRIPT_API_ENTRY("SetRecordEnchantmentId", RecordsDynamicFunctions::SetRecordEnchantmentId),\
+    SCRIPT_API_ENTRY("SetRecordEnchantmentCharge", RecordsDynamicFunctions::SetRecordEnchantmentCharge),\
     \
-    {"SetRecordAutoCalc",                       RecordsDynamicFunctions::SetRecordAutoCalc},\
-    {"SetRecordCharge",                         RecordsDynamicFunctions::SetRecordCharge},\
-    {"SetRecordCost",                           RecordsDynamicFunctions::SetRecordCost},\
-    {"SetRecordFlags",                          RecordsDynamicFunctions::SetRecordFlags},\
-    {"SetRecordValue",                          RecordsDynamicFunctions::SetRecordValue},\
-    {"SetRecordWeight",                         RecordsDynamicFunctions::SetRecordWeight},\
-    {"SetRecordQuality",                        RecordsDynamicFunctions::SetRecordQuality},\
-    {"SetRecordUses",                           RecordsDynamicFunctions::SetRecordUses},\
-    {"SetRecordTime",                           RecordsDynamicFunctions::SetRecordTime},\
-    {"SetRecordRadius",                         RecordsDynamicFunctions::SetRecordRadius},\
-    {"SetRecordColor",                          RecordsDynamicFunctions::SetRecordColor},\
+    SCRIPT_API_ENTRY("SetRecordAutoCalc", RecordsDynamicFunctions::SetRecordAutoCalc),\
+    SCRIPT_API_ENTRY("SetRecordCharge", RecordsDynamicFunctions::SetRecordCharge),\
+    SCRIPT_API_ENTRY("SetRecordCost", RecordsDynamicFunctions::SetRecordCost),\
+    SCRIPT_API_ENTRY("SetRecordFlags", RecordsDynamicFunctions::SetRecordFlags),\
+    SCRIPT_API_ENTRY("SetRecordValue", RecordsDynamicFunctions::SetRecordValue),\
+    SCRIPT_API_ENTRY("SetRecordWeight", RecordsDynamicFunctions::SetRecordWeight),\
+    SCRIPT_API_ENTRY("SetRecordQuality", RecordsDynamicFunctions::SetRecordQuality),\
+    SCRIPT_API_ENTRY("SetRecordUses", RecordsDynamicFunctions::SetRecordUses),\
+    SCRIPT_API_ENTRY("SetRecordTime", RecordsDynamicFunctions::SetRecordTime),\
+    SCRIPT_API_ENTRY("SetRecordRadius", RecordsDynamicFunctions::SetRecordRadius),\
+    SCRIPT_API_ENTRY("SetRecordColor", RecordsDynamicFunctions::SetRecordColor),\
     \
-    {"SetRecordArmorRating",                    RecordsDynamicFunctions::SetRecordArmorRating},\
-    {"SetRecordHealth",                         RecordsDynamicFunctions::SetRecordHealth},\
+    SCRIPT_API_ENTRY("SetRecordArmorRating", RecordsDynamicFunctions::SetRecordArmorRating),\
+    SCRIPT_API_ENTRY("SetRecordHealth", RecordsDynamicFunctions::SetRecordHealth),\
     \
-    {"SetRecordDamageChop",                     RecordsDynamicFunctions::SetRecordDamageChop},\
-    {"SetRecordDamageSlash",                    RecordsDynamicFunctions::SetRecordDamageSlash},\
-    {"SetRecordDamageThrust",                   RecordsDynamicFunctions::SetRecordDamageThrust},\
-    {"SetRecordReach",                          RecordsDynamicFunctions::SetRecordReach},\
-    {"SetRecordSpeed",                          RecordsDynamicFunctions::SetRecordSpeed},\
+    SCRIPT_API_ENTRY("SetRecordDamageChop", RecordsDynamicFunctions::SetRecordDamageChop),\
+    SCRIPT_API_ENTRY("SetRecordDamageSlash", RecordsDynamicFunctions::SetRecordDamageSlash),\
+    SCRIPT_API_ENTRY("SetRecordDamageThrust", RecordsDynamicFunctions::SetRecordDamageThrust),\
+    SCRIPT_API_ENTRY("SetRecordReach", RecordsDynamicFunctions::SetRecordReach),\
+    SCRIPT_API_ENTRY("SetRecordSpeed", RecordsDynamicFunctions::SetRecordSpeed),\
     \
-    {"SetRecordKeyState",                       RecordsDynamicFunctions::SetRecordKeyState},\
-    {"SetRecordScrollState",                    RecordsDynamicFunctions::SetRecordScrollState},\
-    {"SetRecordSkillId",                        RecordsDynamicFunctions::SetRecordSkillId},\
-    {"SetRecordText",                           RecordsDynamicFunctions::SetRecordText},\
+    SCRIPT_API_ENTRY("SetRecordKeyState", RecordsDynamicFunctions::SetRecordKeyState),\
+    SCRIPT_API_ENTRY("SetRecordScrollState", RecordsDynamicFunctions::SetRecordScrollState),\
+    SCRIPT_API_ENTRY("SetRecordSkillId", RecordsDynamicFunctions::SetRecordSkillId),\
+    SCRIPT_API_ENTRY("SetRecordText", RecordsDynamicFunctions::SetRecordText),\
     \
-    {"SetRecordHair",                           RecordsDynamicFunctions::SetRecordHair},\
-    {"SetRecordHead",                           RecordsDynamicFunctions::SetRecordHead},\
-    {"SetRecordGender",                         RecordsDynamicFunctions::SetRecordGender},\
-    {"SetRecordRace",                           RecordsDynamicFunctions::SetRecordRace},\
-    {"SetRecordClass",                          RecordsDynamicFunctions::SetRecordClass},\
-    {"SetRecordFaction",                        RecordsDynamicFunctions::SetRecordFaction},\
+    SCRIPT_API_ENTRY("SetRecordHair", RecordsDynamicFunctions::SetRecordHair),\
+    SCRIPT_API_ENTRY("SetRecordHead", RecordsDynamicFunctions::SetRecordHead),\
+    SCRIPT_API_ENTRY("SetRecordGender", RecordsDynamicFunctions::SetRecordGender),\
+    SCRIPT_API_ENTRY("SetRecordRace", RecordsDynamicFunctions::SetRecordRace),\
+    SCRIPT_API_ENTRY("SetRecordClass", RecordsDynamicFunctions::SetRecordClass),\
+    SCRIPT_API_ENTRY("SetRecordFaction", RecordsDynamicFunctions::SetRecordFaction),\
     \
-    {"SetRecordScale",                          RecordsDynamicFunctions::SetRecordScale},\
-    {"SetRecordBloodType",                      RecordsDynamicFunctions::SetRecordBloodType},\
-    {"SetRecordVampireState",                   RecordsDynamicFunctions::SetRecordVampireState},\
+    SCRIPT_API_ENTRY("SetRecordScale", RecordsDynamicFunctions::SetRecordScale),\
+    SCRIPT_API_ENTRY("SetRecordBloodType", RecordsDynamicFunctions::SetRecordBloodType),\
+    SCRIPT_API_ENTRY("SetRecordVampireState", RecordsDynamicFunctions::SetRecordVampireState),\
     \
-    {"SetRecordLevel",                          RecordsDynamicFunctions::SetRecordLevel},\
-    {"SetRecordMagicka",                        RecordsDynamicFunctions::SetRecordMagicka},\
-    {"SetRecordFatigue",                        RecordsDynamicFunctions::SetRecordFatigue},\
+    SCRIPT_API_ENTRY("SetRecordLevel", RecordsDynamicFunctions::SetRecordLevel),\
+    SCRIPT_API_ENTRY("SetRecordMagicka", RecordsDynamicFunctions::SetRecordMagicka),\
+    SCRIPT_API_ENTRY("SetRecordFatigue", RecordsDynamicFunctions::SetRecordFatigue),\
     \
-    {"SetRecordSoulValue",                      RecordsDynamicFunctions::SetRecordSoulValue},\
+    SCRIPT_API_ENTRY("SetRecordSoulValue", RecordsDynamicFunctions::SetRecordSoulValue),\
     \
-    {"SetRecordAIFight",                        RecordsDynamicFunctions::SetRecordAIFight},\
-    {"SetRecordAIFlee",                         RecordsDynamicFunctions::SetRecordAIFlee},\
-    {"SetRecordAIAlarm",                        RecordsDynamicFunctions::SetRecordAIAlarm},\
-    {"SetRecordAIServices",                     RecordsDynamicFunctions::SetRecordAIServices},\
+    SCRIPT_API_ENTRY("SetRecordAIFight", RecordsDynamicFunctions::SetRecordAIFight),\
+    SCRIPT_API_ENTRY("SetRecordAIFlee", RecordsDynamicFunctions::SetRecordAIFlee),\
+    SCRIPT_API_ENTRY("SetRecordAIAlarm", RecordsDynamicFunctions::SetRecordAIAlarm),\
+    SCRIPT_API_ENTRY("SetRecordAIServices", RecordsDynamicFunctions::SetRecordAIServices),\
     \
-    {"SetRecordSound",                          RecordsDynamicFunctions::SetRecordSound},\
-    {"SetRecordVolume",                         RecordsDynamicFunctions::SetRecordVolume},\
-    {"SetRecordMinRange",                       RecordsDynamicFunctions::SetRecordMinRange},\
-    {"SetRecordMaxRange",                       RecordsDynamicFunctions::SetRecordMaxRange},\
-    {"SetRecordOpenSound",                      RecordsDynamicFunctions::SetRecordOpenSound},\
-    {"SetRecordCloseSound",                     RecordsDynamicFunctions::SetRecordCloseSound},\
+    SCRIPT_API_ENTRY("SetRecordSound", RecordsDynamicFunctions::SetRecordSound),\
+    SCRIPT_API_ENTRY("SetRecordVolume", RecordsDynamicFunctions::SetRecordVolume),\
+    SCRIPT_API_ENTRY("SetRecordMinRange", RecordsDynamicFunctions::SetRecordMinRange),\
+    SCRIPT_API_ENTRY("SetRecordMaxRange", RecordsDynamicFunctions::SetRecordMaxRange),\
+    SCRIPT_API_ENTRY("SetRecordOpenSound", RecordsDynamicFunctions::SetRecordOpenSound),\
+    SCRIPT_API_ENTRY("SetRecordCloseSound", RecordsDynamicFunctions::SetRecordCloseSound),\
     \
-    {"SetRecordScriptText",                     RecordsDynamicFunctions::SetRecordScriptText},\
-    {"SetRecordIntegerVariable",                RecordsDynamicFunctions::SetRecordIntegerVariable},\
-    {"SetRecordFloatVariable",                  RecordsDynamicFunctions::SetRecordFloatVariable},\
-    {"SetRecordStringVariable",                 RecordsDynamicFunctions::SetRecordStringVariable},\
+    SCRIPT_API_ENTRY("SetRecordScriptText", RecordsDynamicFunctions::SetRecordScriptText),\
+    SCRIPT_API_ENTRY("SetRecordIntegerVariable", RecordsDynamicFunctions::SetRecordIntegerVariable),\
+    SCRIPT_API_ENTRY("SetRecordFloatVariable", RecordsDynamicFunctions::SetRecordFloatVariable),\
+    SCRIPT_API_ENTRY("SetRecordStringVariable", RecordsDynamicFunctions::SetRecordStringVariable),\
     \
-    {"SetRecordIdByIndex",                      RecordsDynamicFunctions::SetRecordIdByIndex},\
-    {"SetRecordEnchantmentIdByIndex",           RecordsDynamicFunctions::SetRecordEnchantmentIdByIndex},\
+    SCRIPT_API_ENTRY("SetRecordIdByIndex", RecordsDynamicFunctions::SetRecordIdByIndex),\
+    SCRIPT_API_ENTRY("SetRecordEnchantmentIdByIndex", RecordsDynamicFunctions::SetRecordEnchantmentIdByIndex),\
     \
-    {"SetRecordEffectId",                       RecordsDynamicFunctions::SetRecordEffectId},\
-    {"SetRecordEffectAttribute",                RecordsDynamicFunctions::SetRecordEffectAttribute},\
-    {"SetRecordEffectSkill",                    RecordsDynamicFunctions::SetRecordEffectSkill},\
-    {"SetRecordEffectRangeType",                RecordsDynamicFunctions::SetRecordEffectRangeType},\
-    {"SetRecordEffectArea",                     RecordsDynamicFunctions::SetRecordEffectArea},\
-    {"SetRecordEffectDuration",                 RecordsDynamicFunctions::SetRecordEffectDuration},\
-    {"SetRecordEffectMagnitudeMax",             RecordsDynamicFunctions::SetRecordEffectMagnitudeMax},\
-    {"SetRecordEffectMagnitudeMin",             RecordsDynamicFunctions::SetRecordEffectMagnitudeMin},\
+    SCRIPT_API_ENTRY("SetRecordEffectId", RecordsDynamicFunctions::SetRecordEffectId),\
+    SCRIPT_API_ENTRY("SetRecordEffectAttribute", RecordsDynamicFunctions::SetRecordEffectAttribute),\
+    SCRIPT_API_ENTRY("SetRecordEffectSkill", RecordsDynamicFunctions::SetRecordEffectSkill),\
+    SCRIPT_API_ENTRY("SetRecordEffectRangeType", RecordsDynamicFunctions::SetRecordEffectRangeType),\
+    SCRIPT_API_ENTRY("SetRecordEffectArea", RecordsDynamicFunctions::SetRecordEffectArea),\
+    SCRIPT_API_ENTRY("SetRecordEffectDuration", RecordsDynamicFunctions::SetRecordEffectDuration),\
+    SCRIPT_API_ENTRY("SetRecordEffectMagnitudeMax", RecordsDynamicFunctions::SetRecordEffectMagnitudeMax),\
+    SCRIPT_API_ENTRY("SetRecordEffectMagnitudeMin", RecordsDynamicFunctions::SetRecordEffectMagnitudeMin),\
     \
-    {"SetRecordBodyPartType",                   RecordsDynamicFunctions::SetRecordBodyPartType},\
-    {"SetRecordBodyPartIdForMale",              RecordsDynamicFunctions::SetRecordBodyPartIdForMale},\
-    {"SetRecordBodyPartIdForFemale",            RecordsDynamicFunctions::SetRecordBodyPartIdForFemale},\
+    SCRIPT_API_ENTRY("SetRecordBodyPartType", RecordsDynamicFunctions::SetRecordBodyPartType),\
+    SCRIPT_API_ENTRY("SetRecordBodyPartIdForMale", RecordsDynamicFunctions::SetRecordBodyPartIdForMale),\
+    SCRIPT_API_ENTRY("SetRecordBodyPartIdForFemale", RecordsDynamicFunctions::SetRecordBodyPartIdForFemale),\
     \
-    {"SetRecordInventoryItemId",                RecordsDynamicFunctions::SetRecordInventoryItemId},\
-    {"SetRecordInventoryItemCount",             RecordsDynamicFunctions::SetRecordInventoryItemCount},\
+    SCRIPT_API_ENTRY("SetRecordInventoryItemId", RecordsDynamicFunctions::SetRecordInventoryItemId),\
+    SCRIPT_API_ENTRY("SetRecordInventoryItemCount", RecordsDynamicFunctions::SetRecordInventoryItemCount),\
     \
-    {"AddRecord",                               RecordsDynamicFunctions::AddRecord},\
-    {"AddRecordEffect",                         RecordsDynamicFunctions::AddRecordEffect},\
-    {"AddRecordBodyPart",                       RecordsDynamicFunctions::AddRecordBodyPart},\
-    {"AddRecordInventoryItem",                  RecordsDynamicFunctions::AddRecordInventoryItem},\
+    SCRIPT_API_ENTRY("AddRecord", RecordsDynamicFunctions::AddRecord),\
+    SCRIPT_API_ENTRY("AddRecordEffect", RecordsDynamicFunctions::AddRecordEffect),\
+    SCRIPT_API_ENTRY("AddRecordBodyPart", RecordsDynamicFunctions::AddRecordBodyPart),\
+    SCRIPT_API_ENTRY("AddRecordInventoryItem", RecordsDynamicFunctions::AddRecordInventoryItem),\
     \
-    {"SendRecordDynamic",                       RecordsDynamicFunctions::SendRecordDynamic}
+    SCRIPT_API_ENTRY("SendRecordDynamic", RecordsDynamicFunctions::SendRecordDynamic)
 
 class RecordsDynamicFunctions
 {

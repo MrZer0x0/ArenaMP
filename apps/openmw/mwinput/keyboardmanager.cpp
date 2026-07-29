@@ -4,9 +4,12 @@
 
 #include <MyGUI_InputManager.h>
 
+#include <components/settings/settings.hpp>
+
 #include "../mwbase/environment.hpp"
 #include "../mwbase/inputmanager.hpp"
 #include "../mwbase/windowmanager.hpp"
+#include "../mwbase/world.hpp"
 
 #include "../mwworld/player.hpp"
 
@@ -16,6 +19,24 @@
 
 namespace MWInput
 {
+    namespace
+    {
+        bool togglePostProcessSetting(const char* setting, const char* enabledMessage, const char* disabledMessage)
+        {
+            MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+            if (windowManager->isGuiMode())
+                return false;
+
+            const bool enabled = !Settings::Manager::getBool(setting, "Shaders");
+            Settings::Manager::setBool(setting, "Shaders", enabled);
+            const Settings::CategorySettingVector changed = Settings::Manager::getPendingChanges();
+            MWBase::Environment::get().getWorld()->processChangedSettings(changed);
+            Settings::Manager::resetPendingChanges();
+            windowManager->messageBox(enabled ? enabledMessage : disabledMessage);
+            return true;
+        }
+    }
+
     KeyboardManager::KeyboardManager(BindingsManager* bindingsManager)
         : mBindingsManager(bindingsManager)
     {
@@ -39,15 +60,32 @@ namespace MWInput
                 && MWBase::Environment::get().getWindowManager()->isConsoleMode())
             SDL_StopTextInput();
 
-        bool consumed = SDL_IsTextInputActive() &&  // Little trick to check if key is printable
+        bool consumed = false;
+        if (!arg.repeat && !mBindingsManager->isDetectingBindingState())
+        {
+            if (arg.keysym.scancode == SDL_SCANCODE_F3)
+                consumed = togglePostProcessSetting("hdr lighting", "#{arenamp=hotkey.hdr_on}", "#{arenamp=hotkey.hdr_off}");
+            else if (arg.keysym.scancode == SDL_SCANCODE_F4)
+                consumed = togglePostProcessSetting("bloom enabled", "#{arenamp=hotkey.bloom_on}", "#{arenamp=hotkey.bloom_off}");
+        }
+
+        consumed = consumed || (SDL_IsTextInputActive() &&  // Little trick to check if key is printable
                         (!(SDLK_SCANCODE_MASK & arg.keysym.sym) &&
                         (std::isprint(arg.keysym.sym) ||
                         // Don't trust isprint for symbols outside the extended ASCII range
-                        (kc == MyGUI::KeyCode::None && arg.keysym.sym > 0xff)));
-        if (kc != MyGUI::KeyCode::None && !mBindingsManager->isDetectingBindingState())
+                        (kc == MyGUI::KeyCode::None && arg.keysym.sym > 0xff))));
+        if (!consumed && kc != MyGUI::KeyCode::None && !mBindingsManager->isDetectingBindingState())
         {
-            if (MWBase::Environment::get().getWindowManager()->injectKeyPress(kc, 0, arg.repeat))
+            MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+
+            // QuickLoot remains a non-modal HUD overlay. While visible it explicitly
+            // consumes W/S for list navigation; ActionManager suppresses forward/backward
+            // movement until the overlay closes.
+            if (!windowManager->isGuiMode() && windowManager->handleQuickLootKeyPress(kc))
                 consumed = true;
+            else if (windowManager->injectKeyPress(kc, 0, arg.repeat))
+                consumed = true;
+
             mBindingsManager->setPlayerControlsEnabled(!consumed);
         }
 

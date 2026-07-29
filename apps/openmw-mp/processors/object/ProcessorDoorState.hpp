@@ -15,8 +15,6 @@ namespace mwmp
 
         void Do(ObjectPacket &packet, Player &player, BaseObjectList &objectList) override
         {
-            packet.Send(true);
-
             Script::Call<Script::CallbackIdentity("OnDoorState")>(player.getId(), objectList.cell.getShortDescription().c_str());
         }
     };

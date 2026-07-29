@@ -19,6 +19,7 @@ namespace MWGui
 
             void setPtr (const MWWorld::Ptr& scroll) override;
             void setInventoryAllowed(bool allowed);
+            void onClose() override;
 
             void onResChange(int, int) override { center(); }
 

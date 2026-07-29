@@ -120,6 +120,14 @@ const char *StatsFunctions::GetBirthsign(unsigned short pid) noexcept
     return player->birthsign.c_str();
 }
 
+const char *StatsFunctions::GetLanguage(unsigned short pid) noexcept
+{
+    Player *player;
+    GET_PLAYER(pid, player, "EN");
+
+    return player->language == "RU" ? "RU" : "EN";
+}
+
 int StatsFunctions::GetLevel(unsigned short pid) noexcept
 {
     Player *player;

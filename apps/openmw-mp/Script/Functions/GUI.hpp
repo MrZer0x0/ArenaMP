@@ -2,28 +2,28 @@
 #define OPENMW_GUIAPI_HPP
 
 #define GUIAPI \
-    {"MessageBox",                 GUIFunctions::_MessageBox},\
-    {"CustomMessageBox",           GUIFunctions::CustomMessageBox},\
-    {"InputDialog",                GUIFunctions::InputDialog},\
-    {"PasswordDialog",             GUIFunctions::PasswordDialog},\
-    {"ListBox",                    GUIFunctions::ListBox},\
+    SCRIPT_API_ENTRY("MessageBox", GUIFunctions::_MessageBox),\
+    SCRIPT_API_ENTRY("CustomMessageBox", GUIFunctions::CustomMessageBox),\
+    SCRIPT_API_ENTRY("InputDialog", GUIFunctions::InputDialog),\
+    SCRIPT_API_ENTRY("PasswordDialog", GUIFunctions::PasswordDialog),\
+    SCRIPT_API_ENTRY("ListBox", GUIFunctions::ListBox),\
     \
-    {"ClearQuickKeyChanges",       GUIFunctions::ClearQuickKeyChanges},\
+    SCRIPT_API_ENTRY("ClearQuickKeyChanges", GUIFunctions::ClearQuickKeyChanges),\
     \
-    {"GetQuickKeyChangesSize",     GUIFunctions::GetQuickKeyChangesSize},\
+    SCRIPT_API_ENTRY("GetQuickKeyChangesSize", GUIFunctions::GetQuickKeyChangesSize),\
     \
-    {"GetQuickKeySlot",            GUIFunctions::GetQuickKeySlot},\
-    {"GetQuickKeyType",            GUIFunctions::GetQuickKeyType},\
-    {"GetQuickKeyItemId",          GUIFunctions::GetQuickKeyItemId},\
+    SCRIPT_API_ENTRY("GetQuickKeySlot", GUIFunctions::GetQuickKeySlot),\
+    SCRIPT_API_ENTRY("GetQuickKeyType", GUIFunctions::GetQuickKeyType),\
+    SCRIPT_API_ENTRY("GetQuickKeyItemId", GUIFunctions::GetQuickKeyItemId),\
     \
-    {"AddQuickKey",                GUIFunctions::AddQuickKey},\
+    SCRIPT_API_ENTRY("AddQuickKey", GUIFunctions::AddQuickKey),\
     \
-    {"SendQuickKeyChanges",        GUIFunctions::SendQuickKeyChanges},\
+    SCRIPT_API_ENTRY("SendQuickKeyChanges", GUIFunctions::SendQuickKeyChanges),\
     \
-    {"SetMapVisibility",           GUIFunctions::SetMapVisibility},\
-    {"SetMapVisibilityAll",        GUIFunctions::SetMapVisibilityAll},\
+    SCRIPT_API_ENTRY("SetMapVisibility", GUIFunctions::SetMapVisibility),\
+    SCRIPT_API_ENTRY("SetMapVisibilityAll", GUIFunctions::SetMapVisibilityAll),\
     \
-    {"InitializeQuickKeyChanges",  GUIFunctions::InitializeQuickKeyChanges}
+    SCRIPT_API_ENTRY("InitializeQuickKeyChanges", GUIFunctions::InitializeQuickKeyChanges)
 
 class GUIFunctions
 {

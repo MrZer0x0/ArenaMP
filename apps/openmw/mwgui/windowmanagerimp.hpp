@@ -100,12 +100,14 @@ namespace MWGui
   class CharacterCreation;
   class DragAndDrop;
   class ToolTips;
+  class QuickLoot;
   class TextInputDialog;
   class InfoBoxDialog;
   class MessageBoxManager;
   class SettingsWindow;
   class AlchemyWindow;
   class QuickKeysMenu;
+  class PlayerAnimationMenu;
   class LoadingScreen;
   class LevelupDialog;
   class WaitDialog;
@@ -123,6 +125,7 @@ namespace MWGui
   class DebugWindow;
   class JailScreen;
   class KeyboardNavigation;
+  class ArenaLocalization;
 
   class WindowManager :
       public MWBase::WindowManager
@@ -275,6 +278,7 @@ namespace MWGui
     bool getWorldMouseOver() override;
 
     float getScalingFactor() override;
+    void setScalingFactor(float factor) override;
 
     bool toggleFogOfWar() override;
     bool toggleFullHelp() override; ///< show extra info in item tooltips (owner, script)
@@ -322,6 +326,11 @@ namespace MWGui
     void updateConsoleObjectPtr(const MWWorld::Ptr& currentPtr, const MWWorld::Ptr& newPtr) override;
 
     void showCrosshair(bool show) override;
+    bool activateQuickLoot() override;
+    bool handlePlayerAnimationMenuMouseWheel(int rel) override;
+    bool handleQuickLootMouseWheel(int rel) override;
+    bool handleQuickLootKeyPress(MyGUI::KeyCode key) override;
+    bool isQuickLootVisible() const override;
     bool getSubtitlesEnabled() override;
 
     /// Turn visibility of HUD on or off
@@ -373,6 +382,7 @@ namespace MWGui
     void windowResized(int x, int y) override;
     void windowClosed() override;
     bool isWindowVisible() override;
+    std::string getArenaLanguage() const override;
 
     void watchActor(const MWWorld::Ptr& ptr) override;
     MWWorld::Ptr getWatchedActor() const override;
@@ -510,6 +520,7 @@ namespace MWGui
     MapWindow *mMap;
     MWRender::LocalMap* mLocalMapRender;
     ToolTips *mToolTips;
+    QuickLoot *mQuickLoot;
     StatsWindow *mStatsWindow;
     MessageBoxManager *mMessageBoxManager;
     Console *mConsole;
@@ -524,6 +535,7 @@ namespace MWGui
     ConfirmationDialog* mConfirmationDialog;
     SpellWindow* mSpellWindow;
     QuickKeysMenu* mQuickKeysMenu;
+    PlayerAnimationMenu* mPlayerAnimationMenu;
     LoadingScreen* mLoadingScreen;
     WaitDialog* mWaitDialog;
     SoulgemDialog* mSoulgemDialog;
@@ -615,6 +627,7 @@ namespace MWGui
     int mShowOwned;
 
     ToUTF8::FromType mEncoding;
+    std::unique_ptr<ArenaLocalization> mArenaLocalization;
 
     std::string mVersionDescription;
 

@@ -20,6 +20,9 @@ namespace SceneUtil
         ShadowManager(osg::ref_ptr<osg::Group> sceneRoot, osg::ref_ptr<osg::Group> rootNode, unsigned int outdoorShadowCastingMask, unsigned int indoorShadowCastingMask, Shader::ShaderManager &shaderManager);
 
         void setupShadowSettings();
+        void setShadowCastingMasks(unsigned int outdoorShadowCastingMask, unsigned int indoorShadowCastingMask);
+
+        void setMaximumShadowMapDistance(float distance);
 
         Shader::ShaderManager::DefineMap getShadowDefines();
 

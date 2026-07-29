@@ -23,6 +23,8 @@ namespace Misc
         std::string correctBookartPath(const std::string &resPath, int width, int height, const VFS::Manager* vfs);
         /// Use "xfoo.nif" instead of "foo.nif" if available
         std::string correctActorModelPath(const std::string &resPath, const VFS::Manager* vfs);
+        /// Use best available distant mesh variant for paged objects: _dist, _far, _lod, optionally with _N suffix.
+        std::string getLODMeshName(const std::string &resPath, const VFS::Manager* vfs, unsigned char lod = 0);
     }
 }
 

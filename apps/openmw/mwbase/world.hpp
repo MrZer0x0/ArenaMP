@@ -595,6 +595,8 @@ namespace MWBase
             virtual void allowVanityMode(bool allow) = 0;
             virtual bool vanityRotateCamera(float * rot) = 0;
             virtual void adjustCameraDistance(float dist) = 0;
+            virtual void setDialogueCameraTarget(const MWWorld::Ptr& target) = 0;
+            virtual void clearDialogueCameraTarget() = 0;
             virtual void applyDeferredPreviewRotationToPlayer(float dt) = 0;
             virtual void disableDeferredPreviewRotation() = 0;
 

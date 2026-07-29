@@ -154,6 +154,10 @@ namespace MWMechanics
 
             const MagicEffects& getMagicEffects() const;
 
+            /// Re-evaluate cached effects after an external policy change such
+            /// as a server friendly-fire mode or alliance update.
+            void refreshEffects();
+
             void visitEffectSources (MWMechanics::EffectSourceVisitor& visitor) const;
 
             /*

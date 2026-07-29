@@ -20,8 +20,8 @@ source_group(game FILES ${GAME} ${GAME_HEADER})
 add_openmw_dir (mwrender
     actors objects renderingmanager animation rotatecontroller sky npcanimation vismask
     creatureanimation effectmanager util renderinginterface pathgrid rendermode weaponanimation screenshotmanager
-    bulletdebugdraw globalmap characterpreview camera viewovershoulder localmap water terrainstorage ripplesimulation
-    renderbin actoranimation landmanager navmesh actorspaths recastmesh fogmanager objectpaging groundcover
+    bulletdebugdraw globalmap characterpreview camera viewovershoulder localmap water terrainstorage ripplesimulation ripples
+    renderbin actoranimation landmanager navmesh actorspaths recastmesh fogmanager objectpaging groundcover occlusionculling
     )
 
 add_openmw_dir (mwinput
@@ -30,9 +30,9 @@ add_openmw_dir (mwinput
     )
 
 add_openmw_dir (mwgui
-    layout textinput widgets race class birth review windowmanagerimp console dialogue
+    layout textinput widgets race class birth review windowmanagerimp arenalocalization console dialogue
     windowbase statswindow messagebox journalwindow charactercreation
-    mapwindow windowpinnablebase tooltips scrollwindow bookwindow resourceskin
+    mapwindow windowpinnablebase tooltips quickloot playeranimationmenu scrollwindow bookwindow resourceskin
     formatting inventorywindow container hud countdialog tradewindow settingswindow
     confirmationdialog alchemywindow referenceinterface spellwindow mainmenu quickkeysmenu
     itemselection spellbuyingwindow loadingscreen levelupdialog waitdialog spellcreationdialog
@@ -67,7 +67,7 @@ add_openmw_dir (mwworld
     actionequip timestamp actionalchemy cellstore actionapply actioneat
     store esmstore recordcmp fallback actionrepair actionsoulgem livecellref actiondoor
     contentloader esmloader actiontrap cellreflist cellref weather projectilemanager
-    cellpreloader datetimemanager
+    cellpreloader datetimemanager interactionanimation
     )
 
 add_openmw_dir (mwphysics
@@ -100,7 +100,7 @@ add_openmw_dir (mwbase
     )
 
 add_openmw_dir (mwmp Main Networking LocalSystem LocalPlayer DedicatedPlayer PlayerList LocalActor DedicatedActor ActorList
-    ObjectList Worldstate Cell CellController GUIController MechanicsHelper RecordHelper ScriptController
+    ObjectList Worldstate Cell CellController GUIController MechanicsHelper RecordHelper ScriptController InteractionAnimationSync
     )
 
 add_openmw_dir (mwmp/GUI GUIChat GUILogin PlayerMarkerCollection GUIDialogList TextInputDialog
@@ -252,6 +252,12 @@ if(APPLE)
     configure_file("${OpenMW_BINARY_DIR}/openmw.cfg" ${BUNDLE_RESOURCES_DIR} COPYONLY)
     configure_file("${OpenMW_BINARY_DIR}/gamecontrollerdb.txt" ${BUNDLE_RESOURCES_DIR} COPYONLY)
 
+    # All macOS executables use ../Resources as their local configuration path.
+    # Ship both TES3MP defaults inside the app so the client, browser and server
+    # can start from a freshly unpacked bundle.
+    configure_file("${OpenMW_BINARY_DIR}/tes3mp-client-default.cfg" ${BUNDLE_RESOURCES_DIR} COPYONLY)
+    configure_file("${OpenMW_BINARY_DIR}/tes3mp-server-default.cfg" ${BUNDLE_RESOURCES_DIR} COPYONLY)
+
     add_custom_command(TARGET tes3mp
         POST_BUILD
         COMMAND cp "${OpenMW_BINARY_DIR}/resources/version" "${BUNDLE_RESOURCES_DIR}/resources")
@@ -261,9 +267,18 @@ if(APPLE)
     target_link_libraries(tes3mp ${COCOA_FRAMEWORK} ${IOKIT_FRAMEWORK})
 
     if (FFmpeg_FOUND)
+        # VideoDecodeAcceleration.framework was deprecated long ago and is not
+        # present in current macOS SDKs. FFmpeg uses VideoToolbox on modern
+        # Apple platforms; link only frameworks that actually exist.
         find_library(COREVIDEO_FRAMEWORK CoreVideo)
-        find_library(VDA_FRAMEWORK VideoDecodeAcceleration)
-        target_link_libraries(tes3mp z ${COREVIDEO_FRAMEWORK} ${VDA_FRAMEWORK})
+        find_library(VIDEOTOOLBOX_FRAMEWORK VideoToolbox)
+        target_link_libraries(tes3mp z)
+        if (COREVIDEO_FRAMEWORK)
+            target_link_libraries(tes3mp ${COREVIDEO_FRAMEWORK})
+        endif()
+        if (VIDEOTOOLBOX_FRAMEWORK)
+            target_link_libraries(tes3mp ${VIDEOTOOLBOX_FRAMEWORK})
+        endif()
     endif()
 endif(APPLE)
 

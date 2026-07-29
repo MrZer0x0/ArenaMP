@@ -36,9 +36,25 @@ WindowsPath::WindowsPath(const std::string& application_name)
     */
     boost::filesystem::path::imbue(boost::locale::generator().generate(""));
 
-    boost::filesystem::path localPath = getLocalPath();
-    if (!SetCurrentDirectoryA(localPath.string().c_str()))
-        Log(Debug::Warning) << "Error " << GetLastError() << " when changing current directory";
+    // Set the working directory with the wide-character Windows API.  The
+    // executable path may contain non-ASCII characters (for example a Cyrillic
+    // Windows user name), while SetCurrentDirectoryA interprets UTF-8 bytes in
+    // the active ANSI code page and fails with ERROR_PATH_NOT_FOUND.
+    std::vector<WCHAR> modulePath(32768, L'\0');
+    const DWORD modulePathLength = GetModuleFileNameW(nullptr, modulePath.data(),
+        static_cast<DWORD>(modulePath.size()));
+    if (modulePathLength > 0 && modulePathLength < modulePath.size())
+    {
+        std::wstring localPath(modulePath.data(), modulePathLength);
+        const std::wstring::size_type separator = localPath.find_last_of(L"\\/");
+        if (separator != std::wstring::npos)
+            localPath.resize(separator);
+
+        if (!localPath.empty() && !SetCurrentDirectoryW(localPath.c_str()))
+            Log(Debug::Warning) << "Error " << GetLastError() << " when changing current directory";
+    }
+    else
+        Log(Debug::Warning) << "Could not determine the executable directory";
 }
 
 boost::filesystem::path WindowsPath::getUserConfigPath() const

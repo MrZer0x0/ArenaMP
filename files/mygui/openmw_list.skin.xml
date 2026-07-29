@@ -135,6 +135,17 @@
 
     </Resource>
 
+    <!-- Compact borderless list used by HUD-like popup menus such as the
+         player animation selector. It intentionally keeps the vanilla list
+         line and scrollbar behaviour while omitting the MW_Box frame. -->
+    <Resource type="ResourceSkin" name="MW_ListBorderless" size="516 516" align="Left Top">
+        <Property key="NeedKey" value="true"/>
+        <Property key="SkinLine" value="MW_ListLine"/>
+
+        <Child type="ScrollBar" skin="MW_VScroll" offset="498 2 14 512" align="Right VStretch" name="VScroll"/>
+        <Child type="Widget" skin="" offset="2 2 494 512" align="Stretch" name="Client"/>
+    </Resource>
+
     <Resource type="ResourceSkin" name="MW_PopupList" size="516 516" align="Left Top">
         <Property key="NeedKey" value="true"/>
         <Property key="SkinLine" value="MW_ListLine"/>

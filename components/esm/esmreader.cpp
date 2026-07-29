@@ -1,5 +1,8 @@
 #include "esmreader.hpp"
 
+#include <algorithm>
+#include <limits>
+#include <new>
 #include <stdexcept>
 
 namespace ESM
@@ -202,8 +205,12 @@ void ESMReader::getSubName()
         return;
     }
 
-    // reading the subrecord data anyway.
+    // Reading the subrecord name requires four bytes.  Check before the
+    // unsigned counter is decremented so a truncated record cannot wrap it.
     const int subNameSize = static_cast<int>(mCtx.subName.data_size());
+    if (mCtx.leftRec < static_cast<uint32_t>(subNameSize))
+        fail("End of record while reading sub-record name");
+
     getExact(mCtx.subName.rw_data(), subNameSize);
     mCtx.leftRec -= static_cast<uint32_t>(subNameSize);
 }
@@ -237,11 +244,24 @@ void ESMReader::getSubHeader()
     if (mCtx.leftRec < 4)
         fail("End of record while reading sub-record header");
 
-    // Get subrecord size
+    // Get subrecord size.
     getT(mCtx.leftSub);
 
-    // Adjust number of record bytes left
-    mCtx.leftRec -= mCtx.leftSub + 4;
+    // A malformed plugin can advertise a subrecord larger than the containing
+    // record.  The old unsigned subtraction wrapped around and later attempted
+    // a multi-gigabyte buffer allocation, which surfaced only as
+    // std::bad_alloc.  Reject the file at the exact damaged subrecord instead.
+    const uint32_t payloadAvailable = mCtx.leftRec - 4;
+    if (mCtx.leftSub > payloadAvailable)
+    {
+        std::stringstream error;
+        error << "Subrecord size " << mCtx.leftSub
+              << " exceeds the remaining record payload " << payloadAvailable;
+        fail(error.str());
+    }
+
+    // Adjust number of record bytes left.
+    mCtx.leftRec = payloadAvailable - mCtx.leftSub;
 }
 
 void ESMReader::getSubHeaderIs(int size)
@@ -255,6 +275,9 @@ NAME ESMReader::getRecName()
 {
     if (!hasMoreRecs())
         fail("No more records, getRecName() failed");
+    if (mCtx.leftFile < mCtx.recName.data_size())
+        fail("End of file while reading record name");
+
     getName(mCtx.recName);
     mCtx.leftFile -= mCtx.recName.data_size();
 
@@ -314,11 +337,34 @@ void ESMReader::getExact(void*x, int size)
 
 std::string ESMReader::getString(int size)
 {
-    size_t s = size;
+    if (size < 0)
+        fail("Negative string size");
+
+    const size_t s = static_cast<size_t>(size);
     if (mBuffer.size() <= s)
-        // Add some extra padding to reduce the chance of having to resize
-        // again later.
-        mBuffer.resize(3*s);
+    {
+        // Keep one byte for the terminator and grow moderately.  Multiplying by
+        // three made corrupted length fields turn into needlessly huge
+        // allocations before the parser could report the damaged record.
+        const size_t maxSize = std::numeric_limits<size_t>::max();
+        if (s == maxSize)
+            fail("String size is too large");
+
+        const size_t padding = std::min<size_t>(s / 2, 1024 * 1024);
+        if (s > maxSize - padding - 1)
+            fail("String buffer size overflow");
+
+        try
+        {
+            mBuffer.resize(s + padding + 1);
+        }
+        catch (const std::bad_alloc&)
+        {
+            std::stringstream error;
+            error << "Not enough memory for a " << s << " byte string";
+            fail(error.str());
+        }
+    }
 
     // And make sure the string is zero terminated
     mBuffer[s] = 0;

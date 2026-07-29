@@ -13,6 +13,7 @@
 
 #include "../mwworld/actiontake.hpp"
 #include "../mwworld/class.hpp"
+#include "../mwworld/interactionanimation.hpp"
 
 #include "formatting.hpp"
 
@@ -84,6 +85,7 @@ namespace MWGui
     void BookWindow::setPtr (const MWWorld::Ptr& book)
     {
         mBook = book;
+        MWWorld::InteractionAnimation::playReading(mBook);
 
         MWWorld::Ptr player = MWMechanics::getPlayer();
         bool showTakeButton = book.getContainerStore() != &player.getClass().getContainerStore(player);
@@ -208,6 +210,11 @@ namespace MWGui
 
             updatePages();
         }
+    }
+
+    void BookWindow::onClose()
+    {
+        MWWorld::InteractionAnimation::stopReading();
     }
 
 }

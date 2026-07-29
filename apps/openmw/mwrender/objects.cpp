@@ -5,6 +5,9 @@
 
 #include <components/sceneutil/positionattitudetransform.hpp>
 #include <components/sceneutil/unrefqueue.hpp>
+#include <components/sceneutil/occlusionculling.hpp>
+#include <components/settings/settings.hpp>
+#include <components/resource/scenemanager.hpp>
 
 #include "../mwworld/ptr.hpp"
 #include "../mwworld/class.hpp"
@@ -13,15 +16,17 @@
 #include "npcanimation.hpp"
 #include "creatureanimation.hpp"
 #include "vismask.hpp"
+#include "occlusionculling.hpp"
 
 
 namespace MWRender
 {
 
-Objects::Objects(Resource::ResourceSystem* resourceSystem, osg::ref_ptr<osg::Group> rootNode, SceneUtil::UnrefQueue* unrefQueue)
+Objects::Objects(Resource::ResourceSystem* resourceSystem, osg::ref_ptr<osg::Group> rootNode, SceneUtil::UnrefQueue* unrefQueue, SceneUtil::OcclusionCuller* occlusionCuller)
     : mRootNode(rootNode)
     , mResourceSystem(resourceSystem)
     , mUnrefQueue(unrefQueue)
+    , mOcclusionCuller(occlusionCuller)
 {
 }
 
@@ -45,6 +50,19 @@ void Objects::insertBegin(const MWWorld::Ptr& ptr)
     {
         cellnode = new osg::Group;
         cellnode->setName("Cell Root");
+        if (mOcclusionCuller.valid())
+        {
+            cellnode->addCullCallback(new CellOcclusionCallback(
+                mOcclusionCuller.get(),
+                Settings::Manager::getFloat("occlusion occluder min radius", "Camera"),
+                Settings::Manager::getFloat("occlusion occluder max radius", "Camera"),
+                Settings::Manager::getFloat("occlusion occluder shrink factor", "Camera"),
+                Settings::Manager::getInt("occlusion occluder mesh resolution", "Camera"),
+                Settings::Manager::getInt("occlusion occluder max mesh resolution", "Camera"),
+                Settings::Manager::getFloat("occlusion occluder inside threshold", "Camera"),
+                Settings::Manager::getFloat("occlusion occluder max distance", "Camera"),
+                Settings::Manager::getBool("occlusion culling statics", "Camera")));
+        }
         mRootNode->addChild(cellnode);
         mCellSceneNodes[ptr.getCell()] = cellnode;
     }
@@ -64,6 +82,9 @@ void Objects::insertBegin(const MWWorld::Ptr& ptr)
     osg::Vec3f scaleVec(scale, scale, scale);
     ptr.getClass().adjustScale(ptr, scaleVec, true);
     insert->setScale(scaleVec);
+
+    if (ptr.getClass().isDoor())
+        insert->setUserValue("skipOcclusion", true);
 
     ptr.getRefData().setBaseNode(insert);
 }
@@ -169,6 +190,18 @@ void Objects::removeCell(const MWWorld::CellStore* store)
         if (mUnrefQueue.get())
             mUnrefQueue->push(cell->second);
         mCellSceneNodes.erase(cell);
+    }
+}
+
+void Objects::recreateShaders()
+{
+    for (const auto& entry : mCellSceneNodes)
+    {
+        osg::ref_ptr<osg::Group> node = entry.second;
+        if (!node)
+            continue;
+        mResourceSystem->getSceneManager()->reinstateRemovedState(node);
+        mResourceSystem->getSceneManager()->recreateShaders(node);
     }
 }
 

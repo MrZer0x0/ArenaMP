@@ -16,10 +16,8 @@
 #ifndef __MEMORY_POOL_H
 #define __MEMORY_POOL_H
 
-#ifndef __APPLE__
-// Use stdlib and not malloc for compatibility
+// malloc/free are used directly by this header.
 #include <stdlib.h>
-#endif
 #include "RakAssert.h"
 #include "Export.h"
 

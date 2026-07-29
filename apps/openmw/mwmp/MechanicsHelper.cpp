@@ -2,6 +2,8 @@
 #include <components/openmw-mp/Utils.hpp>
 
 #include <components/misc/rng.hpp>
+#include <components/misc/stringops.hpp>
+#include <components/settings/settings.hpp>
 
 #include "../mwbase/environment.hpp"
 #include "../mwbase/mechanicsmanager.hpp"
@@ -343,6 +345,34 @@ bool MechanicsHelper::isTeamMember(const MWWorld::Ptr& playerChecked, const MWWo
     return isTeamMember;
 }
 
+bool MechanicsHelper::isFriendlyFireAllowed(const MWWorld::Ptr& attacker, const MWWorld::Ptr& target)
+{
+    if (attacker.isEmpty() || target.isEmpty() || attacker == target)
+        return true;
+
+    const bool attackerIsPlayer = attacker == MWMechanics::getPlayer() || mwmp::PlayerList::isDedicatedPlayer(attacker);
+    const bool targetIsPlayer = target == MWMechanics::getPlayer() || mwmp::PlayerList::isDedicatedPlayer(target);
+
+    // Friendly fire only governs player-versus-player interactions. NPCs,
+    // creatures and followers continue to use their existing combat rules.
+    if (!attackerIsPlayer || !targetIsPlayer)
+        return true;
+
+    std::string mode = Settings::Manager::getString("friendly fire mode", "Game");
+    Misc::StringUtils::lowerCaseInPlace(mode);
+
+    if (mode == "enabled" || mode == "on" || mode == "true" || mode == "1")
+        return true;
+
+    if (mode == "disabled" || mode == "off" || mode == "false" || mode == "0")
+        return false;
+
+    // The default and safest fallback is group mode. Check both directions so
+    // a short-lived one-sided ally-list update cannot expose either player to
+    // friendly damage.
+    return !isTeamMember(attacker, target) && !isTeamMember(target, attacker);
+}
+
 void MechanicsHelper::processAttack(Attack attack, const MWWorld::Ptr& attacker)
 {
     LOG_MESSAGE_SIMPLE(TimedLog::LOG_VERBOSE, "Processing attack from %s of type %i",
@@ -381,6 +411,12 @@ void MechanicsHelper::processAttack(Attack attack, const MWWorld::Ptr& attacker)
             victim = controller->getLocalActor(attack.target.refNum, attack.target.mpNum)->getPtr();
         else if (controller->isDedicatedActor(attack.target.refNum, attack.target.mpNum))
             victim = controller->getDedicatedActor(attack.target.refNum, attack.target.mpNum)->getPtr();
+    }
+
+    if (attack.isHit && victim && !isFriendlyFireAllowed(attacker, victim))
+    {
+        LOG_APPEND(TimedLog::LOG_VERBOSE, "- hit ignored by friendly fire policy");
+        return;
     }
 
     if (attack.isHit)

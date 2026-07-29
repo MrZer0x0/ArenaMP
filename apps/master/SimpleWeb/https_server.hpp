@@ -16,8 +16,11 @@ namespace SimpleWeb
         std::string session_id_context;
         bool set_session_id_context = false;
     public:
+        using Response = typename ServerBase<HTTPS>::Response;
+        using Request = typename ServerBase<HTTPS>::Request;
+
         Server(const std::string &cert_file, const std::string &private_key_file,
-               const std::string &verify_file = std::string()) : ServerBase<HTTPS>::ServerBase(443),
+               const std::string &verify_file = std::string()) : ServerBase<HTTPS>(443),
                                                                  context(boost::asio::ssl::context::tlsv12)
         {
             context.use_certificate_chain_file(cert_file);
@@ -37,14 +40,14 @@ namespace SimpleWeb
             if (set_session_id_context)
             {
                 // Creating session_id_context from address:port but reversed due to small SSL_MAX_SSL_SESSION_ID_LENGTH
-                session_id_context = std::to_string(config.port) + ':';
-                session_id_context.append(config.address.rbegin(), config.address.rend());
+                session_id_context = std::to_string(this->config.port) + ':';
+                session_id_context.append(this->config.address.rbegin(), this->config.address.rend());
                 SSL_CTX_set_session_id_context(context.native_handle(),
                                                reinterpret_cast<const unsigned char *>(session_id_context.data()),
                                                std::min<size_t>(session_id_context.size(),
                                                                 SSL_MAX_SSL_SESSION_ID_LENGTH));
             }
-            ServerBase::start();
+            ServerBase<HTTPS>::start();
         }
 
     protected:
@@ -54,13 +57,13 @@ namespace SimpleWeb
         {
             //Create new socket for this connection
             //Shared_ptr is used to pass temporary objects to the asynchronous functions
-            auto socket = std::make_shared<HTTPS>(*io_service, context);
+            auto socket = std::make_shared<HTTPS>(*this->io_service, context);
 
-            acceptor->async_accept((*socket).lowest_layer(), [this, socket](const boost::system::error_code &ec)
+            this->acceptor->async_accept((*socket).lowest_layer(), [this, socket](const boost::system::error_code &ec)
             {
                 //Immediately start accepting a new connection (if io_service hasn't been stopped)
                 if (ec != boost::asio::error::operation_aborted)
-                    accept();
+                    this->accept();
 
 
                 if (!ec)
@@ -69,20 +72,20 @@ namespace SimpleWeb
                     socket->lowest_layer().set_option(option);
 
                     //Set timeout on the following boost::asio::ssl::stream::async_handshake
-                    auto timer = get_timeout_timer(socket, config.timeout_request);
+                    auto timer = this->get_timeout_timer(socket, this->config.timeout_request);
                     socket->async_handshake(boost::asio::ssl::stream_base::server, [this, socket, timer]
                             (const boost::system::error_code &ec)
                     {
                         if (timer)
                             timer->cancel();
                         if (!ec)
-                            read_request_and_content(socket);
-                        else if (on_error)
-                            on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
+                            this->read_request_and_content(socket);
+                        else if (this->on_error)
+                            this->on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
                     });
                 }
-                else if (on_error)
-                    on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
+                else if (this->on_error)
+                    this->on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
             });
         }
     };

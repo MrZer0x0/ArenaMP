@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <limits>
 //#include <memory.h>
 #include "RakAssert.h"
 #include "RakAlloca.h"
@@ -25,6 +26,7 @@
 using namespace RakNet;
 
 static const double UNSET_TIME_US = -1;
+static constexpr CCTimeType UNSET_CC_TIME = std::numeric_limits<CCTimeType>::max();
 static const double CWND_MIN_THRESHOLD = 2.0;
 static const double UNDEFINED_TRANSFER_RATE = 0.0;
 /// Interval at which to update aspects of the system
@@ -214,7 +216,7 @@ bool CCRakNetUDT::ShouldSendACKs(CCTimeType curTime, CCTimeType estimatedTimeToN
 {
     CCTimeType rto = GetSenderRTOForACK();
 
-    if (rto == (CCTimeType) UNSET_TIME_US)
+    if (rto == UNSET_CC_TIME)
     {
         // Unknown how long until the remote system will retransmit, so better send right away
         return true;
@@ -359,7 +361,7 @@ bool CCRakNetUDT::LessThan(DatagramSequenceNumberType a, DatagramSequenceNumberT
 CCTimeType CCRakNetUDT::GetSenderRTOForACK() const
 {
     if (RTT==UNSET_TIME_US)
-        return (CCTimeType) UNSET_TIME_US;
+        return UNSET_CC_TIME;
     double RTTVar = maxRTT-minRTT;
     return (CCTimeType)(RTT + RTTVarMultiple * RTTVar + SYN);
 }

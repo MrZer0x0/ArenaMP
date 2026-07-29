@@ -9,6 +9,8 @@
 #include "../mwdialogue/keywordsearch.hpp"
 
 #include <MyGUI_Delegate.h>
+#include <MyGUI_KeyCode.h>
+#include <MyGUI_Types.h>
 
 namespace Gui
 {
@@ -18,32 +20,6 @@ namespace Gui
 namespace MWGui
 {
     class ResponseCallback;
-
-    class PersuasionDialog : public WindowModal
-    {
-    public:
-        PersuasionDialog(ResponseCallback* callback);
-
-        void onOpen() override;
-
-        MyGUI::Widget* getDefaultKeyFocus() override;
-
-    private:
-        std::unique_ptr<ResponseCallback> mCallback;
-
-        MyGUI::Button* mCancelButton;
-        MyGUI::Button* mAdmireButton;
-        MyGUI::Button* mIntimidateButton;
-        MyGUI::Button* mTauntButton;
-        MyGUI::Button* mBribe10Button;
-        MyGUI::Button* mBribe100Button;
-        MyGUI::Button* mBribe1000Button;
-        MyGUI::TextBox* mGoldLabel;
-
-        void onCancel (MyGUI::Widget* sender);
-        void onPersuade (MyGUI::Widget* sender);
-    };
-
 
     struct Link
     {
@@ -109,6 +85,9 @@ namespace MWGui
         void onTradeComplete();
 
         bool exit() override;
+        bool handleKeyPress(MyGUI::KeyCode key, bool repeat);
+        void onOpen() override;
+        void onResChange(int width, int height) override;
 
         // Events
         typedef MyGUI::delegates::CMultiDelegate0 EventHandle_Void;
@@ -145,7 +124,7 @@ namespace MWGui
         void addMessageBox(const std::string& text);
 
         void onFrame(float dt) override;
-        void clear() override { resetReference(); }
+        void clear() override { mPersuasionMode = false; stopDynamicDialogueActor(); stopDialogueCamera(); resetReference(); }
 
         void updateTopics();
 
@@ -169,8 +148,14 @@ namespace MWGui
         */
 
         void onSelectListItem(const std::string& topic, int id);
+        void onChoiceListItem(const std::string& choice, int id);
         void onByeClicked(MyGUI::Widget* _sender);
+        void onNavigateUp(MyGUI::Widget* sender);
+        void onNavigateDown(MyGUI::Widget* sender);
+        void onNavigateSelect(MyGUI::Widget* sender);
         void onMouseWheel(MyGUI::Widget* _sender, int _rel);
+        void onHistoryDragStart(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
+        void onHistoryDrag(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
         void onWindowResize(MyGUI::Window* _sender);
         void onTopicActivated(const std::string& topicId);
         void onChoiceActivated(int id);
@@ -184,15 +169,33 @@ namespace MWGui
 
     private:
         void updateDisposition();
+        void updateActorStatus();
         void restock();
         void deleteLater();
+        void updateChoicePane();
+        void openPersuasionPane();
+        void closePersuasionPane();
+        void performPersuasion(int index);
+        void rebuildPersuasionChoices();
+        bool moveSelection(int direction);
+        bool activateSelection();
+        void selectInitialItem();
+        void positionDialogueWindow();
+        void startDialogueCamera();
+        void stopDialogueCamera();
+        void startDynamicDialogueActor();
+        void updateDynamicDialogueActor(float dt);
+        void stopDynamicDialogueActor();
+        void playDynamicDialogueAnimation(bool speaking, bool force = false);
 
         bool mIsCompanion;
         std::list<std::string> mKeywords;
 
         std::vector<DialogueText*> mHistoryContents;
         std::vector<std::pair<std::string, int> > mChoices;
+        std::vector<int> mPersuasionChoices;
         bool mGoodbye;
+        bool mPersuasionMode;
 
         std::vector<Link*> mLinks;
         std::map<std::string, Link*> mTopicLinks;
@@ -202,15 +205,37 @@ namespace MWGui
         KeywordSearchT mKeywordSearch;
 
         BookPage* mHistory;
-        Gui::MWList*   mTopicsList;
+        Gui::MWList* mChoicesList;
+        Gui::MWList* mTopicsList;
         MyGUI::ScrollBar* mScrollBar;
+        MyGUI::TextBox* mNpcName;
+        MyGUI::ProgressBar* mNpcHealthBar;
+        MyGUI::TextBox* mNpcHealthText;
+        MyGUI::TextBox* mChoicesLabel;
+        MyGUI::TextBox* mTopicsLabel;
         MyGUI::ProgressBar* mDispositionBar;
         MyGUI::TextBox*     mDispositionText;
         MyGUI::Button* mGoodbyeButton;
-
-        PersuasionDialog mPersuasionDialog;
+        MyGUI::Button* mUpButton;
+        MyGUI::Button* mDownButton;
+        MyGUI::Button* mSelectButton;
 
         MyGUI::IntSize mCurrentWindowSize;
+        MyGUI::IntPoint mHistoryDragStart;
+        MyGUI::IntPoint mHistoryLastDragPosition;
+        bool mHistoryWasDragged;
+        bool mDialogueCameraActive;
+        bool mDynamicDialogueActorActive;
+        bool mDynamicDialogueActorHasOriginalYaw;
+        float mDynamicDialogueActorOriginalYaw;
+        float mDynamicDialogueActorAnimationTimer;
+        float mDynamicDialogueActorTransitionTimer;
+        float mDynamicDialogueActorSpeechCooldown;
+        bool mDynamicDialogueActorAnimationEnding;
+        bool mDynamicDialogueActorPendingSpeaking;
+        bool mDynamicDialogueActorWasSpeaking;
+        bool mDynamicDialogueActorLeftArmProtected;
+        std::string mDynamicDialogueActorAnimation;
 
         std::unique_ptr<ResponseCallback> mCallback;
         std::unique_ptr<ResponseCallback> mGreetingCallback;

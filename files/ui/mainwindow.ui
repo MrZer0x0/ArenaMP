@@ -6,18 +6,18 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>720</width>
-    <height>565</height>
+    <width>1024</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>720</width>
-    <height>565</height>
+    <width>1024</width>
+    <height>720</height>
    </size>
   </property>
   <property name="windowTitle">
-   <string>OpenMW Launcher</string>
+   <string>ArenaMP Launcher</string>
   </property>
   <property name="windowIcon">
    <iconset resource="../launcher/launcher.qrc">
@@ -41,7 +41,6 @@
       </property>
       <property name="styleSheet">
        <string notr="true">#iconWidget {
-    background-image: url(&quot;:/images/openmw-header.png&quot;);
     background-color: palette(base);
     background-repeat: no-repeat;
     background-attachment: scroll;

@@ -3,6 +3,8 @@
 #include "../mwbase/environment.hpp"
 #include "../mwbase/world.hpp"
 
+#include "interactionanimation.hpp"
+
 namespace MWWorld
 {
     ActionDoor::ActionDoor (const MWWorld::Ptr& object) : Action (false, object)
@@ -11,6 +13,7 @@ namespace MWWorld
 
     void ActionDoor::executeImp (const MWWorld::Ptr& actor)
     {
-        MWBase::Environment::get().getWorld()->activateDoor(getTarget());
+        if (!InteractionAnimation::queueDoor(getTarget(), actor))
+            MWBase::Environment::get().getWorld()->activateDoor(getTarget());
     }
 }

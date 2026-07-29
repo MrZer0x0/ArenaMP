@@ -1,5 +1,7 @@
 #include "groundcover.hpp"
 
+#include <algorithm>
+
 #include <osg/AlphaFunc>
 #include <osg/Geometry>
 #include <osg/VertexAttribDivisor>
@@ -200,6 +202,16 @@ namespace MWRender
          , mSceneManager(sceneManager)
          , mDensity(density)
     {
+    }
+
+    void Groundcover::setDensity(float density)
+    {
+        density = std::clamp(density, 0.f, 1.f);
+        if (mDensity == density)
+            return;
+
+        mDensity = density;
+        clearCache();
     }
 
     void Groundcover::collectInstances(InstanceMap& instances, float size, const osg::Vec2f& center)

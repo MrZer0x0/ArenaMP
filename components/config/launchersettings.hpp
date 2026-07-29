@@ -18,7 +18,8 @@ namespace Config
         void setContentList(const GameSettings& gameSettings);
 
         /// Create a Content List (or replace if it already exists)
-        void setContentList(const QString& contentListName, const QStringList& fileNames);
+        void setContentList(const QString& contentListName, const QStringList& fileNames,
+                            const QStringList& groundcoverFileNames = QStringList(), bool groundcoverEnabled = false);
 
         void removeContentList(const QString &contentListName);
 
@@ -27,6 +28,8 @@ namespace Config
         QString getCurrentContentListName() const;
 
         QStringList getContentListFiles(const QString& contentListName) const;
+        QStringList getGroundcoverFiles(const QString& contentListName) const;
+        bool isGroundcoverEnabled(const QString& contentListName) const;
 
         /// \return new list that is reversed order of input
         static QStringList reverse(const QStringList& toReverse);
@@ -52,6 +55,8 @@ namespace Config
         static const char sContentListsSectionPrefix[];
 
         static const char sContentListSuffix[];
+        static const char sGroundcoverSuffix[];
+        static const char sGroundcoverEnabledSuffix[];
     };
 }
 #endif // LAUNCHERSETTINGS_HPP

@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include <components/misc/constants.hpp>
+#include <components/settings/settings.hpp>
 
 namespace osg
 {
@@ -147,6 +148,8 @@ namespace MWWorld
             void markCellAsUnchanged();
 
             void update (float duration, bool paused);
+
+            void processChangedSettings(const Settings::CategorySettingVector& settings);
 
             void addObjectToScene (const Ptr& ptr);
             ///< Add an object that already exists in the world model to the scene.

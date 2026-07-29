@@ -1,5 +1,7 @@
 #include "installationpage.hpp"
 
+#include <components/config/buildmanifest.hpp>
+
 #include <QDebug>
 #include <QTextCodec>
 #include <QFileInfo>
@@ -126,7 +128,8 @@ void Wizard::InstallationPage::startInstallation()
     mUnshield->setPath(path);
 
     // Set the right codec to use for Morrowind.ini
-    QString language(field(QLatin1String("installation.language")).toString());
+    const QString language = Config::BuildManifest::canonicalLanguage(
+        field(QLatin1String("installation.language")).toString());
 
     if (language == QLatin1String("Polish")) {
         mUnshield->setIniCodec(QTextCodec::codecForName("windows-1250"));

@@ -186,6 +186,17 @@ target_link_libraries(tes3mp-server
     ${Breakpad_Library}
 )
 
+# Install the dedicated server into the root of the portable Windows build.
+# The generic Windows install rules only collect DLL files, so without an
+# explicit target rule tes3mp-server.exe remains in the build directory and
+# never reaches CMAKE_INSTALL_PREFIX.
+if (WIN32)
+    install(TARGETS tes3mp-server
+        RUNTIME DESTINATION "."
+        COMPONENT Runtime
+    )
+endif()
+
 if (UNIX)
     target_link_libraries(tes3mp-server dl)
     # Fix for not visible pthreads functions for linker with glibc 2.15

@@ -250,6 +250,9 @@ namespace mwmp
         Attack attack;
         Cast cast;
         std::string birthsign;
+        // ArenaMP client language reported during PlayerBaseInfo: RU or EN.
+        // Unsupported client languages are normalized to EN on the client.
+        std::string language = "EN";
         std::string chatMessage;
         CharGenState charGenState;
         std::map<std::string, std::string> gameSettings;

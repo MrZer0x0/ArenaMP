@@ -1,5 +1,7 @@
 #include "myguirendermanager.hpp"
 
+#include <algorithm>
+
 #include <MyGUI_Gui.h>
 #include <MyGUI_Timer.h>
 
@@ -361,6 +363,15 @@ RenderManager::RenderManager(osgViewer::Viewer *viewer, osg::Group *sceneroot, R
 {
     if (scalingFactor != 0.f)
         mInvScalingFactor = 1.f / scalingFactor;
+}
+
+void RenderManager::setScalingFactor(float factor)
+{
+    factor = std::max(0.5f, std::min(8.0f, factor));
+    mInvScalingFactor = 1.f / factor;
+    const osg::GraphicsContext::Traits* traits = mViewer->getCamera()->getGraphicsContext()->getTraits();
+    if (traits)
+        setViewSize(traits->width, traits->height);
 }
 
 RenderManager::~RenderManager()

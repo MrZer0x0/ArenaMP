@@ -48,6 +48,13 @@ namespace Gui
 
         void scrollToTop();
 
+        /// Programmatic selection used by keyboard/gamepad friendly interfaces.
+        int getSelectedIndex() const { return mSelectedIndex; }
+        bool setSelectedIndex(int index, bool ensureVisible = true);
+        bool selectNext(int direction, bool wrap = true);
+        bool activateSelected();
+        void clearSelection();
+
         void setPropertyOverride(const std::string& _key, const std::string& _value) override;
 
     protected:
@@ -57,15 +64,29 @@ namespace Gui
 
         void onMouseWheelMoved(MyGUI::Widget* _sender, int _rel);
         void onItemSelected(MyGUI::Widget* _sender);
+        void onDragStart(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
+        void onMouseDrag(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id);
+        void ensureItemVisible(int index);
+        void setVerticalViewOffset(int offset);
+        void updateItemCaption(int index);
 
     private:
         MyGUI::ScrollView* mScrollView;
         MyGUI::Widget* mClient;
         std::string mListItemSkin;
+        std::string mSelectedPrefix;
 
         std::vector<std::string> mItems;
+        std::vector<MyGUI::Button*> mItemWidgets;
 
         int mItemHeight; // height of all items
+        int mItemFontHeight;
+        int mItemMinHeight;
+        int mItemSpacing;
+        int mSelectedIndex;
+        bool mWasDragged;
+        MyGUI::IntPoint mDragStart;
+        MyGUI::IntPoint mLastDragPosition;
     };
 }
 

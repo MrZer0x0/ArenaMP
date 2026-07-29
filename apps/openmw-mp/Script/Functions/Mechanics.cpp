@@ -6,9 +6,95 @@
 #include <apps/openmw-mp/Script/ScriptFunctions.hpp>
 #include <apps/openmw-mp/Networking.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 
 static std::string tempCellDescription;
+
+namespace
+{
+    std::string friendlyFireMode = "group";
+
+    std::string normalizeFriendlyFireMode(const char* mode)
+    {
+        if (mode == nullptr)
+            return {};
+
+        std::string normalized(mode);
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+            [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+
+        if (normalized == "disabled" || normalized == "off" || normalized == "false" || normalized == "0")
+            return "disabled";
+        if (normalized == "enabled" || normalized == "on" || normalized == "true" || normalized == "1")
+            return "enabled";
+        if (normalized == "group" || normalized == "party" || normalized == "allies" || normalized == "ally")
+            return "group";
+
+        return {};
+    }
+
+    bool playerHasAlly(const Player* player, const RakNet::RakNetGUID& allyGuid)
+    {
+        return player != nullptr && std::find(player->alliedPlayers.begin(), player->alliedPlayers.end(), allyGuid)
+            != player->alliedPlayers.end();
+    }
+}
+
+bool MechanicsFunctions::SetFriendlyFireMode(const char* mode) noexcept
+{
+    const std::string normalizedMode = normalizeFriendlyFireMode(mode);
+    if (normalizedMode.empty())
+    {
+        LOG_MESSAGE_SIMPLE(TimedLog::LOG_ERROR,
+            "SetFriendlyFireMode: Invalid mode '%s'; expected disabled, enabled or group",
+            mode != nullptr ? mode : "(null)");
+        return false;
+    }
+
+    friendlyFireMode = normalizedMode;
+    LOG_MESSAGE_SIMPLE(TimedLog::LOG_INFO, "Friendly fire mode set to %s", friendlyFireMode.c_str());
+    return true;
+}
+
+const char* MechanicsFunctions::GetFriendlyFireMode() noexcept
+{
+    return friendlyFireMode.c_str();
+}
+
+bool MechanicsFunctions::ArePlayersAllied(unsigned short firstPid, unsigned short secondPid) noexcept
+{
+    Player* firstPlayer = Players::getPlayer(firstPid);
+    Player* secondPlayer = Players::getPlayer(secondPid);
+
+    if (firstPlayer == nullptr || secondPlayer == nullptr)
+        return false;
+
+    if (firstPlayer == secondPlayer)
+        return true;
+
+    return playerHasAlly(firstPlayer, secondPlayer->guid) || playerHasAlly(secondPlayer, firstPlayer->guid);
+}
+
+bool MechanicsFunctions::IsFriendlyFireAllowed(unsigned short attackerPid, unsigned short targetPid) noexcept
+{
+    Player* attacker = Players::getPlayer(attackerPid);
+    Player* target = Players::getPlayer(targetPid);
+
+    if (attacker == nullptr || target == nullptr)
+        return false;
+
+    if (attacker == target)
+        return true;
+
+    if (friendlyFireMode == "enabled")
+        return true;
+    if (friendlyFireMode == "disabled")
+        return false;
+
+    return !ArePlayersAllied(attackerPid, targetPid);
+}
 
 void MechanicsFunctions::ClearAlliedPlayersForPlayer(unsigned short pid) noexcept
 {
@@ -193,8 +279,13 @@ void MechanicsFunctions::AddAlliedPlayerForPlayer(unsigned short pid, unsigned s
     Player *player;
     GET_PLAYER(pid, player, );
 
-    Player *alliedPlayer;
-    GET_PLAYER(alliedPlayerPid, alliedPlayer, );
+    Player *alliedPlayer = Players::getPlayer(alliedPlayerPid);
+    if (alliedPlayer == nullptr)
+    {
+        LOG_MESSAGE_SIMPLE(TimedLog::LOG_ERROR,
+            "%s: Allied player with pid '%u' not found\n", __PRETTY_FUNCTION__, alliedPlayerPid);
+        return;
+    }
 
     player->alliedPlayers.push_back(alliedPlayer->guid);
 }

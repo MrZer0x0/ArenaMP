@@ -5,8 +5,22 @@
 #include <MyGUI_ProgressBar.h>
 #include <MyGUI_ScrollBar.h>
 #include <MyGUI_Button.h>
+#include <MyGUI_RenderManager.h>
+#include <MyGUI_InputManager.h>
+
+#include <osg/Math>
+
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <typeinfo>
+#include <vector>
 
 #include <components/debug/debuglog.hpp>
+#include <components/esm/loadarmo.hpp>
+#include <components/esm/loadligh.hpp>
+#include <components/esm/loadnpc.hpp>
+#include <components/misc/rng.hpp>
 #include <components/widgets/list.hpp>
 #include <components/translation/translation.hpp>
 
@@ -26,20 +40,65 @@
 #include "../mwbase/environment.hpp"
 #include "../mwbase/windowmanager.hpp"
 #include "../mwbase/mechanicsmanager.hpp"
+#include "../mwbase/soundmanager.hpp"
 #include "../mwbase/world.hpp"
 #include "../mwbase/dialoguemanager.hpp"
 
 #include "../mwworld/class.hpp"
 #include "../mwworld/containerstore.hpp"
+#include "../mwworld/inventorystore.hpp"
 #include "../mwworld/esmstore.hpp"
 
 #include "../mwmechanics/creaturestats.hpp"
 #include "../mwmechanics/actorutil.hpp"
+#include "../mwmechanics/character.hpp"
+
+#include "../mwrender/animation.hpp"
 
 #include "bookpage.hpp"
 #include "textcolours.hpp"
 
 #include "journalbooks.hpp" // to_utf8_span
+
+namespace
+{
+    struct DialogueAnimation
+    {
+        const char* mGroup;
+        int mBlendMask;
+        float mSpeed;
+        std::size_t mLoops;
+    };
+
+    float normalizeAngle(float angle)
+    {
+        while (angle > osg::PI)
+            angle -= osg::PI * 2.f;
+        while (angle < -osg::PI)
+            angle += osg::PI * 2.f;
+        return angle;
+    }
+
+    float randomRange(float minimum, float maximum)
+    {
+        return minimum + (maximum - minimum) * Misc::Rng::rollProbability();
+    }
+
+    bool dynamicActorLeftArmOccupied(const MWWorld::Ptr& ptr)
+    {
+        if (ptr.isEmpty() || !ptr.getClass().hasInventoryStore(ptr))
+            return false;
+
+        MWWorld::InventoryStore& inventory = ptr.getClass().getInventoryStore(ptr);
+        const MWWorld::ContainerStoreIterator carried
+            = inventory.getSlot(MWWorld::InventoryStore::Slot_CarriedLeft);
+        if (carried == inventory.end())
+            return false;
+
+        const std::string& type = carried->getTypeName();
+        return type == typeid(ESM::Armor).name() || type == typeid(ESM::Light).name();
+    }
+}
 
 namespace MWGui
 {
@@ -68,72 +127,6 @@ namespace MWGui
         DialogueWindow* mWindow;
         bool mNeedMargin;
     };
-
-    PersuasionDialog::PersuasionDialog(ResponseCallback* callback)
-        : WindowModal("openmw_persuasion_dialog.layout")
-        , mCallback(callback)
-    {
-        getWidget(mCancelButton, "CancelButton");
-        getWidget(mAdmireButton, "AdmireButton");
-        getWidget(mIntimidateButton, "IntimidateButton");
-        getWidget(mTauntButton, "TauntButton");
-        getWidget(mBribe10Button, "Bribe10Button");
-        getWidget(mBribe100Button, "Bribe100Button");
-        getWidget(mBribe1000Button, "Bribe1000Button");
-        getWidget(mGoldLabel, "GoldLabel");
-
-        mCancelButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onCancel);
-        mAdmireButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-        mIntimidateButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-        mTauntButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-        mBribe10Button->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-        mBribe100Button->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-        mBribe1000Button->eventMouseButtonClick += MyGUI::newDelegate(this, &PersuasionDialog::onPersuade);
-    }
-
-    void PersuasionDialog::onCancel(MyGUI::Widget *sender)
-    {
-        setVisible(false);
-    }
-
-    void PersuasionDialog::onPersuade(MyGUI::Widget *sender)
-    {
-        MWBase::MechanicsManager::PersuasionType type;
-        if (sender == mAdmireButton) type = MWBase::MechanicsManager::PT_Admire;
-        else if (sender == mIntimidateButton) type = MWBase::MechanicsManager::PT_Intimidate;
-        else if (sender == mTauntButton) type = MWBase::MechanicsManager::PT_Taunt;
-        else if (sender == mBribe10Button)
-            type = MWBase::MechanicsManager::PT_Bribe10;
-        else if (sender == mBribe100Button)
-            type = MWBase::MechanicsManager::PT_Bribe100;
-        else /*if (sender == mBribe1000Button)*/
-            type = MWBase::MechanicsManager::PT_Bribe1000;
-
-        MWBase::Environment::get().getDialogueManager()->persuade(type, mCallback.get());
-        mCallback->updateTopics();
-
-        setVisible(false);
-    }
-
-    void PersuasionDialog::onOpen()
-    {
-        center();
-
-        MWWorld::Ptr player = MWMechanics::getPlayer();
-        int playerGold = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
-
-        mBribe10Button->setEnabled (playerGold >= 10);
-        mBribe100Button->setEnabled (playerGold >= 100);
-        mBribe1000Button->setEnabled (playerGold >= 1000);
-
-        mGoldLabel->setCaptionWithReplacing("#{sGold}: " + MyGUI::utility::toString(playerGold));
-        WindowModal::onOpen();
-    }
-
-    MyGUI::Widget* PersuasionDialog::getDefaultKeyFocus()
-    {
-        return mAdmireButton;
-    }
 
     // --------------------------------------------------------------------------------------------------
 
@@ -282,36 +275,64 @@ namespace MWGui
         : WindowBase("openmw_dialogue_window.layout")
         , mIsCompanion(false)
         , mGoodbye(false)
-        , mPersuasionDialog(new ResponseCallback(this))
+        , mPersuasionMode(false)
+        , mHistoryWasDragged(false)
+        , mDialogueCameraActive(false)
+        , mDynamicDialogueActorActive(false)
+        , mDynamicDialogueActorHasOriginalYaw(false)
+        , mDynamicDialogueActorOriginalYaw(0.f)
+        , mDynamicDialogueActorAnimationTimer(0.f)
+        , mDynamicDialogueActorTransitionTimer(0.f)
+        , mDynamicDialogueActorSpeechCooldown(0.f)
+        , mDynamicDialogueActorAnimationEnding(false)
+        , mDynamicDialogueActorPendingSpeaking(false)
+        , mDynamicDialogueActorWasSpeaking(false)
+        , mDynamicDialogueActorLeftArmProtected(false)
         , mCallback(new ResponseCallback(this))
         , mGreetingCallback(new ResponseCallback(this, false))
     {
         // Centre dialog
         center();
 
-        mPersuasionDialog.setVisible(false);
-
-        //History view
+        // History view
         getWidget(mHistory, "History");
+        mHistory->setNeedMouseFocus(true);
+        mHistory->eventMouseWheel += MyGUI::newDelegate(this, &DialogueWindow::onMouseWheel);
+        mHistory->eventMouseButtonPressed += MyGUI::newDelegate(this, &DialogueWindow::onHistoryDragStart);
+        mHistory->eventMouseDrag += MyGUI::newDelegate(this, &DialogueWindow::onHistoryDrag);
 
-        //Topics list
+        // Answers and topics/actions lists
+        getWidget(mChoicesList, "ChoicesList");
+        mChoicesList->eventItemSelected += MyGUI::newDelegate(this, &DialogueWindow::onChoiceListItem);
         getWidget(mTopicsList, "TopicsList");
         mTopicsList->eventItemSelected += MyGUI::newDelegate(this, &DialogueWindow::onSelectListItem);
 
+        getWidget(mNpcName, "NpcName");
+        getWidget(mNpcHealthBar, "NpcHealth");
+        getWidget(mNpcHealthText, "NpcHealthText");
+        getWidget(mChoicesLabel, "ChoicesLabel");
+        getWidget(mTopicsLabel, "TopicsLabel");
+
         getWidget(mGoodbyeButton, "ByeButton");
         mGoodbyeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DialogueWindow::onByeClicked);
+        getWidget(mUpButton, "UpButton");
+        getWidget(mDownButton, "DownButton");
+        getWidget(mSelectButton, "SelectButton");
+        mUpButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DialogueWindow::onNavigateUp);
+        mDownButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DialogueWindow::onNavigateDown);
+        mSelectButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DialogueWindow::onNavigateSelect);
 
         getWidget(mDispositionBar, "Disposition");
         getWidget(mDispositionText,"DispositionText");
         getWidget(mScrollBar, "VScroll");
 
         mScrollBar->eventScrollChangePosition += MyGUI::newDelegate(this, &DialogueWindow::onScrollbarMoved);
-        mHistory->eventMouseWheel += MyGUI::newDelegate(this, &DialogueWindow::onMouseWheel);
 
         BookPage::ClickCallback callback = std::bind (&DialogueWindow::notifyLinkClicked, this, std::placeholders::_1);
         mHistory->adviseLinkClicked(callback);
 
         mMainWidget->castType<MyGUI::Window>()->eventWindowChangeCoord += MyGUI::newDelegate(this, &DialogueWindow::onWindowResize);
+        updateChoicePane();
     }
 
     DialogueWindow::~DialogueWindow()
@@ -332,12 +353,20 @@ namespace MWGui
 
     bool DialogueWindow::exit()
     {
+        if (mPersuasionMode)
+        {
+            closePersuasionPane();
+            return false;
+        }
+
         if ((MWBase::Environment::get().getDialogueManager()->isInChoice()))
         {
             return false;
         }
         else
         {
+            stopDynamicDialogueActor();
+            stopDialogueCamera();
             resetReference();
             MWBase::Environment::get().getDialogueManager()->goodbyeSelected();
             mTopicsList->scrollToTop();
@@ -345,12 +374,697 @@ namespace MWGui
         }
     }
 
+    void DialogueWindow::onOpen()
+    {
+        positionDialogueWindow();
+        startDialogueCamera();
+        startDynamicDialogueActor();
+        selectInitialItem();
+    }
+
+    void DialogueWindow::onResChange(int width, int height)
+    {
+        positionDialogueWindow();
+        mChoicesList->adjustSize();
+        mTopicsList->adjustSize();
+        updateChoicePane();
+        updateHistory();
+    }
+
+    bool DialogueWindow::handleKeyPress(MyGUI::KeyCode key, bool repeat)
+    {
+        switch (key.getValue())
+        {
+            case MyGUI::KeyCode::W:
+            case MyGUI::KeyCode::ArrowUp:
+                return moveSelection(-1);
+            case MyGUI::KeyCode::S:
+            case MyGUI::KeyCode::ArrowDown:
+                return moveSelection(1);
+            case MyGUI::KeyCode::E:
+            case MyGUI::KeyCode::Return:
+            case MyGUI::KeyCode::NumpadEnter:
+                if (repeat)
+                    return true;
+                return activateSelection();
+            default:
+                return false;
+        }
+    }
+
+    void DialogueWindow::positionDialogueWindow()
+    {
+        const MyGUI::IntSize view = MyGUI::RenderManager::getInstance().getViewSize();
+        MyGUI::IntSize size = mMainWidget->getSize();
+        size.width = std::min(680, std::max(620, view.width - 16));
+        size.height = std::min(400, std::max(330, static_cast<int>(view.height * 0.43f)));
+        mMainWidget->setSize(size);
+
+        const int x = std::max(8, (view.width - size.width) / 2);
+        // Keep the panel close to the lower edge so the actor's upper body remains unobstructed.
+        const int y = std::max(4, view.height - size.height - 6);
+        mMainWidget->setPosition(x, y);
+    }
+
+    void DialogueWindow::startDialogueCamera()
+    {
+        if (mPtr.isEmpty() || !Settings::Manager::getBool("cinematic dialogue camera", "GUI"))
+            return;
+        MWBase::Environment::get().getWorld()->setDialogueCameraTarget(mPtr);
+        mDialogueCameraActive = true;
+    }
+
+    void DialogueWindow::stopDialogueCamera()
+    {
+        if (!mDialogueCameraActive)
+            return;
+        MWBase::Environment::get().getWorld()->clearDialogueCameraTarget();
+        mDialogueCameraActive = false;
+    }
+
+    void DialogueWindow::startDynamicDialogueActor()
+    {
+        if (mDynamicDialogueActorActive || mPtr.isEmpty() || !mPtr.getClass().isNpc()
+            || !Settings::Manager::getBool("dynamic dialogue actors", "GUI"))
+            return;
+
+        MWMechanics::CreatureStats& stats = mPtr.getClass().getCreatureStats(mPtr);
+        if (stats.isDead() || stats.getAiSequence().isInCombat())
+            return;
+
+        // A model assigned directly to the NPC record is the Construction Set
+        // mechanism used by Animated Morrowind-style actors (fishers, workers,
+        // etc.). Their authored controller owns both pose and facing, so do not
+        // inject dialogue gestures or rotate them toward the player.
+        const MWWorld::LiveCellRef<ESM::NPC>* npc = mPtr.get<ESM::NPC>();
+        if (npc && !npc->mBase->mModel.empty())
+            return;
+
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr);
+        if (!animation)
+            return;
+
+        mDynamicDialogueActorActive = true;
+        mDynamicDialogueActorHasOriginalYaw = true;
+        mDynamicDialogueActorOriginalYaw = mPtr.getRefData().getPosition().rot[2];
+        mDynamicDialogueActorAnimationTimer = 0.2f;
+        mDynamicDialogueActorTransitionTimer = 0.f;
+        mDynamicDialogueActorSpeechCooldown = 0.f;
+        mDynamicDialogueActorAnimationEnding = false;
+        mDynamicDialogueActorPendingSpeaking = false;
+        mDynamicDialogueActorWasSpeaking = false;
+        mDynamicDialogueActorLeftArmProtected = false;
+        mDynamicDialogueActorAnimation.clear();
+    }
+
+    void DialogueWindow::playDynamicDialogueAnimation(bool speaking, bool force)
+    {
+        if (!mDynamicDialogueActorActive || mPtr.isEmpty()
+            || !Settings::Manager::getBool("dynamic dialogue actor animations", "GUI"))
+            return;
+
+        MWMechanics::CreatureStats& stats = mPtr.getClass().getCreatureStats(mPtr);
+        if (stats.isDead() || stats.getAiSequence().isInCombat()
+            || stats.getDrawState() != MWMechanics::DrawState_Nothing)
+        {
+            mDynamicDialogueActorAnimationTimer = 1.f;
+            return;
+        }
+
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr);
+        if (!animation)
+        {
+            mDynamicDialogueActorAnimationTimer = 1.f;
+            return;
+        }
+
+        if (speaking && !force)
+        {
+            if (mDynamicDialogueActorSpeechCooldown > 0.f)
+                return;
+
+            // A voiced line should not force a new gesture every time. Most lines keep the
+            // current pose, while occasional lines receive a speaking gesture.
+            if (Misc::Rng::rollProbability() > 0.38f)
+            {
+                mDynamicDialogueActorSpeechCooldown = randomRange(5.f, 9.f);
+                return;
+            }
+        }
+
+        static const DialogueAnimation sSpeechAnimations[] = {
+            { "idlespeak_idlef", MWRender::Animation::BlendMask_UpperBody, 0.88f, 0 },
+            { "idlespeak_handhip", MWRender::Animation::BlendMask_UpperBody, 0.88f, 0 },
+            { "idlespeak_ready", MWRender::Animation::BlendMask_UpperBody, 0.88f, 0 },
+            { "idlespeak", MWRender::Animation::BlendMask_UpperBody, 0.88f, 0 },
+        };
+        static const DialogueAnimation sIdleAnimations[] = {
+            { "armsakimbo", MWRender::Animation::BlendMask_UpperBody, 0.66f, 10 },
+            { "armsfolded", MWRender::Animation::BlendMask_UpperBody, 0.66f, 10 },
+            { "armsatback", MWRender::Animation::BlendMask_UpperBody, 0.66f, 10 },
+            { "armsalmapray", MWRender::Animation::BlendMask_UpperBody, 0.72f, 6 },
+            { "handhippose", MWRender::Animation::BlendMask_UpperBody, 0.60f, 10 },
+            { "readypose", MWRender::Animation::BlendMask_UpperBody, 0.66f, 8 },
+            { "posealma3", MWRender::Animation::BlendMask_UpperBody, 0.80f, 4 },
+            { "idle2_copy", MWRender::Animation::BlendMask_UpperBody, 0.88f, 1 },
+            { "idle3_copy", MWRender::Animation::BlendMask_UpperBody, 0.78f, 1 },
+            { "idle6_copy", MWRender::Animation::BlendMask_UpperBody, 0.72f, 1 },
+            { "idle7_copy", MWRender::Animation::BlendMask_UpperBody, 0.92f, 1 },
+            { "idle8_copy", MWRender::Animation::BlendMask_UpperBody, 0.92f, 1 },
+            { "armsgesture", MWRender::Animation::BlendMask_UpperBody, 0.88f, 1 },
+            { "armssunshield", MWRender::Animation::BlendMask_UpperBody, 0.65f, 1 },
+        };
+
+        std::vector<const DialogueAnimation*> available;
+        const DialogueAnimation* begin = speaking ? std::begin(sSpeechAnimations) : std::begin(sIdleAnimations);
+        const DialogueAnimation* end = speaking ? std::end(sSpeechAnimations) : std::end(sIdleAnimations);
+        for (const DialogueAnimation* entry = begin; entry != end; ++entry)
+        {
+            if (animation->hasAnimation(entry->mGroup)
+                && (mDynamicDialogueActorAnimation.empty()
+                    || mDynamicDialogueActorAnimation != entry->mGroup))
+                available.push_back(entry);
+        }
+
+        if (available.empty())
+        {
+            for (const DialogueAnimation* entry = begin; entry != end; ++entry)
+            {
+                if (animation->hasAnimation(entry->mGroup))
+                    available.push_back(entry);
+            }
+        }
+
+        if (available.empty())
+        {
+            mDynamicDialogueActorAnimationTimer = speaking ? 3.f : 12.f;
+            return;
+        }
+
+        const DialogueAnimation& selected
+            = *available[Misc::Rng::rollDice(static_cast<int>(available.size()))];
+
+        if (!mDynamicDialogueActorAnimation.empty()
+            && animation->isPlaying(mDynamicDialogueActorAnimation))
+        {
+            if (mDynamicDialogueActorAnimation == selected.mGroup)
+            {
+                mDynamicDialogueActorAnimationTimer
+                    = speaking ? randomRange(7.f, 11.f) : randomRange(22.f, 40.f);
+                if (speaking)
+                    mDynamicDialogueActorSpeechCooldown = randomRange(10.f, 18.f);
+                return;
+            }
+
+            if (!force)
+            {
+                // OpenMW 0.47 has no transform cross-fade. Let the current KF leave its
+                // loop through the authored stop segment, then start the next pose.
+                animation->setLoopingEnabled(mDynamicDialogueActorAnimation, false);
+                mDynamicDialogueActorAnimationEnding = true;
+                mDynamicDialogueActorPendingSpeaking = speaking;
+                mDynamicDialogueActorTransitionTimer = 2.5f;
+                return;
+            }
+
+            animation->disable(mDynamicDialogueActorAnimation);
+        }
+
+        const bool leftArmProtected = dynamicActorLeftArmOccupied(mPtr);
+        int blendMask = selected.mBlendMask;
+        if (leftArmProtected)
+            blendMask &= ~MWRender::Animation::BlendMask_LeftArm;
+
+        MWRender::Animation::AnimPriority priority(MWMechanics::Priority_Default);
+        if (blendMask & MWRender::Animation::BlendMask_Torso)
+            priority[MWRender::Animation::BoneGroup_Torso] = MWMechanics::Priority_Weapon;
+        if (blendMask & MWRender::Animation::BlendMask_LeftArm)
+            priority[MWRender::Animation::BoneGroup_LeftArm] = MWMechanics::Priority_Weapon;
+        if (blendMask & MWRender::Animation::BlendMask_RightArm)
+            priority[MWRender::Animation::BoneGroup_RightArm] = MWMechanics::Priority_Weapon;
+        if (animation->isPlaying(selected.mGroup))
+            animation->disable(selected.mGroup);
+        animation->play(selected.mGroup, priority, blendMask, true, selected.mSpeed,
+            "start", "stop", 0.f, selected.mLoops, true);
+
+        if (!animation->isPlaying(selected.mGroup))
+        {
+            mDynamicDialogueActorAnimation.clear();
+            mDynamicDialogueActorLeftArmProtected = false;
+            mDynamicDialogueActorAnimationTimer = speaking ? 5.f : 14.f;
+            return;
+        }
+
+        mDynamicDialogueActorAnimation = selected.mGroup;
+        mDynamicDialogueActorLeftArmProtected = leftArmProtected;
+        mDynamicDialogueActorPendingSpeaking = false;
+        mDynamicDialogueActorAnimationEnding = false;
+        mDynamicDialogueActorTransitionTimer = 0.f;
+        mDynamicDialogueActorAnimationTimer
+            = speaking ? randomRange(7.f, 11.f) : randomRange(22.f, 40.f);
+        if (speaking)
+            mDynamicDialogueActorSpeechCooldown = randomRange(10.f, 18.f);
+    }
+
+    void DialogueWindow::updateDynamicDialogueActor(float dt)
+    {
+        if (!mDynamicDialogueActorActive || mPtr.isEmpty() || dt <= 0.f)
+            return;
+
+        MWMechanics::CreatureStats& stats = mPtr.getClass().getCreatureStats(mPtr);
+        if (stats.isDead() || stats.getAiSequence().isInCombat())
+        {
+            if (!mDynamicDialogueActorAnimation.empty())
+            {
+                if (MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr))
+                    animation->disable(mDynamicDialogueActorAnimation);
+                mDynamicDialogueActorAnimation.clear();
+                mDynamicDialogueActorLeftArmProtected = false;
+            }
+            mDynamicDialogueActorAnimationEnding = false;
+            return;
+        }
+
+        if (Settings::Manager::getBool("dynamic dialogue actor turning", "GUI"))
+        {
+            const MWWorld::Ptr player = MWBase::Environment::get().getWorld()->getPlayerPtr();
+            if (!player.isEmpty())
+            {
+                const osg::Vec3f delta = player.getRefData().getPosition().asVec3()
+                    - mPtr.getRefData().getPosition().asVec3();
+                if (delta.x() * delta.x() + delta.y() * delta.y() > 1.f)
+                {
+                    const float targetYaw = std::atan2(delta.x(), delta.y());
+                    const ESM::Position& position = mPtr.getRefData().getPosition();
+                    const float difference = normalizeAngle(targetYaw - position.rot[2]);
+                    const float easedStep = difference * (1.f - std::exp(-4.5f * dt));
+                    const float maxStep = osg::DegreesToRadians(105.f) * dt;
+                    const float step = std::max(-maxStep, std::min(maxStep, easedStep));
+                    if (std::abs(step) > 0.0001f)
+                    {
+                        MWBase::Environment::get().getWorld()->rotateObject(mPtr,
+                            position.rot[0], position.rot[1], normalizeAngle(position.rot[2] + step));
+                    }
+                }
+            }
+        }
+
+        if (!Settings::Manager::getBool("dynamic dialogue actor animations", "GUI"))
+        {
+            if (!mDynamicDialogueActorAnimation.empty())
+            {
+                if (MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr))
+                    animation->disable(mDynamicDialogueActorAnimation);
+                mDynamicDialogueActorAnimation.clear();
+                mDynamicDialogueActorLeftArmProtected = false;
+            }
+            mDynamicDialogueActorAnimationEnding = false;
+            return;
+        }
+
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr);
+        if (!animation)
+            return;
+
+        mDynamicDialogueActorSpeechCooldown
+            = std::max(0.f, mDynamicDialogueActorSpeechCooldown - dt);
+
+        const bool speaking = MWBase::Environment::get().getSoundManager()->sayActive(mPtr);
+        if (!mDynamicDialogueActorAnimation.empty()
+            && dynamicActorLeftArmOccupied(mPtr) != mDynamicDialogueActorLeftArmProtected)
+        {
+            animation->disable(mDynamicDialogueActorAnimation);
+            mDynamicDialogueActorAnimation.clear();
+            mDynamicDialogueActorAnimationEnding = false;
+            mDynamicDialogueActorPendingSpeaking = false;
+            mDynamicDialogueActorTransitionTimer = 0.f;
+            mDynamicDialogueActorLeftArmProtected = false;
+            playDynamicDialogueAnimation(speaking, true);
+            return;
+        }
+
+        if (mDynamicDialogueActorAnimationEnding)
+        {
+            mDynamicDialogueActorTransitionTimer -= dt;
+            if (mDynamicDialogueActorAnimation.empty()
+                || !animation->isPlaying(mDynamicDialogueActorAnimation)
+                || mDynamicDialogueActorTransitionTimer <= 0.f)
+            {
+                if (!mDynamicDialogueActorAnimation.empty()
+                    && animation->isPlaying(mDynamicDialogueActorAnimation))
+                    animation->disable(mDynamicDialogueActorAnimation);
+
+                bool pendingSpeaking = mDynamicDialogueActorPendingSpeaking;
+                if (pendingSpeaking
+                    && !MWBase::Environment::get().getSoundManager()->sayActive(mPtr))
+                    pendingSpeaking = false;
+
+                mDynamicDialogueActorAnimation.clear();
+                mDynamicDialogueActorLeftArmProtected = false;
+                mDynamicDialogueActorAnimationEnding = false;
+                mDynamicDialogueActorTransitionTimer = 0.f;
+                playDynamicDialogueAnimation(pendingSpeaking, true);
+            }
+            return;
+        }
+
+        if (!mDynamicDialogueActorAnimation.empty()
+            && !animation->isPlaying(mDynamicDialogueActorAnimation))
+        {
+            mDynamicDialogueActorAnimation.clear();
+            mDynamicDialogueActorLeftArmProtected = false;
+            mDynamicDialogueActorAnimationTimer = randomRange(6.f, 12.f);
+        }
+
+        if (speaking)
+        {
+            if (!mDynamicDialogueActorWasSpeaking)
+            {
+                mDynamicDialogueActorWasSpeaking = true;
+                playDynamicDialogueAnimation(true);
+            }
+            return;
+        }
+
+        if (mDynamicDialogueActorWasSpeaking)
+        {
+            mDynamicDialogueActorWasSpeaking = false;
+            if (mDynamicDialogueActorAnimation.compare(0, 9, "idlespeak") == 0
+                && animation->isPlaying(mDynamicDialogueActorAnimation))
+            {
+                animation->setLoopingEnabled(mDynamicDialogueActorAnimation, false);
+                mDynamicDialogueActorAnimationEnding = true;
+                mDynamicDialogueActorPendingSpeaking = false;
+                mDynamicDialogueActorTransitionTimer = 2.5f;
+                return;
+            }
+        }
+
+        mDynamicDialogueActorAnimationTimer -= dt;
+        if (mDynamicDialogueActorAnimationTimer <= 0.f)
+            playDynamicDialogueAnimation(false);
+    }
+
+    void DialogueWindow::stopDynamicDialogueActor()
+    {
+        if (!mDynamicDialogueActorActive)
+            return;
+
+        if (!mPtr.isEmpty())
+        {
+            if (!mDynamicDialogueActorAnimation.empty())
+            {
+                if (MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(mPtr))
+                    animation->setLoopingEnabled(mDynamicDialogueActorAnimation, false);
+            }
+            // Keep the final dialogue-facing direction. Restoring the original
+            // yaw here made the NPC snap back or turn away as soon as the window
+            // closed, which made the dialogue movement look as if it never
+            // happened. The normal AI controller can rotate the NPC again after
+            // dialogue when its package requires it.
+        }
+
+        mDynamicDialogueActorActive = false;
+        mDynamicDialogueActorHasOriginalYaw = false;
+        mDynamicDialogueActorAnimationTimer = 0.f;
+        mDynamicDialogueActorTransitionTimer = 0.f;
+        mDynamicDialogueActorSpeechCooldown = 0.f;
+        mDynamicDialogueActorAnimationEnding = false;
+        mDynamicDialogueActorPendingSpeaking = false;
+        mDynamicDialogueActorWasSpeaking = false;
+        mDynamicDialogueActorLeftArmProtected = false;
+        mDynamicDialogueActorAnimation.clear();
+    }
+
+    bool DialogueWindow::moveSelection(int direction)
+    {
+        if (mChoicesList->getVisible() && mChoicesList->getEnabled() && mChoicesList->getItemCount() > 0)
+            return mChoicesList->selectNext(direction, true);
+        if (mTopicsList->getVisible() && mTopicsList->getEnabled() && mTopicsList->getItemCount() > 0)
+            return mTopicsList->selectNext(direction, true);
+        if (mGoodbyeButton->getEnabled())
+        {
+            MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
+            return true;
+        }
+        return false;
+    }
+
+    bool DialogueWindow::activateSelection()
+    {
+        if (mChoicesList->getVisible() && mChoicesList->getEnabled() && mChoicesList->activateSelected())
+            return true;
+        if (mTopicsList->getVisible() && mTopicsList->getEnabled() && mTopicsList->activateSelected())
+            return true;
+        if (mGoodbyeButton->getEnabled())
+        {
+            onByeClicked(mGoodbyeButton);
+            return true;
+        }
+        return false;
+    }
+
+    void DialogueWindow::selectInitialItem()
+    {
+        if (mChoicesList->getVisible() && mChoicesList->getEnabled() && mChoicesList->getItemCount() > 0)
+        {
+            mTopicsList->clearSelection();
+            if (mChoicesList->getSelectedIndex() < 0)
+                mChoicesList->selectNext(1, true);
+            return;
+        }
+        mChoicesList->clearSelection();
+        if (mTopicsList->getEnabled() && mTopicsList->getItemCount() > 0)
+        {
+            if (mTopicsList->getSelectedIndex() < 0)
+                mTopicsList->selectNext(1, true);
+            return;
+        }
+        if (mGoodbyeButton->getEnabled())
+            MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
+    }
+
+    void DialogueWindow::onNavigateUp(MyGUI::Widget* sender)
+    {
+        moveSelection(-1);
+    }
+
+    void DialogueWindow::onNavigateDown(MyGUI::Widget* sender)
+    {
+        moveSelection(1);
+    }
+
+    void DialogueWindow::onNavigateSelect(MyGUI::Widget* sender)
+    {
+        activateSelection();
+    }
+
+    void DialogueWindow::onChoiceListItem(const std::string& choice, int id)
+    {
+        if (mPersuasionMode)
+        {
+            performPersuasion(id);
+            return;
+        }
+
+        if (id < 0 || static_cast<std::size_t>(id) >= mChoices.size())
+            return;
+        onChoiceActivated(mChoices[static_cast<std::size_t>(id)].second);
+    }
+
+    void DialogueWindow::rebuildPersuasionChoices()
+    {
+        mPersuasionChoices.clear();
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Admire);
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Intimidate);
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Taunt);
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Bribe10);
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Bribe100);
+        mPersuasionChoices.push_back(MWBase::MechanicsManager::PT_Bribe1000);
+    }
+
+    void DialogueWindow::openPersuasionPane()
+    {
+        if (mPtr.isEmpty() || !mPtr.getClass().isNpc() || mGoodbye
+            || MWBase::Environment::get().getDialogueManager()->isInChoice())
+            return;
+
+        mPersuasionMode = true;
+        updateHistory();
+        selectInitialItem();
+    }
+
+    void DialogueWindow::closePersuasionPane()
+    {
+        if (!mPersuasionMode)
+            return;
+
+        mPersuasionMode = false;
+        mPersuasionChoices.clear();
+        updateHistory();
+        selectInitialItem();
+    }
+
+    void DialogueWindow::performPersuasion(int index)
+    {
+        if (!mPersuasionMode || index < 0
+            || static_cast<std::size_t>(index) >= mPersuasionChoices.size())
+            return;
+
+        const int type = mPersuasionChoices[static_cast<std::size_t>(index)];
+        int goldCost = 0;
+        if (type == MWBase::MechanicsManager::PT_Bribe10)
+            goldCost = 10;
+        else if (type == MWBase::MechanicsManager::PT_Bribe100)
+            goldCost = 100;
+        else if (type == MWBase::MechanicsManager::PT_Bribe1000)
+            goldCost = 1000;
+
+        if (goldCost > 0)
+        {
+            const MWWorld::Ptr player = MWMechanics::getPlayer();
+            const int playerGold
+                = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
+            if (playerGold < goldCost)
+            {
+                const MWWorld::Store<ESM::GameSetting>& gmst
+                    = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
+                MWBase::Environment::get().getWindowManager()->messageBox(
+                    gmst.find("sGold")->mValue.getString() + ": "
+                    + MyGUI::utility::toString(playerGold) + " / "
+                    + MyGUI::utility::toString(goldCost));
+                return;
+            }
+        }
+
+        MWBase::DialogueManager* dialogueManager = MWBase::Environment::get().getDialogueManager();
+        dialogueManager->persuade(type, mCallback.get());
+        mCallback->updateTopics();
+
+        // A persuasion result script is allowed to start a regular answer choice
+        // or end the conversation. Those states take priority over the embedded
+        // persuasion list. Otherwise keep persuasion open for another attempt.
+        mChoices = dialogueManager->getChoices();
+        mGoodbye = dialogueManager->isGoodbye();
+        if (!mChoices.empty() || mGoodbye)
+            mPersuasionMode = false;
+
+        updateHistory();
+        updateDisposition();
+        selectInitialItem();
+    }
+
+    void DialogueWindow::updateChoicePane()
+    {
+        const int rightX = mTopicsList->getLeft();
+        const int rightWidth = mTopicsList->getWidth();
+        const int contentBottom = std::max(132, mSelectButton->getTop() - 8);
+
+        mChoicesList->clear();
+        if (mPersuasionMode)
+        {
+            rebuildPersuasionChoices();
+
+            const MWWorld::Store<ESM::GameSetting>& gmst
+                = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
+            for (const int type : mPersuasionChoices)
+            {
+                if (type == MWBase::MechanicsManager::PT_Admire)
+                    mChoicesList->addItem(gmst.find("sAdmire")->mValue.getString());
+                else if (type == MWBase::MechanicsManager::PT_Intimidate)
+                    mChoicesList->addItem(gmst.find("sIntimidate")->mValue.getString());
+                else if (type == MWBase::MechanicsManager::PT_Taunt)
+                    mChoicesList->addItem(gmst.find("sTaunt")->mValue.getString());
+                else if (type == MWBase::MechanicsManager::PT_Bribe10)
+                    mChoicesList->addItem(gmst.find("sBribe 10 Gold")->mValue.getString());
+                else if (type == MWBase::MechanicsManager::PT_Bribe100)
+                    mChoicesList->addItem(gmst.find("sBribe 100 Gold")->mValue.getString());
+                else if (type == MWBase::MechanicsManager::PT_Bribe1000)
+                    mChoicesList->addItem(gmst.find("sBribe 1000 Gold")->mValue.getString());
+            }
+
+            const MWWorld::Ptr player = MWMechanics::getPlayer();
+            const int playerGold = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
+            mChoicesLabel->setCaption(gmst.find("sPersuasionMenuTitle")->mValue.getString()
+                + " - " + gmst.find("sGold")->mValue.getString() + ": "
+                + MyGUI::utility::toString(playerGold));
+        }
+        else
+        {
+            for (const auto& choice : mChoices)
+                mChoicesList->addItem(choice.first);
+            mChoicesLabel->setCaption("");
+        }
+        mChoicesList->adjustSize();
+
+        const bool hasChoices = mPersuasionMode || !mChoices.empty();
+        mChoicesLabel->setVisible(hasChoices);
+        mChoicesList->setVisible(hasChoices);
+        mChoicesList->setEnabled(hasChoices);
+
+        // Answers temporarily replace services, persuasion and regular topics.
+        // Keep the topic list contents intact so it can be restored immediately
+        // after the answer has been selected without rebuilding dialogue state.
+        mTopicsLabel->setVisible(!hasChoices);
+        mTopicsList->setVisible(!hasChoices);
+
+        if (hasChoices)
+        {
+            // The disposition bar occupies the top of the right pane. Keep the
+            // embedded persuasion title and options below it; ordinary scripted
+            // answers retain their compact original placement.
+            const int choicesLabelTop = mPersuasionMode ? 68 : 44;
+            const int choicesTop = mPersuasionMode ? 92 : 68;
+            const int choicesHeight = std::max(80, contentBottom - choicesTop);
+            mChoicesLabel->setCoord(rightX, choicesLabelTop, rightWidth, 18);
+            mChoicesList->setCoord(rightX, choicesTop, rightWidth, choicesHeight);
+        }
+        else
+        {
+            mTopicsLabel->setCoord(rightX, 44, rightWidth, 18);
+            mTopicsList->setCoord(rightX, 72, rightWidth, std::max(80, contentBottom - 72));
+            mTopicsList->adjustSize();
+        }
+    }
+
+    void DialogueWindow::onHistoryDragStart(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
+    {
+        if (id != MyGUI::MouseButton::Left)
+            return;
+        mHistoryDragStart = MyGUI::IntPoint(left, top);
+        mHistoryLastDragPosition = mHistoryDragStart;
+        mHistoryWasDragged = false;
+    }
+
+    void DialogueWindow::onHistoryDrag(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
+    {
+        if (id != MyGUI::MouseButton::Left || !mScrollBar->getVisible())
+            return;
+
+        const MyGUI::IntPoint current(left, top);
+        const MyGUI::IntPoint total = current - mHistoryDragStart;
+        if (std::abs(total.left) > 4 || std::abs(total.top) > 4)
+            mHistoryWasDragged = true;
+
+        if (mHistoryWasDragged)
+        {
+            const int delta = current.top - mHistoryLastDragPosition.top;
+            const int maxPosition = std::max(0, static_cast<int>(mScrollBar->getScrollRange()) - 1);
+            const int position = std::max(0, std::min(maxPosition, static_cast<int>(mScrollBar->getScrollPosition()) - delta));
+            mScrollBar->setScrollPosition(position);
+            onScrollbarMoved(mScrollBar, position);
+        }
+        mHistoryLastDragPosition = current;
+    }
+
     void DialogueWindow::onWindowResize(MyGUI::Window* _sender)
     {
         // if the window has only been moved, not resized, we don't need to update
         if (mCurrentWindowSize == _sender->getSize()) return;
 
+        mChoicesList->adjustSize();
         mTopicsList->adjustSize();
+        updateChoicePane();
         updateHistory();
         updateTopicFormat();
         mCurrentWindowSize = _sender->getSize();
@@ -367,6 +1081,12 @@ namespace MWGui
 
     void DialogueWindow::onByeClicked(MyGUI::Widget* _sender)
     {
+        if (mPersuasionMode)
+        {
+            closePersuasionPane();
+            return;
+        }
+
         if (exit())
         {
             MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Dialogue);
@@ -413,7 +1133,7 @@ namespace MWGui
                 MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
         }
         else if (topic == sPersuasion)
-            mPersuasionDialog.setVisible(true);
+            openPersuasionPane();
         else if (topic == sCompanionShare)
             MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Companion, mPtr);
         else if (!dialogueManager->checkServiceRefused(mCallback.get()))
@@ -468,7 +1188,7 @@ namespace MWGui
             onTopicActivated(topic);
         }
         else if (dialogueChoiceType == mwmp::DialogueChoiceType::PERSUASION)
-            mPersuasionDialog.setVisible(true);
+            openPersuasionPane();
         else if (dialogueChoiceType == mwmp::DialogueChoiceType::COMPANION_SHARE)
             MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Companion, mPtr);
         else
@@ -519,6 +1239,7 @@ namespace MWGui
         bool sameActor = (mPtr == actor);
         if (!sameActor)
         {
+            stopDynamicDialogueActor();
             // The history is not reset here
             mKeywords.clear();
             mTopicsList->clear();
@@ -529,12 +1250,15 @@ namespace MWGui
 
         mPtr = actor;
         mGoodbye = false;
+        mPersuasionMode = false;
+        mPersuasionChoices.clear();
         mTopicsList->setEnabled(true);
 
         if (!MWBase::Environment::get().getDialogueManager()->startDialogue(actor, mGreetingCallback.get()))
         {
             // No greetings found. The dialogue window should not be shown.
             // If this is a companion, we must show the companion window directly (used by BM_bear_be_unique).
+            stopDialogueCamera();
             MWBase::Environment::get().getWindowManager()->removeGuiMode(MWGui::GM_Dialogue);
             mPtr = MWWorld::Ptr();
             if (isCompanion(actor))
@@ -544,13 +1268,19 @@ namespace MWGui
 
         MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
 
-        setTitle(mPtr.getClass().getName(mPtr));
+        const std::string actorName = mPtr.getClass().getName(mPtr);
+        setTitle(actorName);
+        updateActorStatus();
 
         updateTopics();
         updateTopicsPane(); // force update for new services
 
         updateDisposition();
         restock();
+        startDialogueCamera();
+        startDynamicDialogueActor();
+        playDynamicDialogueAnimation(false);
+        selectInitialItem();
     }
 
     void DialogueWindow::restock()
@@ -594,6 +1324,10 @@ namespace MWGui
     {
         if (MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue))
             return;
+        stopDynamicDialogueActor();
+        stopDialogueCamera();
+        mPersuasionMode = false;
+        mPersuasionChoices.clear();
         // Reset history
         for (DialogueText* text : mHistoryContents)
             delete text;
@@ -684,6 +1418,7 @@ namespace MWGui
         updateHistory();
         // The topics list has been regenerated so topic formatting needs to be updated
         updateTopicFormat();
+        selectInitialItem();
     }
 
     void DialogueWindow::updateHistory(bool scrollbar)
@@ -704,38 +1439,14 @@ namespace MWGui
         for (DialogueText* text : mHistoryContents)
             text->write(typesetter, &mKeywordSearch, mTopicLinks);
 
-        BookTypesetter::Style* body = typesetter->createStyle("", MyGUI::Colour::White, false);
-
-        typesetter->sectionBreak(9);
-        // choices
-        const TextColours& textColours = MWBase::Environment::get().getWindowManager()->getTextColours();
         mChoices = MWBase::Environment::get().getDialogueManager()->getChoices();
-        for (std::pair<std::string, int>& choice : mChoices)
-        {
-            Choice* link = new Choice(choice.second);
-            link->eventChoiceActivated += MyGUI::newDelegate(this, &DialogueWindow::onChoiceActivated);
-            mLinks.push_back(link);
-
-            typesetter->lineBreak();
-            BookTypesetter::Style* questionStyle = typesetter->createHotStyle(body, textColours.answer, textColours.answerOver,
-                                                                              textColours.answerPressed,
-                                                                              TypesetBook::InteractiveId(link));
-            typesetter->write(questionStyle, to_utf8_span(choice.first.c_str()));
-        }
-
         mGoodbye = MWBase::Environment::get().getDialogueManager()->isGoodbye();
-        if (mGoodbye)
+        if ((!mChoices.empty() || mGoodbye) && mPersuasionMode)
         {
-            Goodbye* link = new Goodbye();
-            link->eventActivated += MyGUI::newDelegate(this, &DialogueWindow::onGoodbyeActivated);
-            mLinks.push_back(link);
-            std::string goodbye = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>().find("sGoodbye")->mValue.getString();
-            BookTypesetter::Style* questionStyle = typesetter->createHotStyle(body, textColours.answer, textColours.answerOver,
-                                                                              textColours.answerPressed,
-                                                                              TypesetBook::InteractiveId(link));
-            typesetter->lineBreak();
-            typesetter->write(questionStyle, to_utf8_span(goodbye.c_str()));
+            mPersuasionMode = false;
+            mPersuasionChoices.clear();
         }
+        updateChoicePane();
 
         TypesetBook::Ptr book = typesetter->complete();
         mHistory->showPage(book, 0);
@@ -757,18 +1468,32 @@ namespace MWGui
             onScrollbarMoved(mScrollBar, 0);
         }
 
-        bool goodbyeEnabled = !MWBase::Environment::get().getDialogueManager()->isInChoice() || mGoodbye;
+        const MWWorld::Store<ESM::GameSetting>& gmst
+            = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
+        mGoodbyeButton->setCaption(mPersuasionMode
+            ? gmst.find("sBack")->mValue.getString()
+            : gmst.find("sGoodbye")->mValue.getString());
+
+        bool goodbyeEnabled = mPersuasionMode
+            || !MWBase::Environment::get().getDialogueManager()->isInChoice() || mGoodbye;
         bool goodbyeWasEnabled = mGoodbyeButton->getEnabled();
         mGoodbyeButton->setEnabled(goodbyeEnabled);
         if (goodbyeEnabled && !goodbyeWasEnabled)
             MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
 
-        bool topicsEnabled = !MWBase::Environment::get().getDialogueManager()->isInChoice() && !mGoodbye;
+        bool topicsEnabled = !mPersuasionMode
+            && !MWBase::Environment::get().getDialogueManager()->isInChoice() && !mGoodbye;
         mTopicsList->setEnabled(topicsEnabled);
+        selectInitialItem();
     }
 
     void DialogueWindow::notifyLinkClicked (TypesetBook::InteractiveId link)
     {
+        if (mHistoryWasDragged)
+        {
+            mHistoryWasDragged = false;
+            return;
+        }
         reinterpret_cast<Link*>(link)->activated();
     }
 
@@ -794,6 +1519,8 @@ namespace MWGui
 
     void DialogueWindow::onGoodbyeActivated()
     {
+        stopDynamicDialogueActor();
+        stopDialogueCamera();
         MWBase::Environment::get().getDialogueManager()->goodbyeSelected();
         MWBase::Environment::get().getWindowManager()->removeGuiMode(MWGui::GM_Dialogue);
         resetReference();
@@ -808,12 +1535,38 @@ namespace MWGui
     {
         mHistoryContents.push_back(new Response(text, title, needMargin));
         updateHistory();
+        playDynamicDialogueAnimation(true);
     }
 
     void DialogueWindow::addMessageBox(const std::string& text)
     {
         mHistoryContents.push_back(new Message(text));
         updateHistory();
+    }
+
+    void DialogueWindow::updateActorStatus()
+    {
+        if (mPtr.isEmpty() || !mPtr.getClass().isActor())
+        {
+            mNpcHealthBar->setVisible(false);
+            mNpcHealthText->setVisible(false);
+            return;
+        }
+
+        MWMechanics::CreatureStats& stats = mPtr.getClass().getCreatureStats(mPtr);
+        const int level = stats.getLevel();
+        const int maximumHealth = std::max(1, static_cast<int>(std::lround(stats.getHealth().getModified())));
+        const int currentHealth = std::max(0, std::min(maximumHealth,
+            static_cast<int>(std::lround(stats.getHealth().getCurrent()))));
+
+        mNpcName->setCaption(mPtr.getClass().getName(mPtr) + " - "
+            + MyGUI::utility::toString(level) + " lvl");
+        mNpcHealthBar->setProgressRange(static_cast<size_t>(maximumHealth));
+        mNpcHealthBar->setProgressPosition(static_cast<size_t>(currentHealth));
+        mNpcHealthText->setCaption(MyGUI::utility::toString(currentHealth) + " / "
+            + MyGUI::utility::toString(maximumHealth));
+        mNpcHealthBar->setVisible(!stats.isDead());
+        mNpcHealthText->setVisible(!stats.isDead());
     }
 
     void DialogueWindow::updateDisposition()
@@ -827,26 +1580,14 @@ namespace MWGui
             mDispositionText->setCaption(MyGUI::utility::toString(MWBase::Environment::get().getMechanicsManager()->getDerivedDisposition(mPtr))+std::string("/100"));
         }
 
-        bool dispositionWasVisible = mDispositionBar->getVisible();
-
-        if (dispositionVisible && !dispositionWasVisible)
-        {
-            mDispositionBar->setVisible(true);
-            int offset = mDispositionBar->getHeight()+5;
-            mTopicsList->setCoord(mTopicsList->getCoord() + MyGUI::IntCoord(0,offset,0,-offset));
-            mTopicsList->adjustSize();
-        }
-        else if (!dispositionVisible && dispositionWasVisible)
-        {
-            mDispositionBar->setVisible(false);
-            int offset = mDispositionBar->getHeight()+5;
-            mTopicsList->setCoord(mTopicsList->getCoord() - MyGUI::IntCoord(0,offset,0,-offset));
-            mTopicsList->adjustSize();
-        }
+        mDispositionBar->setVisible(dispositionVisible);
+        mDispositionText->setVisible(dispositionVisible);
     }
 
     void DialogueWindow::onReferenceUnavailable()
     {
+        stopDynamicDialogueActor();
+        stopDialogueCamera();
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Dialogue);
     }
 
@@ -856,6 +1597,8 @@ namespace MWGui
         if (mPtr.isEmpty())
             return;
 
+        updateDynamicDialogueActor(dt);
+        updateActorStatus();
         updateDisposition();
         deleteLater();
 
@@ -876,12 +1619,18 @@ namespace MWGui
         {
             int flag = MWBase::Environment::get().getDialogueManager()->getTopicFlag(keyword);
             MyGUI::Button* button = mTopicsList->getItemWidget(keyword);
+            if (!button)
+                continue;
 
             if (!specialColour.empty() && flag & MWBase::DialogueManager::TopicType::Specific)
                 button->getSubWidgetText()->setTextColour(MyGUI::Colour::parse(specialColour));
             else if (!oldColour.empty() && flag & MWBase::DialogueManager::TopicType::Exhausted)
                 button->getSubWidgetText()->setTextColour(MyGUI::Colour::parse(oldColour));
         }
+
+        const int selected = mTopicsList->getSelectedIndex();
+        if (selected >= 0)
+            mTopicsList->setSelectedIndex(selected, false);
     }
 
     void DialogueWindow::updateTopics()

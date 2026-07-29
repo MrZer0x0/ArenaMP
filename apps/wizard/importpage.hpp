@@ -15,6 +15,9 @@ namespace Wizard
 
         int nextId() const override;
 
+    protected:
+        void initializePage() override;
+
     private:
         MainWizard *mWizard;
 

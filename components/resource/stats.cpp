@@ -80,7 +80,7 @@ static void setupStatCollection()
 }
 
 StatsHandler::StatsHandler(bool offlineCollect):
-    _key(osgGA::GUIEventAdapter::KEY_F4),
+    _key(0),
     _initialized(false),
     _statsType(false),
     _offlineCollect(offlineCollect),
@@ -110,7 +110,7 @@ Profiler::Profiler(bool offlineCollect):
 
     _characterSize = 18;
 
-    setKeyEventTogglesOnScreenStats(osgGA::GUIEventAdapter::KEY_F3);
+    setKeyEventTogglesOnScreenStats(0);
     setupStatCollection();
 }
 

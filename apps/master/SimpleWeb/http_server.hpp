@@ -22,7 +22,10 @@ namespace SimpleWeb
     class Server<HTTP> : public ServerBase<HTTP>
     {
     public:
-        Server() : ServerBase<HTTP>::ServerBase(80)
+        using Response = typename ServerBase<HTTP>::Response;
+        using Request = typename ServerBase<HTTP>::Request;
+
+        Server() : ServerBase<HTTP>(80)
         {}
 
     protected:
@@ -30,13 +33,13 @@ namespace SimpleWeb
         {
             //Create new socket for this connection
             //Shared_ptr is used to pass temporary objects to the asynchronous functions
-            auto socket = std::make_shared<HTTP>(*io_service);
+            auto socket = std::make_shared<HTTP>(*this->io_service);
 
-            acceptor->async_accept(*socket, [this, socket](const boost::system::error_code &ec)
+            this->acceptor->async_accept(*socket, [this, socket](const boost::system::error_code &ec)
             {
                 //Immediately start accepting a new connection (if io_service hasn't been stopped)
                 if (ec != boost::asio::error::operation_aborted)
-                    accept();
+                    this->accept();
 
                 if (!ec)
                 {
@@ -45,8 +48,8 @@ namespace SimpleWeb
 
                     this->read_request_and_content(socket);
                 }
-                else if (on_error)
-                    on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
+                else if (this->on_error)
+                    this->on_error(std::shared_ptr<Request>(new Request(*socket)), ec);
             });
         }
     };

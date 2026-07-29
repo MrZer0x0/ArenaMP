@@ -1,10 +1,13 @@
 #ifndef OPENMW_LOCALPLAYER_HPP
 #define OPENMW_LOCALPLAYER_HPP
 
+#include <string>
+
 #include <components/openmw-mp/Base/BasePlayer.hpp>
 #include "../mwmechanics/activespells.hpp"
 #include "../mwworld/ptr.hpp"
 #include "../mwworld/timestamp.hpp"
+#include "InteractionAnimationSync.hpp"
 #include <RakNetTypes.h>
 
 namespace mwmp
@@ -31,6 +34,7 @@ namespace mwmp
 
         bool processCharGen();
         bool isLoggedIn();
+        void updateLanguage();
 
         void updateStatsDynamic(bool forceUpdate = false);
         void updateAttributes(bool forceUpdate = false);
@@ -122,10 +126,39 @@ namespace mwmp
         void playAnimation();
         void playSpeech();
 
+        void setPersistentAnimation(const std::string& group, int blendMask, float speed);
+        void clearPersistentAnimation();
+        void updatePersistentAnimation(float dt);
+        void setWalkAnimationStyle(const std::string& group);
+        bool playInteractionAnimation(const std::string& group, int blendMask, float speed,
+            int loops, float duration, int prop, const std::string& propModel = std::string());
+        bool isInteractionAnimationPlaying() const;
+        void cancelInteractionAnimation(bool sendToServer);
+
         MWWorld::Ptr getPlayerPtr();
 
     private:
         Networking *getNetworking();
+        void sendPersistentAnimationState();
+        void sendWalkAnimationState();
+        void updateWalkAnimationSync(float dt);
+        void updateInteractionAnimation(float dt);
+
+        bool mPersistentAnimationActive;
+        bool mPersistentAnimationPlaying;
+        std::string mPersistentAnimationGroup;
+        int mPersistentAnimationBlendMask;
+        int mPersistentAnimationAppliedMask;
+        float mPersistentAnimationSpeed;
+        float mPersistentAnimationSyncTimer;
+
+        std::string mWalkAnimationStyle;
+        float mWalkAnimationSyncTimer;
+
+        bool mInteractionAnimationActive;
+        float mInteractionAnimationTime;
+        float mInteractionAnimationSyncTimer;
+        InteractionAnimationData mInteractionAnimation;
 
     };
 }

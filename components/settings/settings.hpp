@@ -21,6 +21,7 @@ namespace Settings
         static CategorySettingValueMap mUserSettings;
 
         static CategorySettingVector mChangedSettings;
+        static std::string mUserSettingsPath;
         ///< tracks all the settings that were changed since the last apply() call
 
         void clear();
@@ -42,6 +43,10 @@ namespace Settings
 
         void saveUser (const std::string& file);
         ///< save user settings to file
+
+        static void setUserSettingsPath(const std::string& file);
+        static void saveUser();
+        ///< save user settings immediately to the currently configured user file
 
         static void resetPendingChange(const std::string &setting, const std::string &category);
 

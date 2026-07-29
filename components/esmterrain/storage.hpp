@@ -108,6 +108,10 @@ namespace ESMTerrain
 
         int getBlendmapScale(float chunkSize) override;
 
+        /// Hot-switch automatic terrain normal/specular map discovery.
+        /// Clears cached layer descriptors so rebuilt terrain views pick up the new profile.
+        void setAutoUseMaterialMaps(bool normalMaps, bool specularMaps);
+
         float getVertexHeight (const ESM::Land::LandData* data, int x, int y)
         {
             assert(x < ESM::Land::LAND_SIZE);

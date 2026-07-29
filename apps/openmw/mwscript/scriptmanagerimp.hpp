@@ -70,6 +70,9 @@ namespace MWScript
 
             void clear() override;
 
+            void invalidate (const std::string& name) override;
+            ///< Drop cached bytecode and locals after a script record override.
+
             bool run (const std::string& name, Interpreter::Context& interpreterContext) override;
             ///< Run the script with the given name (compile first, if not compiled yet)
 

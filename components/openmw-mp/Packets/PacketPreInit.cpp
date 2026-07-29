@@ -2,7 +2,8 @@
 #include <components/openmw-mp/TimedLog.hpp>
 #include "PacketPreInit.hpp"
 
-mwmp::PacketPreInit::PacketPreInit(RakNet::RakPeerInterface *peer) : BasePacket(peer)
+mwmp::PacketPreInit::PacketPreInit(RakNet::RakPeerInterface *peer)
+    : BasePacket(peer), startLocation("default")
 {
     packetID = ID_GAME_PREINIT;
 }
@@ -63,7 +64,9 @@ void mwmp::PacketPreInit::Packet(RakNet::BitStream *newBitstream, bool send)
         return;
     }
 
-    if (!send && expectedPacketSize == packetSize) // server accepted plugin list via sending "empty" packet
+    // Older servers accepted the plugin list by sending a completely empty payload.
+    // Keep that response compatible and leave startLocation at its default value.
+    if (!send && expectedPacketSize == packetSize)
         return;
 
     if (!send && expectedPacketSize > packetSize)
@@ -86,9 +89,30 @@ void mwmp::PacketPreInit::Packet(RakNet::BitStream *newBitstream, bool send)
             RW(hash, send);
         ++numberOfHashesIt;
     }
+
+    // A client or server built before this extension has no trailing location.
+    // In that case, keep the hardcoded default without rejecting the connection.
+    if (!send && bs->GetNumberOfUnreadBits() == 0)
+        return;
+
+    if (!RW(startLocation, send, false, startLocationMaxLength))
+    {
+        LOG_MESSAGE_SIMPLE(TimedLog::LOG_ERROR, "Failed to read the pre-init start location");
+        packetValid = false;
+    }
 }
 
 void mwmp::PacketPreInit::setChecksums(mwmp::PacketPreInit::PluginContainer *newChecksums)
 {
     checksums = newChecksums;
+}
+
+void mwmp::PacketPreInit::setStartLocation(const std::string& location)
+{
+    startLocation = location.empty() ? "default" : location.substr(0, startLocationMaxLength);
+}
+
+const std::string& mwmp::PacketPreInit::getStartLocation() const
+{
+    return startLocation;
 }

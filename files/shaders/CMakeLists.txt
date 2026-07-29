@@ -7,17 +7,28 @@ set(SDIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(DDIRRELATIVE resources/shaders)
 
 set(SHADER_FILES
+    lib/water/ripples.glsl
+    fullscreen_tri.vert
+    bloom_extract_horizontal.frag
+    bloom_vertical.frag
+    bloom_composite.frag
+    ripples_blobber.frag
+    ripples_simulate.frag
     groundcover_vertex.glsl
     groundcover_fragment.glsl
     water_vertex.glsl
     water_fragment.glsl
     water_nm.png
+    water_waves.glsl
     alpha.glsl
+    HDR.glsl
+    helpsettings.glsl
     objects_vertex.glsl
     objects_fragment.glsl
     terrain_vertex.glsl
     terrain_fragment.glsl
     lighting.glsl
+    lighting_pbr_compat.glsl
     lighting_util.glsl
     parallax.glsl
     s360_fragment.glsl
@@ -31,6 +42,12 @@ set(SHADER_FILES
     nv_default_fragment.glsl
     nv_nolighting_vertex.glsl
     nv_nolighting_fragment.glsl
+    openmw_vertex.glsl
+    openmw_vertex.h.glsl
+    openmw_vertex_multiview.glsl
+    openmw_fragment.glsl
+    openmw_fragment.h.glsl
+    openmw_fragment_multiview.glsl
 )
 
 copy_all_resource_files(${CMAKE_CURRENT_SOURCE_DIR} ${OPENMW_SHADERS_ROOT} ${DDIRRELATIVE} "${SHADER_FILES}")

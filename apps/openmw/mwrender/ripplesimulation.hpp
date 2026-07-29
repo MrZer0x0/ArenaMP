@@ -1,9 +1,14 @@
 #ifndef OPENMW_MWRENDER_RIPPLESIMULATION_H
 #define OPENMW_MWRENDER_RIPPLESIMULATION_H
 
+#include <vector>
+
 #include <osg/ref_ptr>
+#include <osg/Vec3f>
 
 #include "../mwworld/ptr.hpp"
+
+#include "ripples.hpp"
 
 namespace osg
 {
@@ -35,6 +40,7 @@ namespace MWRender
         osg::Vec3f mLastEmitPosition;
         float mScale;
         float mForce;
+        float mIdleTimer;
     };
 
     class RippleSimulation
@@ -60,6 +66,8 @@ namespace MWRender
         /// Remove all active ripples
         void clear();
 
+        void setRipples(Ripples* ripples) { mRipples = ripples; }
+
     private:
         osg::ref_ptr<osg::Group> mParent;
 
@@ -67,6 +75,10 @@ namespace MWRender
         osg::ref_ptr<osg::PositionAttitudeTransform> mParticleNode;
 
         std::vector<Emitter> mEmitters;
+
+        Ripples* mRipples = nullptr;
+
+        int mMaxNumberRipples;
     };
 
 }

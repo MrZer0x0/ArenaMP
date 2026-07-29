@@ -40,6 +40,8 @@ namespace MWGui
         static constexpr int Category_Misc = (1<<3);
         static constexpr int Category_Magic = (1<<4);
         static constexpr int Category_All = 255;
+        // QuickLoot displays every ordinary inventory category.
+        static constexpr int Category_Simple = Category_All;
 
         static constexpr int Filter_OnlyIngredients = (1<<0);
         static constexpr int Filter_OnlyEnchanted = (1<<1);

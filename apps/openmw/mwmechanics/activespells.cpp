@@ -114,26 +114,49 @@ namespace MWMechanics
     {
         mEffects = MagicEffects();
 
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        MWWorld::Ptr target = world->searchPtrViaActorId(mActorId);
+
         for (TIterator iter (begin()); iter!=end(); ++iter)
         {
             const std::vector<ActiveEffect>& effects = iter->second.mEffects;
+            MWWorld::Ptr caster = world->searchPtrViaActorId(iter->second.mCasterActorId);
 
             for (std::vector<ActiveEffect>::const_iterator effectIt = effects.begin(); effectIt != effects.end(); ++effectIt)
             {
-                if (effectIt->mTimeLeft > 0)
-                    mEffects.add(MWMechanics::EffectKey(effectIt->mEffectId, effectIt->mArg), MWMechanics::EffectParam(effectIt->mMagnitude));
+                if (effectIt->mTimeLeft <= 0)
+                    continue;
+
+                const ESM::MagicEffect* magicEffect = world->getStore().get<ESM::MagicEffect>().find(effectIt->mEffectId);
+                const bool isHarmful = (magicEffect->mData.mFlags & ESM::MagicEffect::Harmful) != 0;
+
+                // Active effects retain their caster, so a live server mode or
+                // group change can suspend an already-running hostile effect.
+                // The timer keeps advancing and the effect may resume if the
+                // policy permits it again before expiration.
+                if (isHarmful && !MechanicsHelper::isFriendlyFireAllowed(caster, target))
+                    continue;
+
+                mEffects.add(MWMechanics::EffectKey(effectIt->mEffectId, effectIt->mArg),
+                    MWMechanics::EffectParam(effectIt->mMagnitude));
             }
         }
     }
 
     ActiveSpells::ActiveSpells()
         : mSpellsChanged (false)
+        , mActorId(-1)
     {}
 
     const MagicEffects& ActiveSpells::getMagicEffects() const
     {
         update(0.f);
         return mEffects;
+    }
+
+    void ActiveSpells::refreshEffects()
+    {
+        mSpellsChanged = true;
     }
 
     ActiveSpells::TIterator ActiveSpells::begin() const

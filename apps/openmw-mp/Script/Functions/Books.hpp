@@ -2,17 +2,17 @@
 #define OPENMW_BOOKAPI_HPP
 
 #define BOOKAPI \
-    {"ClearBookChanges",       BookFunctions::ClearBookChanges},\
+    SCRIPT_API_ENTRY("ClearBookChanges", BookFunctions::ClearBookChanges),\
     \
-    {"GetBookChangesSize",     BookFunctions::GetBookChangesSize},\
+    SCRIPT_API_ENTRY("GetBookChangesSize", BookFunctions::GetBookChangesSize),\
     \
-    {"AddBook",                BookFunctions::AddBook},\
+    SCRIPT_API_ENTRY("AddBook", BookFunctions::AddBook),\
     \
-    {"GetBookId",              BookFunctions::GetBookId},\
+    SCRIPT_API_ENTRY("GetBookId", BookFunctions::GetBookId),\
     \
-    {"SendBookChanges",        BookFunctions::SendBookChanges},\
+    SCRIPT_API_ENTRY("SendBookChanges", BookFunctions::SendBookChanges),\
     \
-    {"InitializeBookChanges",  BookFunctions::InitializeBookChanges}
+    SCRIPT_API_ENTRY("InitializeBookChanges", BookFunctions::InitializeBookChanges)
 
 class BookFunctions
 {

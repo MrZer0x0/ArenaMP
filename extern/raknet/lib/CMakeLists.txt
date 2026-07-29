@@ -30,7 +30,7 @@ if (CRABNET_ENABLE_STATIC)
     install(TARGETS RakNetLibStatic DESTINATION lib)
 endif ()
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+install(DIRECTORY ${CrabNet_SOURCE_DIR}/include/
         DESTINATION include
         FILES_MATCHING PATTERN "*.h*"
         )

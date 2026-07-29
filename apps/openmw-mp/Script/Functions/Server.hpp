@@ -4,46 +4,47 @@
 #include "../Types.hpp"
 
 #define SERVERAPI \
-    {"LogMessage",                      ServerFunctions::LogMessage},\
-    {"LogAppend",                       ServerFunctions::LogAppend},\
+    SCRIPT_API_ENTRY("LogMessage", ServerFunctions::LogMessage),\
+    SCRIPT_API_ENTRY("LogAppend", ServerFunctions::LogAppend),\
     \
-    {"StopServer",                      ServerFunctions::StopServer},\
+    SCRIPT_API_ENTRY("StopServer", ServerFunctions::StopServer),\
     \
-    {"Kick",                            ServerFunctions::Kick},\
-    {"BanAddress",                      ServerFunctions::BanAddress},\
-    {"UnbanAddress",                    ServerFunctions::UnbanAddress},\
+    SCRIPT_API_ENTRY("Kick", ServerFunctions::Kick),\
+    SCRIPT_API_ENTRY("BanAddress", ServerFunctions::BanAddress),\
+    SCRIPT_API_ENTRY("UnbanAddress", ServerFunctions::UnbanAddress),\
     \
-    {"DoesFilePathExist",               ServerFunctions::DoesFilePathExist},\
-    {"GetCaseInsensitiveFilename",      ServerFunctions::GetCaseInsensitiveFilename},\
-    {"GetDataPath",                     ServerFunctions::GetDataPath},\
-    {"GetMillisecondsSinceServerStart", ServerFunctions::GetMillisecondsSinceServerStart},\
-    {"GetOperatingSystemType",          ServerFunctions::GetOperatingSystemType},\
-    {"GetArchitectureType",             ServerFunctions::GetArchitectureType},\
-    {"GetServerVersion",                ServerFunctions::GetServerVersion},\
-    {"GetProtocolVersion",              ServerFunctions::GetProtocolVersion},\
-    {"GetAvgPing",                      ServerFunctions::GetAvgPing},\
-    {"GetIP",                           ServerFunctions::GetIP},\
-    {"GetMaxPlayers",                   ServerFunctions::GetMaxPlayers},\
-    {"GetPort",                         ServerFunctions::GetPort},\
-    {"HasPassword",                     ServerFunctions::HasPassword},\
-    {"GetDataFileEnforcementState",     ServerFunctions::GetDataFileEnforcementState},\
-    {"GetScriptErrorIgnoringState",     ServerFunctions::GetScriptErrorIgnoringState},\
+    SCRIPT_API_ENTRY("DoesFilePathExist", ServerFunctions::DoesFilePathExist),\
+    SCRIPT_API_ENTRY("GetCaseInsensitiveFilename", ServerFunctions::GetCaseInsensitiveFilename),\
+    SCRIPT_API_ENTRY("GetDataPath", ServerFunctions::GetDataPath),\
+    SCRIPT_API_ENTRY("GetMillisecondsSinceServerStart", ServerFunctions::GetMillisecondsSinceServerStart),\
+    SCRIPT_API_ENTRY("GetOperatingSystemType", ServerFunctions::GetOperatingSystemType),\
+    SCRIPT_API_ENTRY("GetArchitectureType", ServerFunctions::GetArchitectureType),\
+    SCRIPT_API_ENTRY("GetServerVersion", ServerFunctions::GetServerVersion),\
+    SCRIPT_API_ENTRY("GetProtocolVersion", ServerFunctions::GetProtocolVersion),\
+    SCRIPT_API_ENTRY("GetAvgPing", ServerFunctions::GetAvgPing),\
+    SCRIPT_API_ENTRY("GetIP", ServerFunctions::GetIP),\
+    SCRIPT_API_ENTRY("GetMaxPlayers", ServerFunctions::GetMaxPlayers),\
+    SCRIPT_API_ENTRY("GetPort", ServerFunctions::GetPort),\
+    SCRIPT_API_ENTRY("HasPassword", ServerFunctions::HasPassword),\
+    SCRIPT_API_ENTRY("GetDataFileEnforcementState", ServerFunctions::GetDataFileEnforcementState),\
+    SCRIPT_API_ENTRY("GetScriptErrorIgnoringState", ServerFunctions::GetScriptErrorIgnoringState),\
     \
-    {"SetGameMode",                     ServerFunctions::SetGameMode},\
-    {"SetHostname",                     ServerFunctions::SetHostname},\
-    {"SetServerPassword",               ServerFunctions::SetServerPassword},\
-    {"SetDataFileEnforcementState",     ServerFunctions::SetDataFileEnforcementState},\
-    {"SetScriptErrorIgnoringState",     ServerFunctions::SetScriptErrorIgnoringState},\
-    {"SetRuleString",                   ServerFunctions::SetRuleString},\
-    {"SetRuleValue",                    ServerFunctions::SetRuleValue},\
+    SCRIPT_API_ENTRY("SetGameMode", ServerFunctions::SetGameMode),\
+    SCRIPT_API_ENTRY("SetHostname", ServerFunctions::SetHostname),\
+    SCRIPT_API_ENTRY("SetServerPassword", ServerFunctions::SetServerPassword),\
+    SCRIPT_API_ENTRY("SetStartLocation", ServerFunctions::SetStartLocation),\
+    SCRIPT_API_ENTRY("SetDataFileEnforcementState", ServerFunctions::SetDataFileEnforcementState),\
+    SCRIPT_API_ENTRY("SetScriptErrorIgnoringState", ServerFunctions::SetScriptErrorIgnoringState),\
+    SCRIPT_API_ENTRY("SetRuleString", ServerFunctions::SetRuleString),\
+    SCRIPT_API_ENTRY("SetRuleValue", ServerFunctions::SetRuleValue),\
     \
-    {"AddDataFileRequirement",          ServerFunctions::AddDataFileRequirement},\
+    SCRIPT_API_ENTRY("AddDataFileRequirement", ServerFunctions::AddDataFileRequirement),\
     \
-    {"DoesFileExist",                   ServerFunctions::DoesFileExist},\
-    {"GetModDir",                       ServerFunctions::GetModDir},\
-    {"GetPluginEnforcementState",       ServerFunctions::GetPluginEnforcementState},\
-    {"SetPluginEnforcementState",       ServerFunctions::SetPluginEnforcementState},\
-    {"AddPluginHash",                   ServerFunctions::AddPluginHash}
+    SCRIPT_API_ENTRY("DoesFileExist", ServerFunctions::DoesFileExist),\
+    SCRIPT_API_ENTRY("GetModDir", ServerFunctions::GetModDir),\
+    SCRIPT_API_ENTRY("GetPluginEnforcementState", ServerFunctions::GetPluginEnforcementState),\
+    SCRIPT_API_ENTRY("SetPluginEnforcementState", ServerFunctions::SetPluginEnforcementState),\
+    SCRIPT_API_ENTRY("AddPluginHash", ServerFunctions::AddPluginHash)
 
 class ServerFunctions
 {
@@ -250,6 +251,16 @@ public:
     * \return void
     */
     static void SetServerPassword(const char *password) noexcept;
+
+    /**
+    * \brief Set the location used while the client is showing the login or registration interface.
+    *
+    * Use "default" to keep the client hardcoded exterior cell 0, -7.
+    *
+    * \param location An exterior cell coordinate pair, named exterior, interior, or "default".
+    * \return void
+    */
+    static void SetStartLocation(const char *location) noexcept;
 
     /**
     * \brief Set the data file enforcement state of the server.

@@ -32,6 +32,10 @@ namespace Terrain
 
         void setViewDistance(float distance) override { mViewDistance = distance; }
 
+        /// Hot-apply terrain LOD/composite-map settings and invalidate cached chunks.
+        void setLodSettings(int compMapResolution, float compMapLevel, float lodFactor,
+            int vertexLodMod, float maxCompGeometrySize);
+
         void cacheCell(View *view, int x, int y) override {}
         /// @note Not thread safe.
         void loadCell(int x, int y) override;

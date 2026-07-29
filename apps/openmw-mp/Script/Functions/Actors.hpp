@@ -2,132 +2,132 @@
 #define OPENMW_ACTORAPI_HPP
 
 #define ACTORAPI \
-    {"ReadReceivedActorList",                  ActorFunctions::ReadReceivedActorList},\
-    {"ReadCellActorList",                      ActorFunctions::ReadCellActorList},\
+    SCRIPT_API_ENTRY("ReadReceivedActorList", ActorFunctions::ReadReceivedActorList),\
+    SCRIPT_API_ENTRY("ReadCellActorList", ActorFunctions::ReadCellActorList),\
     \
-    {"ClearActorList",                         ActorFunctions::ClearActorList},\
-    {"SetActorListPid",                        ActorFunctions::SetActorListPid},\
+    SCRIPT_API_ENTRY("ClearActorList", ActorFunctions::ClearActorList),\
+    SCRIPT_API_ENTRY("SetActorListPid", ActorFunctions::SetActorListPid),\
     \
-    {"CopyReceivedActorListToStore",           ActorFunctions::CopyReceivedActorListToStore},\
+    SCRIPT_API_ENTRY("CopyReceivedActorListToStore", ActorFunctions::CopyReceivedActorListToStore),\
     \
-    {"GetActorListSize",                       ActorFunctions::GetActorListSize},\
-    {"GetActorListAction",                     ActorFunctions::GetActorListAction},\
+    SCRIPT_API_ENTRY("GetActorListSize", ActorFunctions::GetActorListSize),\
+    SCRIPT_API_ENTRY("GetActorListAction", ActorFunctions::GetActorListAction),\
     \
-    {"GetActorCell",                           ActorFunctions::GetActorCell},\
-    {"GetActorRefId",                          ActorFunctions::GetActorRefId},\
-    {"GetActorRefNum",                         ActorFunctions::GetActorRefNum},\
-    {"GetActorMpNum",                          ActorFunctions::GetActorMpNum},\
+    SCRIPT_API_ENTRY("GetActorCell", ActorFunctions::GetActorCell),\
+    SCRIPT_API_ENTRY("GetActorRefId", ActorFunctions::GetActorRefId),\
+    SCRIPT_API_ENTRY("GetActorRefNum", ActorFunctions::GetActorRefNum),\
+    SCRIPT_API_ENTRY("GetActorMpNum", ActorFunctions::GetActorMpNum),\
     \
-    {"GetActorPosX",                           ActorFunctions::GetActorPosX},\
-    {"GetActorPosY",                           ActorFunctions::GetActorPosY},\
-    {"GetActorPosZ",                           ActorFunctions::GetActorPosZ},\
-    {"GetActorRotX",                           ActorFunctions::GetActorRotX},\
-    {"GetActorRotY",                           ActorFunctions::GetActorRotY},\
-    {"GetActorRotZ",                           ActorFunctions::GetActorRotZ},\
+    SCRIPT_API_ENTRY("GetActorPosX", ActorFunctions::GetActorPosX),\
+    SCRIPT_API_ENTRY("GetActorPosY", ActorFunctions::GetActorPosY),\
+    SCRIPT_API_ENTRY("GetActorPosZ", ActorFunctions::GetActorPosZ),\
+    SCRIPT_API_ENTRY("GetActorRotX", ActorFunctions::GetActorRotX),\
+    SCRIPT_API_ENTRY("GetActorRotY", ActorFunctions::GetActorRotY),\
+    SCRIPT_API_ENTRY("GetActorRotZ", ActorFunctions::GetActorRotZ),\
     \
-    {"GetActorHealthBase",                     ActorFunctions::GetActorHealthBase},\
-    {"GetActorHealthCurrent",                  ActorFunctions::GetActorHealthCurrent},\
-    {"GetActorHealthModified",                 ActorFunctions::GetActorHealthModified},\
-    {"GetActorMagickaBase",                    ActorFunctions::GetActorMagickaBase},\
-    {"GetActorMagickaCurrent",                 ActorFunctions::GetActorMagickaCurrent},\
-    {"GetActorMagickaModified",                ActorFunctions::GetActorMagickaModified},\
-    {"GetActorFatigueBase",                    ActorFunctions::GetActorFatigueBase},\
-    {"GetActorFatigueCurrent",                 ActorFunctions::GetActorFatigueCurrent},\
-    {"GetActorFatigueModified",                ActorFunctions::GetActorFatigueModified},\
+    SCRIPT_API_ENTRY("GetActorHealthBase", ActorFunctions::GetActorHealthBase),\
+    SCRIPT_API_ENTRY("GetActorHealthCurrent", ActorFunctions::GetActorHealthCurrent),\
+    SCRIPT_API_ENTRY("GetActorHealthModified", ActorFunctions::GetActorHealthModified),\
+    SCRIPT_API_ENTRY("GetActorMagickaBase", ActorFunctions::GetActorMagickaBase),\
+    SCRIPT_API_ENTRY("GetActorMagickaCurrent", ActorFunctions::GetActorMagickaCurrent),\
+    SCRIPT_API_ENTRY("GetActorMagickaModified", ActorFunctions::GetActorMagickaModified),\
+    SCRIPT_API_ENTRY("GetActorFatigueBase", ActorFunctions::GetActorFatigueBase),\
+    SCRIPT_API_ENTRY("GetActorFatigueCurrent", ActorFunctions::GetActorFatigueCurrent),\
+    SCRIPT_API_ENTRY("GetActorFatigueModified", ActorFunctions::GetActorFatigueModified),\
     \
-    {"GetActorEquipmentItemRefId",             ActorFunctions::GetActorEquipmentItemRefId},\
-    {"GetActorEquipmentItemCount",             ActorFunctions::GetActorEquipmentItemCount},\
-    {"GetActorEquipmentItemCharge",            ActorFunctions::GetActorEquipmentItemCharge},\
-    {"GetActorEquipmentItemEnchantmentCharge", ActorFunctions::GetActorEquipmentItemEnchantmentCharge},\
+    SCRIPT_API_ENTRY("GetActorEquipmentItemRefId", ActorFunctions::GetActorEquipmentItemRefId),\
+    SCRIPT_API_ENTRY("GetActorEquipmentItemCount", ActorFunctions::GetActorEquipmentItemCount),\
+    SCRIPT_API_ENTRY("GetActorEquipmentItemCharge", ActorFunctions::GetActorEquipmentItemCharge),\
+    SCRIPT_API_ENTRY("GetActorEquipmentItemEnchantmentCharge", ActorFunctions::GetActorEquipmentItemEnchantmentCharge),\
     \
-    {"DoesActorHavePlayerKiller",              ActorFunctions::DoesActorHavePlayerKiller},\
-    {"GetActorKillerPid",                      ActorFunctions::GetActorKillerPid},\
-    {"GetActorKillerRefId",                    ActorFunctions::GetActorKillerRefId},\
-    {"GetActorKillerRefNum",                   ActorFunctions::GetActorKillerRefNum},\
-    {"GetActorKillerMpNum",                    ActorFunctions::GetActorKillerMpNum},\
-    {"GetActorKillerName",                     ActorFunctions::GetActorKillerName},\
-    {"GetActorDeathState",                     ActorFunctions::GetActorDeathState},\
+    SCRIPT_API_ENTRY("DoesActorHavePlayerKiller", ActorFunctions::DoesActorHavePlayerKiller),\
+    SCRIPT_API_ENTRY("GetActorKillerPid", ActorFunctions::GetActorKillerPid),\
+    SCRIPT_API_ENTRY("GetActorKillerRefId", ActorFunctions::GetActorKillerRefId),\
+    SCRIPT_API_ENTRY("GetActorKillerRefNum", ActorFunctions::GetActorKillerRefNum),\
+    SCRIPT_API_ENTRY("GetActorKillerMpNum", ActorFunctions::GetActorKillerMpNum),\
+    SCRIPT_API_ENTRY("GetActorKillerName", ActorFunctions::GetActorKillerName),\
+    SCRIPT_API_ENTRY("GetActorDeathState", ActorFunctions::GetActorDeathState),\
     \
-    {"GetActorSpellsActiveChangesSize",        ActorFunctions::GetActorSpellsActiveChangesSize},\
-    {"GetActorSpellsActiveChangesAction",      ActorFunctions::GetActorSpellsActiveChangesAction},\
-    {"GetActorSpellsActiveId",                 ActorFunctions::GetActorSpellsActiveId},\
-    {"GetActorSpellsActiveDisplayName",        ActorFunctions::GetActorSpellsActiveDisplayName},\
-    {"GetActorSpellsActiveStackingState",      ActorFunctions::GetActorSpellsActiveStackingState},\
-    {"GetActorSpellsActiveEffectCount",        ActorFunctions::GetActorSpellsActiveEffectCount},\
-    {"GetActorSpellsActiveEffectId",           ActorFunctions::GetActorSpellsActiveEffectId},\
-    {"GetActorSpellsActiveEffectArg",          ActorFunctions::GetActorSpellsActiveEffectArg},\
-    {"GetActorSpellsActiveEffectMagnitude",    ActorFunctions::GetActorSpellsActiveEffectMagnitude},\
-    {"GetActorSpellsActiveEffectDuration",     ActorFunctions::GetActorSpellsActiveEffectDuration},\
-    {"GetActorSpellsActiveEffectTimeLeft",     ActorFunctions::GetActorSpellsActiveEffectTimeLeft},\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveChangesSize", ActorFunctions::GetActorSpellsActiveChangesSize),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveChangesAction", ActorFunctions::GetActorSpellsActiveChangesAction),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveId", ActorFunctions::GetActorSpellsActiveId),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveDisplayName", ActorFunctions::GetActorSpellsActiveDisplayName),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveStackingState", ActorFunctions::GetActorSpellsActiveStackingState),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectCount", ActorFunctions::GetActorSpellsActiveEffectCount),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectId", ActorFunctions::GetActorSpellsActiveEffectId),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectArg", ActorFunctions::GetActorSpellsActiveEffectArg),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectMagnitude", ActorFunctions::GetActorSpellsActiveEffectMagnitude),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectDuration", ActorFunctions::GetActorSpellsActiveEffectDuration),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveEffectTimeLeft", ActorFunctions::GetActorSpellsActiveEffectTimeLeft),\
     \
-    {"DoesActorSpellsActiveHavePlayerCaster",  ActorFunctions::DoesActorSpellsActiveHavePlayerCaster},\
-    {"GetActorSpellsActiveCasterPid",          ActorFunctions::GetActorSpellsActiveCasterPid},\
-    {"GetActorSpellsActiveCasterRefId",        ActorFunctions::GetActorSpellsActiveCasterRefId},\
-    {"GetActorSpellsActiveCasterRefNum",       ActorFunctions::GetActorSpellsActiveCasterRefNum},\
-    {"GetActorSpellsActiveCasterMpNum",        ActorFunctions::GetActorSpellsActiveCasterMpNum},\
+    SCRIPT_API_ENTRY("DoesActorSpellsActiveHavePlayerCaster", ActorFunctions::DoesActorSpellsActiveHavePlayerCaster),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveCasterPid", ActorFunctions::GetActorSpellsActiveCasterPid),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveCasterRefId", ActorFunctions::GetActorSpellsActiveCasterRefId),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveCasterRefNum", ActorFunctions::GetActorSpellsActiveCasterRefNum),\
+    SCRIPT_API_ENTRY("GetActorSpellsActiveCasterMpNum", ActorFunctions::GetActorSpellsActiveCasterMpNum),\
     \
-    {"DoesActorHavePosition",                  ActorFunctions::DoesActorHavePosition},\
-    {"DoesActorHaveStatsDynamic",              ActorFunctions::DoesActorHaveStatsDynamic},\
+    SCRIPT_API_ENTRY("DoesActorHavePosition", ActorFunctions::DoesActorHavePosition),\
+    SCRIPT_API_ENTRY("DoesActorHaveStatsDynamic", ActorFunctions::DoesActorHaveStatsDynamic),\
     \
-    {"SetActorListCell",                       ActorFunctions::SetActorListCell},\
-    {"SetActorListAction",                     ActorFunctions::SetActorListAction},\
+    SCRIPT_API_ENTRY("SetActorListCell", ActorFunctions::SetActorListCell),\
+    SCRIPT_API_ENTRY("SetActorListAction", ActorFunctions::SetActorListAction),\
     \
-    {"SetActorCell",                           ActorFunctions::SetActorCell},\
-    {"SetActorRefId",                          ActorFunctions::SetActorRefId},\
-    {"SetActorRefNum",                         ActorFunctions::SetActorRefNum},\
-    {"SetActorMpNum",                          ActorFunctions::SetActorMpNum},\
+    SCRIPT_API_ENTRY("SetActorCell", ActorFunctions::SetActorCell),\
+    SCRIPT_API_ENTRY("SetActorRefId", ActorFunctions::SetActorRefId),\
+    SCRIPT_API_ENTRY("SetActorRefNum", ActorFunctions::SetActorRefNum),\
+    SCRIPT_API_ENTRY("SetActorMpNum", ActorFunctions::SetActorMpNum),\
     \
-    {"SetActorPosition",                       ActorFunctions::SetActorPosition},\
-    {"SetActorRotation",                       ActorFunctions::SetActorRotation},\
+    SCRIPT_API_ENTRY("SetActorPosition", ActorFunctions::SetActorPosition),\
+    SCRIPT_API_ENTRY("SetActorRotation", ActorFunctions::SetActorRotation),\
     \
-    {"SetActorHealthBase",                     ActorFunctions::SetActorHealthBase},\
-    {"SetActorHealthCurrent",                  ActorFunctions::SetActorHealthCurrent},\
-    {"SetActorHealthModified",                 ActorFunctions::SetActorHealthModified},\
-    {"SetActorMagickaBase",                    ActorFunctions::SetActorMagickaBase},\
-    {"SetActorMagickaCurrent",                 ActorFunctions::SetActorMagickaCurrent},\
-    {"SetActorMagickaModified",                ActorFunctions::SetActorMagickaModified},\
-    {"SetActorFatigueBase",                    ActorFunctions::SetActorFatigueBase},\
-    {"SetActorFatigueCurrent",                 ActorFunctions::SetActorFatigueCurrent},\
-    {"SetActorFatigueModified",                ActorFunctions::SetActorFatigueModified},\
+    SCRIPT_API_ENTRY("SetActorHealthBase", ActorFunctions::SetActorHealthBase),\
+    SCRIPT_API_ENTRY("SetActorHealthCurrent", ActorFunctions::SetActorHealthCurrent),\
+    SCRIPT_API_ENTRY("SetActorHealthModified", ActorFunctions::SetActorHealthModified),\
+    SCRIPT_API_ENTRY("SetActorMagickaBase", ActorFunctions::SetActorMagickaBase),\
+    SCRIPT_API_ENTRY("SetActorMagickaCurrent", ActorFunctions::SetActorMagickaCurrent),\
+    SCRIPT_API_ENTRY("SetActorMagickaModified", ActorFunctions::SetActorMagickaModified),\
+    SCRIPT_API_ENTRY("SetActorFatigueBase", ActorFunctions::SetActorFatigueBase),\
+    SCRIPT_API_ENTRY("SetActorFatigueCurrent", ActorFunctions::SetActorFatigueCurrent),\
+    SCRIPT_API_ENTRY("SetActorFatigueModified", ActorFunctions::SetActorFatigueModified),\
     \
-    {"SetActorDeathState",                     ActorFunctions::SetActorDeathState},\
-    {"SetActorDeathInstant",                   ActorFunctions::SetActorDeathInstant},\
-    {"SetActorSound",                          ActorFunctions::SetActorSound},\
-    {"SetActorSpellsActiveAction",             ActorFunctions::SetActorSpellsActiveAction},\
+    SCRIPT_API_ENTRY("SetActorDeathState", ActorFunctions::SetActorDeathState),\
+    SCRIPT_API_ENTRY("SetActorDeathInstant", ActorFunctions::SetActorDeathInstant),\
+    SCRIPT_API_ENTRY("SetActorSound", ActorFunctions::SetActorSound),\
+    SCRIPT_API_ENTRY("SetActorSpellsActiveAction", ActorFunctions::SetActorSpellsActiveAction),\
     \
-    {"SetActorAIAction",                       ActorFunctions::SetActorAIAction},\
-    {"SetActorAITargetToPlayer",               ActorFunctions::SetActorAITargetToPlayer},\
-    {"SetActorAITargetToObject",               ActorFunctions::SetActorAITargetToObject},\
-    {"SetActorAICoordinates",                  ActorFunctions::SetActorAICoordinates},\
-    {"SetActorAIDistance",                     ActorFunctions::SetActorAIDistance},\
-    {"SetActorAIDuration",                     ActorFunctions::SetActorAIDuration},\
-    {"SetActorAIRepetition",                   ActorFunctions::SetActorAIRepetition},\
+    SCRIPT_API_ENTRY("SetActorAIAction", ActorFunctions::SetActorAIAction),\
+    SCRIPT_API_ENTRY("SetActorAITargetToPlayer", ActorFunctions::SetActorAITargetToPlayer),\
+    SCRIPT_API_ENTRY("SetActorAITargetToObject", ActorFunctions::SetActorAITargetToObject),\
+    SCRIPT_API_ENTRY("SetActorAICoordinates", ActorFunctions::SetActorAICoordinates),\
+    SCRIPT_API_ENTRY("SetActorAIDistance", ActorFunctions::SetActorAIDistance),\
+    SCRIPT_API_ENTRY("SetActorAIDuration", ActorFunctions::SetActorAIDuration),\
+    SCRIPT_API_ENTRY("SetActorAIRepetition", ActorFunctions::SetActorAIRepetition),\
     \
-    {"EquipActorItem",                         ActorFunctions::EquipActorItem},\
-    {"UnequipActorItem",                       ActorFunctions::UnequipActorItem},\
+    SCRIPT_API_ENTRY("EquipActorItem", ActorFunctions::EquipActorItem),\
+    SCRIPT_API_ENTRY("UnequipActorItem", ActorFunctions::UnequipActorItem),\
     \
-    {"AddActorSpellActive",                    ActorFunctions::AddActorSpellActive},\
-    {"AddActorSpellActiveEffect",              ActorFunctions::AddActorSpellActiveEffect},\
+    SCRIPT_API_ENTRY("AddActorSpellActive", ActorFunctions::AddActorSpellActive),\
+    SCRIPT_API_ENTRY("AddActorSpellActiveEffect", ActorFunctions::AddActorSpellActiveEffect),\
     \
-    {"AddActor",                               ActorFunctions::AddActor},\
+    SCRIPT_API_ENTRY("AddActor", ActorFunctions::AddActor),\
     \
-    {"SendActorList",                          ActorFunctions::SendActorList},\
-    {"SendActorAuthority",                     ActorFunctions::SendActorAuthority},\
-    {"SendActorPosition",                      ActorFunctions::SendActorPosition},\
-    {"SendActorStatsDynamic",                  ActorFunctions::SendActorStatsDynamic},\
-    {"SendActorEquipment",                     ActorFunctions::SendActorEquipment},\
-    {"SendActorSpellsActiveChanges",           ActorFunctions::SendActorSpellsActiveChanges},\
-    {"SendActorSpeech",                        ActorFunctions::SendActorSpeech},\
-    {"SendActorDeath",                         ActorFunctions::SendActorDeath},\
-    {"SendActorAI",                            ActorFunctions::SendActorAI},\
-    {"SendActorCellChange",                    ActorFunctions::SendActorCellChange},\
+    SCRIPT_API_ENTRY("SendActorList", ActorFunctions::SendActorList),\
+    SCRIPT_API_ENTRY("SendActorAuthority", ActorFunctions::SendActorAuthority),\
+    SCRIPT_API_ENTRY("SendActorPosition", ActorFunctions::SendActorPosition),\
+    SCRIPT_API_ENTRY("SendActorStatsDynamic", ActorFunctions::SendActorStatsDynamic),\
+    SCRIPT_API_ENTRY("SendActorEquipment", ActorFunctions::SendActorEquipment),\
+    SCRIPT_API_ENTRY("SendActorSpellsActiveChanges", ActorFunctions::SendActorSpellsActiveChanges),\
+    SCRIPT_API_ENTRY("SendActorSpeech", ActorFunctions::SendActorSpeech),\
+    SCRIPT_API_ENTRY("SendActorDeath", ActorFunctions::SendActorDeath),\
+    SCRIPT_API_ENTRY("SendActorAI", ActorFunctions::SendActorAI),\
+    SCRIPT_API_ENTRY("SendActorCellChange", ActorFunctions::SendActorCellChange),\
     \
-    {"ReadLastActorList",                      ActorFunctions::ReadLastActorList},\
-    {"InitializeActorList",                    ActorFunctions::InitializeActorList},\
-    {"CopyLastActorListToStore",               ActorFunctions::CopyLastActorListToStore},\
-    {"GetActorRefNumIndex",                    ActorFunctions::GetActorRefNumIndex},\
-    {"GetActorKillerRefNumIndex",              ActorFunctions::GetActorKillerRefNumIndex},\
-    {"SetActorRefNumIndex",                    ActorFunctions::SetActorRefNumIndex}
+    SCRIPT_API_ENTRY("ReadLastActorList", ActorFunctions::ReadLastActorList),\
+    SCRIPT_API_ENTRY("InitializeActorList", ActorFunctions::InitializeActorList),\
+    SCRIPT_API_ENTRY("CopyLastActorListToStore", ActorFunctions::CopyLastActorListToStore),\
+    SCRIPT_API_ENTRY("GetActorRefNumIndex", ActorFunctions::GetActorRefNumIndex),\
+    SCRIPT_API_ENTRY("GetActorKillerRefNumIndex", ActorFunctions::GetActorKillerRefNumIndex),\
+    SCRIPT_API_ENTRY("SetActorRefNumIndex", ActorFunctions::SetActorRefNumIndex)
 
 class ActorFunctions
 {

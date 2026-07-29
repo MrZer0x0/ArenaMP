@@ -14,21 +14,28 @@
    <string>WizardPage</string>
   </property>
   <property name="title">
-   <string>Select Existing Installation</string>
+   <string>Select Data Files Folder</string>
   </property>
   <property name="subTitle">
-   <string>Select an existing installation for OpenMW to use or modify.</string>
+   <string>Select the folder that contains your ESM and BSA files. Base game files are detected and enabled automatically.</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="installationsLabel">
      <property name="text">
-      <string>Detected installations:</string>
+      <string>Detected or selected Data Files folders:</string>
      </property>
     </widget>
    </item>
    <item>
     <widget class="QListWidget" name="installationsList"/>
+   </item>
+   <item>
+    <widget class="QLabel" name="detectedFilesLabel">
+     <property name="text"><string>Select a Data Files folder to scan its base masters and BSA archives.</string></property>
+     <property name="wordWrap"><bool>true</bool></property>
+     <property name="styleSheet"><string notr="true">color: palette(mid);</string></property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">

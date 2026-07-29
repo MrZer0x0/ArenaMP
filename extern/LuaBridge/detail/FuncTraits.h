@@ -182,6 +182,16 @@ struct FuncTraits <R (*) (P1, P2, P3, P4, P5, P6, P7, P8), D>
   }
 };
 
+#if defined(__cpp_noexcept_function_type) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L
+// In C++17, noexcept is part of a function pointer type. Reuse the existing
+// exact-signature LuaBridge dispatchers while preserving the noexcept pointer
+// as the stored declaration type.
+template <class R, class... P, class D>
+struct FuncTraits <R (*) (P...) noexcept, D> : FuncTraits <R (*) (P...), D>
+{
+};
+#endif
+
 /* Windows: WINAPI (a.k.a. __stdcall) function pointers. */
 
 #ifdef _M_IX86 // Windows 32bit only

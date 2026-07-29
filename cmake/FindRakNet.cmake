@@ -1,62 +1,118 @@
-# Comes form project edunetgames
-# - Try to find RakNet
-# Once done this will define
+# Locate RakNet/CrabNet or build the copy bundled with ArenaMP.
 #
-#  RakNet_FOUND - system has RakNet
-#  RakNet_INCLUDES - the RakNet include directory
-#  RakNet_LIBRARY - Link these to use RakNet
+# Result variables:
+#   RakNet_FOUND
+#   RakNet_INCLUDES
+#   RakNet_LIBRARY
+#
+# Accepted cache variables for externally built CrabNet:
+#   RakNet_INCLUDE_DIR or RakNet_INCLUDES
+#   RakNet_LIBRARY, or RakNet_LIBRARY_RELEASE/RakNet_LIBRARY_DEBUG
 
-IF(WIN32)
-  set(RakNet_LIBRARY_DEBUG ${CMAKE_SOURCE_DIR}/extern/raknet/RakNetLibStaticd.lib)
-  set(RakNet_LIBRARY_RELEASE ${CMAKE_SOURCE_DIR}/extern/raknet/RakNetLibStatic.lib)
-ELSE()
-  set(RakNet_LIBRARY_DEBUG ${CMAKE_SOURCE_DIR}/extern/raknet/lib/libRakNetLibStaticd.a)
-  set(RakNet_LIBRARY_RELEASE ${CMAKE_SOURCE_DIR}/extern/raknet/lib/libRakNetLibStatic.a)
-ENDIF(WIN32)
+include_guard(GLOBAL)
 
-FIND_PATH (RakNet_INCLUDES raknet/RakPeer.h ${CMAKE_SOURCE_DIR}/extern/raknet/include)
+# Accept the singular variable used by several CI scripts and package managers.
+# CrabNet keeps public headers in include/raknet while older RakNet trees kept
+# them directly in Source. Normalize both layouts and reject stale paths that
+# do not actually contain the public API.
+if(RakNet_INCLUDE_DIR AND NOT RakNet_INCLUDES)
+    if(EXISTS "${RakNet_INCLUDE_DIR}/RakPeer.h" AND EXISTS "${RakNet_INCLUDE_DIR}/RakNetTypes.h")
+        set(RakNet_INCLUDES "${RakNet_INCLUDE_DIR}")
+    elseif(EXISTS "${RakNet_INCLUDE_DIR}/raknet/RakPeer.h" AND EXISTS "${RakNet_INCLUDE_DIR}/raknet/RakNetTypes.h")
+        set(RakNet_INCLUDES "${RakNet_INCLUDE_DIR}/raknet")
+    elseif(EXISTS "${RakNet_INCLUDE_DIR}/../include/raknet/RakPeer.h" AND EXISTS "${RakNet_INCLUDE_DIR}/../include/raknet/RakNetTypes.h")
+        get_filename_component(_raknet_source_parent "${RakNet_INCLUDE_DIR}" DIRECTORY)
+        set(RakNet_INCLUDES "${_raknet_source_parent}/include/raknet")
+    endif()
+endif()
 
+# Prefer an explicitly supplied include directory, then look in common layouts.
+if(NOT RakNet_INCLUDES)
+    find_path(RakNet_INCLUDES
+        NAMES RakPeer.h raknet/RakPeer.h
+        HINTS
+            "${PROJECT_SOURCE_DIR}/extern/raknet/include/raknet"
+            "${PROJECT_SOURCE_DIR}/extern/raknet/include"
+            "${PROJECT_SOURCE_DIR}/extern/raknet/Source"
+        PATH_SUFFIXES raknet
+    )
+endif()
 
-MESSAGE(STATUS ${RakNet_INCLUDES})
-MESSAGE(STATUS ${RakNet_LIBRARY_RELEASE})
-MESSAGE(STATUS ${RakNet_LIBRARY_DEBUG})
-
-IF(NOT RakNet_INCLUDES)
-	MESSAGE(STATUS "Could not find RakNet, building from local copy")
-
-	find_package(Git QUIET)
-
-	if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-	# Update submodules as needed
-	  option(GIT_SUBMODULE "Check submodules during build" ON)
-	  if(GIT_SUBMODULE)
-		message(STATUS "Submodule update")
-		execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/raknet
-		RESULT_VARIABLE GIT_SUBMOD_RESULT)
-		if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-			message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-		endif()
-	   endif()
+# Respect an explicitly supplied library first.
+if(NOT RakNet_LIBRARY)
+    if(NOT RakNet_LIBRARY_RELEASE)
+        if(WIN32)
+            set(_raknet_release_default "${PROJECT_SOURCE_DIR}/extern/raknet/RakNetLibStatic.lib")
+        else()
+            set(_raknet_release_default "${PROJECT_SOURCE_DIR}/extern/raknet/lib/libRakNetLibStatic.a")
         endif()
+        if(EXISTS "${_raknet_release_default}")
+            set(RakNet_LIBRARY_RELEASE "${_raknet_release_default}")
+        endif()
+    endif()
 
-	if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/raknet/CMakeLists.txt")
-	       message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
-	endif()
-add_subdirectory(extern/raknet)
-ENDIF(NOT RakNet_INCLUDES)
+    if(NOT RakNet_LIBRARY_DEBUG)
+        if(WIN32)
+            set(_raknet_debug_default "${PROJECT_SOURCE_DIR}/extern/raknet/RakNetLibStaticd.lib")
+        else()
+            set(_raknet_debug_default "${PROJECT_SOURCE_DIR}/extern/raknet/lib/libRakNetLibStaticd.a")
+        endif()
+        if(EXISTS "${_raknet_debug_default}")
+            set(RakNet_LIBRARY_DEBUG "${_raknet_debug_default}")
+        endif()
+    endif()
 
-SET(RakNet_INCLUDES ${CMAKE_SOURCE_DIR}/extern/raknet/include/raknet)
-IF (CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE)
-   SET(RakNet_LIBRARY optimized ${RakNet_LIBRARY_RELEASE} debug ${RakNet_LIBRARY_DEBUG})
-   IF(WIN32)
-    SET(RakNet_LIBRARY optimized ${RakNet_LIBRARY_RELEASE} debug ${RakNet_LIBRARY_DEBUG} ws2_32.lib)
-   ENDIF(WIN32)
-ELSE()
-  # if there are no configuration types and CMAKE_BUILD_TYPE has no value
-  # then just use the release libraries
-  SET(RakNet_LIBRARY ${RakNet_LIBRARY_RELEASE} )
-  IF(WIN32)
-    SET(RakNet_LIBRARY ${RakNet_LIBRARY_RELEASE} ws2_32.lib)
-  ENDIF(WIN32)
-ENDIF()
+    if(RakNet_LIBRARY_RELEASE)
+        if(CMAKE_CONFIGURATION_TYPES AND RakNet_LIBRARY_DEBUG)
+            set(RakNet_LIBRARY
+                optimized "${RakNet_LIBRARY_RELEASE}"
+                debug "${RakNet_LIBRARY_DEBUG}"
+            )
+        else()
+            set(RakNet_LIBRARY "${RakNet_LIBRARY_RELEASE}")
+        endif()
+    endif()
+endif()
+
+# If no usable prebuilt library was supplied, build the tracked bundled source.
+if(NOT RakNet_LIBRARY)
+    set(_raknet_bundled_dir "${PROJECT_SOURCE_DIR}/extern/raknet")
+    if(EXISTS "${_raknet_bundled_dir}/CMakeLists.txt")
+        message(STATUS "RakNet library not prebuilt; building bundled CrabNet")
+        set(CRABNET_ENABLE_DLL OFF CACHE BOOL "Build CrabNet shared library" FORCE)
+        set(CRABNET_ENABLE_SAMPLES OFF CACHE BOOL "Build CrabNet samples" FORCE)
+        set(CRABNET_ENABLE_STATIC ON CACHE BOOL "Build CrabNet static library" FORCE)
+        add_subdirectory(
+            "${_raknet_bundled_dir}"
+            "${CMAKE_BINARY_DIR}/extern/raknet"
+            EXCLUDE_FROM_ALL
+        )
+        set(RakNet_INCLUDES "${_raknet_bundled_dir}/include/raknet")
+        set(RakNet_LIBRARY RakNetLibStatic)
+    endif()
+endif()
+
+if(WIN32 AND RakNet_LIBRARY AND NOT TARGET RakNetLibStatic)
+    list(APPEND RakNet_LIBRARY ws2_32)
+endif()
+
+if(RakNet_INCLUDES AND RakNet_LIBRARY)
+    set(RakNet_FOUND TRUE)
+else()
+    set(RakNet_FOUND FALSE)
+endif()
+
+if(RakNet_FIND_REQUIRED AND NOT RakNet_FOUND)
+    message(FATAL_ERROR
+        "RakNet/CrabNet was not found. Keep extern/raknet in the source tree, "
+        "or provide RakNet_INCLUDE_DIR and RakNet_LIBRARY_RELEASE."
+    )
+endif()
+
+mark_as_advanced(
+    RakNet_INCLUDE_DIR
+    RakNet_INCLUDES
+    RakNet_LIBRARY
+    RakNet_LIBRARY_RELEASE
+    RakNet_LIBRARY_DEBUG
+)

@@ -213,6 +213,10 @@ namespace MWRender
         stateset->setTextureAttributeAndModes(7, dummyTexture, osg::StateAttribute::ON);
         stateset->setTextureAttribute(7, noBlendAlphaEnv, osg::StateAttribute::ON);
         stateset->addUniform(new osg::Uniform("noAlpha", true));
+        // Preview is rendered by a separate RTT camera. Explicitly disable world-space
+        // underwater/caustics effects regardless of the player cell.
+        stateset->addUniform(new osg::Uniform("isInventoryPreview", true), osg::StateAttribute::OVERRIDE);
+        stateset->addUniform(new osg::Uniform("isInterior", true), osg::StateAttribute::OVERRIDE);
 
         osg::ref_ptr<osg::LightModel> lightmodel = new osg::LightModel;
         lightmodel->setAmbientIntensity(osg::Vec4(0.0, 0.0, 0.0, 1.0));

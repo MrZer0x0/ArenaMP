@@ -224,8 +224,18 @@ bool MWMechanics::AiPackage::pathTo(const MWWorld::Ptr& actor, const osg::Vec3f&
 
 void MWMechanics::AiPackage::evadeObstacles(const MWWorld::Ptr& actor)
 {
+    if (mObstacleCheck.consumePathRebuildRequest())
+    {
+        // Rebuild only after the turn has finished. Rebuilding at the first
+        // blocked frame made navigation and turn steering fight each other.
+        mPathFinder.clearPath();
+        mShortcutProhibited = true;
+        mShortcutFailPos = actor.getRefData().getPosition().asVec3();
+    }
+
     // check if stuck due to obstacles
-    if (!mObstacleCheck.isEvading()) return;
+    if (!mObstacleCheck.isEvading())
+        return;
 
     // first check if obstacle is a door
     static float distance = MWBase::Environment::get().getWorld()->getMaxActivationDistance();
@@ -234,10 +244,14 @@ void MWMechanics::AiPackage::evadeObstacles(const MWWorld::Ptr& actor)
     if (!door.isEmpty() && actor.getClass().isBipedal(actor))
     {
         openDoors(actor);
+        mObstacleCheck.clear();
     }
     else
     {
-        mObstacleCheck.takeEvasiveAction(actor.getClass().getMovementSettings(actor));
+        auto& movement = actor.getClass().getMovementSettings(actor);
+        mObstacleCheck.takeEvasiveAction(movement);
+        zTurn(actor, mObstacleCheck.getEvasionAngle(), osg::DegreesToRadians(3.f));
+
     }
 }
 

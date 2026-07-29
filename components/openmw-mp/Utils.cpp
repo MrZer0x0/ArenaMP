@@ -22,18 +22,13 @@ int setenv(const char *name, const char *value, int overwrite)
 
 std::string Utils::convertPath(std::string str)
 {
-#if defined(_WIN32)
-#define _SEP_ '\\'
-#elif defined(__APPLE__)
-#define _SEP_ ':'
+#ifdef _WIN32
+    // Windows accepts backslashes as native separators. Modern macOS uses
+    // POSIX paths and must keep forward slashes; replacing them with the
+    // legacy HFS ':' separator breaks server Lua paths inside .app bundles.
+    replace(str.begin(), str.end(), '/', '\\');
 #endif
-
-#if defined(_WIN32) || defined(__APPLE__)
-    replace(str.begin(), str.end(), '/', _SEP_);
-#endif //defined(_WIN32) || defined(__APPLE__)
     return str;
-
-#undef _SEP_
 }
 
 bool Utils::doesFileHaveChecksum(std::string filePath, unsigned int requiredChecksum)

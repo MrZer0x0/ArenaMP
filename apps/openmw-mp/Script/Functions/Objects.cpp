@@ -3,6 +3,8 @@
 
 #include <apps/openmw-mp/Networking.hpp>
 #include <apps/openmw-mp/Player.hpp>
+#include <apps/openmw-mp/Cell.hpp>
+#include <apps/openmw-mp/CellController.hpp>
 #include <apps/openmw-mp/Utils.hpp>
 #include <apps/openmw-mp/Script/ScriptFunctions.hpp>
 
@@ -18,6 +20,25 @@ const BaseObject emptyObject = {};
 
 ContainerItem tempContainerItem;
 const ContainerItem emptyContainerItem = {};
+
+namespace
+{
+    void SendObjectPacketToLoadedCell(mwmp::ObjectPacket* packet, bool sendToOtherPlayers,
+        bool skipAttachedPlayer) noexcept
+    {
+        packet->setObjectList(&writeObjectList);
+
+        if (!skipAttachedPlayer)
+            packet->Send(false);
+
+        if (!sendToOtherPlayers)
+            return;
+
+        Cell* cell = CellController::get()->getCell(&writeObjectList.cell);
+        if (cell != nullptr)
+            cell->sendToLoaded(packet, &writeObjectList);
+    }
+}
 
 void ObjectFunctions::ReadReceivedObjectList() noexcept
 {
@@ -715,56 +736,31 @@ void ObjectFunctions::AddContainerItem() noexcept
 void ObjectFunctions::SendObjectActivate(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_ACTIVATE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectPlace(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_PLACE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectSpawn(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_SPAWN);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectDelete(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_DELETE);
-    packet->setObjectList(&writeObjectList);
-    
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectLock(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_LOCK);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectDialogueChoice(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
@@ -781,122 +777,67 @@ void ObjectFunctions::SendObjectDialogueChoice(bool sendToOtherPlayers, bool ski
 void ObjectFunctions::SendObjectMiscellaneous(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket* packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_MISCELLANEOUS);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectRestock(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_RESTOCK);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectTrap(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_TRAP);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectScale(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_SCALE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectSound(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_SOUND);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectState(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_STATE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectMove(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket* packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_MOVE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendObjectRotate(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket* packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_OBJECT_ROTATE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendDoorState(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_DOOR_STATE);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendDoorDestination(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_DOOR_DESTINATION);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendContainer(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket *packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_CONTAINER);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendVideoPlay(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
@@ -913,12 +854,7 @@ void ObjectFunctions::SendVideoPlay(bool sendToOtherPlayers, bool skipAttachedPl
 void ObjectFunctions::SendClientScriptLocal(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept
 {
     mwmp::ObjectPacket* packet = mwmp::Networking::get().getObjectPacketController()->GetPacket(ID_CLIENT_SCRIPT_LOCAL);
-    packet->setObjectList(&writeObjectList);
-
-    if (!skipAttachedPlayer)
-        packet->Send(false);
-    if (sendToOtherPlayers)
-        packet->Send(true);
+    SendObjectPacketToLoadedCell(packet, sendToOtherPlayers, skipAttachedPlayer);
 }
 
 void ObjectFunctions::SendConsoleCommand(bool sendToOtherPlayers, bool skipAttachedPlayer) noexcept

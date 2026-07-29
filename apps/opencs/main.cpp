@@ -1,9 +1,11 @@
 #include "editor.hpp"
 
+#include <cstdlib>
 #include <exception>
 #include <string>
 
 #include <QApplication>
+#include <QByteArray>
 #include <QIcon>
 #include <QMetaType>
 
@@ -57,6 +59,8 @@ int runApplication(int argc, char *argv[])
 
 #ifdef Q_OS_MAC
     QDir dir(QCoreApplication::applicationDirPath());
+    const QByteArray osgPluginPath = dir.absoluteFilePath("../PlugIns/osgPlugins").toUtf8();
+    setenv("OSG_LIBRARY_PATH", osgPluginPath.constData(), 0);
     QDir::setCurrent(dir.absolutePath());
 #endif
 

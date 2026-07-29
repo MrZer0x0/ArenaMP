@@ -1,5 +1,6 @@
 #include "itemview.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include <MyGUI_FactoryManager.h>
@@ -128,6 +129,52 @@ void ItemView::update()
     }
 
     layoutWidgets();
+}
+
+int ItemView::forceItemFocused(int index)
+{
+    if (!mModel || !mScrollView || !mScrollView->getChildCount() || mModel->getItemCount() == 0)
+        return 0;
+
+    const int count = static_cast<int>(mModel->getItemCount());
+    index = std::max(0, std::min(index, count - 1));
+
+    MyGUI::Widget* dragArea = mScrollView->getChildAt(0);
+    const unsigned int childCount = dragArea->getChildCount();
+    for (unsigned int i = 0; i < childCount; ++i)
+        dragArea->getChildAt(i)->setAlpha(static_cast<int>(i) == index ? 1.f : 0.65f);
+
+    if (static_cast<unsigned int>(index) < childCount)
+    {
+        constexpr int itemSize = 42;
+        MyGUI::Widget* focused = dragArea->getChildAt(static_cast<unsigned int>(index));
+        int offset = mScrollView->getViewOffset().left;
+        const int focusedLeft = focused->getLeft() + offset;
+        const int focusedRight = focusedLeft + itemSize;
+
+        if (focusedLeft < 0)
+            offset -= focusedLeft;
+        else if (focusedRight > mScrollView->getWidth())
+            offset -= focusedRight - mScrollView->getWidth();
+
+        mScrollView->setViewOffset(MyGUI::IntPoint(std::min(0, offset), 0));
+    }
+
+    return index;
+}
+
+int ItemView::requestListSize() const
+{
+    if (!mModel)
+        return 0;
+
+    constexpr int itemSize = 42;
+    constexpr int innerMargin = 6;
+    const int count = static_cast<int>(mModel->getItemCount());
+    const int usableWidth = std::max(itemSize, getWidth() - innerMargin);
+    const int columns = std::max(1, usableWidth / itemSize);
+    const int rows = std::max(1, (count + columns - 1) / columns);
+    return rows * itemSize + innerMargin;
 }
 
 void ItemView::resetScrollBars()

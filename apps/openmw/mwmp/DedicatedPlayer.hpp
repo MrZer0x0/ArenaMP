@@ -11,6 +11,7 @@
 #include "../mwmechanics/aisequence.hpp"
 
 #include "../mwworld/manualref.hpp"
+#include "InteractionAnimationSync.hpp"
 
 #include <map>
 #include <RakNetTypes.h>
@@ -42,6 +43,9 @@ namespace mwmp
 
         void playAnimation();
         void playSpeech();
+        void updatePersistentAnimation(float dt);
+        void updateInteractionAnimation(float dt);
+        void cancelInteractionAnimation();
 
         void equipItem(std::string itemId, bool noSound = false);
         void die();
@@ -75,6 +79,19 @@ namespace mwmp
 
         ESM::CustomMarker marker;
         bool markerEnabled;
+
+        bool mPersistentAnimationActive;
+        bool mPersistentAnimationPlaying;
+        std::string mPersistentAnimationGroup;
+        int mPersistentAnimationBlendMask;
+        int mPersistentAnimationAppliedMask;
+        float mPersistentAnimationSpeed;
+
+        std::string mWalkAnimationStyle;
+
+        bool mInteractionAnimationActive;
+        float mInteractionAnimationTime;
+        InteractionAnimationData mInteractionAnimation;
 
         std::string previousRace;
         std::string previousCreatureRefId;

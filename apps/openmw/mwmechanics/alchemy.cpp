@@ -195,7 +195,7 @@ void MWMechanics::Alchemy::updateEffects()
             // y = (1057 + (-1119 / (1 + (x / 81302080000)^0.1137))
             // where y is skill boost, and x is ingredient value
 
-            float yf = 1057.0f + (-1119.0f / (1.0f + std::powf(averageIngredientValue / 81302080000.0f, 0.1137f)));
+            float yf = 1057.0f + (-1119.0f / (1.0f + std::pow(averageIngredientValue / 81302080000.0f, 0.1137f)));
             priceMod += yf;
 
             // handle the multmod for normal range, 5-200gp average value ingredients
@@ -205,7 +205,7 @@ void MWMechanics::Alchemy::updateEffects()
             // y = 22.87 + ((-47.5)/(1 + ((x/0.00000007014))^0.00415))
             // where y is % modifier addition, and x is ingredient value
 
-            addToMod = 22.87f + (-47.5f / (1.0f + std::powf(averageIngredientValue / 0.00000007014f, 0.00415f)));;
+            addToMod = 22.87f + (-47.5f / (1.0f + std::pow(averageIngredientValue / 0.00000007014f, 0.00415f)));;
 
             multMod += addToMod;
 

@@ -21,6 +21,7 @@ namespace osg
 {
     class Group;
     class PositionAttitudeTransform;
+    class Uniform;
 }
 
 namespace osgUtil
@@ -48,6 +49,7 @@ namespace ESM
 namespace Terrain
 {
     class World;
+    class TerrainOccluder;
 }
 
 namespace Fallback
@@ -60,6 +62,7 @@ namespace SceneUtil
     class ShadowManager;
     class WorkQueue;
     class UnrefQueue;
+    class OcclusionCuller;
 }
 
 namespace DetourNavigator
@@ -72,6 +75,7 @@ namespace MWRender
 {
     class GroundcoverUpdater;
     class StateUpdater;
+    class BloomProcessor;
 
     class EffectManager;
     class ScreenshotManager;
@@ -130,6 +134,7 @@ namespace MWRender
         void setSunColour(const osg::Vec4f& diffuse, const osg::Vec4f& specular);
 
         void configureAmbient(const ESM::Cell* cell);
+        void setCellInterior(bool interior);
         void configureFog(const ESM::Cell* cell);
         void configureFog(float fogDepth, float underwaterFog, float dlFactor, float dlOffset, const osg::Vec4f& colour);
 
@@ -236,16 +241,25 @@ namespace MWRender
         void setActiveGrid(const osg::Vec4i &grid);
 
         bool pagingEnableObject(int type, const MWWorld::ConstPtr& ptr, bool enabled);
+
+        bool occlusionVisible(const MWWorld::ConstPtr& ptr) const;
+        void rebuildOcclusionBuffer(const osg::Vec3f& eyePoint);
         void pagingBlacklistObject(int type, const MWWorld::ConstPtr &ptr);
         bool pagingUnlockCache();
         void getPagedRefnums(const osg::Vec4i &activeGrid, std::set<ESM::RefNum> &out);
 
     private:
         void updateProjectionMatrix();
+        void updateLandOptimization(float frameDuration, bool paused);
+        void updateLandOptimizationProfile();
+        void applyViewDistance(float distance);
+        void resetLandOptimization(bool restoreConfiguredDistance);
         void updateTextureFiltering();
         void updateAmbient();
         void setFogColor(const osg::Vec4f& color);
         void updateThirdPersonViewMode();
+        void updateHdrSettings();
+        void updateHdrEnvironment();
 
         void reportStats() const;
 
@@ -263,6 +277,7 @@ namespace MWRender
         Resource::ResourceSystem* mResourceSystem;
 
         osg::ref_ptr<GroundcoverUpdater> mGroundcoverUpdater;
+        osg::ref_ptr<osg::Group> mGroundcoverRoot;
 
         osg::ref_ptr<SceneUtil::WorkQueue> mWorkQueue;
         osg::ref_ptr<SceneUtil::UnrefQueue> mUnrefQueue;
@@ -281,12 +296,15 @@ namespace MWRender
         std::unique_ptr<Terrain::World> mGroundcoverWorld;
         std::unique_ptr<TerrainStorage> mTerrainStorage;
         std::unique_ptr<ObjectPaging> mObjectPaging;
+        osg::ref_ptr<SceneUtil::OcclusionCuller> mOcclusionCuller;
+        std::unique_ptr<Terrain::TerrainOccluder> mTerrainOccluder;
         std::unique_ptr<Groundcover> mGroundcover;
         std::unique_ptr<SkyManager> mSky;
         std::unique_ptr<FogManager> mFog;
         std::unique_ptr<ScreenshotManager> mScreenshotManager;
         std::unique_ptr<EffectManager> mEffectManager;
         std::unique_ptr<SceneUtil::ShadowManager> mShadowManager;
+        std::unique_ptr<BloomProcessor> mBloomProcessor;
         osg::ref_ptr<NpcAnimation> mPlayerAnimation;
         osg::ref_ptr<SceneUtil::PositionAttitudeTransform> mPlayerNode;
         std::unique_ptr<Camera> mCamera;
@@ -294,6 +312,15 @@ namespace MWRender
         osg::Vec3f mCurrentCameraPos;
 
         osg::ref_ptr<StateUpdater> mStateUpdater;
+        osg::ref_ptr<osg::Uniform> mHdrTonemapperUniform;
+        osg::ref_ptr<osg::Uniform> mHdrExposureUniform;
+        osg::ref_ptr<osg::Uniform> mHdrInteriorExposureUniform;
+        osg::ref_ptr<osg::Uniform> mHdrNightExposureUniform;
+        osg::ref_ptr<osg::Uniform> mHdrGammaUniform;
+        osg::ref_ptr<osg::Uniform> mHdrBrightnessUniform;
+        osg::ref_ptr<osg::Uniform> mHdrSaturationUniform;
+        osg::ref_ptr<osg::Uniform> mHdrIsInteriorUniform;
+        osg::ref_ptr<osg::Uniform> mHdrNightFactorUniform;
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;
@@ -301,6 +328,15 @@ namespace MWRender
 
         float mNearClip;
         float mViewDistance;
+        float mConfiguredViewDistance;
+        float mLandOptimizationDistance;
+        float mLandOptimizationTargetFps;
+        float mLandOptimizationMinDistance;
+        float mLandOptimizationTimer;
+        float mLandOptimizationFrameTime;
+        unsigned int mLandOptimizationFrameCount;
+        bool mLandOptimizationEnabled;
+        bool mLandOptimizationWasExterior;
         bool mFieldOfViewOverridden;
         float mFieldOfViewOverride;
         float mFieldOfView;

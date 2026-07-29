@@ -11,12 +11,14 @@ namespace Settings
 CategorySettingValueMap Manager::mDefaultSettings = CategorySettingValueMap();
 CategorySettingValueMap Manager::mUserSettings = CategorySettingValueMap();
 CategorySettingVector Manager::mChangedSettings = CategorySettingVector();
+std::string Manager::mUserSettingsPath;
 
 void Manager::clear()
 {
     mDefaultSettings.clear();
     mUserSettings.clear();
     mChangedSettings.clear();
+    mUserSettingsPath.clear();
 }
 
 /*
@@ -35,14 +37,30 @@ void Manager::loadDefault(const std::string &file, bool base64encoded)
 
 void Manager::loadUser(const std::string &file)
 {
+    mUserSettingsPath = file;
     SettingsFileParser parser;
     parser.loadSettingsFile(file, mUserSettings);
 }
 
 void Manager::saveUser(const std::string &file)
 {
+    mUserSettingsPath = file;
     SettingsFileParser parser;
     parser.saveSettingsFile(file, mUserSettings);
+}
+
+void Manager::setUserSettingsPath(const std::string& file)
+{
+    mUserSettingsPath = file;
+}
+
+void Manager::saveUser()
+{
+    if (mUserSettingsPath.empty())
+        return;
+
+    SettingsFileParser parser;
+    parser.saveSettingsFile(mUserSettingsPath, mUserSettings);
 }
 
 std::string Manager::getString(const std::string &setting, const std::string &category)

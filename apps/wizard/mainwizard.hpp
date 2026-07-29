@@ -43,7 +43,8 @@ namespace Wizard
         ~MainWizard();
 
         bool findFiles(const QString &name, const QString &path);
-        void addInstallation(const QString &path);
+        void addInstallation(const QString &path, bool configureSelected = true);
+        void configureDataFiles(const QString& path);
         void runSettingsImporter();
 
         QMap<QString, Installation> mInstallations;
@@ -59,7 +60,7 @@ namespace Wizard
 
     private:
         /// convert boost::filesystem::path to QString
-        QString toQString(const boost::filesystem::path& path);
+        QString toQString(const boost::filesystem::path& path) const;
 
         void setupLog();
         void setupGameSettings();
@@ -67,10 +68,24 @@ namespace Wizard
         void setupInstallations();
         void setupPages();
 
+        bool loadBuildManifest(const QString& dataFilesPath);
+        bool writeBuildManifest(const QString& dataFilesPath);
+        void readClientEndpoint(QString& address, QString& port) const;
+        void writeClientEndpoint(const QString& address, const QString& port) const;
+        void initializeNativeDisplaySettings();
         void writeSettings();
 
         Config::GameSettings mGameSettings;
         Config::LauncherSettings mLauncherSettings;
+
+        bool mBuildManifestLoaded;
+        QString mBuildManifestPath;
+        QString mBuildName;
+        QString mBuildDataPath;
+        QString mBuildServerAddress;
+        QString mBuildServerPort;
+        QString mBuildLanguage;
+        bool mBuildLanguageLocked;
 
         QString mLogError;
 

@@ -4,22 +4,22 @@
 #include "../Types.hpp"
 
 #define SETTINGSAPI \
-    {"SetDifficulty",               SettingFunctions::SetDifficulty},\
-    {"SetEnforcedLogLevel",         SettingFunctions::SetEnforcedLogLevel},\
-    {"SetPhysicsFramerate",         SettingFunctions::SetPhysicsFramerate},\
+    SCRIPT_API_ENTRY("SetDifficulty", SettingFunctions::SetDifficulty),\
+    SCRIPT_API_ENTRY("SetEnforcedLogLevel", SettingFunctions::SetEnforcedLogLevel),\
+    SCRIPT_API_ENTRY("SetPhysicsFramerate", SettingFunctions::SetPhysicsFramerate),\
     \
-    {"SetConsoleAllowed",           SettingFunctions::SetConsoleAllowed},\
-    {"SetBedRestAllowed",           SettingFunctions::SetBedRestAllowed},\
-    {"SetWildernessRestAllowed",    SettingFunctions::SetWildernessRestAllowed},\
-    {"SetWaitAllowed",              SettingFunctions::SetWaitAllowed},\
+    SCRIPT_API_ENTRY("SetConsoleAllowed", SettingFunctions::SetConsoleAllowed),\
+    SCRIPT_API_ENTRY("SetBedRestAllowed", SettingFunctions::SetBedRestAllowed),\
+    SCRIPT_API_ENTRY("SetWildernessRestAllowed", SettingFunctions::SetWildernessRestAllowed),\
+    SCRIPT_API_ENTRY("SetWaitAllowed", SettingFunctions::SetWaitAllowed),\
     \
-    {"SetGameSettingValue",         SettingFunctions::SetGameSettingValue},\
-    {"ClearGameSettingValues",      SettingFunctions::ClearGameSettingValues},\
+    SCRIPT_API_ENTRY("SetGameSettingValue", SettingFunctions::SetGameSettingValue),\
+    SCRIPT_API_ENTRY("ClearGameSettingValues", SettingFunctions::ClearGameSettingValues),\
     \
-    {"SetVRSettingValue",           SettingFunctions::SetVRSettingValue},\
-    {"ClearVRSettingValues",        SettingFunctions::ClearVRSettingValues},\
+    SCRIPT_API_ENTRY("SetVRSettingValue", SettingFunctions::SetVRSettingValue),\
+    SCRIPT_API_ENTRY("ClearVRSettingValues", SettingFunctions::ClearVRSettingValues),\
     \
-    {"SendSettings",                SettingFunctions::SendSettings}
+    SCRIPT_API_ENTRY("SendSettings", SettingFunctions::SendSettings)
 
 class SettingFunctions
 {

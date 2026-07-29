@@ -2,6 +2,7 @@
 #define OPENMW_MECHANICS_ACTOR_H
 
 #include <memory>
+#include <string>
 
 #include "../mwmechanics/actorutil.hpp"
 
@@ -23,6 +24,32 @@ namespace MWMechanics
     /// @brief Holds temporary state for an actor that will be discarded when the actor leaves the scene.
     class Actor
     {
+        friend class Actors;
+
+        enum class CollisionAvoidancePhase
+        {
+            None,
+            Turning,
+            Stepping
+        };
+
+        struct CollisionAvoidanceState
+        {
+            CollisionAvoidancePhase mPhase{CollisionAvoidancePhase::None};
+            float mTimer{0.f};
+            float mTargetAngle{0.f};
+        };
+
+        struct DynamicIdleState
+        {
+            float mTimer{0.f};
+            float mActivationDistance{1500.f};
+            float mTransitionTimeout{0.f};
+            std::string mAnimation;
+            bool mEnding{false};
+            bool mLeftArmProtected{false};
+        };
+
     public:
         Actor(const MWWorld::Ptr& ptr, MWRender::Animation* animation);
 
@@ -55,6 +82,8 @@ namespace MWMechanics
         GreetingState mGreetingState{Greet_None};
         bool mIsTurningToPlayer{false};
         Misc::DeviatingPeriodicTimer mEngageCombat{1.0f, 0.25f, Misc::Rng::deviate(0, 0.25f)};
+        CollisionAvoidanceState mCollisionAvoidance;
+        DynamicIdleState mDynamicIdle;
     };
 
 }

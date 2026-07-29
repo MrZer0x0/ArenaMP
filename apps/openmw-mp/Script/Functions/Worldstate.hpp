@@ -5,87 +5,87 @@
 #include "../Types.hpp"
 
 #define WORLDSTATEAPI \
-    {"ReadReceivedWorldstate",            WorldstateFunctions::ReadReceivedWorldstate},\
+    SCRIPT_API_ENTRY("ReadReceivedWorldstate", WorldstateFunctions::ReadReceivedWorldstate),\
     \
-    {"CopyReceivedWorldstateToStore",     WorldstateFunctions::CopyReceivedWorldstateToStore},\
+    SCRIPT_API_ENTRY("CopyReceivedWorldstateToStore", WorldstateFunctions::CopyReceivedWorldstateToStore),\
     \
-    {"ClearKillChanges",                  WorldstateFunctions::ClearKillChanges},\
-    {"ClearMapChanges",                   WorldstateFunctions::ClearMapChanges},\
-    {"ClearClientGlobals",                WorldstateFunctions::ClearClientGlobals},\
+    SCRIPT_API_ENTRY("ClearKillChanges", WorldstateFunctions::ClearKillChanges),\
+    SCRIPT_API_ENTRY("ClearMapChanges", WorldstateFunctions::ClearMapChanges),\
+    SCRIPT_API_ENTRY("ClearClientGlobals", WorldstateFunctions::ClearClientGlobals),\
     \
-    {"GetKillChangesSize",                WorldstateFunctions::GetKillChangesSize},\
-    {"GetMapChangesSize",                 WorldstateFunctions::GetMapChangesSize},\
-    {"GetClientGlobalsSize",              WorldstateFunctions::GetClientGlobalsSize},\
+    SCRIPT_API_ENTRY("GetKillChangesSize", WorldstateFunctions::GetKillChangesSize),\
+    SCRIPT_API_ENTRY("GetMapChangesSize", WorldstateFunctions::GetMapChangesSize),\
+    SCRIPT_API_ENTRY("GetClientGlobalsSize", WorldstateFunctions::GetClientGlobalsSize),\
     \
-    {"GetKillRefId",                      WorldstateFunctions::GetKillRefId},\
-    {"GetKillNumber",                     WorldstateFunctions::GetKillNumber},\
+    SCRIPT_API_ENTRY("GetKillRefId", WorldstateFunctions::GetKillRefId),\
+    SCRIPT_API_ENTRY("GetKillNumber", WorldstateFunctions::GetKillNumber),\
     \
-    {"GetWeatherRegion",                  WorldstateFunctions::GetWeatherRegion},\
-    {"GetWeatherCurrent",                 WorldstateFunctions::GetWeatherCurrent},\
-    {"GetWeatherNext",                    WorldstateFunctions::GetWeatherNext},\
-    {"GetWeatherQueued",                  WorldstateFunctions::GetWeatherQueued},\
-    {"GetWeatherTransitionFactor",        WorldstateFunctions::GetWeatherTransitionFactor},\
+    SCRIPT_API_ENTRY("GetWeatherRegion", WorldstateFunctions::GetWeatherRegion),\
+    SCRIPT_API_ENTRY("GetWeatherCurrent", WorldstateFunctions::GetWeatherCurrent),\
+    SCRIPT_API_ENTRY("GetWeatherNext", WorldstateFunctions::GetWeatherNext),\
+    SCRIPT_API_ENTRY("GetWeatherQueued", WorldstateFunctions::GetWeatherQueued),\
+    SCRIPT_API_ENTRY("GetWeatherTransitionFactor", WorldstateFunctions::GetWeatherTransitionFactor),\
     \
-    {"GetMapTileCellX",                   WorldstateFunctions::GetMapTileCellX},\
-    {"GetMapTileCellY",                   WorldstateFunctions::GetMapTileCellY},\
+    SCRIPT_API_ENTRY("GetMapTileCellX", WorldstateFunctions::GetMapTileCellX),\
+    SCRIPT_API_ENTRY("GetMapTileCellY", WorldstateFunctions::GetMapTileCellY),\
     \
-    {"GetClientGlobalId",                 WorldstateFunctions::GetClientGlobalId},\
-    {"GetClientGlobalVariableType",       WorldstateFunctions::GetClientGlobalVariableType},\
-    {"GetClientGlobalIntValue",           WorldstateFunctions::GetClientGlobalIntValue},\
-    {"GetClientGlobalFloatValue",         WorldstateFunctions::GetClientGlobalFloatValue},\
+    SCRIPT_API_ENTRY("GetClientGlobalId", WorldstateFunctions::GetClientGlobalId),\
+    SCRIPT_API_ENTRY("GetClientGlobalVariableType", WorldstateFunctions::GetClientGlobalVariableType),\
+    SCRIPT_API_ENTRY("GetClientGlobalIntValue", WorldstateFunctions::GetClientGlobalIntValue),\
+    SCRIPT_API_ENTRY("GetClientGlobalFloatValue", WorldstateFunctions::GetClientGlobalFloatValue),\
     \
-    {"SetAuthorityRegion",                WorldstateFunctions::SetAuthorityRegion},\
+    SCRIPT_API_ENTRY("SetAuthorityRegion", WorldstateFunctions::SetAuthorityRegion),\
     \
-    {"SetWeatherRegion",                  WorldstateFunctions::SetWeatherRegion},\
-    {"SetWeatherForceState",              WorldstateFunctions::SetWeatherForceState},\
-    {"SetWeatherCurrent",                 WorldstateFunctions::SetWeatherCurrent},\
-    {"SetWeatherNext",                    WorldstateFunctions::SetWeatherNext},\
-    {"SetWeatherQueued",                  WorldstateFunctions::SetWeatherQueued},\
-    {"SetWeatherTransitionFactor",        WorldstateFunctions::SetWeatherTransitionFactor},\
+    SCRIPT_API_ENTRY("SetWeatherRegion", WorldstateFunctions::SetWeatherRegion),\
+    SCRIPT_API_ENTRY("SetWeatherForceState", WorldstateFunctions::SetWeatherForceState),\
+    SCRIPT_API_ENTRY("SetWeatherCurrent", WorldstateFunctions::SetWeatherCurrent),\
+    SCRIPT_API_ENTRY("SetWeatherNext", WorldstateFunctions::SetWeatherNext),\
+    SCRIPT_API_ENTRY("SetWeatherQueued", WorldstateFunctions::SetWeatherQueued),\
+    SCRIPT_API_ENTRY("SetWeatherTransitionFactor", WorldstateFunctions::SetWeatherTransitionFactor),\
     \
-    {"SetHour",                           WorldstateFunctions::SetHour},\
-    {"SetDay",                            WorldstateFunctions::SetDay},\
-    {"SetMonth",                          WorldstateFunctions::SetMonth},\
-    {"SetYear",                           WorldstateFunctions::SetYear},\
-    {"SetDaysPassed",                     WorldstateFunctions::SetDaysPassed},\
-    {"SetTimeScale",                      WorldstateFunctions::SetTimeScale},\
+    SCRIPT_API_ENTRY("SetHour", WorldstateFunctions::SetHour),\
+    SCRIPT_API_ENTRY("SetDay", WorldstateFunctions::SetDay),\
+    SCRIPT_API_ENTRY("SetMonth", WorldstateFunctions::SetMonth),\
+    SCRIPT_API_ENTRY("SetYear", WorldstateFunctions::SetYear),\
+    SCRIPT_API_ENTRY("SetDaysPassed", WorldstateFunctions::SetDaysPassed),\
+    SCRIPT_API_ENTRY("SetTimeScale", WorldstateFunctions::SetTimeScale),\
     \
-    {"SetPlayerCollisionState",           WorldstateFunctions::SetPlayerCollisionState},\
-    {"SetActorCollisionState",            WorldstateFunctions::SetActorCollisionState},\
-    {"SetPlacedObjectCollisionState",     WorldstateFunctions::SetPlacedObjectCollisionState},\
-    {"UseActorCollisionForPlacedObjects", WorldstateFunctions::UseActorCollisionForPlacedObjects},\
+    SCRIPT_API_ENTRY("SetPlayerCollisionState", WorldstateFunctions::SetPlayerCollisionState),\
+    SCRIPT_API_ENTRY("SetActorCollisionState", WorldstateFunctions::SetActorCollisionState),\
+    SCRIPT_API_ENTRY("SetPlacedObjectCollisionState", WorldstateFunctions::SetPlacedObjectCollisionState),\
+    SCRIPT_API_ENTRY("UseActorCollisionForPlacedObjects", WorldstateFunctions::UseActorCollisionForPlacedObjects),\
     \
-    {"AddKill",                           WorldstateFunctions::AddKill},\
-    {"AddClientGlobalInteger",            WorldstateFunctions::AddClientGlobalInteger},\
-    {"AddClientGlobalFloat",              WorldstateFunctions::AddClientGlobalFloat},\
-    {"AddSynchronizedClientScriptId",     WorldstateFunctions::AddSynchronizedClientScriptId},\
-    {"AddSynchronizedClientGlobalId",     WorldstateFunctions::AddSynchronizedClientGlobalId},\
-    {"AddEnforcedCollisionRefId",         WorldstateFunctions::AddEnforcedCollisionRefId},\
-    {"AddCellToReset",                    WorldstateFunctions::AddCellToReset},\
-    {"AddDestinationOverride",            WorldstateFunctions::AddDestinationOverride},\
+    SCRIPT_API_ENTRY("AddKill", WorldstateFunctions::AddKill),\
+    SCRIPT_API_ENTRY("AddClientGlobalInteger", WorldstateFunctions::AddClientGlobalInteger),\
+    SCRIPT_API_ENTRY("AddClientGlobalFloat", WorldstateFunctions::AddClientGlobalFloat),\
+    SCRIPT_API_ENTRY("AddSynchronizedClientScriptId", WorldstateFunctions::AddSynchronizedClientScriptId),\
+    SCRIPT_API_ENTRY("AddSynchronizedClientGlobalId", WorldstateFunctions::AddSynchronizedClientGlobalId),\
+    SCRIPT_API_ENTRY("AddEnforcedCollisionRefId", WorldstateFunctions::AddEnforcedCollisionRefId),\
+    SCRIPT_API_ENTRY("AddCellToReset", WorldstateFunctions::AddCellToReset),\
+    SCRIPT_API_ENTRY("AddDestinationOverride", WorldstateFunctions::AddDestinationOverride),\
     \
-    {"ClearSynchronizedClientScriptIds",  WorldstateFunctions::ClearSynchronizedClientScriptIds},\
-    {"ClearSynchronizedClientGlobalIds",  WorldstateFunctions::ClearSynchronizedClientGlobalIds},\
-    {"ClearEnforcedCollisionRefIds",      WorldstateFunctions::ClearEnforcedCollisionRefIds},\
-    {"ClearCellsToReset",                 WorldstateFunctions::ClearCellsToReset},\
-    {"ClearDestinationOverrides",         WorldstateFunctions::ClearDestinationOverrides},\
+    SCRIPT_API_ENTRY("ClearSynchronizedClientScriptIds", WorldstateFunctions::ClearSynchronizedClientScriptIds),\
+    SCRIPT_API_ENTRY("ClearSynchronizedClientGlobalIds", WorldstateFunctions::ClearSynchronizedClientGlobalIds),\
+    SCRIPT_API_ENTRY("ClearEnforcedCollisionRefIds", WorldstateFunctions::ClearEnforcedCollisionRefIds),\
+    SCRIPT_API_ENTRY("ClearCellsToReset", WorldstateFunctions::ClearCellsToReset),\
+    SCRIPT_API_ENTRY("ClearDestinationOverrides", WorldstateFunctions::ClearDestinationOverrides),\
     \
-    {"SaveMapTileImageFile",              WorldstateFunctions::SaveMapTileImageFile},\
-    {"LoadMapTileImageFile",              WorldstateFunctions::LoadMapTileImageFile},\
+    SCRIPT_API_ENTRY("SaveMapTileImageFile", WorldstateFunctions::SaveMapTileImageFile),\
+    SCRIPT_API_ENTRY("LoadMapTileImageFile", WorldstateFunctions::LoadMapTileImageFile),\
     \
-    {"SendClientScriptGlobal",            WorldstateFunctions::SendClientScriptGlobal},\
-    {"SendClientScriptSettings",          WorldstateFunctions::SendClientScriptSettings},\
-    {"SendWorldKillCount",                WorldstateFunctions::SendWorldKillCount},\
-    {"SendWorldMap",                      WorldstateFunctions::SendWorldMap},\
-    {"SendWorldTime",                     WorldstateFunctions::SendWorldTime},\
-    {"SendWorldWeather",                  WorldstateFunctions::SendWorldWeather},\
-    {"SendWorldCollisionOverride",        WorldstateFunctions::SendWorldCollisionOverride},\
-    {"SendCellReset",                     WorldstateFunctions::SendCellReset},\
-    {"SendWorldDestinationOverride",      WorldstateFunctions::SendWorldDestinationOverride},\
-    {"SendWorldRegionAuthority",          WorldstateFunctions::SendWorldRegionAuthority},\
+    SCRIPT_API_ENTRY("SendClientScriptGlobal", WorldstateFunctions::SendClientScriptGlobal),\
+    SCRIPT_API_ENTRY("SendClientScriptSettings", WorldstateFunctions::SendClientScriptSettings),\
+    SCRIPT_API_ENTRY("SendWorldKillCount", WorldstateFunctions::SendWorldKillCount),\
+    SCRIPT_API_ENTRY("SendWorldMap", WorldstateFunctions::SendWorldMap),\
+    SCRIPT_API_ENTRY("SendWorldTime", WorldstateFunctions::SendWorldTime),\
+    SCRIPT_API_ENTRY("SendWorldWeather", WorldstateFunctions::SendWorldWeather),\
+    SCRIPT_API_ENTRY("SendWorldCollisionOverride", WorldstateFunctions::SendWorldCollisionOverride),\
+    SCRIPT_API_ENTRY("SendCellReset", WorldstateFunctions::SendCellReset),\
+    SCRIPT_API_ENTRY("SendWorldDestinationOverride", WorldstateFunctions::SendWorldDestinationOverride),\
+    SCRIPT_API_ENTRY("SendWorldRegionAuthority", WorldstateFunctions::SendWorldRegionAuthority),\
     \
-    {"ReadLastWorldstate",                WorldstateFunctions::ReadLastWorldstate},\
-    {"CopyLastWorldstateToStore",         WorldstateFunctions::CopyLastWorldstateToStore}
+    SCRIPT_API_ENTRY("ReadLastWorldstate", WorldstateFunctions::ReadLastWorldstate),\
+    SCRIPT_API_ENTRY("CopyLastWorldstateToStore", WorldstateFunctions::CopyLastWorldstateToStore)
 
 class WorldstateFunctions
 {

@@ -9,13 +9,15 @@
 	<key>CFBundleExecutable</key>
 	<string>openmw-launcher</string>
     <key>CFBundleIdentifier</key>
-    <string>org.openmw.openmw</string>
+    <string>org.arenamp.client</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleLongVersionString</key>
 	<string></string>
 	<key>CFBundleName</key>
-	<string>OpenMW</string>
+	<string>ArenaMP</string>
+	<key>CFBundleDisplayName</key>
+	<string>ArenaMP</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleSignature</key>
@@ -26,10 +28,10 @@
 	<string>${OPENMW_VERSION}</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
-	<key>LSRequiresCarbon</key>
-	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>LSMinimumSystemVersion</key>
+	<string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>

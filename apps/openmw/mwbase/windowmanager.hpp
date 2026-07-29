@@ -56,6 +56,7 @@ namespace MWGui
     class Layout;
 
     class Console;
+    class QuickLoot;
     class SpellWindow;
     class TradeWindow;
     class TravelWindow;
@@ -238,6 +239,7 @@ namespace MWBase
             virtual bool getWorldMouseOver() = 0;
 
             virtual float getScalingFactor() = 0;
+            virtual void setScalingFactor(float factor) = 0;
 
             virtual bool toggleFogOfWar() = 0;
 
@@ -357,6 +359,21 @@ namespace MWBase
 
             virtual void showSoulgemDialog (MWWorld::Ptr item) = 0;
 
+            /// Let the normal Activate action use the selected QuickLoot row.
+            virtual bool activateQuickLoot() = 0;
+
+            /// Consume the mouse wheel while the player animation menu is visible.
+            virtual bool handlePlayerAnimationMenuMouseWheel(int rel) = 0;
+
+            /// Consume the mouse wheel while QuickLoot is visible so it cannot zoom the camera.
+            virtual bool handleQuickLootMouseWheel(int rel) = 0;
+
+            /// Handle only QuickLoot shortcuts.
+            virtual bool handleQuickLootKeyPress(MyGUI::KeyCode key) = 0;
+
+            /// True only while the QuickLoot overlay is actually visible for the focused container.
+            virtual bool isQuickLootVisible() const = 0;
+
             virtual void changePointer (const std::string& name) = 0;
 
             virtual void setEnemy (const MWWorld::Ptr& enemy) = 0;
@@ -441,6 +458,10 @@ namespace MWBase
             void windowResized(int x, int y) override = 0;
             void windowClosed() override = 0;
             virtual bool isWindowVisible() = 0;
+
+            /// Return the normalized ArenaMP interface language used by this client.
+            /// The result is currently "ru" or "en".
+            virtual std::string getArenaLanguage() const = 0;
 
             virtual void watchActor(const MWWorld::Ptr& ptr) = 0;
             virtual MWWorld::Ptr getWatchedActor() const = 0;

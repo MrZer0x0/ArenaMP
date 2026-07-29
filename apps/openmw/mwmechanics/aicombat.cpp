@@ -1,6 +1,10 @@
 #include "aicombat.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 #include <components/misc/rng.hpp>
+#include <components/settings/settings.hpp>
 #include <components/misc/coordinateconverter.hpp>
 
 #include <components/esm/aisequence.hpp>
@@ -19,6 +23,7 @@
 #include "../mwmp/Main.hpp"
 #include "../mwmp/Networking.hpp"
 #include "../mwmp/ActorList.hpp"
+#include "../mwmp/CellController.hpp"
 #include "../mwmp/MechanicsHelper.hpp"
 #include "../mwgui/windowmanagerimp.hpp"
 /*
@@ -118,41 +123,60 @@ namespace MWMechanics
 
     bool AiCombat::execute (const MWWorld::Ptr& actor, CharacterController& characterController, AiState& state, float duration)
     {
-        // get or create temporary storage
         AiCombatStorage& storage = state.get<AiCombatStorage>();
-        
-        //General description
+
         if (actor.getClass().getCreatureStats(actor).isDead())
+        {
+            clearTacticalMovement(actor, storage);
             return true;
+        }
 
         MWWorld::Ptr target = MWBase::Environment::get().getWorld()->searchPtrViaActorId(mTargetActorId);
         if (target.isEmpty())
+        {
+            clearTacticalMovement(actor, storage);
             return false;
+        }
 
-        if(!target.getRefData().getCount() || !target.getRefData().isEnabled()  // Really we should be checking whether the target is currently registered
-                                                                                // with the MechanicsManager
-                || target.getClass().getCreatureStats(target).isDead())
+        if (!target.getRefData().getCount() || !target.getRefData().isEnabled()
+            || target.getClass().getCreatureStats(target).isDead())
+        {
+            clearTacticalMovement(actor, storage);
             return true;
+        }
 
-        if (actor == target) // This should never happen.
+        if (actor == target)
+        {
+            clearTacticalMovement(actor, storage);
             return true;
+        }
+
+        if (updatePursuitLeash(actor, duration, storage))
+        {
+            clearTacticalMovement(actor, storage);
+            storage.stopAttack();
+            characterController.setAttackingOrSpell(false);
+            return true;
+        }
 
         if (!storage.isFleeing())
         {
-            if (storage.mCurrentAction.get()) // need to wait to init action with its attack range
+            if (storage.mCurrentAction.get())
             {
-                //Update every frame. UpdateLOS uses a timer, so the LOS check does not happen every frame.
                 updateLOS(actor, target, duration, storage);
                 const float targetReachedTolerance = storage.mLOS && !storage.mUseCustomDestination
                         ? storage.mAttackRange : 0.0f;
                 const osg::Vec3f destination = storage.mUseCustomDestination
                         ? storage.mCustomDestination : target.getRefData().getPosition().asVec3();
-                const bool is_target_reached = pathTo(actor, destination, duration, targetReachedTolerance);
-                if (is_target_reached) storage.mReadyToAttack = true;
+                const bool isTargetReached = pathTo(actor, destination, duration, targetReachedTolerance);
+                if (isTargetReached)
+                    storage.mReadyToAttack = true;
             }
 
             storage.updateCombatMove(duration);
-            if (storage.mReadyToAttack) updateActorsMovement(actor, duration, storage);
+            updateTacticalMovement(actor, target, duration, storage, characterController);
+            if (storage.mReadyToAttack || storage.hasTacticalMovement())
+                updateActorsMovement(actor, duration, storage);
             storage.updateAttack(characterController);
 
             /*
@@ -174,6 +198,7 @@ namespace MWMechanics
         }
         else
         {
+            clearTacticalMovement(actor, storage);
             updateFleeing(actor, target, duration, storage);
         }
         storage.mActionCooldown -= duration;
@@ -181,7 +206,10 @@ namespace MWMechanics
         if (storage.mReaction.update(duration) == Misc::TimerStatus::Waiting)
             return false;
 
-        return attack(actor, target, storage, characterController);
+        const bool finished = attack(actor, target, storage, characterController);
+        if (finished)
+            clearTacticalMovement(actor, storage);
+        return finished;
     }
 
     bool AiCombat::attack(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, AiCombatStorage& storage, CharacterController& characterController)
@@ -298,7 +326,8 @@ namespace MWMechanics
 
         float distToTarget = MWBase::Environment::get().getWorld()->getHitDistance(actor, target);
 
-        storage.mReadyToAttack = (currentAction->isAttackingOrSpell() && distToTarget <= rangeAttack && storage.mLOS);
+        storage.mReadyToAttack = (currentAction->isAttackingOrSpell() && distToTarget <= rangeAttack && storage.mLOS
+            && !storage.suppressesAttack());
 
         if (isRangedCombat)
         {
@@ -376,6 +405,223 @@ namespace MWMechanics
         }
 
         return false;
+    }
+
+    bool AiCombat::updatePursuitLeash(const MWWorld::Ptr& actor, float duration, AiCombatStorage& storage)
+    {
+        if (mwmp::Main::isInitialized()
+            && !mwmp::Main::get().getCellController()->isLocalActor(actor))
+            return false;
+
+        const MWWorld::CellStore* actorCell = actor.getCell();
+        const osg::Vec3f actorPos = actor.getRefData().getPosition().asVec3();
+        if (!storage.mCombatOriginSet || storage.mCombatOriginCell != actorCell)
+        {
+            storage.mCombatOrigin = actorPos;
+            storage.mCombatOriginCell = actorCell;
+            storage.mCombatOriginSet = true;
+            storage.mLeashExceededTimer = 0.f;
+            return false;
+        }
+
+        const float maxDistance = std::max(0.f,
+            Settings::Manager::getFloat("combat pursuit max distance", "Game"));
+        if (maxDistance <= 0.f)
+            return false;
+
+        const float distanceFromOrigin = distanceIgnoreZ(storage.mCombatOrigin, actorPos);
+        if (distanceFromOrigin > maxDistance)
+            storage.mLeashExceededTimer += duration;
+        else
+            storage.mLeashExceededTimer = std::max(0.f, storage.mLeashExceededTimer - duration * 2.f);
+
+        return storage.mLeashExceededTimer >= 1.5f;
+    }
+
+    void AiCombat::clearTacticalMovement(const MWWorld::Ptr& actor, AiCombatStorage& storage)
+    {
+        const bool controlsActor = !mwmp::Main::isInitialized()
+            || mwmp::Main::get().getCellController()->isLocalActor(actor);
+        if (controlsActor)
+        {
+            MWMechanics::CreatureStats& stats = actor.getClass().getCreatureStats(actor);
+            stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, false);
+            stats.setMovementFlag(CreatureStats::Flag_ForceSneak, false);
+        }
+
+        storage.mTacticalState = AiCombatStorage::Tactical_None;
+        storage.mTacticalTimer = 0.f;
+        storage.mJumpTimer = 0.f;
+        storage.mSneakTimer = 0.f;
+        storage.mMovement.mPosition[0] = 0.f;
+        storage.mMovement.mPosition[1] = 0.f;
+    }
+
+    void AiCombat::updateTacticalMovement(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, float duration,
+        AiCombatStorage& storage, CharacterController& characterController)
+    {
+        if (mwmp::Main::isInitialized()
+            && !mwmp::Main::get().getCellController()->isLocalActor(actor))
+        {
+            storage.mTacticalState = AiCombatStorage::Tactical_None;
+            storage.mTacticalTimer = 0.f;
+            return;
+        }
+
+        if (!Settings::Manager::getBool("tactical combat", "Game") || !storage.mCurrentAction)
+        {
+            clearTacticalMovement(actor, storage);
+            return;
+        }
+
+        MWMechanics::CreatureStats& stats = actor.getClass().getCreatureStats(actor);
+        const osg::Vec3f actorPos = actor.getRefData().getPosition().asVec3();
+        const float distToTarget = MWBase::Environment::get().getWorld()->getHitDistance(actor, target);
+        const bool bipedal = actor.getClass().isBipedal(actor);
+        bool ranged = false;
+        storage.mCurrentAction->getCombatRange(ranged);
+
+        storage.mTacticalCooldown = std::max(0.f, storage.mTacticalCooldown - duration);
+        storage.mTacticalDecisionTimer = std::max(0.f, storage.mTacticalDecisionTimer - duration);
+
+        if (storage.mJumpTimer > 0.f)
+        {
+            storage.mJumpTimer -= duration;
+            if (storage.mJumpTimer <= 0.f)
+                stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, false);
+        }
+        if (storage.mSneakTimer > 0.f)
+        {
+            storage.mSneakTimer -= duration;
+            if (storage.mSneakTimer <= 0.f)
+                stats.setMovementFlag(CreatureStats::Flag_ForceSneak, false);
+        }
+
+        // Detect a blocked pursuit without replacing StartCombat by AiTravel.
+        storage.mStuckCheckTimer -= duration;
+        if (storage.mStuckCheckTimer <= 0.f)
+        {
+            if (storage.mHasLastActorPos && distToTarget > 250.f
+                && distanceIgnoreZ(storage.mLastActorPos, actorPos) < 40.f)
+                storage.mStuckDuration += 1.5f;
+            else
+                storage.mStuckDuration = 0.f;
+
+            storage.mLastActorPos = actorPos;
+            storage.mHasLastActorPos = true;
+            storage.mStuckCheckTimer = 1.5f;
+        }
+
+        if (storage.mStuckDuration >= 3.f && bipedal)
+        {
+            storage.mStuckDuration = 0.f;
+            storage.mTacticalState = AiCombatStorage::Tactical_Unstuck;
+            storage.mTacticalTimer = 0.45f;
+            storage.mTacticalCooldown = 1.2f;
+            storage.stopAttack();
+            storage.mMovement.mPosition[0] = Misc::Rng::rollProbability() < 0.5 ? -1.f : 1.f;
+            storage.mMovement.mPosition[1] = 0.65f;
+            stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, true);
+            storage.mJumpTimer = 0.32f;
+            characterController.setAttackingOrSpell(false);
+            mPathFinder.clearPath();
+        }
+
+        if (storage.mTacticalState != AiCombatStorage::Tactical_None)
+        {
+            storage.mTacticalTimer -= duration;
+            if (storage.mTacticalTimer <= 0.f)
+            {
+                storage.mTacticalState = AiCombatStorage::Tactical_None;
+                storage.mMovement.mPosition[0] = 0.f;
+                storage.mMovement.mPosition[1] = 0.f;
+            }
+        }
+
+        if (storage.mTacticalState == AiCombatStorage::Tactical_None
+            && storage.mTacticalCooldown <= 0.f && storage.mTacticalDecisionTimer <= 0.f)
+        {
+            storage.mTacticalDecisionTimer = 0.35f;
+            const float roll = Misc::Rng::rollClosedProbability();
+            const float hpMax = stats.getHealth().getModified();
+            const float hpRatio = hpMax > 0.f ? stats.getHealth().getCurrent() / hpMax : 1.f;
+
+            if (hpRatio < 0.35f && distToTarget < 500.f && roll < 0.45f)
+            {
+                storage.mTacticalState = AiCombatStorage::Tactical_Retreat;
+                storage.mTacticalTimer = 0.65f;
+                storage.mTacticalCooldown = 1.8f;
+            }
+            else if (bipedal && distToTarget < std::max(300.f, storage.mAttackRange * 1.35f) && roll < 0.08f)
+            {
+                storage.mTacticalState = AiCombatStorage::Tactical_JumpDodge;
+                storage.mTacticalTimer = 0.38f;
+                storage.mTacticalCooldown = 2.5f;
+                stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, true);
+                storage.mJumpTimer = 0.28f;
+                storage.stopAttack();
+                characterController.setAttackingOrSpell(false);
+            }
+            else if (distToTarget < std::max(380.f, storage.mAttackRange * 1.6f) && roll < 0.35f)
+            {
+                const bool left = Misc::Rng::rollProbability() < 0.5;
+                storage.mTacticalState = left
+                    ? AiCombatStorage::Tactical_CircleLeft : AiCombatStorage::Tactical_CircleRight;
+                storage.mTacticalTimer = 0.45f + 0.35f * Misc::Rng::rollClosedProbability();
+                storage.mTacticalCooldown = 1.2f + 1.5f * Misc::Rng::rollClosedProbability();
+            }
+            else if (!ranged && distToTarget < 650.f && roll < 0.55f)
+            {
+                const bool left = Misc::Rng::rollProbability() < 0.5;
+                storage.mTacticalState = left
+                    ? AiCombatStorage::Tactical_StrafeLeft : AiCombatStorage::Tactical_StrafeRight;
+                storage.mTacticalTimer = 0.25f + 0.35f * Misc::Rng::rollClosedProbability();
+                storage.mTacticalCooldown = 1.0f + 1.3f * Misc::Rng::rollClosedProbability();
+            }
+            else if (bipedal && !ranged && distToTarget > 500.f && distToTarget < 1000.f && roll > 0.92f)
+            {
+                storage.mTacticalState = AiCombatStorage::Tactical_SneakApproach;
+                storage.mTacticalTimer = 1.5f + Misc::Rng::rollClosedProbability();
+                storage.mTacticalCooldown = 4.f;
+                stats.setMovementFlag(CreatureStats::Flag_ForceSneak, true);
+                storage.mSneakTimer = storage.mTacticalTimer;
+            }
+        }
+
+        switch (storage.mTacticalState)
+        {
+            case AiCombatStorage::Tactical_StrafeLeft:
+                storage.mMovement.mPosition[0] = -1.f;
+                storage.mMovement.mPosition[1] = 0.15f;
+                break;
+            case AiCombatStorage::Tactical_StrafeRight:
+                storage.mMovement.mPosition[0] = 1.f;
+                storage.mMovement.mPosition[1] = 0.15f;
+                break;
+            case AiCombatStorage::Tactical_CircleLeft:
+                storage.mMovement.mPosition[0] = -1.f;
+                storage.mMovement.mPosition[1] = ranged ? -0.15f : 0.35f;
+                break;
+            case AiCombatStorage::Tactical_CircleRight:
+                storage.mMovement.mPosition[0] = 1.f;
+                storage.mMovement.mPosition[1] = ranged ? -0.15f : 0.35f;
+                break;
+            case AiCombatStorage::Tactical_Retreat:
+                storage.stopAttack();
+                storage.mMovement.mPosition[0] = Misc::Rng::rollProbability() < 0.5 ? -0.35f : 0.35f;
+                storage.mMovement.mPosition[1] = -1.f;
+                characterController.setAttackingOrSpell(false);
+                break;
+            case AiCombatStorage::Tactical_JumpDodge:
+            case AiCombatStorage::Tactical_Unstuck:
+                if (storage.mMovement.mPosition[0] == 0.f)
+                    storage.mMovement.mPosition[0] = Misc::Rng::rollProbability() < 0.5 ? -1.f : 1.f;
+                storage.mMovement.mPosition[1] = storage.mTacticalState == AiCombatStorage::Tactical_Unstuck ? 0.65f : -0.2f;
+                break;
+            case AiCombatStorage::Tactical_SneakApproach:
+            case AiCombatStorage::Tactical_None:
+                break;
+        }
     }
 
     void MWMechanics::AiCombat::updateLOS(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, float duration, MWMechanics::AiCombatStorage& storage)
@@ -726,6 +972,17 @@ namespace MWMechanics
     bool AiCombatStorage::isFleeing()
     {
         return mFleeState != FleeState_None;
+    }
+
+    bool AiCombatStorage::hasTacticalMovement() const
+    {
+        return mTacticalState != Tactical_None && mTacticalState != Tactical_SneakApproach;
+    }
+
+    bool AiCombatStorage::suppressesAttack() const
+    {
+        return mTacticalState == Tactical_Retreat || mTacticalState == Tactical_JumpDodge
+            || mTacticalState == Tactical_Unstuck;
     }
 }
 

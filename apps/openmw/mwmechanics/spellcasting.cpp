@@ -159,6 +159,16 @@ namespace MWMechanics
                 MWBase::Environment::get().getWorld()->getStore().get<ESM::MagicEffect>().find (
                 effectIt->mEffectID);
 
+            const bool isHarmful = (magicEffect->mData.mFlags & ESM::MagicEffect::Harmful) != 0;
+
+            // Apply friendly fire per effect rather than per spell, so mixed
+            // spells may still heal or buff a protected player while their
+            // harmful components (damage, drain, absorb, paralysis, etc.) are
+            // discarded. This also covers touch, projectile, area, reflected,
+            // enchanted-weapon and damage-over-time spell applications.
+            if (isHarmful && !MechanicsHelper::isFriendlyFireAllowed(caster, target))
+                continue;
+
             // Re-casting a bound equipment effect has no effect if the spell is still active
             if (magicEffect->mData.mFlags & ESM::MagicEffect::NonRecastable && targetSpells.isSpellActive(mId))
             {
@@ -184,7 +194,6 @@ namespace MWMechanics
                 continue;
 
             // Notify the target actor they've been hit
-            bool isHarmful = magicEffect->mData.mFlags & ESM::MagicEffect::Harmful;
             if (target.getClass().isActor() && target != caster && !caster.isEmpty() && isHarmful)
                 target.getClass().onHit(target, 0.0f, true, MWWorld::Ptr(), caster, osg::Vec3f(), true);
 
@@ -212,17 +221,10 @@ namespace MWMechanics
 
             if (target == getPlayer())
             {
-                int effectholder = effectIt->mEffectID;
+                int effectholder = 1;
+                effectholder = effectIt->mEffectID;
 
-                bool applyCap = false;
-
-                float maxResistSetting = 0.6f;
-
-                maxResistSetting = std::max(0.0f, maxResistSetting);
-                maxResistSetting = std::min(1.0f, maxResistSetting);
-
-                float minimumAllowedMultiplier = (1.0f - maxResistSetting);
-
+                float magcap = 0.4f;
 
                 //sub system to add 10% of willpower to magic resist
                 MWWorld::Ptr player = getPlayer();
@@ -230,7 +232,6 @@ namespace MWMechanics
                 float playerWill = playerStats.getAttribute(ESM::Attribute::Willpower).getModified();
                 float willMagicResist = 0.0f;
 
-                // Apply bonus resist magicka based on willpower above 50, 1% for every 10 points, this obeys the cap
                 if (playerWill > 50.0f)
                 {
                     playerWill -= 50.0f;
@@ -238,54 +239,63 @@ namespace MWMechanics
                 }
 
                 //check for drain effects
-                //DrainAttribute = 17, DrainHealth = 18, DrainMagicka = 19, DrainFatigue = 20, DrainSkill = 21
                 if (effectholder == 17 || effectholder == 18 || effectholder == 19 || effectholder == 20 || effectholder == 21)
                 {
-                    applyCap = true;
+                    magnitudeMult -= willMagicResist;
+                    if (magnitudeMult < magcap)
+                    {
+                        magnitudeMult = magcap;
+                    }
                 }
 
                 //check for damage effects
-                //DamageAttribute = 22, DamageHealth = 23, DamageMagicka = 24, DamageFatigue = 25, DamageSkill = 26
                 if (effectholder == 22 || effectholder == 23 || effectholder == 24 || effectholder == 25 || effectholder == 26)
                 {
-                    applyCap = true;
+                    magnitudeMult -= willMagicResist;
+                    if (magnitudeMult < magcap)
+                    {
+                        magnitudeMult = magcap;
+                    }
                 }
 
                 //check for absorb effects
-                //AbsorbAttribute = 85, AbsorbHealth = 86, AbsorbMagicka = 87, AbsorbFatigue = 88, AbsorbSkill = 89
                 if (effectholder == 85 || effectholder == 86 || effectholder == 87 || effectholder == 88 || effectholder == 89)
                 {
-                    applyCap = true;
+                    magnitudeMult -= willMagicResist;
+                    if (magnitudeMult < magcap)
+                    {
+                        magnitudeMult = magcap;
+                    }
                 }
 
                 //check for weakness to elemental magicka poison effects
-                //WeaknessToFire = 28, WeaknessToFrost = 29, WeaknessToShock = 30, WeaknessToMagicka = 31, WeaknessToPoison = 35
                 if (effectholder == 28 || effectholder == 29 || effectholder == 30 || effectholder == 31 || effectholder == 35)
                 {
-                    applyCap = true;
+                    magnitudeMult -= willMagicResist;
+                    if (magnitudeMult < magcap)
+                    {
+                        magnitudeMult = magcap;
+                    }
                 }
 
 
                 //check for other weakness effects normal weps common blight
-                //WeaknessToCommonDisease = 32, WeaknessToBlightDisease = 33, WeaknessToNormalWeapons = 36
                 if (effectholder == 32 || effectholder == 33 || effectholder == 36)
                 {
-                    applyCap = true;
+                    magnitudeMult -= willMagicResist;
+                    if (magnitudeMult < magcap)
+                    {
+                        magnitudeMult = magcap;
+                    }
                 }
 
                 //check for negative illusion and alteration effects
-                //Burden = 7, Silence = 46, Blind = 47, Sound = 48
                 if (effectholder == 7 || effectholder == 46 || effectholder == 47 || effectholder == 48)
                 {
-                    applyCap = true;
-                }
-
-                if (applyCap == true)
-                {
                     magnitudeMult -= willMagicResist;
-                    if (magnitudeMult < minimumAllowedMultiplier)
+                    if (magnitudeMult < magcap)
                     {
-                        magnitudeMult = minimumAllowedMultiplier;
+                        magnitudeMult = magcap;
                     }
                 }
 
@@ -1032,21 +1042,21 @@ namespace MWMechanics
                 stats.getSpells().usePower(spell);
         }
 
-        // EncoreMP, grant more XP when costing spells above 5 magicka
+        // EncoreMP, more XP from high costed spells
 
         float xpMult = 1.0f;
         float spellCost = spell->mData.mCost;
 
         if (spellCost > 5.0f)
         {
-            spellCost = std::min(spellCost, 50.f);
-            xpMult += ((spellCost - 5.0f) * 0.0666f);
+            xpMult = (spellCost * 0.0889f);
+            xpMult += 0.556f;
         }
 
         if (!mManualSpell && mCaster == getPlayer() && spellIncreasesSkill(spell))
             mCaster.getClass().skillUsageSucceeded(mCaster, spellSchoolToSkill(school), 0, xpMult);
 
-        // end of EncoreMP increased XP from high cost spells
+        // end of EncoreMP, more XP from high costed spells
 
 
         // A non-actor doesn't play its spell cast effects from a character controller, so play them here

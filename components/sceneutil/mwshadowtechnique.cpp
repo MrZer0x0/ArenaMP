@@ -866,6 +866,27 @@ void SceneUtil::MWShadowTechnique::setPolygonOffset(float factor, float units)
 void SceneUtil::MWShadowTechnique::setShadowFadeStart(float shadowFadeStart)
 {
     _shadowFadeStart = shadowFadeStart;
+
+    for (auto& perFrameUniformList : _uniforms)
+    {
+        for (const osg::ref_ptr<osg::Uniform>& uniform : perFrameUniformList)
+        {
+            if (uniform.valid() && uniform->getName() == "shadowFadeStart")
+                uniform->set(shadowFadeStart);
+        }
+    }
+}
+
+void SceneUtil::MWShadowTechnique::setMaximumShadowMapDistance(float maximumShadowMapDistance)
+{
+    for (auto& perFrameUniformList : _uniforms)
+    {
+        for (const osg::ref_ptr<osg::Uniform>& uniform : perFrameUniformList)
+        {
+            if (uniform.valid() && uniform->getName() == "maximumShadowMapDistance")
+                uniform->set(maximumShadowMapDistance);
+        }
+    }
 }
 
 void SceneUtil::MWShadowTechnique::enableFrontFaceCulling()

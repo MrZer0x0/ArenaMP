@@ -73,6 +73,8 @@ namespace MWInput
         A_ZoomIn,
         A_ZoomOut,
 
+        A_PlayerAnimationMenu,
+
         A_Last                      // Marker for the last item
     };
 }

@@ -4,14 +4,13 @@
 #include <SDL_system.h>
 
 #include <MyGUI_FactoryManager.h>
+#include <MyGUI_EditBox.h>
 #include <MyGUI_Gui.h>
 #include <MyGUI_ImageBox.h>
 #include <MyGUI_InputManager.h>
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_RenderManager.h>
-#include <MyGUI_RotatingSkin.h>
 #include <MyGUI_ScrollView.h>
-#include <MyGUI_TextIterator.h>
 
 #include <extern/PicoSHA2/picosha2.h>
 
@@ -80,6 +79,7 @@ void mwmp::GUIController::setupChat()
 
     mChat = new GUIChat(chatX, chatY, chatW, chatH);
     mChat->setDelay(chatDelay);
+    mChat->setHistoryDisplayEnabled(!Main::isChatHistoryHidden());
 }
 
 void mwmp::GUIController::printChatMessage(std::string &msg)
@@ -91,13 +91,19 @@ void mwmp::GUIController::printChatMessage(std::string &msg)
 
 void mwmp::GUIController::setChatVisible(bool chatVisible)
 {
-    mChat->setVisible(chatVisible);
+    if (!chatVisible)
+    {
+        mChat->setHistoryReviewState(false);
+        mChat->hideSmoothly();
+    }
+    else
+        mChat->refreshPresentation();
 }
 
 void mwmp::GUIController::showDialogList(const mwmp::BasePlayer::GUIMessageBox &guiMessageBox)
 {
     MWBase::WindowManager *windowManager = MWBase::Environment::get().getWindowManager();
-    
+
     if (mListBox != NULL)
     {
         windowManager->removeDialog(mListBox);
@@ -221,6 +227,33 @@ bool mwmp::GUIController::getChatEditState()
     return mChat->editState;
 }
 
+std::string mwmp::GUIController::getChatHistoryText() const
+{
+    return mChat != nullptr ? mChat->getHistoryText() : std::string();
+}
+
+bool mwmp::GUIController::getChatHistoryCoord(int& x, int& y, int& width, int& height) const
+{
+    if (mChat == nullptr || mChat->mHistory == nullptr)
+        return false;
+
+    const MyGUI::IntCoord coord = mChat->mHistory->getAbsoluteCoord();
+    if (coord.width <= 0 || coord.height <= 0)
+        return false;
+
+    x = coord.left;
+    y = coord.top;
+    width = coord.width;
+    height = coord.height;
+    return true;
+}
+
+void mwmp::GUIController::setChatMainMenuOpen(bool state)
+{
+    if (mChat != nullptr)
+        mChat->setMainMenuOpen(state);
+}
+
 void mwmp::GUIController::update(float dt)
 {
     if (mChat != nullptr)
@@ -260,37 +293,6 @@ void mwmp::GUIController::WM_UpdateVisible(MWGui::GuiMode mode)
     }
 }
 
-class MarkerWidget: public MyGUI::Widget
-{
-MYGUI_RTTI_DERIVED(MarkerWidget)
-
-public:
-    void setNormalColour(const MyGUI::Colour& colour)
-    {
-        mNormalColour = colour;
-        setColour(colour);
-    }
-
-    void setHoverColour(const MyGUI::Colour& colour)
-    {
-        mHoverColour = colour;
-    }
-
-private:
-    MyGUI::Colour mNormalColour;
-    MyGUI::Colour mHoverColour;
-
-    void onMouseLostFocus(MyGUI::Widget* _new)
-    {
-        setColour(mNormalColour);
-    }
-
-    void onMouseSetFocus(MyGUI::Widget* _old)
-    {
-        setColour(mHoverColour);
-    }
-};
-
 ESM::CustomMarker mwmp::GUIController::createMarker(const RakNet::RakNetGUID &guid)
 {
     DedicatedPlayer *player = PlayerList::getPlayer(guid);
@@ -327,48 +329,14 @@ ESM::CustomMarker mwmp::GUIController::createMarker(const RakNet::RakNetGUID &gu
 
 void mwmp::GUIController::updatePlayersMarkers(MWGui::LocalMapBase *localMapBase)
 {
+    // ArenaMP: remote-player marker widgets are intentionally disabled on local maps and the HUD
+    // minimap. Recreating one MyGUI widget per network update/player caused instability when several
+    // players shared a cell. Keep the marker collection for the world-map tooltip path, but never
+    // instantiate local-map widgets for it.
     std::vector<MyGUI::Widget*>::iterator markerWidgetIterator = localMapBase->mPlayerMarkerWidgets.begin();
     for (; markerWidgetIterator != localMapBase->mPlayerMarkerWidgets.end(); ++markerWidgetIterator)
         MyGUI::Gui::getInstance().destroyWidget(*markerWidgetIterator);
     localMapBase->mPlayerMarkerWidgets.clear();
-
-    for (int dX = -localMapBase->mCellDistance; dX <= localMapBase->mCellDistance; ++dX)
-    {
-        for (int dY =-localMapBase->mCellDistance; dY <= localMapBase->mCellDistance; ++dY)
-        {
-            ESM::CellId cellId;
-            cellId.mPaged = !localMapBase->mInterior;
-            cellId.mWorldspace = (localMapBase->mInterior ? localMapBase->mPrefix : ESM::CellId::sDefaultWorldspace);
-            cellId.mIndex.mX = localMapBase->mCurX+dX;
-            cellId.mIndex.mY = localMapBase->mCurY+dY;
-
-            PlayerMarkerCollection::RangeType markers = mPlayerMarkers.getMarkers(cellId);
-            for (PlayerMarkerCollection::ContainerType::const_iterator markerIterator = markers.first;
-                markerIterator != markers.second; ++markerIterator)
-            {
-                const ESM::CustomMarker &marker = markerIterator->second;
-
-                MWGui::LocalMapBase::MarkerUserData markerPos (localMapBase->mLocalMapRender);
-                MyGUI::IntPoint widgetPos = localMapBase->getMarkerPosition(marker.mWorldX, marker.mWorldY, markerPos);
-
-                MyGUI::IntCoord widgetCoord(widgetPos.left - 8, widgetPos.top - 8, 16, 16);
-                MarkerWidget* markerWidget = localMapBase->mLocalMap->createWidget<MarkerWidget>("CustomMarkerButton",
-                                                                                   widgetCoord, MyGUI::Align::Default);
-
-                markerWidget->setDepth(0); // Local_MarkerAboveFogLayer
-                markerWidget->setUserString("ToolTipType", "Layout");
-                markerWidget->setUserString("ToolTipLayout", "TextToolTipOneLine");
-                markerWidget->setUserString("Caption_TextOneLine", MyGUI::TextIterator::toTagsString(marker.mNote));
-                markerWidget->setNormalColour(MyGUI::Colour(0.6f, 0.6f, 0.6f));
-                markerWidget->setHoverColour(MyGUI::Colour(1.0f, 1.0f, 1.0f));
-                markerWidget->setUserData(marker);
-                markerWidget->setNeedMouseFocus(true);
-                //localMapBase->customMarkerCreated(markerWidget);
-                localMapBase->mPlayerMarkerWidgets.push_back(markerWidget);
-            }
-        }
-    }
-    localMapBase->redraw();
 }
 
 void mwmp::GUIController::setGlobalMapMarkerTooltip(MWGui::MapWindow *mapWindow, MyGUI::Widget *markerWidget, int x, int y)

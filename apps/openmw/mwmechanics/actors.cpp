@@ -1,9 +1,16 @@
 #include "actors.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <optional>
+#include <typeinfo>
+#include <vector>
 
 #include <components/esm/esmreader.hpp>
 #include <components/esm/esmwriter.hpp>
+#include <components/esm/loadnpc.hpp>
+#include <components/esm/loadarmo.hpp>
+#include <components/esm/loadligh.hpp>
 
 #include <components/sceneutil/positionattitudetransform.hpp>
 #include <components/debug/debuglog.hpp>
@@ -44,6 +51,8 @@
 #include "../mwbase/mechanicsmanager.hpp"
 #include "../mwbase/statemanager.hpp"
 
+#include "../mwgui/dialogue.hpp"
+
 #include "../mwmechanics/aibreathe.hpp"
 
 #include "../mwrender/vismask.hpp"
@@ -66,6 +75,55 @@
 
 namespace
 {
+
+struct DynamicIdleAnimation
+{
+    const char* mGroup;
+    float mSpeed;
+    std::size_t mLoops;
+};
+
+float randomRange(float minimum, float maximum)
+{
+    return minimum + (maximum - minimum) * Misc::Rng::rollProbability();
+}
+
+bool dynamicActorLeftArmOccupied(const MWWorld::Ptr& ptr)
+{
+    if (ptr.isEmpty() || !ptr.getClass().hasInventoryStore(ptr))
+        return false;
+
+    MWWorld::InventoryStore& inventory = ptr.getClass().getInventoryStore(ptr);
+    const MWWorld::ContainerStoreIterator carried
+        = inventory.getSlot(MWWorld::InventoryStore::Slot_CarriedLeft);
+    if (carried == inventory.end())
+        return false;
+
+    const std::string& type = carried->getTypeName();
+    return type == typeid(ESM::Armor).name() || type == typeid(ESM::Light).name();
+}
+
+bool isActiveDialogueTarget(const MWWorld::Ptr& ptr)
+{
+    if (ptr.isEmpty())
+        return false;
+
+    MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+    if (!windowManager || !windowManager->containsMode(MWGui::GM_Dialogue))
+        return false;
+
+    MWGui::DialogueWindow* dialogueWindow = windowManager->getDialogueWindow();
+    return dialogueWindow && dialogueWindow->getPtr() == ptr;
+}
+
+bool hasConstructionSetAnimation(const MWWorld::Ptr& ptr)
+{
+    if (ptr.isEmpty() || !ptr.getClass().isNpc())
+        return false;
+
+    const MWWorld::LiveCellRef<ESM::NPC>* npc = ptr.get<ESM::NPC>();
+    return npc && !npc->mBase->mModel.empty();
+}
 
 bool isConscious(const MWWorld::Ptr& ptr)
 {
@@ -460,6 +518,212 @@ namespace MWMechanics
         }
 
         store.remove(itemId, 1, actor);
+    }
+
+    void Actors::stopDynamicIdleActor(const MWWorld::Ptr& ptr, Actor& actorState, bool immediate)
+    {
+        Actor::DynamicIdleState& state = actorState.mDynamicIdle;
+        if (state.mAnimation.empty())
+        {
+            state.mLeftArmProtected = false;
+            return;
+        }
+
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
+        if (!animation)
+        {
+            state.mAnimation.clear();
+            state.mEnding = false;
+            state.mTransitionTimeout = 0.f;
+            state.mLeftArmProtected = false;
+            return;
+        }
+
+        if (immediate)
+        {
+            animation->disable(state.mAnimation);
+            state.mAnimation.clear();
+            state.mEnding = false;
+            state.mTransitionTimeout = 0.f;
+            state.mLeftArmProtected = false;
+            state.mTimer = randomRange(5.f, 11.f);
+            return;
+        }
+
+        if (!state.mEnding)
+        {
+            // Let the current loop reach its normal stop key instead of snapping directly
+            // to the base idle pose.
+            animation->setLoopingEnabled(state.mAnimation, false);
+            state.mEnding = true;
+            state.mTransitionTimeout = 2.5f;
+        }
+    }
+
+    void Actors::updateDynamicIdleActor(const MWWorld::Ptr& ptr, Actor& actorState, float duration)
+    {
+        if (duration <= 0.f || ptr.isEmpty() || !ptr.getClass().isNpc() || ptr == getPlayer()
+            || mwmp::PlayerList::isDedicatedPlayer(ptr))
+            return;
+
+        Actor::DynamicIdleState& state = actorState.mDynamicIdle;
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        MWRender::Animation* animation = world->getAnimation(ptr);
+        CharacterController* controller = actorState.getCharacterController();
+        if (!animation || !controller)
+            return;
+
+        const CreatureStats& stats = ptr.getClass().getCreatureStats(ptr);
+        const bool constructionSetAnimation = hasConstructionSetAnimation(ptr);
+        const Movement& movement = ptr.getClass().getMovementSettings(ptr);
+        const bool moving = std::abs(movement.mPosition[0]) > 0.05f
+            || std::abs(movement.mPosition[1]) > 0.05f || controller->isTurning();
+
+        const bool dialogueTarget = isActiveDialogueTarget(ptr);
+
+        const AiSequence& aiSequence = stats.getAiSequence();
+        const AiPackageTypeId activeAi = aiSequence.getTypeId();
+        const bool hasDirectedAi = (activeAi != AiPackageTypeId::None
+            && activeAi != AiPackageTypeId::Wander)
+            || aiSequence.hasPackage(AiPackageTypeId::Follow)
+            || aiSequence.hasPackage(AiPackageTypeId::Escort)
+            || aiSequence.hasPackage(AiPackageTypeId::Travel);
+
+        const bool hardBlocked = !Settings::Manager::getBool("dynamic ambient actors", "GUI")
+            || !Settings::Manager::getBool("dynamic dialogue actors", "GUI")
+            || stats.isDead() || stats.getKnockedDown() || stats.getAiSequence().isInCombat()
+            || hasDirectedAi
+            || stats.getDrawState() != DrawState_Nothing || moving || constructionSetAnimation
+            || controller->hasQueuedAnimation()
+            || world->isSwimming(ptr) || MWBase::Environment::get().getSoundManager()->sayActive(ptr)
+            || dialogueTarget;
+
+        if (hardBlocked)
+        {
+            stopDynamicIdleActor(ptr, actorState, true);
+            return;
+        }
+
+        if (state.mEnding)
+        {
+            state.mTransitionTimeout -= duration;
+            if (!animation->isPlaying(state.mAnimation) || state.mTransitionTimeout <= 0.f)
+            {
+                if (animation->isPlaying(state.mAnimation))
+                    animation->disable(state.mAnimation);
+                state.mAnimation.clear();
+                state.mEnding = false;
+                state.mTransitionTimeout = 0.f;
+                state.mTimer = randomRange(4.f, 9.f);
+            }
+            return;
+        }
+
+        const osg::Vec3f delta = ptr.getRefData().getPosition().asVec3()
+            - getPlayer().getRefData().getPosition().asVec3();
+        const bool inRange = delta.length2() <= state.mActivationDistance * state.mActivationDistance;
+        if (!inRange)
+        {
+            stopDynamicIdleActor(ptr, actorState, false);
+            return;
+        }
+
+        if (!state.mAnimation.empty())
+        {
+            const bool leftArmProtected = dynamicActorLeftArmOccupied(ptr);
+            if (leftArmProtected != state.mLeftArmProtected)
+            {
+                // Equipment may change while an ambient pose is active. Restart
+                // the same system on the next frame with a blend mask that leaves
+                // the occupied left arm to the shield/torch controller while the
+                // torso and free right arm remain animated.
+                animation->disable(state.mAnimation);
+                state.mAnimation.clear();
+                state.mEnding = false;
+                state.mTransitionTimeout = 0.f;
+                state.mLeftArmProtected = false;
+                state.mTimer = 0.15f;
+                return;
+            }
+
+            if (!animation->isPlaying(state.mAnimation))
+            {
+                state.mAnimation.clear();
+                state.mLeftArmProtected = false;
+                state.mTimer = randomRange(5.f, 12.f);
+                return;
+            }
+
+            state.mTimer -= duration;
+            if (state.mTimer <= 0.f)
+                stopDynamicIdleActor(ptr, actorState, false);
+            return;
+        }
+
+        state.mTimer -= duration;
+        if (state.mTimer > 0.f || !animation->upperBodyReady())
+            return;
+
+        static const DynamicIdleAnimation sAnimations[] = {
+            { "armsakimbo", 0.68f, 8 },
+            { "armsfolded", 0.68f, 8 },
+            { "armsatback", 0.68f, 8 },
+            { "armsalmapray", 0.74f, 6 },
+            { "handhippose", 0.62f, 8 },
+            { "readypose", 0.68f, 6 },
+            { "posealma3", 0.82f, 4 },
+            { "idle2_copy", 0.90f, 2 },
+            { "idle3_copy", 0.78f, 2 },
+            { "idle6_copy", 0.72f, 2 },
+            { "idle7_copy", 0.90f, 2 },
+            { "idle8_copy", 0.90f, 2 },
+            { "armsgesture", 0.88f, 2 },
+            { "armssunshield", 0.65f, 1 },
+        };
+
+        std::vector<const DynamicIdleAnimation*> available;
+        for (const DynamicIdleAnimation& candidate : sAnimations)
+        {
+            if (animation->hasAnimation(candidate.mGroup))
+                available.push_back(&candidate);
+        }
+
+        if (available.empty())
+        {
+            state.mTimer = randomRange(12.f, 22.f);
+            return;
+        }
+
+        const DynamicIdleAnimation& selected
+            = *available[Misc::Rng::rollDice(static_cast<int>(available.size()))];
+
+        const bool leftArmProtected = dynamicActorLeftArmOccupied(ptr);
+        int blendMask = MWRender::Animation::BlendMask_UpperBody;
+        if (leftArmProtected)
+            blendMask &= ~MWRender::Animation::BlendMask_LeftArm;
+
+        MWRender::Animation::AnimPriority priority(Priority_Default);
+        priority[MWRender::Animation::BoneGroup_Torso] = Priority_Movement;
+        if (blendMask & MWRender::Animation::BlendMask_LeftArm)
+            priority[MWRender::Animation::BoneGroup_LeftArm] = Priority_Movement;
+        priority[MWRender::Animation::BoneGroup_RightArm] = Priority_Movement;
+
+        if (animation->isPlaying(selected.mGroup))
+            animation->disable(selected.mGroup);
+        animation->play(selected.mGroup, priority, blendMask, true,
+            selected.mSpeed, "start", "stop", 0.f, selected.mLoops, true);
+
+        if (animation->isPlaying(selected.mGroup))
+        {
+            state.mAnimation = selected.mGroup;
+            state.mLeftArmProtected = leftArmProtected;
+            state.mTimer = randomRange(15.f, 28.f);
+        }
+        else
+        {
+            state.mLeftArmProtected = false;
+            state.mTimer = randomRange(8.f, 16.f);
+        }
     }
 
     void Actors::updateActor (const MWWorld::Ptr& ptr, float duration)
@@ -991,11 +1255,19 @@ namespace MWMechanics
             }
 
             void visit (MWMechanics::EffectKey key, int /*effectIndex*/,
-                                const std::string& /*sourceName*/, const std::string& /*sourceId*/, int /*casterActorId*/,
+                                const std::string& /*sourceName*/, const std::string& /*sourceId*/, int casterActorId,
                                 float magnitude, float remainingTime = -1, float /*totalTime*/ = -1) override
             {
                 if (magnitude > 0 && remainingTime > 0 && remainingTime < mDuration)
                 {
+                    MWBase::World* world = MWBase::Environment::get().getWorld();
+                    const ESM::MagicEffect* magicEffect = world->getStore().get<ESM::MagicEffect>().find(key.mId);
+                    MWWorld::Ptr caster = world->searchPtrViaActorId(casterActorId);
+
+                    if ((magicEffect->mData.mFlags & ESM::MagicEffect::Harmful) != 0
+                        && !MechanicsHelper::isFriendlyFireAllowed(caster, mActor))
+                        return;
+
                     CreatureStats& creatureStats = mActor.getClass().getCreatureStats(mActor);
                     if (effectTick(creatureStats, mActor, key, magnitude * remainingTime))
                         creatureStats.getMagicEffects().add(key, -magnitude);
@@ -1915,11 +2187,59 @@ namespace MWMechanics
             if (ptr == player)
                 continue; // Don't interfere with player controls.
 
+            auto& avoidance = iter->second->mCollisionAvoidance;
+            if (isActiveDialogueTarget(ptr))
+            {
+                // Never resume a half-finished avoidance step after dialogue.
+                avoidance = {};
+                continue; // The dialogue actor must remain still while awaiting an answer.
+            }
+
+            const auto& aiSequence = ptr.getClass().getCreatureStats(ptr).getAiSequence();
+            bool isCombatOrPursue = false;
+            for (const auto& package : aiSequence)
+            {
+                if (package->getTypeId() == AiPackageTypeId::Combat
+                    || package->getTypeId() == AiPackageTypeId::Pursue)
+                {
+                    isCombatOrPursue = true;
+                    break;
+                }
+            }
+            if (isCombatOrPursue)
+                avoidance = {};
+
             float maxSpeed = ptr.getClass().getMaxSpeed(ptr);
             if (maxSpeed == 0.0)
                 continue; // Can't move, so there is no sense to predict collisions.
 
             Movement& movement = ptr.getClass().getMovementSettings(ptr);
+            if (avoidance.mPhase != Actor::CollisionAvoidancePhase::None)
+            {
+                movement.mPosition[0] = 0.f;
+                movement.mPosition[1] = 0.f;
+                avoidance.mTimer -= duration;
+
+                if (avoidance.mPhase == Actor::CollisionAvoidancePhase::Turning)
+                {
+                    const bool turned = zTurn(ptr, avoidance.mTargetAngle, osg::DegreesToRadians(3.f));
+                    if (turned || avoidance.mTimer <= 0.f)
+                    {
+                        avoidance.mPhase = Actor::CollisionAvoidancePhase::Stepping;
+                        avoidance.mTimer = 0.32f;
+                    }
+                }
+                else
+                {
+                    // One short forward walk in the newly selected direction is
+                    // visually stable and actually clears a narrow passage.
+                    movement.mPosition[1] = 0.38f;
+                    if (avoidance.mTimer <= 0.f)
+                        avoidance.mPhase = Actor::CollisionAvoidancePhase::None;
+                }
+                continue;
+            }
+
             osg::Vec2f origMovement(movement.mPosition[0], movement.mPosition[1]);
             bool isMoving = origMovement.length2() > 0.01;
             if (movement.mPosition[1] < 0)
@@ -1929,10 +2249,10 @@ namespace MWMechanics
             // Standing NPCs give way to moving ones if they are not in combat (or pursue) mode and either
             // follow player or have a AIWander package with non-empty wander area.
             bool shouldAvoidCollision = isMoving;
-            bool shouldGiveWay = false;
-            bool shouldTurnToApproachingActor = !isMoving;
+            // Any conscious stationary NPC may yield to an approaching player.
+            // Directed and moving packages still keep their normal avoidance.
+            bool shouldGiveWay = giveWayWhenIdle && !isMoving;
             MWWorld::Ptr currentTarget; // Combat or pursue target (NPCs should not avoid collision with their targets).
-            const auto& aiSequence = ptr.getClass().getCreatureStats(ptr).getAiSequence();
             for (const auto& package : aiSequence)
             {
                 if (package->getTypeId() == AiPackageTypeId::Follow)
@@ -1946,7 +2266,7 @@ namespace MWMechanics
                 {
                     currentTarget = package->getTarget();
                     shouldAvoidCollision = isMoving;
-                    shouldTurnToApproachingActor = false;
+                    shouldGiveWay = false;
                     break;
                 }
             }
@@ -1964,8 +2284,7 @@ namespace MWMechanics
                 timeToCheck = std::min(timeToCheck, getTimeToDestination(**aiSequence.begin(), basePos, maxSpeed, duration, halfExtents));
 
             float timeToCollision = timeToCheck;
-            osg::Vec2f movementCorrection(0, 0);
-            float angleToApproachingActor = 0;
+            float nearestActorRelativeX = 0.f;
 
             // Iterate through all other actors and predict collisions.
             for(PtrActorMap::iterator otherIter(mActors.begin()); otherIter != mActors.end(); ++otherIter)
@@ -2013,29 +2332,27 @@ namespace MWMechanics
                     continue;
 
                 timeToCollision = t;
-                angleToApproachingActor = std::atan2(deltaPos.x(), deltaPos.y());
-                osg::Vec2f posAtT = relPos + relSpeed * t;
-                float coef = (posAtT.x() * relSpeed.x() + posAtT.y() * relSpeed.y()) / (collisionDist * collisionDist * maxSpeed);
-                coef *= osg::clampBetween((maxDistForPartialAvoiding - dist) / (maxDistForPartialAvoiding - maxDistForStrictAvoiding), 0.f, 1.f);
-                movementCorrection = posAtT * coef;
-                if (otherPtr.getClass().getCreatureStats(otherPtr).isDead())
-                    // In case of dead body still try to go around (it looks natural), but reduce the correction twice.
-                    movementCorrection.y() *= 0.5f;
+                nearestActorRelativeX = relPos.x();
             }
 
             if (timeToCollision < timeToCheck)
             {
-                // Try to evade the nearest collision.
-                osg::Vec2f newMovement = origMovement + movementCorrection;
-                // Step to the side rather than backward. Otherwise player will be able to push the NPC far away from it's original location.
-                newMovement.y() = std::max(newMovement.y(), 0.f);
-                newMovement.normalize();
-                if (isMoving)
-                    newMovement *= origMovement.length(); // Keep the original speed.
-                movement.mPosition[0] = newMovement.x();
-                movement.mPosition[1] = newMovement.y();
-                if (shouldTurnToApproachingActor)
-                    zTurn(ptr, angleToApproachingActor);
+                // A single turn-in-place avoids rapid alternation between
+                // strafe/backpedal/walk groups. This is used for both the
+                // player and other NPCs, so crowded passages remain stable.
+                float direction;
+                if (std::abs(nearestActorRelativeX) > 5.f)
+                    direction = nearestActorRelativeX >= 0.f ? -1.f : 1.f;
+                else
+                    direction = Misc::Rng::rollProbability() < 0.5f ? -1.f : 1.f;
+
+                const float angle = 55.f + 55.f * Misc::Rng::rollClosedProbability();
+                avoidance.mTargetAngle = baseRotZ + direction * osg::DegreesToRadians(angle);
+                avoidance.mPhase = Actor::CollisionAvoidancePhase::Turning;
+                avoidance.mTimer = 0.65f;
+                movement.mPosition[0] = 0.f;
+                movement.mPosition[1] = 0.f;
+                zTurn(ptr, avoidance.mTargetAngle, osg::DegreesToRadians(3.f));
             }
         }
     }
@@ -2202,12 +2519,16 @@ namespace MWMechanics
                             MWMechanics::CreatureStats& stats = iter->first.getClass().getCreatureStats(iter->first);
                             bool firstPersonPlayer = isPlayer && world->isFirstPerson();
                             bool inCombatOrPursue = stats.getAiSequence().isInCombat() || stats.getAiSequence().hasPackage(AiPackageTypeId::Pursue);
+                            const bool preserveAuthoredDialogueAnimation
+                                = isActiveDialogueTarget(iter->first) && hasConstructionSetAnimation(iter->first);
                             MWWorld::Ptr activePackageTarget;
 
                             // 1. Unconsious actor can not track target
                             // 2. Actors in combat and pursue mode do not bother to headtrack anyone except their target
                             // 3. Player character does not use headtracking in the 1st-person view
-                            if (!stats.getKnockedDown() && !firstPersonPlayer)
+                            // 4. Construction Set animated dialogue actors keep their authored pose intact
+                            if (!stats.getKnockedDown() && !firstPersonPlayer
+                                && !preserveAuthoredDialogueAnimation)
                             {
                                 if (inCombatOrPursue)
                                     activePackageTarget = stats.getAiSequence().getActivePackage().getTarget();
@@ -2235,8 +2556,60 @@ namespace MWMechanics
                             CreatureStats &stats = iter->first.getClass().getCreatureStats(iter->first);
                             if (isConscious(iter->first))
                             {
-                                stats.getAiSequence().execute(iter->first, *ctrl, duration);
-                                updateGreetingState(iter->first, *iter->second, timerUpdateHello > 0);
+                                const bool wasInCombat = stats.getAiSequence().isInCombat();
+                                const DrawState_ drawStateBeforeAi = stats.getDrawState();
+
+                                if (isActiveDialogueTarget(iter->first))
+                                {
+                                    // Dialogue choices (including crime/arrest
+                                    // responses) are modal. Keep the actor at the
+                                    // conversation point until the player answers.
+                                    Movement& movement = iter->first.getClass().getMovementSettings(iter->first);
+                                    movement.mPosition[0] = 0.f;
+                                    movement.mPosition[1] = 0.f;
+                                    movement.mPosition[2] = 0.f;
+                                    movement.mRotation[0] = 0.f;
+                                    movement.mRotation[1] = 0.f;
+                                    movement.mRotation[2] = 0.f;
+                                    if (hasConstructionSetAnimation(iter->first))
+                                        iter->second->setTurningToPlayer(false);
+                                }
+                                else
+                                    stats.getAiSequence().execute(iter->first, *ctrl, duration);
+
+                                const int actorId = stats.getActorId();
+                                const bool isInCombat = stats.getAiSequence().isInCombat();
+                                static const float weaponSheatheDelay =
+                                    std::max(0.f, Settings::Manager::getFloat("combat weapon sheathe delay", "Game"));
+
+                                if (wasInCombat && !isInCombat && drawStateBeforeAi == DrawState_Weapon
+                                    && weaponSheatheDelay > 0.f)
+                                {
+                                    mWeaponSheatheDelays[actorId] = { weaponSheatheDelay, static_cast<int>(drawStateBeforeAi) };
+                                }
+
+                                auto sheatheDelay = mWeaponSheatheDelays.find(actorId);
+                                if (sheatheDelay != mWeaponSheatheDelays.end())
+                                {
+                                    if (isInCombat)
+                                    {
+                                        mWeaponSheatheDelays.erase(sheatheDelay);
+                                    }
+                                    else
+                                    {
+                                        sheatheDelay->second.mTimeLeft -= duration;
+                                        if (sheatheDelay->second.mTimeLeft > 0.f)
+                                            stats.setDrawState(static_cast<DrawState_>(sheatheDelay->second.mDrawState));
+                                        else
+                                        {
+                                            stats.setDrawState(DrawState_Nothing);
+                                            mWeaponSheatheDelays.erase(sheatheDelay);
+                                        }
+                                    }
+                                }
+
+                                if (!isActiveDialogueTarget(iter->first))
+                                    updateGreetingState(iter->first, *iter->second, timerUpdateHello > 0);
                                 playIdleDialogue(iter->first);
                                 updateMovementSpeed(iter->first);
                             }
@@ -2320,6 +2693,7 @@ namespace MWMechanics
 
                 world->setActorCollisionMode(iter->first, true, !iter->first.getClass().getCreatureStats(iter->first).isDeathAnimationFinished());
                 ctrl->update(duration);
+                updateDynamicIdleActor(iter->first, *iter->second, duration);
 
                 updateVisibility(iter->first, ctrl);
             }

@@ -142,6 +142,19 @@
         </Widget>
     </Resource>
 
+    <!-- QuickLoot uses a genuinely compact icon cell. The regular no-shadow icon
+         has a 5 px inset intended for a 42x42 widget; shrinking that skin clips and
+         darkens the image. This resource fills the complete cell and keeps the icon
+         visually centred against the item name. -->
+    <Resource type="ResourceLayout" name="MW_QuickLootItemIcon" version="3.2.0">
+        <Widget type="Widget" skin="" position="0 0 20 20" name="Root">
+            <Widget type="ImageBox" skin="ImageBox" position="0 0 20 20" align="Stretch" name="Frame">
+                <Widget type="TextBox" skin="CountText" position="0 0 0 0" align="Right Bottom" name="Text"/>
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 20 20" align="Stretch" name="Item"/>
+            </Widget>
+        </Widget>
+    </Resource>
+
     <Resource type="ResourceLayout" name="MW_ItemIconSmall" version="3.2.0">
         <Widget type="Widget" skin="" position="0 0 32 32" name="Root">
             <Widget type="ImageBox" skin="ImageBox" position="0 0 32 32" align="Stretch" name="Frame">

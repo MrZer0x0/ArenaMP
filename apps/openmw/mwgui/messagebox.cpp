@@ -1,5 +1,9 @@
 #include "messagebox.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_EditBox.h>
 #include <MyGUI_RenderManager.h>
@@ -118,9 +122,15 @@ namespace MWGui
     void MessageBoxManager::createMessageBox (const std::string& message, bool stat)
     {
         MessageBox *box = new MessageBox(*this, message);
-        box->mCurrentTime = 0;
-        std::string realMessage = MyGUI::LanguageManager::getInstance().replaceTags(message);
-        box->mMaxTime = realMessage.length()*mMessageBoxSpeed;
+        box->mCurrentTime = 0.f;
+        const std::string realMessage = MyGUI::LanguageManager::getInstance().replaceTags(message);
+
+        // Normal notifications stay readable but never occupy the screen for
+        // more than three seconds. Static message boxes remain until removed.
+        const float naturalDuration = static_cast<float>(realMessage.length()) * mMessageBoxSpeed;
+        box->mMaxTime = stat
+            ? std::numeric_limits<float>::infinity()
+            : std::min(3.f, std::max(1.2f, naturalDuration));
 
         if(stat)
             mStaticMessageBox = box;
@@ -230,12 +240,24 @@ namespace MWGui
 
     void MessageBox::update (int height)
     {
-        MyGUI::IntSize gameWindowSize = MyGUI::RenderManager::getInstance().getViewSize();
+        const MyGUI::IntSize gameWindowSize = MyGUI::RenderManager::getInstance().getViewSize();
         MyGUI::IntPoint pos;
-        pos.left = (gameWindowSize.width - mMainWidget->getWidth())/2;
-        pos.top = (gameWindowSize.height - mMainWidget->getHeight() - height - mBottomPadding);
-
+        pos.left = (gameWindowSize.width - mMainWidget->getWidth()) / 2;
+        pos.top = gameWindowSize.height - mMainWidget->getHeight() - height - mBottomPadding;
         mMainWidget->setPosition(pos);
+
+        // Smooth notification appearance and disappearance. Alpha is applied
+        // to the complete layout, while the layout itself has no background.
+        constexpr float fadeInDuration = 0.18f;
+        constexpr float fadeOutDuration = 0.35f;
+        float alpha = std::min(1.f, std::max(0.f, mCurrentTime / fadeInDuration));
+        if (std::isfinite(mMaxTime))
+        {
+            const float remaining = mMaxTime - mCurrentTime;
+            if (remaining < fadeOutDuration)
+                alpha = std::min(alpha, std::max(0.f, remaining / fadeOutDuration));
+        }
+        mMainWidget->setAlpha(alpha);
     }
 
     int MessageBox::getHeight ()

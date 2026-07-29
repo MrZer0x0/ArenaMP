@@ -66,6 +66,8 @@ namespace  mwmp
         void InitQuery(std::string queryAddr, unsigned short queryPort);
         void setServerPassword(std::string passw) noexcept;
         bool isPassworded() const;
+        void setStartLocation(const std::string& location);
+        const std::string& getStartLocation() const;
 
         static const Networking &get();
         static Networking *getPtr();
@@ -76,6 +78,7 @@ namespace  mwmp
     private:
         bool preInit(RakNet::Packet *packet, RakNet::BitStream &bsIn);
         std::string serverPassword;
+        std::string startLocation;
         static Networking *sThis;
 
         RakNet::RakPeerInterface *peer;

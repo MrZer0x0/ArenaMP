@@ -2,6 +2,7 @@
 
 #include <components/version/version.hpp>
 #include <components/misc/helpviewer.hpp>
+#include <components/config/buildmanifest.hpp>
 
 #include <QDate>
 #include <QMessageBox>
@@ -10,12 +11,22 @@
 #include <QFileDialog>
 #include <QCloseEvent>
 #include <QTextCodec>
+#include <QLabel>
+#include <QResizeEvent>
+#include <QByteArray>
+#include <QTimer>
+
 
 #include "playpage.hpp"
 #include "graphicspage.hpp"
+#include <QTextStream>
+#include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include "datafilespage.hpp"
 #include "settingspage.hpp"
 #include "advancedpage.hpp"
+#include "serverdialog.hpp"
 
 using namespace Process;
 
@@ -29,12 +40,42 @@ void cfgError(const QString& title, const QString& msg) {
 }
 
 Launcher::MainDialog::MainDialog(QWidget *parent)
-    : QMainWindow(parent), mGameSettings (mCfgMgr)
+    : QMainWindow(parent)
+    , mPlayPage(nullptr)
+    , mGraphicsPage(nullptr)
+    , mDataFilesPage(nullptr)
+    , mSettingsPage(nullptr)
+    , mAdvancedPage(nullptr)
+    , mGameInvoker(nullptr)
+    , mWizardInvoker(nullptr)
+    , mServerDialog(nullptr)
+    , mWatermarkLabel(nullptr)
+    , mBuildManifestLoaded(false)
+    , mBuildName(QStringLiteral("ArenaMP"))
+    , mBuildServerAddress(QStringLiteral("127.0.0.1"))
+    , mBuildServerPort(QStringLiteral("25565"))
+    , mBuildVanillaServerCompatibility(false)
+    , mBuildServerAddressSpecified(false)
+    , mBuildServerPortSpecified(false)
+    , mBuildComplete(false)
+    , mPendingVanillaServerCompatibility(false)
+    , mGameSettings (mCfgMgr)
 {
     setupUi(this);
 
     mGameInvoker = new ProcessInvoker();
     mWizardInvoker = new ProcessInvoker();
+    mServerDialog = new ServerDialog(this);
+    mWatermarkLabel = new QLabel(centralwidget);
+    const QByteArray watermarkEncoded = QByteArray("VEVTM01QIDAuOC4xIFplcjBDdXN0b20=");
+    const QString watermarkText = QString::fromUtf8(QByteArray::fromBase64(watermarkEncoded));
+    mWatermarkLabel->setText(watermarkText);
+    mWatermarkLabel->setObjectName(QStringLiteral("zer0customWatermark"));
+    mWatermarkLabel->setProperty("wm_b64", QString::fromUtf8(watermarkEncoded));
+    mWatermarkLabel->setProperty("wm_guard", QString::number(qHash(QString::fromUtf8(watermarkEncoded))));
+    mWatermarkLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    mWatermarkLabel->setStyleSheet(QStringLiteral("QLabel#zer0customWatermark { color: rgba(255, 255, 255, 88); font-size: 16px; font-weight: 600; background: transparent; }"));
+    mWatermarkLabel->adjustSize();
 
     connect(mWizardInvoker->getProcess(), SIGNAL(started()),
             this, SLOT(wizardStarted()));
@@ -54,18 +95,22 @@ Launcher::MainDialog::MainDialog(QWidget *parent)
 
     QPushButton *helpButton = new QPushButton(tr("Help"));
     QPushButton *playButton = new QPushButton(tr("Play"));
+    QPushButton *serverButton = new QPushButton(tr("Run Server"));
     buttonBox->button(QDialogButtonBox::Close)->setText(tr("Close"));
     buttonBox->addButton(helpButton, QDialogButtonBox::HelpRole);
+    buttonBox->addButton(serverButton, QDialogButtonBox::ActionRole);
     buttonBox->addButton(playButton, QDialogButtonBox::AcceptRole);
 
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(close()));
     connect(buttonBox, SIGNAL(accepted()), this, SLOT(play()));
+    connect(serverButton, SIGNAL(clicked()), this, SLOT(runServer()));
     connect(buttonBox, SIGNAL(helpRequested()), this, SLOT(help()));
 
     // Remove what's this? button
     setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
     createIcons();
+    updateWatermarkPosition();
 }
 
 Launcher::MainDialog::~MainDialog()
@@ -122,14 +167,84 @@ void Launcher::MainDialog::createPages()
         return;
 
     mPlayPage = new PlayPage(this);
+    mPlayPage->setBuildName(mBuildName);
     mDataFilesPage = new DataFilesPage(mCfgMgr, mGameSettings, mLauncherSettings, this);
-    mGraphicsPage = new GraphicsPage(this);
+    mGraphicsPage = new GraphicsPage(mLauncherSettings, this);
     mSettingsPage = new SettingsPage(mCfgMgr, mGameSettings, mLauncherSettings, this);
     mAdvancedPage = new AdvancedPage(mGameSettings, this);
+    mPlayPage->setServerConsoleWidget(mServerDialog);
 
-    // Set the combobox of the play page to imitate the combobox on the datafilespage
-    mPlayPage->setProfilesModel(mDataFilesPage->profilesModel());
-    mPlayPage->setProfilesIndex(mDataFilesPage->profilesIndex());
+    auto readLauncherBool = [this](const QString& key, const QString& defaultValue) -> bool
+    {
+        if (mLauncherSettings.getSettings().contains(key))
+            return mLauncherSettings.value(key).compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
+        return defaultValue.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
+    };
+
+    const QString localServerDefault = mBuildManifestLoaded && mBuildServerAddressSpecified
+        ? QStringLiteral("false") : QStringLiteral("true");
+    const bool autoStartServer = readLauncherBool(QStringLiteral("General/Server/autoStart"), localServerDefault);
+    const bool autoRestartServer = readLauncherBool(QStringLiteral("General/Server/autoRestart"), localServerDefault);
+
+    // build.ini only supplies the initial default. Once the user changes a
+    // main-page checkbox, the launcher setting is preserved across restarts.
+    const QString vanillaDefault = mBuildManifestLoaded && mBuildVanillaServerCompatibility
+        ? QStringLiteral("true") : QStringLiteral("false");
+    const bool vanillaServerCompatibility = mBuildComplete
+        ? mBuildVanillaServerCompatibility
+        : readLauncherBool(QStringLiteral("General/Server/vanillaBuild"), vanillaDefault);
+    const bool hideChatHistory = readLauncherBool(QStringLiteral("General/Chat/hideHistory"), QStringLiteral("false"));
+    mPlayPage->setAutoStartServer(autoStartServer);
+    mPlayPage->setAutoRestartServer(autoRestartServer);
+    mPlayPage->setVanillaServerCompatibility(vanillaServerCompatibility);
+    mPlayPage->setHideChatHistory(hideChatHistory);
+
+    mServerDialog->setAutoRestartEnabled(autoRestartServer);
+
+    {
+        QString addr = mBuildManifestLoaded ? mBuildServerAddress : QStringLiteral("localhost");
+        QString port = mBuildManifestLoaded ? mBuildServerPort : QStringLiteral("25565");
+
+        if (!mBuildManifestLoaded)
+        {
+            const QString cfgPath = QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str())
+                + QStringLiteral("/tes3mp-client-default.cfg");
+            QFile cfgFile(cfgPath);
+            if (cfgFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            {
+                QTextStream in(&cfgFile);
+                while (!in.atEnd())
+                {
+                    const QString line = in.readLine().trimmed();
+                    if (line.startsWith(QLatin1String("destinationAddress")))
+                        addr = line.section(QLatin1Char('='), 1).trimmed();
+                    else if (line.startsWith(QLatin1String("port")) && !line.startsWith(QLatin1String("password")))
+                        port = line.section(QLatin1Char('='), 1).trimmed();
+                }
+            }
+        }
+
+        if (autoStartServer || autoRestartServer)
+        {
+            addr = mServerDialog->displayAddress();
+            port = mServerDialog->configuredPort();
+        }
+
+        mPlayPage->setServerAddress(addr);
+        mPlayPage->setServerPort(port);
+
+        const bool localEndpoint = isLocalServerAddress(addr);
+        const bool managedServer = localEndpoint && mServerDialog->isRunning();
+        const bool reachableServer = managedServer
+            || ((autoStartServer || autoRestartServer)
+                && localEndpoint && mServerDialog->isServerReachable(120));
+        mPlayPage->setServerRunning(reachableServer, addr, port, managedServer);
+        if (reachableServer)
+        {
+            versionLabel->setText(tr("● Online server — %1:%2").arg(addr, port));
+            versionLabel->setStyleSheet(QStringLiteral("color: #188a3b; font-weight: 600;"));
+        }
+    }
 
     // Add the pages to the stacked widget
     pagesWidget->addWidget(mPlayPage);
@@ -138,13 +253,23 @@ void Launcher::MainDialog::createPages()
     pagesWidget->addWidget(mSettingsPage);
     pagesWidget->addWidget(mAdvancedPage);
 
+    applyBuildManifestRestrictions();
+
     // Select the first page
     iconWidget->setCurrentItem(iconWidget->item(0), QItemSelectionModel::Select);
 
     connect(mPlayPage, SIGNAL(playButtonClicked()), this, SLOT(play()));
+    connect(mPlayPage, SIGNAL(serverButtonClicked()), this, SLOT(runServer()));
+    connect(mPlayPage, SIGNAL(stopServerButtonClicked()), this, SLOT(stopServer()));
+    connect(mPlayPage, SIGNAL(autoStartServerChanged(bool)), this, SLOT(autoStartServerChanged(bool)));
+    connect(mPlayPage, SIGNAL(autoRestartServerChanged(bool)), this, SLOT(autoRestartServerChanged(bool)));
+    connect(mPlayPage, SIGNAL(vanillaServerCompatibilityChanged(bool)), this, SLOT(vanillaServerCompatibilityChanged(bool)));
+    connect(mPlayPage, SIGNAL(hideChatHistoryChanged(bool)), this, SLOT(hideChatHistoryChanged(bool)));
+    connect(mServerDialog, SIGNAL(runningChanged(bool,QString,QString)),
+            this, SLOT(serverRunningChanged(bool,QString,QString)));
+    connect(mServerDialog, SIGNAL(autoRestartChanged(bool)),
+            this, SLOT(autoRestartServerChanged(bool)));
 
-    connect(mPlayPage, SIGNAL(signalProfileChanged(int)), mDataFilesPage, SLOT(slotProfileChanged(int)));
-    connect(mDataFilesPage, SIGNAL(signalProfileChanged(int)), mPlayPage, SLOT(setProfilesIndex(int)));
     // Using Qt::QueuedConnection because signal is emitted in a subthread and slot is in the main thread
     connect(mDataFilesPage, SIGNAL(signalLoadedCellsChanged(QStringList)), mAdvancedPage, SLOT(slotLoadedCellsChanged(QStringList)), Qt::QueuedConnection);
 
@@ -195,23 +320,8 @@ Launcher::FirstRunDialogResult Launcher::MainDialog::showFirstRunDialog()
 
 void Launcher::MainDialog::setVersionLabel()
 {
-    // Add version information to bottom of the window
-    Version::Version v = Version::getOpenmwVersion(mGameSettings.value("resources").toUtf8().constData());
-
-    QString revision(QString::fromUtf8(v.mCommitHash.c_str()));
-    QString tag(QString::fromUtf8(v.mTagHash.c_str()));
-
-    versionLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    if (!v.mVersion.empty() && (revision.isEmpty() || revision == tag))
-        versionLabel->setText(tr("OpenMW %1 release").arg(QString::fromUtf8(v.mVersion.c_str())));
-    else
-        versionLabel->setText(tr("OpenMW development (%1)").arg(revision.left(10)));
-
-    // Add the compile date and time
-    auto compileDate = QLocale(QLocale::C).toDate(QString(__DATE__).simplified(), QLatin1String("MMM d yyyy"));
-    auto compileTime = QLocale(QLocale::C).toTime(QString(__TIME__).simplified(), QLatin1String("hh:mm:ss"));
-    versionLabel->setToolTip(tr("Compiled on %1 %2").arg(QLocale::system().toString(compileDate, QLocale::LongFormat),
-                                                         QLocale::system().toString(compileTime, QLocale::ShortFormat)));
+    versionLabel->setText(tr("● Server stopped"));
+    versionLabel->setStyleSheet(QStringLiteral("color: #777777; font-weight: 600;"));
 }
 
 bool Launcher::MainDialog::setup()
@@ -219,6 +329,7 @@ bool Launcher::MainDialog::setup()
     if (!setupGameSettings())
         return false;
 
+    loadBuildManifest();
     setVersionLabel();
 
     mLauncherSettings.setContentList(mGameSettings);
@@ -246,6 +357,8 @@ bool Launcher::MainDialog::reloadSettings()
     if (!setupGameSettings())
         return false;
 
+    loadBuildManifest();
+    applyBuildManifestRestrictions();
     mLauncherSettings.setContentList(mGameSettings);
 
     if (!setupGraphicsSettings())
@@ -262,6 +375,12 @@ bool Launcher::MainDialog::reloadSettings()
 
     if (!mAdvancedPage->loadSettings())
         return false;
+
+    // Refresh top-level launcher widgets as well, so a build selected in the
+    // Wizard (new build.ini, new build name, new endpoint, new host-mode
+    // defaults) is immediately reflected without restarting the launcher.
+    loadSettings();
+    applyBuildManifestRestrictions();
 
     return true;
 }
@@ -283,10 +402,11 @@ bool Launcher::MainDialog::setupLauncherSettings()
     mLauncherSettings.setMultiValueEnabled(true);
 
     QString userPath = QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str());
+    QDir userDir(userPath);
 
     QStringList paths;
     paths.append(QString(Config::LauncherSettings::sLauncherConfigFileName));
-    paths.append(userPath + QString(Config::LauncherSettings::sLauncherConfigFileName));
+    paths.append(userDir.filePath(QString(Config::LauncherSettings::sLauncherConfigFileName)));
 
     for (const QString &path : paths)
     {
@@ -318,10 +438,13 @@ bool Launcher::MainDialog::setupGameSettings()
     QString localPath = QString::fromUtf8(mCfgMgr.getLocalPath().string().c_str());
     QString userPath = QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str());
     QString globalPath = QString::fromUtf8(mCfgMgr.getGlobalPath().string().c_str());
+    QDir localDir(localPath);
+    QDir userDir(userPath);
+    QDir globalDir(globalPath);
 
     // Load the user config file first, separately
     // So we can write it properly, uncontaminated
-    QString path = userPath + QLatin1String("openmw.cfg");
+    QString path = userDir.filePath(QLatin1String("openmw.cfg"));
     QFile file(path);
 
     qDebug() << "Loading config file:" << path.toUtf8().constData();
@@ -343,9 +466,9 @@ bool Launcher::MainDialog::setupGameSettings()
 
     // Now the rest - priority: user > local > global
     QStringList paths;
-    paths.append(globalPath + QString("openmw.cfg"));
-    paths.append(localPath + QString("openmw.cfg"));
-    paths.append(userPath + QString("openmw.cfg"));
+    paths.append(globalDir.filePath(QString("openmw.cfg")));
+    paths.append(localDir.filePath(QString("openmw.cfg")));
+    paths.append(userDir.filePath(QString("openmw.cfg")));
 
     for (const QString &path2 : paths)
     {
@@ -414,6 +537,341 @@ bool Launcher::MainDialog::setupGameData()
     return true;
 }
 
+QString Launcher::MainDialog::primaryDataDirectory() const
+{
+    const QString dataLocal = mGameSettings.getDataLocal();
+    if (!dataLocal.isEmpty() && QFileInfo(dataLocal).isDir())
+        return QDir::cleanPath(dataLocal);
+
+    const QStringList dataDirs = mGameSettings.getDataDirs();
+    for (auto it = dataDirs.crbegin(); it != dataDirs.crend(); ++it)
+    {
+        if (!Config::BuildManifest::findForDataDir(*it).isEmpty())
+            return QDir::cleanPath(*it);
+    }
+
+    const QStringList filters = {
+        QStringLiteral("*.esm"), QStringLiteral("*.esp"),
+        QStringLiteral("*.omwgame"), QStringLiteral("*.omwaddon")
+    };
+    for (auto it = dataDirs.crbegin(); it != dataDirs.crend(); ++it)
+    {
+        QDir dir(*it);
+        if (dir.exists() && !dir.entryList(filters, QDir::Files | QDir::Readable).isEmpty())
+            return QDir::cleanPath(*it);
+    }
+
+    return dataDirs.isEmpty() ? QString() : QDir::cleanPath(dataDirs.last());
+}
+
+bool Launcher::MainDialog::loadBuildManifest()
+{
+    mBuildManifestLoaded = false;
+    mBuildManifestPath.clear();
+    mBuildName = mLauncherSettings.value(QStringLiteral("General/Build/name"), QStringLiteral("ArenaMP"));
+    mBuildDataPath = primaryDataDirectory();
+    mBuildServerAddress = QStringLiteral("127.0.0.1");
+    mBuildServerPort = QStringLiteral("25565");
+    mBuildVanillaServerCompatibility = false;
+    mBuildServerAddressSpecified = false;
+    mBuildServerPortSpecified = false;
+    mBuildComplete = false;
+
+    if (mBuildDataPath.isEmpty())
+        return false;
+
+    const QString manifestPath = Config::BuildManifest::findForDataDir(mBuildDataPath);
+    if (manifestPath.isEmpty())
+        return false;
+
+    Config::BuildManifest manifest;
+    QString error;
+    if (!manifest.read(manifestPath, &error))
+    {
+        qWarning() << "Could not read build manifest" << manifestPath << error;
+        return false;
+    }
+
+    const QString resolvedDataPath = manifest.resolvedDataPath(manifestPath);
+    if (QFileInfo(resolvedDataPath).isDir())
+    {
+        mBuildDataPath = QDir::cleanPath(resolvedDataPath);
+        if (!mGameSettings.getDataDirs().contains(mBuildDataPath))
+        {
+            mGameSettings.setMultiValue(QStringLiteral("data"), mBuildDataPath);
+            mGameSettings.addDataDir(mBuildDataPath);
+        }
+    }
+
+    const QString effectiveBuildName = manifest.buildName.trimmed().isEmpty()
+        ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
+    if (!manifest.contentFiles.isEmpty() || !manifest.groundcoverFiles.isEmpty())
+    {
+        mGameSettings.setContentList(manifest.contentFiles);
+        mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
+
+        QStringList profileFiles = manifest.contentFiles;
+        profileFiles.append(manifest.groundcoverFiles);
+        mLauncherSettings.setContentList(effectiveBuildName, profileFiles,
+            manifest.groundcoverFiles, !manifest.groundcoverFiles.isEmpty());
+        mLauncherSettings.setCurrentContentListName(effectiveBuildName);
+    }
+
+    if (!manifest.archives.isEmpty())
+    {
+        mGameSettings.remove(QStringLiteral("fallback-archive"));
+        for (const QString& archive : manifest.archives)
+            mGameSettings.setMultiValue(QStringLiteral("fallback-archive"), archive);
+    }
+
+    const QString manifestLanguage = manifest.language.trimmed().isEmpty()
+        ? QStringLiteral("English") : manifest.language.trimmed();
+    mLauncherSettings.setValue(QStringLiteral("Settings/language"), manifestLanguage);
+    if (manifestLanguage == QLatin1String("Polish"))
+        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1250"));
+    else if (manifestLanguage == QLatin1String("Russian"))
+        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1251"));
+    else
+        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1252"));
+
+    mBuildManifestLoaded = true;
+    mBuildManifestPath = manifestPath;
+    mBuildName = effectiveBuildName;
+    mBuildServerAddress = manifest.serverAddress.trimmed().isEmpty()
+        ? QStringLiteral("127.0.0.1") : manifest.serverAddress.trimmed();
+    mBuildServerPort = manifest.serverPort.trimmed().isEmpty()
+        ? QStringLiteral("25565") : manifest.serverPort.trimmed();
+    mBuildVanillaServerCompatibility = manifest.vanillaServerCompatibility;
+    mBuildServerAddressSpecified = manifest.serverAddressSpecified;
+    mBuildServerPortSpecified = manifest.serverPortSpecified;
+    mBuildComplete = manifest.complete;
+    writeClientEndpoint(mBuildServerAddress, mBuildServerPort);
+
+    if (mPlayPage != nullptr)
+    {
+        mPlayPage->setBuildName(mBuildName);
+        mPlayPage->setServerAddress(mBuildServerAddress);
+        mPlayPage->setServerPort(mBuildServerPort);
+        mPlayPage->setVanillaServerCompatibility(mBuildVanillaServerCompatibility);
+        mPlayPage->setBuildManifestComplete(mBuildComplete);
+        if (mBuildServerAddressSpecified)
+        {
+            mPlayPage->setAutoStartServer(false);
+            mPlayPage->setAutoRestartServer(false);
+            if (mServerDialog != nullptr)
+                mServerDialog->setAutoRestartEnabled(false);
+        }
+    }
+
+    qDebug() << "Loaded ArenaMP build manifest:" << manifestPath;
+    return true;
+}
+
+bool Launcher::MainDialog::writeBuildManifest()
+{
+    QString dataDir = mBuildDataPath;
+    if (dataDir.isEmpty() || !QFileInfo(dataDir).isDir())
+        dataDir = primaryDataDirectory();
+    if (dataDir.isEmpty() || !QFileInfo(dataDir).isDir())
+        return true;
+
+    QString manifestPath = mBuildManifestPath;
+    if (manifestPath.isEmpty())
+        manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataDir);
+
+    Config::BuildManifest manifest;
+    bool existingManifestRead = false;
+    QString storedServerAddress;
+    bool storedServerAddressSpecified = false;
+    QString storedServerPort;
+    bool storedServerPortSpecified = false;
+    bool storedVanillaCompatibility = false;
+    if (QFileInfo::exists(manifestPath))
+    {
+        existingManifestRead = manifest.read(manifestPath);
+        if (existingManifestRead)
+        {
+            storedServerAddress = manifest.serverAddress;
+            storedServerAddressSpecified = manifest.serverAddressSpecified;
+            storedServerPort = manifest.serverPort;
+            storedServerPortSpecified = manifest.serverPortSpecified;
+            storedVanillaCompatibility = manifest.vanillaServerCompatibility;
+        }
+        if (manifest.complete)
+        {
+            // A complete build.ini is authoritative and must not be rewritten by
+            // the launcher. This preserves its name, endpoint, plugin order,
+            // groundcover order and archive order exactly as distributed.
+            mBuildManifestLoaded = true;
+            mBuildManifestPath = manifestPath;
+            mBuildName = manifest.buildName.trimmed().isEmpty()
+                ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
+            mBuildDataPath = manifest.resolvedDataPath(manifestPath);
+            mBuildServerAddress = manifest.serverAddress.trimmed().isEmpty()
+                ? QStringLiteral("127.0.0.1") : manifest.serverAddress.trimmed();
+            mBuildServerPort = manifest.serverPort.trimmed().isEmpty()
+                ? QStringLiteral("25565") : manifest.serverPort.trimmed();
+            mBuildVanillaServerCompatibility = manifest.vanillaServerCompatibility;
+            mBuildServerAddressSpecified = manifest.serverAddressSpecified;
+            mBuildServerPortSpecified = manifest.serverPortSpecified;
+            mBuildComplete = true;
+            const QString manifestLanguage = manifest.language.trimmed().isEmpty()
+                ? QStringLiteral("English") : manifest.language.trimmed();
+            mLauncherSettings.setValue(QStringLiteral("Settings/language"), manifestLanguage);
+            if (manifestLanguage == QLatin1String("Polish"))
+                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1250"));
+            else if (manifestLanguage == QLatin1String("Russian"))
+                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1251"));
+            else
+                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1252"));
+            return true;
+        }
+    }
+
+    manifest.formatVersion = 1;
+    manifest.buildName = mPlayPage != nullptr ? mPlayPage->buildName() : mBuildName;
+    manifest.dataPath = Config::BuildManifest::portableDataPath(manifestPath, dataDir);
+    manifest.language = mLauncherSettings.value(QStringLiteral("Settings/language"), QStringLiteral("English"));
+    const bool localServerModeSelected = mPlayPage != nullptr
+        && (mPlayPage->autoStartServer() || mPlayPage->autoRestartServer());
+
+    if (localServerModeSelected && existingManifestRead)
+    {
+        // Host mode is a launcher choice. Do not replace the distributed remote
+        // endpoint in build.ini with this machine's LAN address and local port.
+        manifest.serverAddress = storedServerAddress;
+        manifest.serverAddressSpecified = storedServerAddressSpecified;
+        manifest.serverPort = storedServerPort;
+        manifest.serverPortSpecified = storedServerPortSpecified;
+        manifest.vanillaServerCompatibility = storedVanillaCompatibility;
+    }
+    else if (localServerModeSelected)
+    {
+        // A newly generated local-host profile intentionally has no distributed
+        // endpoint. This allows Host mode to stay the default until an address
+        // is explicitly added to build.ini.
+        manifest.serverAddress = QStringLiteral("127.0.0.1");
+        manifest.serverAddressSpecified = false;
+        manifest.serverPort = QStringLiteral("25565");
+        manifest.serverPortSpecified = false;
+        manifest.vanillaServerCompatibility = false;
+    }
+    else
+    {
+        manifest.serverAddress = mPlayPage != nullptr ? mPlayPage->serverAddress() : mBuildServerAddress;
+        manifest.serverAddressSpecified = !manifest.serverAddress.trimmed().isEmpty();
+        manifest.serverPort = mPlayPage != nullptr ? mPlayPage->serverPort() : mBuildServerPort;
+        manifest.serverPortSpecified = !manifest.serverPort.trimmed().isEmpty();
+        manifest.vanillaServerCompatibility = mPlayPage != nullptr
+            ? mPlayPage->vanillaServerCompatibility() : mBuildVanillaServerCompatibility;
+    }
+    manifest.complete = mBuildComplete;
+    manifest.contentFiles = mGameSettings.getContentList();
+    manifest.groundcoverFiles = mGameSettings.getGroundcoverList();
+    manifest.archives = Config::LauncherSettings::reverse(
+        mGameSettings.values(QStringLiteral("fallback-archive")));
+
+    QString error;
+    if (!manifest.write(manifestPath, &error))
+    {
+        cfgError(tr("Error writing ArenaMP build manifest"),
+            tr("<br><b>Could not write %1</b><br><br>%2").arg(manifestPath, error));
+        return false;
+    }
+
+    mBuildManifestLoaded = true;
+    mBuildManifestPath = manifestPath;
+    mBuildName = manifest.buildName;
+    mBuildDataPath = dataDir;
+    mBuildServerAddress = manifest.serverAddress;
+    mBuildServerPort = manifest.serverPort;
+    mBuildVanillaServerCompatibility = manifest.vanillaServerCompatibility;
+    mBuildServerAddressSpecified = manifest.serverAddressSpecified;
+    mBuildServerPortSpecified = manifest.serverPortSpecified;
+    mBuildComplete = manifest.complete;
+    writeClientEndpoint(mBuildServerAddress, mBuildServerPort);
+    return true;
+}
+
+void Launcher::MainDialog::applyBuildManifestRestrictions()
+{
+    if (mPlayPage != nullptr)
+    {
+        mPlayPage->setBuildManifestComplete(mBuildComplete);
+    }
+
+    // Keep row numbers intact so they continue to match pagesWidget indexes.
+    if (iconWidget != nullptr && iconWidget->count() > 1)
+        iconWidget->item(1)->setHidden(mBuildComplete);
+
+    if (mAdvancedPage != nullptr)
+        mAdvancedPage->setGameMechanicsVisible(!mBuildComplete);
+
+    if (mBuildComplete && iconWidget != nullptr && iconWidget->currentRow() == 1)
+        iconWidget->setCurrentRow(0);
+}
+
+bool Launcher::MainDialog::isLocalServerAddress(const QString& address) const
+{
+    const QString normalized = address.trimmed().toLower();
+    if (normalized.isEmpty() || normalized == QLatin1String("localhost")
+        || normalized == QLatin1String("127.0.0.1") || normalized == QLatin1String("::1")
+        || normalized == QLatin1String("0.0.0.0"))
+        return true;
+
+    return mServerDialog != nullptr
+        && normalized == mServerDialog->displayAddress().trimmed().toLower();
+}
+
+void Launcher::MainDialog::writeClientEndpoint(const QString& address, const QString& port) const
+{
+    QDir userDir(QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str()));
+    if (!userDir.exists())
+        userDir.mkpath(QStringLiteral("."));
+
+    QFile cfgFile(userDir.filePath(QStringLiteral("tes3mp-client-default.cfg")));
+    QStringList lines;
+    bool foundAddress = false;
+    bool foundPort = false;
+
+    if (cfgFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        QTextStream input(&cfgFile);
+        input.setCodec("UTF-8");
+        while (!input.atEnd())
+            lines.append(input.readLine());
+        cfgFile.close();
+    }
+
+    for (QString& line : lines)
+    {
+        const QString trimmed = line.trimmed();
+        if (trimmed.startsWith(QLatin1String("destinationAddress")))
+        {
+            line = QStringLiteral("destinationAddress = ") + address;
+            foundAddress = true;
+        }
+        else if (trimmed.startsWith(QLatin1String("port")) && !trimmed.startsWith(QLatin1String("password")))
+        {
+            line = QStringLiteral("port = ") + port;
+            foundPort = true;
+        }
+    }
+
+    if (!foundAddress)
+        lines.append(QStringLiteral("destinationAddress = ") + address);
+    if (!foundPort)
+        lines.append(QStringLiteral("port = ") + port);
+
+    if (cfgFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    {
+        QTextStream output(&cfgFile);
+        output.setCodec("UTF-8");
+        for (const QString& line : lines)
+            output << line << '\n';
+    }
+}
+
 bool Launcher::MainDialog::setupGraphicsSettings()
 {
     // This method is almost a copy of OMW::Engine::loadSettings().  They should definitely
@@ -422,40 +880,53 @@ bool Launcher::MainDialog::setupGraphicsSettings()
 
     // Ensure to clear previous settings in case we had already loaded settings.
     mEngineSettings.clear();
-
-    // Create the settings manager and load default settings file
+    // ArenaMP uses settings-default.cfg as the canonical preset. Prefer the
+    // text file so newly added fork settings are available immediately; keep
+    // defaults.bin only as a compatibility fallback for incomplete packages.
     const std::string localDefault = (mCfgMgr.getLocalPath() / "defaults.bin").string();
     const std::string globalDefault = (mCfgMgr.getGlobalPath() / "defaults.bin").string();
+    const std::string localDefaultCfg = (mCfgMgr.getLocalPath() / "settings-default.cfg").string();
+    const std::string globalDefaultCfg = (mCfgMgr.getGlobalPath() / "settings-default.cfg").string();
     std::string defaultPath;
+    bool defaultIsTextCfg = false;
 
-    // Prefer the defaults.bin in the current directory.
-    if (boost::filesystem::exists(localDefault))
+    if (boost::filesystem::exists(localDefaultCfg))
+    {
+        defaultPath = localDefaultCfg;
+        defaultIsTextCfg = true;
+    }
+    else if (boost::filesystem::exists(globalDefaultCfg))
+    {
+        defaultPath = globalDefaultCfg;
+        defaultIsTextCfg = true;
+    }
+    else if (boost::filesystem::exists(localDefault))
         defaultPath = localDefault;
     else if (boost::filesystem::exists(globalDefault))
         defaultPath = globalDefault;
-    // Something's very wrong if we can't find the file at all.
     else {
         cfgError(tr("Error reading OpenMW configuration file"),
-                 tr("<br><b>Could not find defaults.bin</b><br><br> \
-                     The problem may be due to an incomplete installation of OpenMW.<br> \
-                     Reinstalling OpenMW may resolve the problem."));
+                 tr("<br><b>Could not find defaults.bin or settings-default.cfg</b><br><br>                      The problem may be due to an incomplete installation of OpenMW.<br>                      Reinstalling OpenMW may resolve the problem."));
         return false;
     }
 
-    // Load the default settings, report any parsing errors.
     try {
-        mEngineSettings.loadDefault(defaultPath);
+        mEngineSettings.loadDefault(defaultPath, !defaultIsTextCfg);
     }
     catch (std::exception& e) {
-        std::string msg = std::string("<br><b>Error reading defaults.bin</b><br><br>") + e.what();
+        std::string msg = std::string("<br><b>Error reading default settings</b><br><br>") + e.what();
         cfgError(tr("Error reading OpenMW configuration file"), tr(msg.c_str()));
         return false;
     }
 
-    // Load user settings if they exist
-    const std::string userPath = (mCfgMgr.getUserConfigPath() / "settings.cfg").string();
-    // User settings are not required to exist, so if they don't we're done.
-    if (!boost::filesystem::exists(userPath)) return true;
+    // Always configure the canonical user settings path. The explicit preset
+    // Apply button may need to create settings.cfg after a clean Wizard run.
+    const std::string userPath = mCfgMgr.getPrimarySettingsPath().string();
+    mEngineSettings.setUserSettingsPath(userPath);
+
+    // User settings are not required to exist.
+    if (!boost::filesystem::exists(userPath))
+        return true;
 
     try {
         mEngineSettings.loadUser(userPath);
@@ -471,14 +942,50 @@ bool Launcher::MainDialog::setupGraphicsSettings()
 
 void Launcher::MainDialog::loadSettings()
 {
-    int width = mLauncherSettings.value(QString("General/MainWindow/width")).toInt();
-    int height = mLauncherSettings.value(QString("General/MainWindow/height")).toInt();
+    constexpr int minimumLauncherWidth = 1024;
+    constexpr int minimumLauncherHeight = 720;
+    setMinimumSize(minimumLauncherWidth, minimumLauncherHeight);
+
+    int width = mLauncherSettings.value(QStringLiteral("General/MainWindow/width"), QString::number(minimumLauncherWidth)).toInt();
+    int height = mLauncherSettings.value(QStringLiteral("General/MainWindow/height"), QString::number(minimumLauncherHeight)).toInt();
 
     int posX = mLauncherSettings.value(QString("General/MainWindow/posx")).toInt();
     int posY = mLauncherSettings.value(QString("General/MainWindow/posy")).toInt();
 
+    width = qMax(width, minimumLauncherWidth);
+    height = qMax(height, minimumLauncherHeight);
     resize(width, height);
     move(posX, posY);
+
+    if (mPlayPage != nullptr && mServerDialog != nullptr)
+    {
+        auto readLauncherBool = [this](const QString& key, const QString& defaultValue) -> bool
+        {
+            if (mLauncherSettings.getSettings().contains(key))
+                return mLauncherSettings.value(key).compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
+            return defaultValue.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
+        };
+
+        const QString localServerDefault = mBuildManifestLoaded && mBuildServerAddressSpecified
+            ? QStringLiteral("false") : QStringLiteral("true");
+        const bool autoStart = readLauncherBool(QStringLiteral("General/Server/autoStart"), localServerDefault);
+        const bool autoRestart = readLauncherBool(QStringLiteral("General/Server/autoRestart"), localServerDefault);
+        const QString vanillaDefault = mBuildManifestLoaded && mBuildVanillaServerCompatibility
+            ? QStringLiteral("true") : QStringLiteral("false");
+        const bool vanillaServerCompatibility = mBuildComplete
+            ? mBuildVanillaServerCompatibility
+            : readLauncherBool(QStringLiteral("General/Server/vanillaBuild"), vanillaDefault);
+        const bool hideChatHistory = readLauncherBool(QStringLiteral("General/Chat/hideHistory"), QStringLiteral("false"));
+        mPlayPage->setAutoStartServer(autoStart);
+        mPlayPage->setAutoRestartServer(autoRestart);
+        mPlayPage->setVanillaServerCompatibility(vanillaServerCompatibility);
+        mPlayPage->setHideChatHistory(hideChatHistory);
+        mPlayPage->setBuildName(mBuildName);
+
+        mServerDialog->setAutoRestartEnabled(autoRestart);
+        if (autoStart || autoRestart)
+            mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), mServerDialog->configuredPort());
+    }
 }
 
 void Launcher::MainDialog::saveSettings()
@@ -497,16 +1004,38 @@ void Launcher::MainDialog::saveSettings()
 
     mLauncherSettings.setValue(QString("General/firstrun"), QString("false"));
 
+    if (mPlayPage != nullptr)
+    {
+        mLauncherSettings.remove(QStringLiteral("General/Server/autoStart"));
+        mLauncherSettings.setValue(QStringLiteral("General/Server/autoStart"),
+            mPlayPage->autoStartServer() ? QStringLiteral("true") : QStringLiteral("false"));
+        mLauncherSettings.remove(QStringLiteral("General/Server/autoRestart"));
+        mLauncherSettings.setValue(QStringLiteral("General/Server/autoRestart"),
+            mPlayPage->autoRestartServer() ? QStringLiteral("true") : QStringLiteral("false"));
+        mLauncherSettings.remove(QStringLiteral("General/Server/vanillaBuild"));
+        mLauncherSettings.setValue(QStringLiteral("General/Server/vanillaBuild"),
+            mPlayPage->vanillaServerCompatibility() ? QStringLiteral("true") : QStringLiteral("false"));
+        mLauncherSettings.remove(QStringLiteral("General/Chat/hideHistory"));
+        mLauncherSettings.setValue(QStringLiteral("General/Chat/hideHistory"),
+            mPlayPage->hideChatHistory() ? QStringLiteral("true") : QStringLiteral("false"));
+        mLauncherSettings.setValue(QStringLiteral("General/Build/name"), mPlayPage->buildName());
+    }
+
 }
 
 bool Launcher::MainDialog::writeSettings()
 {
     // Now write all config files
     saveSettings();
-    mDataFilesPage->saveSettings();
-    mGraphicsPage->saveSettings();
+    if (!mBuildComplete)
+        mDataFilesPage->saveSettings();
+
+    // Do not copy the Launcher's in-memory graphics/advanced controls back to
+    // settings.cfg here. The game may have changed that file while the
+    // Launcher remained open. Graphics quality is written only by the
+    // explicit Apply preset button; the Wizard performs its one initial pass.
     mSettingsPage->saveSettings();
-    mAdvancedPage->saveSettings();
+    mPlayPage->saveServerSettings();
 
     QString userPath = QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str());
     QDir dir(userPath);
@@ -522,7 +1051,7 @@ bool Launcher::MainDialog::writeSettings()
     }
 
     // Game settings
-    QFile file(userPath + QString("openmw.cfg"));
+    QFile file(dir.filePath(QString("openmw.cfg")));
 
     if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
         // File cannot be opened or created
@@ -537,20 +1066,8 @@ bool Launcher::MainDialog::writeSettings()
     mGameSettings.writeFileWithComments(file);
     file.close();
 
-    // Graphics settings
-    const std::string settingsPath = (mCfgMgr.getUserConfigPath() / "settings.cfg").string();
-    try {
-        mEngineSettings.saveUser(settingsPath);
-    }
-    catch (std::exception& e) {
-        std::string msg = "<br><b>Error writing settings.cfg</b><br><br>" +
-            settingsPath + "<br><br>" + e.what();
-        cfgError(tr("Error writing user settings file"), tr(msg.c_str()));
-        return false;
-    }
-
     // Launcher settings
-    file.setFileName(userPath + QString(Config::LauncherSettings::sLauncherConfigFileName));
+    file.setFileName(dir.filePath(QString(Config::LauncherSettings::sLauncherConfigFileName)));
 
     if (!file.open(QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate)) {
         // File cannot be opened or created
@@ -568,7 +1085,29 @@ bool Launcher::MainDialog::writeSettings()
     mLauncherSettings.writeFile(stream);
     file.close();
 
+    if (!writeBuildManifest())
+        return false;
+
     return true;
+}
+
+void Launcher::MainDialog::updateWatermarkPosition()
+{
+    if (mWatermarkLabel == nullptr)
+        return;
+
+    mWatermarkLabel->adjustSize();
+    const int margin = 14;
+    const QSize size = mWatermarkLabel->sizeHint();
+    mWatermarkLabel->move(centralwidget->width() - size.width() - margin,
+                          centralwidget->height() - size.height() - margin);
+    mWatermarkLabel->raise();
+}
+
+void Launcher::MainDialog::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    updateWatermarkPosition();
 }
 
 void Launcher::MainDialog::closeEvent(QCloseEvent *event)
@@ -591,7 +1130,13 @@ void Launcher::MainDialog::wizardFinished(int exitCode, QProcess::ExitStatus exi
     setup();
 
     if (setupGameData() && reloadSettings())
+    {
+        loadBuildManifest();
+        applyBuildManifestRestrictions();
         show();
+        raise();
+        activateWindow();
+    }
 }
 
 void Launcher::MainDialog::play()
@@ -599,21 +1144,196 @@ void Launcher::MainDialog::play()
     if (!writeSettings())
         return qApp->quit();
 
-    if (!mGameSettings.hasMaster()) {
+    if (!mGameSettings.hasMaster())
+    {
         QMessageBox msgBox;
         msgBox.setWindowTitle(tr("No game file selected"));
         msgBox.setIcon(QMessageBox::Warning);
         msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.setText(tr("<br><b>You do not have a game file selected.</b><br><br> \
-                          OpenMW will not start without a game file selected.<br>"));
-                          msgBox.exec();
+        msgBox.setText(tr("<br><b>You do not have a game file selected.</b><br><br> "
+                          "OpenMW will not start without a game file selected.<br>"));
+        msgBox.exec();
         return;
     }
 
-    // Launch the game detached
+    mPendingClientAddress = mPlayPage->serverAddress();
+    mPendingClientPort = mPlayPage->serverPort();
+    mPendingVanillaServerCompatibility = mPlayPage->vanillaServerCompatibility();
+    mPendingHideChatHistory = mPlayPage->hideChatHistory();
 
-    if (mGameInvoker->startProcess(QLatin1String("tes3mp-browser"), true))
-        return qApp->quit();
+    bool startedNow = false;
+    const bool localServerMode =
+        mPlayPage->autoStartServer() || mPlayPage->autoRestartServer();
+    if (localServerMode)
+    {
+        // Host mode overrides the remote endpoint and vanilla compatibility for
+        // this launch only. The build.ini endpoint remains unchanged.
+        mPendingVanillaServerCompatibility = false;
+        mPlayPage->saveServerSettings();
+        mServerDialog->setAutoRestartEnabled(mPlayPage->autoRestartServer());
+
+        if (!mServerDialog->isRunning())
+        {
+            QString portError;
+            if (!mServerDialog->setConfiguredPort(mPlayPage->serverPort(), &portError))
+            {
+                QMessageBox::warning(this, tr("Invalid server port"), portError);
+                mPendingClientAddress.clear();
+                mPendingClientPort.clear();
+                return;
+            }
+        }
+
+        // Resolve the LAN address before starting the process and keep it in a
+        // dedicated pending endpoint. launchClient() must not fall back to the
+        // stale localhost value that was present before Auto-Start.
+        mPendingClientAddress = mServerDialog->displayAddress();
+        mPendingClientPort = mServerDialog->configuredPort();
+        mPlayPage->setLocalServerEndpoint(mPendingClientAddress, mPendingClientPort);
+        writeClientEndpoint(mPendingClientAddress, mPendingClientPort);
+
+        if (!mServerDialog->isRunning())
+        {
+            if (mServerDialog->isServerReachable())
+            {
+                mPlayPage->setServerRunning(true, mPendingClientAddress,
+                    mPendingClientPort, false);
+            }
+            else
+            {
+                startedNow = mServerDialog->startServer();
+                if (!startedNow)
+                {
+                    mPendingClientAddress.clear();
+                    mPendingClientPort.clear();
+                    return;
+                }
+            }
+        }
+    }
+
+    if (startedNow)
+        QTimer::singleShot(900, this, SLOT(launchClient()));
+    else
+        launchClient();
+}
+
+void Launcher::MainDialog::launchClient()
+{
+    const QString address = mPendingClientAddress.trimmed().isEmpty()
+        ? mPlayPage->serverAddress() : mPendingClientAddress.trimmed();
+    const QString port = mPendingClientPort.trimmed().isEmpty()
+        ? mPlayPage->serverPort() : mPendingClientPort.trimmed();
+
+    writeClientEndpoint(address, port);
+
+    QStringList arguments;
+    arguments.append(QLatin1String("--connect=") + address + QLatin1String(":") + port);
+    if (mPendingVanillaServerCompatibility)
+        arguments.append(QStringLiteral("--vanilla-build-server"));
+    if (mPendingHideChatHistory)
+        arguments.append(QStringLiteral("--hide-chat-history"));
+
+    mPendingClientAddress.clear();
+    mPendingClientPort.clear();
+    mPendingVanillaServerCompatibility = false;
+    mPendingHideChatHistory = false;
+
+    if (mGameInvoker->startProcess(QLatin1String("tes3mp"), arguments, true))
+    {
+        if (mServerDialog != nullptr && mServerDialog->isRunning())
+            return;
+        qApp->quit();
+    }
+}
+
+void Launcher::MainDialog::runServer()
+{
+    if (!writeSettings())
+        return;
+
+    mPlayPage->saveServerSettings();
+    mServerDialog->setAutoRestartEnabled(mPlayPage->autoRestartServer());
+
+    if (!mServerDialog->isRunning())
+    {
+        QString portError;
+        if (!mServerDialog->setConfiguredPort(mPlayPage->serverPort(), &portError))
+        {
+            QMessageBox::warning(this, tr("Invalid server port"), portError);
+            return;
+        }
+    }
+
+    mPlayPage->switchToServerConsoleTab();
+    mServerDialog->startServer();
+}
+
+void Launcher::MainDialog::stopServer()
+{
+    if (mServerDialog != nullptr)
+        mServerDialog->stopServer();
+}
+
+void Launcher::MainDialog::autoStartServerChanged(bool enabled)
+{
+    if (enabled && mPlayPage != nullptr && mServerDialog != nullptr)
+        mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), QString());
+
+    mLauncherSettings.remove(QStringLiteral("General/Server/autoStart"));
+    mLauncherSettings.setValue(QStringLiteral("General/Server/autoStart"),
+        enabled ? QStringLiteral("true") : QStringLiteral("false"));
+}
+
+void Launcher::MainDialog::autoRestartServerChanged(bool enabled)
+{
+    if (mPlayPage != nullptr && mPlayPage->autoRestartServer() != enabled)
+        mPlayPage->setAutoRestartServer(enabled);
+    if (mServerDialog != nullptr && mServerDialog->autoRestartEnabled() != enabled)
+        mServerDialog->setAutoRestartEnabled(enabled);
+
+    if (enabled && mPlayPage != nullptr && mServerDialog != nullptr)
+        mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), QString());
+
+    mLauncherSettings.remove(QStringLiteral("General/Server/autoRestart"));
+    mLauncherSettings.setValue(QStringLiteral("General/Server/autoRestart"),
+        enabled ? QStringLiteral("true") : QStringLiteral("false"));
+}
+
+void Launcher::MainDialog::vanillaServerCompatibilityChanged(bool enabled)
+{
+    mLauncherSettings.remove(QStringLiteral("General/Server/vanillaBuild"));
+    mLauncherSettings.setValue(QStringLiteral("General/Server/vanillaBuild"),
+        enabled ? QStringLiteral("true") : QStringLiteral("false"));
+}
+
+void Launcher::MainDialog::hideChatHistoryChanged(bool enabled)
+{
+    mLauncherSettings.remove(QStringLiteral("General/Chat/hideHistory"));
+    mLauncherSettings.setValue(QStringLiteral("General/Chat/hideHistory"),
+        enabled ? QStringLiteral("true") : QStringLiteral("false"));
+}
+
+void Launcher::MainDialog::serverRunningChanged(bool running, const QString& address, const QString& port)
+{
+    if (mPlayPage != nullptr)
+    {
+        mPlayPage->setServerRunning(running, address, port);
+    }
+
+    if (versionLabel != nullptr)
+    {
+        if (running)
+        {
+            versionLabel->setText(tr("● Online server — %1:%2").arg(address, port));
+            versionLabel->setStyleSheet(QStringLiteral("color: #188a3b; font-weight: 600;"));
+        }
+        else
+        {
+            versionLabel->setText(tr("● Server stopped"));
+            versionLabel->setStyleSheet(QStringLiteral("color: #777777; font-weight: 600;"));
+        }
+    }
 }
 
 void Launcher::MainDialog::help()

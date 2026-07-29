@@ -7,6 +7,12 @@
 #include <MyGUI_ImageBox.h>
 #include <MyGUI_ScrollView.h>
 
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <utility>
+
 /*
     Start of tes3mp addition
 
@@ -40,6 +46,27 @@
 #include "draganddrop.hpp"
 
 #include "itemwidget.hpp"
+
+namespace
+{
+    std::string getWeaponSpellBoxMode()
+    {
+        const auto modeKey = std::make_pair(std::string("GUI"), std::string("weapon spell box mode"));
+        const auto legacyKey = std::make_pair(std::string("GUI"), std::string("persistent weapon spell boxes"));
+        if (Settings::Manager::mUserSettings.find(modeKey) == Settings::Manager::mUserSettings.end())
+        {
+            const auto legacyIt = Settings::Manager::mUserSettings.find(legacyKey);
+            if (legacyIt != Settings::Manager::mUserSettings.end())
+                return (legacyIt->second == "false" || legacyIt->second == "0") ? "hidden" : "transparent";
+        }
+
+        const std::string mode = Settings::Manager::getString("weapon spell box mode", "GUI");
+        if (mode == "hidden" || mode == "transparent" || mode == "visible")
+            return mode;
+        return Settings::Manager::getBool("persistent weapon spell boxes", "GUI")
+            ? "transparent" : "hidden";
+    }
+}
 
 namespace MWGui
 {
@@ -112,6 +139,12 @@ namespace MWGui
         , mMagicka(nullptr)
         , mStamina(nullptr)
         , mDrowning(nullptr)
+        , mHealthText(nullptr)
+        , mMagickaText(nullptr)
+        , mStaminaText(nullptr)
+        , mFpsBox(nullptr)
+        , mEnemyName(nullptr)
+        , mEnemySummary(nullptr)
         , mWeapImage(nullptr)
         , mSpellImage(nullptr)
         , mWeapStatus(nullptr)
@@ -120,6 +153,7 @@ namespace MWGui
         , mMinimap(nullptr)
         , mCrosshair(nullptr)
         , mCellNameBox(nullptr)
+        , mGameTimeBox(nullptr)
         , mDrowningFrame(nullptr)
         , mDrowningFlash(nullptr)
         , mHealthManaStaminaBaseLeft(0)
@@ -130,32 +164,43 @@ namespace MWGui
         , mDragAndDrop(dragAndDrop)
         , mCellNameTimer(0.0f)
         , mWeaponSpellTimer(0.f)
+        , mGameTimeUpdateTimer(0.f)
         , mMapVisible(true)
         , mWeaponVisible(true)
         , mSpellVisible(true)
         , mWorldMouseOver(false)
         , mEnemyActorId(-1)
         , mEnemyHealthTimer(-1)
+        , mFocusActorScreenX(0.5f)
+        , mFocusActorScreenY(0.f)
+        , mFpsUpdateTimer(0.f)
+        , mFpsAccumulatedTime(0.f)
+        , mFpsFrameCount(0)
         , mIsDrowning(false)
         , mDrowningFlashTheta(0.f)
+        , mHmsBaseVisible(true)
     {
         mMainWidget->setSize(MyGUI::RenderManager::getInstance().getViewSize());
 
         // Energy bars
         getWidget(mHealthFrame, "HealthFrame");
+        getWidget(mMagickaFrame, "MagickaFrame");
+        getWidget(mFatigueFrame, "FatigueFrame");
         getWidget(mHealth, "Health");
         getWidget(mMagicka, "Magicka");
         getWidget(mStamina, "Stamina");
         getWidget(mEnemyHealth, "EnemyHealth");
+        getWidget(mEnemyName, "EnemyName");
+        getWidget(mEnemySummary, "EnemySummary");
+        getWidget(mHealthText, "HealthText");
+        getWidget(mMagickaText, "MagickaText");
+        getWidget(mStaminaText, "StaminaText");
+        getWidget(mFpsBox, "FpsText");
         mHealthManaStaminaBaseLeft = mHealthFrame->getLeft();
 
-        MyGUI::Widget *healthFrame, *magickaFrame, *fatigueFrame;
-        getWidget(healthFrame, "HealthFrame");
-        getWidget(magickaFrame, "MagickaFrame");
-        getWidget(fatigueFrame, "FatigueFrame");
-        healthFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
-        magickaFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
-        fatigueFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
+        mHealthFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
+        mMagickaFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
+        mFatigueFrame->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onHMSClicked);
 
         //Drowning bar
         getWidget(mDrowningFrame, "DrowningFrame");
@@ -193,6 +238,7 @@ namespace MWGui
 
         getWidget(mCellNameBox, "CellName");
         getWidget(mWeaponSpellBox, "WeaponSpellName");
+        getWidget(mGameTimeBox, "GameTime");
 
         getWidget(mCrosshair, "Crosshair");
 
@@ -223,28 +269,33 @@ namespace MWGui
         if (id != "FBar")
             current = std::max(0, current);
 
-        MyGUI::Widget* w;
         std::string valStr = MyGUI::utility::toString(current) + " / " + MyGUI::utility::toString(modified);
         if (id == "HBar")
         {
             mHealth->setProgressRange(std::max(0, modified));
             mHealth->setProgressPosition(std::max(0, current));
-            getWidget(w, "HealthFrame");
-            w->setUserString("Caption_HealthDescription", "#{sHealthDesc}\n" + valStr);
+            if (mHealthText)
+                mHealthText->setCaption(valStr);
+            mHealthFrame->setUserString("Caption_HealthDescription", "#{sHealthDesc}\n" + valStr);
+            registerBarChange(mHealthBarState, current, modified);
         }
         else if (id == "MBar")
         {
             mMagicka->setProgressRange(std::max(0, modified));
             mMagicka->setProgressPosition(std::max(0, current));
-            getWidget(w, "MagickaFrame");
-            w->setUserString("Caption_HealthDescription", "#{sMagDesc}\n" + valStr);
+            if (mMagickaText)
+                mMagickaText->setCaption(valStr);
+            mMagickaFrame->setUserString("Caption_HealthDescription", "#{sMagDesc}\n" + valStr);
+            registerBarChange(mMagickaBarState, current, modified);
         }
         else if (id == "FBar")
         {
             mStamina->setProgressRange(std::max(0, modified));
             mStamina->setProgressPosition(std::max(0, current));
-            getWidget(w, "FatigueFrame");
-            w->setUserString("Caption_HealthDescription", "#{sFatDesc}\n" + valStr);
+            if (mStaminaText)
+                mStaminaText->setCaption(valStr);
+            mFatigueFrame->setUserString("Caption_HealthDescription", "#{sFatDesc}\n" + valStr);
+            registerBarChange(mStaminaBarState, current, modified);
         }
     }
 
@@ -396,6 +447,13 @@ namespace MWGui
         MWBase::Environment::get().getWindowManager()->toggleVisible(GW_Magic);
     }
 
+
+    void HUD::onResChange(int width, int height)
+    {
+        mMainWidget->setSize(width, height);
+        updatePositions();
+    }
+
     void HUD::setCellName(const std::string& cellName)
     {
         if (mCellName != cellName)
@@ -412,6 +470,30 @@ namespace MWGui
     {
         LocalMapBase::onFrame(dt);
 
+
+        if (mGameTimeBox)
+        {
+            mGameTimeUpdateTimer -= dt;
+            if (mGameTimeUpdateTimer <= 0.f)
+            {
+                const float gameHour = MWBase::Environment::get().getWorld()->getTimeStamp().getHour();
+                int hours = static_cast<int>(std::floor(gameHour)) % 24;
+                int minutes = static_cast<int>(std::floor((gameHour - std::floor(gameHour)) * 60.f + 0.5f));
+                if (minutes >= 60)
+                {
+                    minutes = 0;
+                    hours = (hours + 1) % 24;
+                }
+
+                std::ostringstream stream;
+                stream << std::setfill('0') << std::setw(2) << hours << ':'
+                       << std::setfill('0') << std::setw(2) << minutes;
+                mGameTimeBox->setCaption(stream.str());
+
+                mGameTimeUpdateTimer = 0.2f;
+            }
+        }
+
         mCellNameTimer -= dt;
         mWeaponSpellTimer -= dt;
         if (mCellNameTimer < 0)
@@ -419,11 +501,30 @@ namespace MWGui
         if (mWeaponSpellTimer < 0)
             mWeaponSpellBox->setVisible(false);
 
+        mFpsAccumulatedTime += dt;
+        ++mFpsFrameCount;
+        mFpsUpdateTimer -= dt;
+        if (mFpsBox && mFpsUpdateTimer <= 0.f)
+        {
+            const float safeTime = std::max(0.0001f, mFpsAccumulatedTime);
+            const int fps = static_cast<int>(std::lround(static_cast<double>(mFpsFrameCount) / safeTime));
+            mFpsBox->setCaption(MyGUI::utility::toString(fps));
+            mFpsUpdateTimer = 0.25f;
+            mFpsAccumulatedTime = 0.f;
+            mFpsFrameCount = 0;
+        }
+
+        const bool targetInfoPanel = Settings::Manager::getBool("target info panel", "GUI");
+        const bool focusedTargetAlive = !mFocusActor.isEmpty()
+            && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead();
+        const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
+        const bool focusedTargetPanel = targetInfoPanel && focusedTargetAlive && !dialogueOpen
+            && !isFocusedTargetTooClose();
+
         mEnemyHealthTimer -= dt;
-        if (mEnemyHealth->getVisible() && mEnemyHealthTimer < 0)
+        if (mEnemyHealth->getVisible() && mEnemyHealthTimer < 0 && !focusedTargetPanel)
         {
             mEnemyHealth->setVisible(false);
-            mWeaponSpellBox->setPosition(mWeaponSpellBox->getPosition() + MyGUI::IntPoint(0,20));
         }
 
         if (mIsDrowning)
@@ -431,8 +532,18 @@ namespace MWGui
 
         mSpellIcons->updateWidgets(mEffectBox, true);
 
-        if (mEnemyActorId != -1 && mEnemyHealth->getVisible())
+        if ((focusedTargetPanel || mEnemyActorId != -1) && mEnemyHealth->getVisible())
         {
+            updateEnemyHealthBar();
+        }
+
+        if (focusedTargetPanel)
+        {
+            mEnemyHealth->setVisible(true);
+            if (mEnemyName)
+                mEnemyName->setVisible(true);
+            if (mEnemySummary)
+                mEnemySummary->setVisible(true);
             updateEnemyHealthBar();
         }
 
@@ -442,6 +553,141 @@ namespace MWGui
 
             mDrowningFlash->setAlpha(intensity);
         }
+
+        MWMechanics::DrawState_ drawState = MWMechanics::DrawState_Nothing;
+        const MWWorld::Ptr player = MWBase::Environment::get().getWorld()->getPlayerPtr();
+        if (!player.isEmpty())
+            drawState = player.getClass().getCreatureStats(player).getDrawState();
+
+        if (dialogueOpen && mEnemyActorId == -1)
+            mEnemyHealth->setVisible(false);
+
+        const bool showFocusedTargetInfo = focusedTargetPanel && mEnemyHealth->getVisible();
+        if (mEnemyName)
+            mEnemyName->setVisible(showFocusedTargetInfo);
+        if (mEnemySummary)
+            mEnemySummary->setVisible(showFocusedTargetInfo);
+
+        updateAutoHideBar(mHealthFrame, mHealthBarState, dt, false);
+        updateAutoHideBar(mMagickaFrame, mMagickaBarState, dt,
+            drawState == MWMechanics::DrawState_Spell, mSpellBox);
+        updateAutoHideBar(mFatigueFrame, mStaminaBarState, dt,
+            drawState == MWMechanics::DrawState_Weapon, mWeapBox);
+    }
+
+
+    void HUD::registerBarChange(AutoHideBarState& state, int current, int modified)
+    {
+        const bool firstUpdate = !state.initialized;
+        const bool maximumChanged = state.initialized && state.modified != modified;
+        const bool valueDecreased = state.initialized && current < state.current;
+
+        state.current = current;
+        state.modified = modified;
+        state.initialized = true;
+
+        // Show a bar when the resource is actually spent/damaged or its maximum changes.
+        // Passive regeneration must not continuously restart the auto-hide timer.
+        if (firstUpdate || maximumChanged || valueDecreased)
+        {
+            state.idleTimer = 0.f;
+            state.alpha = 1.f;
+        }
+    }
+
+    void HUD::applyBarAlpha(MyGUI::Widget* widget, float alpha)
+    {
+        if (!widget)
+            return;
+
+        widget->setAlpha(std::max(0.f, std::min(1.f, alpha)));
+    }
+
+    void HUD::updateAutoHideBar(MyGUI::Widget* frame, AutoHideBarState& state, float dt,
+        bool forceVisible, MyGUI::Widget* persistentIcon)
+    {
+        if (!frame || !state.initialized)
+            return;
+
+        if (!mHmsBaseVisible)
+        {
+            frame->setVisible(false);
+            return;
+        }
+
+        const auto applyResourceState = [&](float alpha)
+        {
+            alpha = std::max(0.f, std::min(1.f, alpha));
+            const std::string boxMode = persistentIcon ? getWeaponSpellBoxMode() : "hidden";
+            const bool keepIcon = persistentIcon && boxMode != "hidden";
+
+            if (!keepIcon)
+            {
+                frame->setVisible(alpha > 0.f);
+                applyBarAlpha(frame, alpha);
+                if (alpha > 0.f)
+                {
+                    for (unsigned int i = 0; i < frame->getChildCount(); ++i)
+                    {
+                        MyGUI::Widget* child = frame->getChildAt(i);
+                        const bool iconAllowed = child != persistentIcon
+                            || (persistentIcon == mWeapBox ? mWeaponVisible : mSpellVisible);
+                        child->setVisible(iconAllowed);
+                        applyBarAlpha(child, 1.f);
+                    }
+                }
+                return;
+            }
+
+            // Weapon and spell boxes live inside the stamina/magicka frame. Keep the
+            // parent alive, fade only the bar children, and apply the selected box mode.
+            frame->setVisible(true);
+            applyBarAlpha(frame, 1.f);
+            for (unsigned int i = 0; i < frame->getChildCount(); ++i)
+            {
+                MyGUI::Widget* child = frame->getChildAt(i);
+                if (child == persistentIcon)
+                    continue;
+                child->setVisible(alpha > 0.f);
+                applyBarAlpha(child, alpha);
+            }
+
+            const bool iconAllowed = persistentIcon == mWeapBox ? mWeaponVisible : mSpellVisible;
+            persistentIcon->setVisible(iconAllowed);
+            const float persistentAlpha = boxMode == "visible" ? 1.f : 0.4f;
+            applyBarAlpha(persistentIcon, std::max(persistentAlpha, alpha));
+        };
+
+        // Keep the relevant resource bar visible for as long as the player is
+        // actively holding a weapon or has magic readied. Start the normal
+        // auto-hide delay only after the weapon/spell is put away.
+        if (forceVisible)
+        {
+            state.idleTimer = 0.f;
+            state.alpha = 1.f;
+            applyResourceState(1.f);
+            return;
+        }
+
+        if (!Settings::Manager::getBool("auto hide resource bars", "GUI"))
+        {
+            state.alpha = 1.f;
+            applyResourceState(1.f);
+            return;
+        }
+
+        state.idleTimer += dt;
+
+        const bool isFull = state.modified <= 0 || state.current >= state.modified;
+        const float hideDelay = isFull ? 7.f : 20.f;
+        const float fadeDuration = 0.35f;
+
+        float targetAlpha = 1.f;
+        if (state.idleTimer > hideDelay)
+            targetAlpha = std::max(0.f, 1.f - (state.idleTimer - hideDelay) / fadeDuration);
+
+        state.alpha = targetAlpha;
+        applyResourceState(state.alpha);
     }
 
     void HUD::setSelectedSpell(const std::string& spellId, int successChancePercent)
@@ -569,21 +815,45 @@ namespace MWGui
     
     void HUD::setCrosshairOwned(bool owned)
     {
-        if(owned)
-        {
-            mCrosshair->changeWidgetSkin("HUD_Crosshair_Owned");
-        }
-        else
-        {
-            mCrosshair->changeWidgetSkin("HUD_Crosshair");
-        }
+        const int size = owned ? 32 : 64;
+        mCrosshair->changeWidgetSkin(owned ? "HUD_Crosshair_Owned" : "HUD_Crosshair");
+
+        // Keep both reticles exactly centred. The ownership hand is intentionally
+        // half the size of the normal crosshair and must not inherit its 64x64 box.
+        mCrosshair->setCoord(
+            (mMainWidget->getWidth() - size) / 2,
+            (mMainWidget->getHeight() - size) / 2,
+            size, size);
     }
     
     void HUD::setHmsVisible(bool visible)
     {
+        mHmsBaseVisible = visible;
+
         mHealth->setVisible(visible);
         mMagicka->setVisible(visible);
         mStamina->setVisible(visible);
+
+        if (!visible)
+        {
+            mHealthFrame->setVisible(false);
+            mMagickaFrame->setVisible(false);
+            mFatigueFrame->setVisible(false);
+        }
+        else
+        {
+            registerBarChange(mHealthBarState, mHealthBarState.current, mHealthBarState.modified);
+            registerBarChange(mMagickaBarState, mMagickaBarState.current, mMagickaBarState.modified);
+            registerBarChange(mStaminaBarState, mStaminaBarState.current, mStaminaBarState.modified);
+
+            mHealthFrame->setVisible(true);
+            mMagickaFrame->setVisible(true);
+            mFatigueFrame->setVisible(true);
+            applyBarAlpha(mHealthFrame, 1.f);
+            applyBarAlpha(mMagickaFrame, 1.f);
+            applyBarAlpha(mFatigueFrame, 1.f);
+        }
+
         updatePositions();
     }
 
@@ -619,18 +889,12 @@ namespace MWGui
 
     void HUD::updatePositions()
     {
-        int weapDx = 0, spellDx = 0, sneakDx = 0;
+        int weapDx = 0, spellDx = 0;
         if (!mHealth->getVisible())
-            sneakDx = spellDx = weapDx = mWeapBoxBaseLeft - mHealthManaStaminaBaseLeft;
+            spellDx = weapDx = mWeapBoxBaseLeft - mHealthManaStaminaBaseLeft;
 
         if (!mWeapBox->getVisible())
-        {
             spellDx += mSpellBoxBaseLeft - mWeapBoxBaseLeft;
-            sneakDx = spellDx;
-        }
-
-        if (!mSpellBox->getVisible())
-            sneakDx += mSneakBoxBaseLeft - mSpellBoxBaseLeft;
 
         mWeaponVisible = mWeapBox->getVisible();
         mSpellVisible = mSpellBox->getVisible();
@@ -639,9 +903,10 @@ namespace MWGui
 
         mWeapBox->setPosition(mWeapBoxBaseLeft - weapDx, mWeapBox->getTop());
         mSpellBox->setPosition(mSpellBoxBaseLeft - spellDx, mSpellBox->getTop());
-        mSneakBox->setPosition(mSneakBoxBaseLeft - sneakDx, mSneakBox->getTop());
 
         const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+        mSneakBox->setPosition((viewSize.width - mSneakBox->getWidth()) / 2,
+                               (viewSize.height - mSneakBox->getHeight()) / 2);
 
         // effect box can have variable width -> variable left coordinate
         int effectsDx = 0;
@@ -655,29 +920,174 @@ namespace MWGui
         mEffectBox->setPosition((viewSize.width - mEffectBoxBaseRight) - mEffectBox->getWidth() + effectsDx, mEffectBox->getTop());
     }
 
+    void HUD::setFocusObject(const MWWorld::Ptr& focus)
+    {
+        if (!focus.isEmpty() && focus.getClass().isActor() && focus != MWMechanics::getPlayer()
+            && !focus.getClass().getCreatureStats(focus).isDead())
+            mFocusActor = focus;
+        else
+            mFocusActor = MWWorld::Ptr();
+
+        const bool focusedTargetPanel = Settings::Manager::getBool("target info panel", "GUI")
+            && !mFocusActor.isEmpty()
+            && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
+            && !isFocusedTargetTooClose();
+        if (!focusedTargetPanel && mEnemyHealthTimer < 0.f)
+        {
+            mEnemyHealth->setVisible(false);
+            if (mEnemyName)
+                mEnemyName->setVisible(false);
+            if (mEnemySummary)
+                mEnemySummary->setVisible(false);
+        }
+    }
+
+    void HUD::setFocusObjectScreenCoords(float min_x, float min_y, float max_x, float max_y)
+    {
+        mFocusActorScreenX = (min_x + max_x) * 0.5f;
+        mFocusActorScreenY = min_y;
+    }
+
+    bool HUD::isFocusedTargetTooClose() const
+    {
+        if (mFocusActor.isEmpty())
+            return false;
+
+        const float distance = MWBase::Environment::get().getWorld()->getDistanceToFacedObject();
+        const float faceToFaceDistance = MWBase::Environment::get().getWorld()->getMaxActivationDistance() * 0.45f;
+        return distance >= 0.f && distance <= faceToFaceDistance;
+    }
+
     void HUD::updateEnemyHealthBar()
     {
-        MWWorld::Ptr enemy = MWBase::Environment::get().getWorld()->searchPtrViaActorId(mEnemyActorId);
+        const bool usingFocusActor = Settings::Manager::getBool("target info panel", "GUI")
+            && !mFocusActor.isEmpty()
+            && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead()
+            && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
+            && !isFocusedTargetTooClose();
+
+        MWWorld::Ptr enemy;
+        if (usingFocusActor)
+            enemy = mFocusActor;
+        else if (mEnemyActorId != -1)
+            enemy = MWBase::Environment::get().getWorld()->searchPtrViaActorId(mEnemyActorId);
+
         if (enemy.isEmpty())
             return;
+
         MWMechanics::CreatureStats& stats = enemy.getClass().getCreatureStats(enemy);
-        mEnemyHealth->setProgressRange(100);
-        // Health is usually cast to int before displaying. Actors die whenever they are < 1 health.
-        // Therefore any value < 1 should show as an empty health bar. We do the same in statswindow :)
-        mEnemyHealth->setProgressPosition(static_cast<size_t>(stats.getHealth().getCurrent() / stats.getHealth().getModified() * 100));
+        if (stats.isDead() || stats.getHealth().getCurrent() <= 0.f)
+        {
+            mEnemyHealth->setVisible(false);
+            if (mEnemyName)
+                mEnemyName->setVisible(false);
+            if (mEnemySummary)
+                mEnemySummary->setVisible(false);
+            return;
+        }
 
-        static const float fNPCHealthBarFade = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>().find("fNPCHealthBarFade")->mValue.getFloat();
-        if (fNPCHealthBarFade > 0.f)
-            mEnemyHealth->setAlpha(std::max(0.f, std::min(1.f, mEnemyHealthTimer/fNPCHealthBarFade)));
+        const float maximumHealth = stats.getHealth().getModified();
+        const float currentHealth = stats.getHealth().getCurrent();
+        const int maximumHealthPoints = std::max(1, static_cast<int>(std::lround(maximumHealth)));
+        const int currentHealthPoints = std::max(0, std::min(maximumHealthPoints,
+            static_cast<int>(std::lround(currentHealth))));
 
+        mEnemyHealth->setProgressRange(static_cast<size_t>(maximumHealthPoints));
+        mEnemyHealth->setProgressPosition(static_cast<size_t>(currentHealthPoints));
+
+        static const float fNPCHealthBarFade = MWBase::Environment::get().getWorld()->getStore()
+            .get<ESM::GameSetting>().find("fNPCHealthBarFade")->mValue.getFloat();
+        const float alpha = usingFocusActor ? 1.f
+            : (fNPCHealthBarFade > 0.f
+                ? std::max(0.f, std::min(1.f, mEnemyHealthTimer / fNPCHealthBarFade))
+                : 1.f);
+        mEnemyHealth->setAlpha(alpha);
+
+        if (usingFocusActor)
+        {
+            // Hovered actor: compact nameplate above the actor.
+            mEnemyHealth->setSize(190, 16);
+            if (mEnemyName)
+            {
+                mEnemyName->setSize(240, 20);
+                mEnemyName->setCaption(enemy.getClass().getName(enemy) + "  -  "
+                    + MyGUI::utility::toString(stats.getLevel()) + " lvl");
+                mEnemyName->setAlpha(alpha);
+            }
+            if (mEnemySummary)
+            {
+                mEnemySummary->setSize(190, 16);
+                mEnemySummary->setCaption(MyGUI::utility::toString(currentHealthPoints) + " / "
+                    + MyGUI::utility::toString(maximumHealthPoints));
+                mEnemySummary->setAlpha(alpha);
+            }
+
+            const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+            const int centerX = static_cast<int>(mFocusActorScreenX * viewSize.width);
+            const int anchorTop = static_cast<int>(mFocusActorScreenY * viewSize.height);
+            const int nameWidth = mEnemyName ? mEnemyName->getWidth() : 0;
+            const int nameHeight = mEnemyName ? mEnemyName->getHeight() : 0;
+            const int barWidth = mEnemyHealth->getWidth();
+            const int totalWidth = std::max(nameWidth, barWidth);
+            const int totalHeight = nameHeight + 2 + mEnemyHealth->getHeight();
+
+            // Keep the complete target panel inside a small screen-safe area. These are logical
+            // GUI pixels, so the visible gap grows together with the configured GUI scaling factor.
+            constexpr int targetPanelSafeMargin = 14;
+            const int horizontalMargin = std::min(targetPanelSafeMargin,
+                std::max(0, (viewSize.width - totalWidth) / 2));
+            const int verticalMargin = std::min(targetPanelSafeMargin,
+                std::max(0, (viewSize.height - totalHeight) / 2));
+            const int maximumLeft = std::max(horizontalMargin,
+                viewSize.width - horizontalMargin - totalWidth);
+            const int maximumTop = std::max(verticalMargin,
+                viewSize.height - verticalMargin - totalHeight);
+
+            // Follow the hovered actor, but keep the panel in a stable upper-centre
+            // HUD band. Its centre can travel only 20% of the screen width to either
+            // side, so an actor near an edge cannot drag the nameplate far away.
+            const int screenCenterX = viewSize.width / 2;
+            const int horizontalTravel = std::max(0, viewSize.width / 5);
+            const int constrainedCenterX = std::max(screenCenterX - horizontalTravel,
+                std::min(centerX, screenCenterX + horizontalTravel));
+            const int panelLeft = std::max(horizontalMargin,
+                std::min(constrainedCenterX - totalWidth / 2, maximumLeft));
+
+            // Keep the top of the complete panel within the upper 30% of the view.
+            // It still reacts to the actor's projected height inside this band.
+            const int upperBandBottom = std::max(verticalMargin,
+                std::min(maximumTop, static_cast<int>(viewSize.height * 0.30f)));
+            const int baseY = std::max(verticalMargin,
+                std::min(anchorTop - totalHeight, upperBandBottom));
+
+            if (mEnemyName)
+                mEnemyName->setPosition(panelLeft + (totalWidth - nameWidth) / 2, baseY);
+            const int barLeft = panelLeft + (totalWidth - barWidth) / 2;
+            mEnemyHealth->setPosition(barLeft, baseY + nameHeight + 2);
+            if (mEnemySummary)
+                mEnemySummary->setPosition(barLeft, baseY + nameHeight + 2);
+        }
+        else
+        {
+            // Combat feedback when the compact target panel is disabled: a thin red bar above player health.
+            if (mEnemyName)
+                mEnemyName->setVisible(false);
+            if (mEnemySummary)
+                mEnemySummary->setVisible(false);
+
+            const MyGUI::IntCoord playerHealth = mHealth->getAbsoluteCoord();
+            mEnemyHealth->setCoord(playerHealth.left, std::max(0, playerHealth.top - 9), playerHealth.width, 7);
+        }
     }
 
     void HUD::setEnemy(const MWWorld::Ptr &enemy)
     {
         mEnemyActorId = enemy.getClass().getCreatureStats(enemy).getActorId();
+        if (mEnemyName)
+            mEnemyName->setVisible(false);
+        if (mEnemySummary)
+            mEnemySummary->setVisible(false);
         mEnemyHealthTimer = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>().find("fNPCHealthBarTime")->mValue.getFloat();
-        if (!mEnemyHealth->getVisible())
-            mWeaponSpellBox->setPosition(mWeaponSpellBox->getPosition() - MyGUI::IntPoint(0,20));
         mEnemyHealth->setVisible(true);
         updateEnemyHealthBar();
     }
@@ -686,6 +1096,8 @@ namespace MWGui
     {
         mEnemyActorId = -1;
         mEnemyHealthTimer = -1;
+        if (mEnemyName) mEnemyName->setVisible(false);
+        if (mEnemySummary) mEnemySummary->setVisible(false);
     }
 
     void HUD::clear()

@@ -1,5 +1,7 @@
 #include "ObjectProcessor.hpp"
 #include "Networking.hpp"
+#include "Cell.hpp"
+#include "CellController.hpp"
 
 using namespace mwmp;
 
@@ -9,6 +11,13 @@ typename BasePacketProcessor<T>::processors_t BasePacketProcessor<T>::processors
 void ObjectProcessor::Do(ObjectPacket &packet, Player &player, BaseObjectList &objectList)
 {
     packet.Send(true);
+}
+
+void ObjectProcessor::SendToLoadedCell(ObjectPacket &packet, BaseObjectList &objectList)
+{
+    Cell* cell = CellController::get()->getCell(&objectList.cell);
+    if (cell != nullptr)
+        cell->sendToLoaded(&packet, &objectList);
 }
 
 bool ObjectProcessor::Process(RakNet::Packet &packet, BaseObjectList &objectList) noexcept

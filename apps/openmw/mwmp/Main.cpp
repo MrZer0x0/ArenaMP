@@ -53,10 +53,22 @@ Main *Main::pMain = 0;
 std::string Main::address = "";
 std::string Main::serverPassword = TES3MP_DEFAULT_PASSW;
 std::string Main::resourceDir = "";
+bool Main::vanillaBuildServer = false;
+bool Main::hideChatHistory = false;
 
 std::string Main::getResDir()
 {
     return resourceDir;
+}
+
+bool Main::useVanillaBuildServer()
+{
+    return vanillaBuildServer;
+}
+
+bool Main::isChatHistoryHidden()
+{
+    return hideChatHistory;
 }
 
 std::string loadSettings(Settings::Manager& settings)
@@ -113,13 +125,19 @@ void Main::optionsDesc(boost::program_options::options_description *desc)
             ("connect", bpo::value<std::string>()->default_value(""),
                         "connect to server (e.g. --connect=127.0.0.1:25565)")
             ("password", bpo::value<std::string>()->default_value(TES3MP_DEFAULT_PASSW),
-                        "сonnect to a secured server. (e.g. --password=AnyPassword");
+                        "сonnect to a secured server. (e.g. --password=AnyPassword")
+            ("vanilla-build-server", bpo::value<bool>()->implicit_value(true)->default_value(false),
+                        "use the official TES3MP 0.8.1 commit identity for older servers")
+            ("hide-chat-history", bpo::value<bool>()->implicit_value(true)->default_value(false),
+                        "hide received chat messages while keeping chat input available");
 }
 
 void Main::configure(const boost::program_options::variables_map &variables)
 {
     Main::address = variables["connect"].as<std::string>();
     Main::serverPassword = variables["password"].as<std::string>();
+    Main::vanillaBuildServer = variables["vanilla-build-server"].as<bool>();
+    Main::hideChatHistory = variables["hide-chat-history"].as<bool>();
     resourceDir = variables["resources"].as<Files::EscapePath>().mPath.string();
 }
 
@@ -199,7 +217,9 @@ void Main::updateWorld(float dt) const
     if (init)
     {
         init = false;
-        LOG_MESSAGE_SIMPLE(TimedLog::LOG_INFO, "Sending ID_PLAYER_BASEINFO to server");
+        getLocalPlayer()->updateLanguage();
+        LOG_MESSAGE_SIMPLE(TimedLog::LOG_INFO, "Sending ID_PLAYER_BASEINFO to server (language %s)",
+            getLocalPlayer()->language.c_str());
 
         mNetworking->getPlayerPacket(ID_PLAYER_BASEINFO)->setPlayer(getLocalPlayer());
         mNetworking->getPlayerPacket(ID_LOADED)->setPlayer(getLocalPlayer());

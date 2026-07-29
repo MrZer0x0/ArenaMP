@@ -257,6 +257,7 @@ public:
     bool playGroup(const std::string &groupname, int mode, int count, bool persist=false);
     void skipAnim();
     bool isAnimPlaying(const std::string &groupName);
+    bool hasQueuedAnimation() const { return !mAnimQueue.empty(); }
 
     enum KillResult
     {

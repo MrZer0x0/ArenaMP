@@ -4,6 +4,9 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include <vector>
+#include <sstream>
+#include <algorithm>
 
 #include <boost/filesystem/fstream.hpp>
 
@@ -83,6 +86,213 @@ namespace
     {
         if (ret != 0)
             Log(Debug::Error) << "SDL error: " << SDL_GetError();
+    }
+
+    std::string trimCopy(const std::string& value)
+    {
+        std::string::size_type start = value.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos)
+            return std::string();
+
+        std::string::size_type end = value.find_last_not_of(" \t\r\n");
+        return value.substr(start, end - start + 1);
+    }
+
+    bool hasIniKey(const std::vector<std::string>& lines, const std::string& section, const std::string& key)
+    {
+        std::string currentSection;
+        const std::string invalidPrefix = "# invalid setting: ";
+
+        for (const std::string& rawLine : lines)
+        {
+            const std::string line = trimCopy(rawLine);
+            if (line.empty() || line[0] == ';')
+                continue;
+
+            // Handle comments — but also peek inside "# invalid setting:" lines
+            // so we don't keep appending duplicate keys that were previously
+            // commented out by the launcher.
+            if (line[0] == '#')
+            {
+                if (currentSection == section
+                    && line.size() > invalidPrefix.size()
+                    && line.compare(0, invalidPrefix.size(), invalidPrefix) == 0)
+                {
+                    const std::string rest = line.substr(invalidPrefix.size());
+                    const std::string::size_type equals = rest.find('=');
+                    if (equals != std::string::npos && trimCopy(rest.substr(0, equals)) == key)
+                        return true;
+                }
+                continue;
+            }
+
+            if (line.front() == '[')
+            {
+                const std::string::size_type end = line.find(']');
+                if (end != std::string::npos)
+                    currentSection = line.substr(1, end - 1);
+                continue;
+            }
+
+            if (currentSection != section)
+                continue;
+
+            const std::string::size_type equals = line.find('=');
+            if (equals == std::string::npos)
+                continue;
+
+            if (trimCopy(line.substr(0, equals)) == key)
+                return true;
+        }
+
+        return false;
+    }
+
+
+    osgViewer::ViewerBase::ThreadingModel getViewerThreadingModelSetting()
+    {
+        const std::string value = Settings::Manager::getString("threading model", "OSG");
+
+        if (value == "SingleThreaded")
+            return osgViewer::ViewerBase::SingleThreaded;
+        if (value == "CullDrawThreadPerContext")
+            return osgViewer::ViewerBase::CullDrawThreadPerContext;
+
+        return osgViewer::ViewerBase::DrawThreadPerContext;
+    }
+
+    const char* getViewerThreadingModelName(osgViewer::ViewerBase::ThreadingModel model)
+    {
+        switch (model)
+        {
+            case osgViewer::ViewerBase::SingleThreaded:
+                return "SingleThreaded";
+            case osgViewer::ViewerBase::CullDrawThreadPerContext:
+                return "CullDrawThreadPerContext";
+            case osgViewer::ViewerBase::DrawThreadPerContext:
+                return "DrawThreadPerContext";
+            default:
+                return "DrawThreadPerContext";
+        }
+    }
+
+    void appendIniKeyIfMissing(std::vector<std::string>& lines, const std::string& section, const std::string& key, const std::string& value)
+    {
+        if (hasIniKey(lines, section, key))
+            return;
+
+        bool sectionFound = false;
+        std::size_t insertPos = lines.size();
+
+        for (std::size_t i = 0; i < lines.size(); ++i)
+        {
+            const std::string line = trimCopy(lines[i]);
+            if (line.empty() || line[0] != '[')
+                continue;
+
+            const std::string::size_type end = line.find(']');
+            if (end == std::string::npos)
+                continue;
+
+            const std::string currentSection = line.substr(1, end - 1);
+            if (sectionFound)
+            {
+                insertPos = i;
+                break;
+            }
+
+            if (currentSection == section)
+            {
+                sectionFound = true;
+                insertPos = i + 1;
+            }
+        }
+
+        const std::string entry = key + " = " + value;
+
+        if (!sectionFound)
+        {
+            if (!lines.empty() && !trimCopy(lines.back()).empty())
+                lines.push_back(std::string());
+            lines.push_back("[" + section + "]");
+            lines.push_back(entry);
+            return;
+        }
+
+        lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(insertPos), entry);
+    }
+
+    bool queryPrimaryDisplayResolution(int& width, int& height)
+    {
+        SDL_DisplayMode mode;
+        if (SDL_GetCurrentDisplayMode(0, &mode) == 0 && mode.w > 0 && mode.h > 0)
+        {
+            width = mode.w;
+            height = mode.h;
+            return true;
+        }
+
+        if (SDL_GetDesktopDisplayMode(0, &mode) == 0 && mode.w > 0 && mode.h > 0)
+        {
+            width = mode.w;
+            height = mode.h;
+            return true;
+        }
+
+        SDL_Rect bounds;
+        if (SDL_GetDisplayBounds(0, &bounds) == 0 && bounds.w > 0 && bounds.h > 0)
+        {
+            width = bounds.w;
+            height = bounds.h;
+            return true;
+        }
+
+        width = 1920;
+        height = 1080;
+        return false;
+    }
+
+    std::string formatScalingFactor(int width, int height)
+    {
+        const int maxResolution = std::max(width, height);
+        float scalingFactor = static_cast<float>(maxResolution) / 1280.f;
+        scalingFactor = std::max(0.5f, std::min(4.0f, scalingFactor));
+
+        std::ostringstream stream;
+        stream << std::fixed << std::setprecision(2) << scalingFactor;
+        return stream.str();
+    }
+
+    void ensureDisplaySettingsFile(const boost::filesystem::path& settingsPath)
+    {
+        int width = 1920;
+        int height = 1080;
+        queryPrimaryDisplayResolution(width, height);
+
+        std::vector<std::string> lines;
+        if (boost::filesystem::exists(settingsPath))
+        {
+            boost::filesystem::ifstream input(settingsPath);
+            std::string line;
+            while (std::getline(input, line))
+                lines.push_back(line);
+        }
+
+        const std::size_t oldSize = lines.size();
+
+        appendIniKeyIfMissing(lines, "Video", "resolution x", std::to_string(width));
+        appendIniKeyIfMissing(lines, "Video", "resolution y", std::to_string(height));
+        appendIniKeyIfMissing(lines, "Video", "screen", "0");
+        appendIniKeyIfMissing(lines, "Video", "fullscreen", "true");
+        appendIniKeyIfMissing(lines, "GUI", "scaling factor", formatScalingFactor(width, height));
+
+        if (boost::filesystem::exists(settingsPath) && lines.size() == oldSize)
+            return;
+
+        boost::filesystem::create_directories(settingsPath.parent_path());
+        boost::filesystem::ofstream output(settingsPath, std::ios::out | std::ios::trunc);
+        for (const std::string& line : lines)
+            output << line << '\n';
     }
 
     struct UserStats
@@ -600,22 +810,46 @@ void OMW::Engine::setSkipMenu (bool skipMenu, bool newGame)
 
 std::string OMW::Engine::loadSettings (Settings::Manager & settings)
 {
-    // Create the settings manager and load default settings file
+    // ArenaMP uses settings-default.cfg as the canonical preset. Prefer the
+    // text file so launcher and client share every fork-specific setting;
+    // defaults.bin remains a compatibility fallback only.
     const std::string localdefault = (mCfgMgr.getLocalPath() / "defaults.bin").string();
     const std::string globaldefault = (mCfgMgr.getGlobalPath() / "defaults.bin").string();
+    const std::string localdefaultcfg = (mCfgMgr.getLocalPath() / "settings-default.cfg").string();
+    const std::string globaldefaultcfg = (mCfgMgr.getGlobalPath() / "settings-default.cfg").string();
 
-    // prefer local
-    if (boost::filesystem::exists(localdefault))
+    if (boost::filesystem::exists(localdefaultcfg))
+        settings.loadDefault(localdefaultcfg, false);
+    else if (boost::filesystem::exists(globaldefaultcfg))
+        settings.loadDefault(globaldefaultcfg, false);
+    else if (boost::filesystem::exists(localdefault))
         settings.loadDefault(localdefault);
     else if (boost::filesystem::exists(globaldefault))
         settings.loadDefault(globaldefault);
     else
-        throw std::runtime_error ("No default settings file found! Make sure the file \"defaults.bin\" was properly installed.");
+        throw std::runtime_error("No default settings file found! Make sure \"defaults.bin\" or \"settings-default.cfg\" was properly installed.");
+
+    const boost::filesystem::path settingsPath = mCfgMgr.getPrimarySettingsPath();
+    ensureDisplaySettingsFile(settingsPath);
 
     // load user settings if they exist
-    const std::string settingspath = (mCfgMgr.getUserConfigPath() / "settings.cfg").string();
+    const std::string settingspath = settingsPath.string();
+    settings.setUserSettingsPath(settingspath);
     if (boost::filesystem::exists(settingspath))
         settings.loadUser(settingspath);
+
+    // ArenaMP migration: previous builds could leave the compact target panel
+    // disabled in an existing user settings file. Enable it once after upgrading,
+    // then preserve all later user choices normally.
+    const Settings::CategorySettingValueMap::key_type migrationKey
+        = std::make_pair(std::string("GUI"), std::string("target info panel default v1"));
+    if (Settings::Manager::mUserSettings.find(migrationKey) == Settings::Manager::mUserSettings.end())
+    {
+        Settings::Manager::setBool("target info panel", "GUI", true);
+        Settings::Manager::setBool("target info panel default v1", "GUI", true);
+        settings.saveUser(settingspath);
+        Settings::Manager::resetPendingChanges();
+    }
 
     return settingspath;
 }
@@ -871,6 +1105,12 @@ void OMW::Engine::prepareEngine (Settings::Manager & settings)
     mEnvironment.setWorld( new MWWorld::World (mViewer, rootNode, mResourceSystem.get(), mWorkQueue.get(),
         mFileCollections, mContentFiles, mGroundcoverFiles, mEncoder, mActivationDistanceOverride, mCellName,
         mStartupScript, mResDir.string(), mCfgMgr.getUserDataPath().string()));
+
+    // UI initialization can inspect or auto-equip inventory items. Register the
+    // mechanics system first so canBeEquipped() never dereferences a null manager.
+    MWMechanics::MechanicsManager* mechanics = new MWMechanics::MechanicsManager;
+    mEnvironment.setMechanicsManager (mechanics);
+
     mEnvironment.getWorld()->setupPlayer();
 
     window->setStore(mEnvironment.getWorld()->getStore());
@@ -889,10 +1129,6 @@ void OMW::Engine::prepareEngine (Settings::Manager & settings)
 
     mEnvironment.setScriptManager (new MWScript::ScriptManager (mEnvironment.getWorld()->getStore(), *mScriptContext, mWarningsMode,
         mScriptBlacklistUse ? mScriptBlacklist : std::vector<std::string>()));
-
-    // Create game mechanics system
-    MWMechanics::MechanicsManager* mechanics = new MWMechanics::MechanicsManager;
-    mEnvironment.setMechanicsManager (mechanics);
 
     // Create dialog system
     mEnvironment.setJournal (new MWDialogue::Journal);

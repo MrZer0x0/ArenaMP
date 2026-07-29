@@ -673,6 +673,8 @@ namespace MWWorld
             void allowVanityMode(bool allow) override;
             bool vanityRotateCamera(float * rot) override;
             void adjustCameraDistance(float dist) override;
+            void setDialogueCameraTarget(const MWWorld::Ptr& target) override;
+            void clearDialogueCameraTarget() override;
 
             void applyDeferredPreviewRotationToPlayer(float dt) override;
             void disableDeferredPreviewRotation() override;
