@@ -3,6 +3,7 @@
 #include <components/version/version.hpp>
 #include <components/misc/helpviewer.hpp>
 #include <components/config/buildmanifest.hpp>
+#include <components/config/contentorder.hpp>
 
 #include <QDate>
 #include <QMessageBox>
@@ -39,6 +40,56 @@ void cfgError(const QString& title, const QString& msg) {
     msgBox.exec();
 }
 
+namespace
+{
+    constexpr int sLauncherWidth = 1024;
+    constexpr int sLauncherHeight = 720;
+
+    bool containsGameContent(const QDir& dir)
+    {
+        if (!dir.exists())
+            return false;
+
+        const QStringList files = dir.entryList(
+            QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
+        for (const QString& fileName : files)
+        {
+            if (fileName.endsWith(QLatin1String(".esm"), Qt::CaseInsensitive)
+                || fileName.endsWith(QLatin1String(".esp"), Qt::CaseInsensitive)
+                || fileName.endsWith(QLatin1String(".omwgame"), Qt::CaseInsensitive)
+                || fileName.endsWith(QLatin1String(".omwaddon"), Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+
+    QString resolveDataFilesDirectory(const QString& selectedPath)
+    {
+        if (selectedPath.trimmed().isEmpty())
+            return QString();
+
+        const QString cleanPath = QDir::cleanPath(selectedPath);
+        const QDir selectedDir(cleanPath);
+        if (!selectedDir.exists())
+            return QString();
+        if (containsGameContent(selectedDir))
+            return cleanPath;
+
+        const QStringList childDirectories = selectedDir.entryList(
+            QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase);
+        for (const QString& childName : childDirectories)
+        {
+            if (childName.compare(QLatin1String("Data Files"), Qt::CaseInsensitive) != 0)
+                continue;
+
+            const QString childPath = QDir::cleanPath(selectedDir.filePath(childName));
+            if (containsGameContent(QDir(childPath)))
+                return childPath;
+        }
+        return QString();
+    }
+}
+
 Launcher::MainDialog::MainDialog(QWidget *parent)
     : QMainWindow(parent)
     , mPlayPage(nullptr)
@@ -62,6 +113,7 @@ Launcher::MainDialog::MainDialog(QWidget *parent)
     , mGameSettings (mCfgMgr)
 {
     setupUi(this);
+    setFixedSize(sLauncherWidth, sLauncherHeight);
 
     mGameInvoker = new ProcessInvoker();
     mWizardInvoker = new ProcessInvoker();
@@ -491,22 +543,50 @@ bool Launcher::MainDialog::setupGameSettings()
         }
     }
 
+    // Normalize legacy data= entries before loadBuildManifest() runs. Older
+    // Wizard builds could store the Morrowind root instead of Data Files.
+    const QStringList configuredDataDirs = mGameSettings.getDataDirs();
+    for (const QString& configuredPath : configuredDataDirs)
+    {
+        const QString resolvedPath = resolveDataFilesDirectory(configuredPath);
+        if (!resolvedPath.isEmpty()
+            && !mGameSettings.getDataDirs().contains(resolvedPath, Qt::CaseInsensitive))
+        {
+            mGameSettings.setMultiValue(QLatin1String("data"), resolvedPath);
+            mGameSettings.addDataDir(resolvedPath);
+        }
+    }
+
     return true;
 }
 
 bool Launcher::MainDialog::setupGameData()
 {
-    QStringList dataDirs;
+    QStringList candidates = mGameSettings.getDataDirs();
+    if (!mBuildDataPath.isEmpty())
+        candidates.prepend(mBuildDataPath);
 
-    // Check if the paths actually contain data files
-    for (const QString& path3 : mGameSettings.getDataDirs())
+    const QString localPath = QString::fromUtf8(mCfgMgr.getLocalPath().string().c_str());
+    if (!localPath.isEmpty())
     {
-        QDir dir(path3);
-        QStringList filters;
-        filters << "*.esp" << "*.esm" << "*.omwgame" << "*.omwaddon";
+        candidates.append(QDir(localPath).filePath(QLatin1String("Data Files")));
+        candidates.append(localPath);
+    }
 
-        if (!dir.entryList(filters).isEmpty())
-            dataDirs.append(path3);
+    QStringList dataDirs;
+    for (const QString& candidate : candidates)
+    {
+        const QString resolvedPath = resolveDataFilesDirectory(candidate);
+        if (resolvedPath.isEmpty()
+            || dataDirs.contains(resolvedPath, Qt::CaseInsensitive))
+            continue;
+
+        dataDirs.append(resolvedPath);
+        if (!mGameSettings.getDataDirs().contains(resolvedPath, Qt::CaseInsensitive))
+        {
+            mGameSettings.setMultiValue(QLatin1String("data"), resolvedPath);
+            mGameSettings.addDataDir(resolvedPath);
+        }
     }
 
     if (dataDirs.isEmpty())
@@ -607,10 +687,12 @@ bool Launcher::MainDialog::loadBuildManifest()
         ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
     if (!manifest.contentFiles.isEmpty() || !manifest.groundcoverFiles.isEmpty())
     {
-        mGameSettings.setContentList(manifest.contentFiles);
+        const QStringList orderedContent
+            = Config::applyCanonicalContentOrder(manifest.contentFiles, QDir(mBuildDataPath));
+        mGameSettings.setContentList(orderedContent);
         mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
 
-        QStringList profileFiles = manifest.contentFiles;
+        QStringList profileFiles = orderedContent;
         profileFiles.append(manifest.groundcoverFiles);
         mLauncherSettings.setContentList(effectiveBuildName, profileFiles,
             manifest.groundcoverFiles, !manifest.groundcoverFiles.isEmpty());
@@ -942,19 +1024,11 @@ bool Launcher::MainDialog::setupGraphicsSettings()
 
 void Launcher::MainDialog::loadSettings()
 {
-    constexpr int minimumLauncherWidth = 1024;
-    constexpr int minimumLauncherHeight = 720;
-    setMinimumSize(minimumLauncherWidth, minimumLauncherHeight);
-
-    int width = mLauncherSettings.value(QStringLiteral("General/MainWindow/width"), QString::number(minimumLauncherWidth)).toInt();
-    int height = mLauncherSettings.value(QStringLiteral("General/MainWindow/height"), QString::number(minimumLauncherHeight)).toInt();
-
     int posX = mLauncherSettings.value(QString("General/MainWindow/posx")).toInt();
     int posY = mLauncherSettings.value(QString("General/MainWindow/posy")).toInt();
 
-    width = qMax(width, minimumLauncherWidth);
-    height = qMax(height, minimumLauncherHeight);
-    resize(width, height);
+    // Keep the page layouts stable and ignore stale width/height values.
+    setFixedSize(sLauncherWidth, sLauncherHeight);
     move(posX, posY);
 
     if (mPlayPage != nullptr && mServerDialog != nullptr)
@@ -990,9 +1064,11 @@ void Launcher::MainDialog::loadSettings()
 
 void Launcher::MainDialog::saveSettings()
 {
-    QString width = QString::number(this->width());
-    QString height = QString::number(this->height());
+    QString width = QString::number(sLauncherWidth);
+    QString height = QString::number(sLauncherHeight);
 
+    mLauncherSettings.remove(QString("General/MainWindow/width"));
+    mLauncherSettings.remove(QString("General/MainWindow/height"));
     mLauncherSettings.setValue(QString("General/MainWindow/width"), width);
     mLauncherSettings.setValue(QString("General/MainWindow/height"), height);
 
@@ -1126,13 +1202,13 @@ void Launcher::MainDialog::wizardFinished(int exitCode, QProcess::ExitStatus exi
     if (exitCode != 0 || exitStatus == QProcess::CrashExit)
         return qApp->quit();
 
-    // HACK: Ensure the pages are created, else segfault
-    setup();
+    // The Wizard has just replaced openmw.cfg and launcher.cfg. Reload both
+    // before validating the selected Data Files directory.
+    if (!setup() || !reloadSettings())
+        return qApp->quit();
 
-    if (setupGameData() && reloadSettings())
+    if (setupGameData())
     {
-        loadBuildManifest();
-        applyBuildManifestRestrictions();
         show();
         raise();
         activateWindow();

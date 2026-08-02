@@ -21,6 +21,7 @@
 #include <components/esm/loadligh.hpp>
 #include <components/esm/loadnpc.hpp>
 #include <components/misc/rng.hpp>
+#include <components/settings/settings.hpp>
 #include <components/widgets/list.hpp>
 #include <components/translation/translation.hpp>
 
@@ -82,6 +83,11 @@ namespace
     float randomRange(float minimum, float maximum)
     {
         return minimum + (maximum - minimum) * Misc::Rng::rollProbability();
+    }
+
+    std::string gameSettingString(const std::string& id, const std::string& fallback)
+    {
+        return MWBase::Environment::get().getWindowManager()->getGameSettingString(id, fallback);
     }
 
     bool dynamicActorLeftArmOccupied(const MWWorld::Ptr& ptr)
@@ -312,6 +318,9 @@ namespace MWGui
         getWidget(mNpcHealthText, "NpcHealthText");
         getWidget(mChoicesLabel, "ChoicesLabel");
         getWidget(mTopicsLabel, "TopicsLabel");
+        // The disposition bar occupies this row in the Arena dialogue layout.
+        // Keep the widget as an anchor without drawing the legacy caption.
+        mTopicsLabel->setCaption(MyGUI::UString());
 
         getWidget(mGoodbyeButton, "ByeButton");
         mGoodbyeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DialogueWindow::onByeClicked);
@@ -430,7 +439,11 @@ namespace MWGui
     {
         if (mPtr.isEmpty() || !Settings::Manager::getBool("cinematic dialogue camera", "GUI"))
             return;
-        MWBase::Environment::get().getWorld()->setDialogueCameraTarget(mPtr);
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        if (world->getGlobalInt("chargenstate") != -1)
+            return;
+
+        world->setDialogueCameraTarget(mPtr);
         mDialogueCameraActive = true;
     }
 
@@ -889,6 +902,8 @@ namespace MWGui
             || MWBase::Environment::get().getDialogueManager()->isInChoice())
             return;
 
+        // Persuasion always reopens in the canonical centred Arena layout.
+        positionDialogueWindow();
         mPersuasionMode = true;
         updateHistory();
         selectInitialItem();
@@ -927,10 +942,8 @@ namespace MWGui
                 = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
             if (playerGold < goldCost)
             {
-                const MWWorld::Store<ESM::GameSetting>& gmst
-                    = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
                 MWBase::Environment::get().getWindowManager()->messageBox(
-                    gmst.find("sGold")->mValue.getString() + ": "
+                    gameSettingString("sGold", "Gold") + ": "
                     + MyGUI::utility::toString(playerGold) + " / "
                     + MyGUI::utility::toString(goldCost));
                 return;
@@ -965,40 +978,38 @@ namespace MWGui
         {
             rebuildPersuasionChoices();
 
-            const MWWorld::Store<ESM::GameSetting>& gmst
-                = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
             for (const int type : mPersuasionChoices)
             {
                 if (type == MWBase::MechanicsManager::PT_Admire)
-                    mChoicesList->addItem(gmst.find("sAdmire")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sAdmire", "Admire"));
                 else if (type == MWBase::MechanicsManager::PT_Intimidate)
-                    mChoicesList->addItem(gmst.find("sIntimidate")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sIntimidate", "Intimidate"));
                 else if (type == MWBase::MechanicsManager::PT_Taunt)
-                    mChoicesList->addItem(gmst.find("sTaunt")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sTaunt", "Taunt"));
                 else if (type == MWBase::MechanicsManager::PT_Bribe10)
-                    mChoicesList->addItem(gmst.find("sBribe 10 Gold")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sBribe 10 Gold", "Bribe 10 Gold"));
                 else if (type == MWBase::MechanicsManager::PT_Bribe100)
-                    mChoicesList->addItem(gmst.find("sBribe 100 Gold")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sBribe 100 Gold", "Bribe 100 Gold"));
                 else if (type == MWBase::MechanicsManager::PT_Bribe1000)
-                    mChoicesList->addItem(gmst.find("sBribe 1000 Gold")->mValue.getString());
+                    mChoicesList->addItem(gameSettingString("sBribe 1000 Gold", "Bribe 1000 Gold"));
             }
 
             const MWWorld::Ptr player = MWMechanics::getPlayer();
             const int playerGold = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
-            mChoicesLabel->setCaption(gmst.find("sPersuasionMenuTitle")->mValue.getString()
-                + " - " + gmst.find("sGold")->mValue.getString() + ": "
+            mChoicesLabel->setCaption(gameSettingString("sPersuasionMenuTitle", "Persuasion")
+                + " - " + gameSettingString("sGold", "Gold") + ": "
                 + MyGUI::utility::toString(playerGold));
         }
         else
         {
             for (const auto& choice : mChoices)
                 mChoicesList->addItem(choice.first);
-            mChoicesLabel->setCaption("");
+            mChoicesLabel->setCaption(MyGUI::UString());
         }
         mChoicesList->adjustSize();
 
         const bool hasChoices = mPersuasionMode || !mChoices.empty();
-        mChoicesLabel->setVisible(hasChoices);
+        mChoicesLabel->setVisible(mPersuasionMode);
         mChoicesList->setVisible(hasChoices);
         mChoicesList->setEnabled(hasChoices);
 
@@ -1112,17 +1123,15 @@ namespace MWGui
         if (mGoodbye || dialogueManager->isInChoice())
             return;
 
-        const MWWorld::Store<ESM::GameSetting> &gmst = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
-
-        const std::string sPersuasion = gmst.find("sPersuasion")->mValue.getString();
-        const std::string sCompanionShare = gmst.find("sCompanionShare")->mValue.getString();
-        const std::string sBarter = gmst.find("sBarter")->mValue.getString();
-        const std::string sSpells = gmst.find("sSpells")->mValue.getString();
-        const std::string sTravel = gmst.find("sTravel")->mValue.getString();
-        const std::string sSpellMakingMenuTitle = gmst.find("sSpellMakingMenuTitle")->mValue.getString();
-        const std::string sEnchanting = gmst.find("sEnchanting")->mValue.getString();
-        const std::string sServiceTrainingTitle = gmst.find("sServiceTrainingTitle")->mValue.getString();
-        const std::string sRepair = gmst.find("sRepair")->mValue.getString();
+        const std::string sPersuasion = gameSettingString("sPersuasion", "Persuasion");
+        const std::string sCompanionShare = gameSettingString("sCompanionShare", "Companion Share");
+        const std::string sBarter = gameSettingString("sBarter", "Barter");
+        const std::string sSpells = gameSettingString("sSpells", "Spells");
+        const std::string sTravel = gameSettingString("sTravel", "Travel");
+        const std::string sSpellMakingMenuTitle = gameSettingString("sSpellmakingMenuTitle", "Spellmaking");
+        const std::string sEnchanting = gameSettingString("sEnchanting", "Enchanting");
+        const std::string sServiceTrainingTitle = gameSettingString("sServiceTrainingTitle", "Training");
+        const std::string sRepair = gameSettingString("sRepair", "Repair");
 
         if (topic != sPersuasion && topic != sCompanionShare && topic != sBarter 
          && topic != sSpells && topic != sTravel && topic != sSpellMakingMenuTitle 
@@ -1357,35 +1366,32 @@ namespace MWGui
         bool travel = (mPtr.getTypeName() == typeid(ESM::NPC).name() && !mPtr.get<ESM::NPC>()->mBase->getTransport().empty())
                 || (mPtr.getTypeName() == typeid(ESM::Creature).name() && !mPtr.get<ESM::Creature>()->mBase->getTransport().empty());
 
-        const MWWorld::Store<ESM::GameSetting> &gmst =
-            MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
-
         if (mPtr.getTypeName() == typeid(ESM::NPC).name())
-            mTopicsList->addItem(gmst.find("sPersuasion")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sPersuasion", "Persuasion"));
 
         if (services & ESM::NPC::AllItems)
-            mTopicsList->addItem(gmst.find("sBarter")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sBarter", "Barter"));
 
         if (services & ESM::NPC::Spells)
-            mTopicsList->addItem(gmst.find("sSpells")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sSpells", "Spells"));
 
         if (travel)
-            mTopicsList->addItem(gmst.find("sTravel")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sTravel", "Travel"));
 
         if (services & ESM::NPC::Spellmaking)
-            mTopicsList->addItem(gmst.find("sSpellmakingMenuTitle")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sSpellmakingMenuTitle", "Spellmaking"));
 
         if (services & ESM::NPC::Enchanting)
-            mTopicsList->addItem(gmst.find("sEnchanting")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sEnchanting", "Enchanting"));
 
         if (services & ESM::NPC::Training)
-            mTopicsList->addItem(gmst.find("sServiceTrainingTitle")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sServiceTrainingTitle", "Training"));
 
         if (services & ESM::NPC::Repair)
-            mTopicsList->addItem(gmst.find("sRepair")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sRepair", "Repair"));
 
         if (isCompanion())
-            mTopicsList->addItem(gmst.find("sCompanionShare")->mValue.getString());
+            mTopicsList->addItem(gameSettingString("sCompanionShare", "Companion Share"));
 
         if (mTopicsList->getItemCount() > 0)
             mTopicsList->addSeparator();
@@ -1468,11 +1474,9 @@ namespace MWGui
             onScrollbarMoved(mScrollBar, 0);
         }
 
-        const MWWorld::Store<ESM::GameSetting>& gmst
-            = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>();
         mGoodbyeButton->setCaption(mPersuasionMode
-            ? gmst.find("sBack")->mValue.getString()
-            : gmst.find("sGoodbye")->mValue.getString());
+            ? gameSettingString("sBack", "Back")
+            : gameSettingString("sGoodbye", "Goodbye"));
 
         bool goodbyeEnabled = mPersuasionMode
             || !MWBase::Environment::get().getDialogueManager()->isInChoice() || mGoodbye;

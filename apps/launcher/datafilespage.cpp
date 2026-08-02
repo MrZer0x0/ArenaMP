@@ -17,6 +17,7 @@
 
 #include <components/config/gamesettings.hpp>
 #include <components/config/launchersettings.hpp>
+#include <components/config/contentorder.hpp>
 #include <iostream>
 
 #include "utils/textinputdialog.hpp"
@@ -103,6 +104,26 @@ bool Launcher::DataFilesPage::loadSettings()
     QStringList profiles = mLauncherSettings.getContentLists();
     QString currentProfile = mLauncherSettings.getCurrentContentListName();
 
+    // Recover launcher.cfg files without a valid currentprofile entry. Prefer
+    // the profile containing Morrowind.esm instead of the empty Default one.
+    if (currentProfile.isEmpty() || !profiles.contains(currentProfile))
+    {
+        currentProfile.clear();
+        for (const QString& profile : profiles)
+        {
+            if (mLauncherSettings.getContentListFiles(profile).contains(
+                    QLatin1String("Morrowind.esm"), Qt::CaseInsensitive))
+            {
+                currentProfile = profile;
+                break;
+            }
+        }
+        if (currentProfile.isEmpty() && !profiles.isEmpty())
+            currentProfile = profiles.first();
+        if (!currentProfile.isEmpty())
+            mLauncherSettings.setCurrentContentListName(currentProfile);
+    }
+
     qDebug() << "The current profile is: " << currentProfile;
 
     for (const QString &item : profiles)
@@ -173,6 +194,8 @@ void Launcher::DataFilesPage::saveSettings(const QString &profile)
         else
             contentFileNames.append(item->fileName());
     }
+
+    contentFileNames = Config::applyCanonicalContentOrder(contentFileNames);
 
     QStringList allFileNames = contentFileNames;
     allFileNames.append(groundcoverFileNames);

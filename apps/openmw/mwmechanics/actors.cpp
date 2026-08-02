@@ -764,8 +764,20 @@ namespace MWMechanics
         const osg::Vec3f actor2Pos(targetActor.getRefData().getPosition().asVec3());
         float sqrDist = (actor1Pos - actor2Pos).length2();
 
-        if (sqrDist > std::min(maxDistance * maxDistance, sqrHeadTrackDistance) && !inCombatOrPursue)
-            return;
+        if (!inCombatOrPursue)
+        {
+            const MWWorld::Ptr player = getPlayer();
+            const bool targetIsPlayer = targetActor == player;
+            const bool currentTargetIsPlayer = headTrackTarget == player;
+
+            // Prefer the player over other nearby actors during non-combat
+            // scenes without overriding Combat or Pursue targets.
+            if (currentTargetIsPlayer && !targetIsPlayer)
+                return;
+            if (sqrDist > maxDistance * maxDistance
+                || (!targetIsPlayer && sqrDist > sqrHeadTrackDistance))
+                return;
+        }
 
         // stop tracking when target is behind the actor
         osg::Vec3f actorDirection = actor.getRefData().getBaseNode()->getAttitude() * osg::Vec3f(0,1,0);
@@ -2173,14 +2185,24 @@ namespace MWMechanics
         if (!MWBase::Environment::get().getMechanicsManager()->isAIActive())
             return;
 
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        if (world->getGlobalInt("chargenstate") != -1)
+        {
+            // Collision avoidance can break the authored introduction by
+            // moving scripted actors away from their marks.
+            for (auto& actor : mActors)
+                actor.second->mCollisionAvoidance = {};
+            return;
+        }
+
         const float minGap = 10.f;
         const float maxDistForPartialAvoiding = 200.f;
         const float maxDistForStrictAvoiding = 100.f;
+        const float idlePlayerPersonalSpace = 18.f;
         const float maxTimeToCheck = 2.0f;
         static const bool giveWayWhenIdle = Settings::Manager::getBool("NPCs give way", "Game");
 
         MWWorld::Ptr player = getPlayer();
-        MWBase::World* world = MWBase::Environment::get().getWorld();
         for(PtrActorMap::iterator iter(mActors.begin()); iter != mActors.end(); ++iter)
         {
             const MWWorld::Ptr& ptr = iter->first;
@@ -2301,6 +2323,16 @@ namespace MWMechanics
                 // Ignore actors which are not close enough or come from behind.
                 if (dist > maxDistToCheck || relPos.y() < 0)
                     continue;
+
+                // A stationary NPC should only step aside for the player at
+                // close range. Moving NPCs retain the normal prediction radius.
+                if (!isMoving && shouldGiveWay && otherPtr == player)
+                {
+                    const float closePlayerDistance = halfExtents.x()
+                        + otherHalfExtents.x() + idlePlayerPersonalSpace;
+                    if (dist > closePlayerDistance)
+                        continue;
+                }
 
                 // Don't check for a collision if vertical distance is greater then the actor's height.
                 if (deltaPos.z() > halfExtents.z() * 2 || deltaPos.z() < -otherHalfExtents.z() * 2)
@@ -2618,7 +2650,19 @@ namespace MWMechanics
                     else if ((isLocalActor || aiActive) && iter->first != player && isConscious(iter->first))
                     {
                         CreatureStats &stats = iter->first.getClass().getCreatureStats(iter->first);
-                        stats.getAiSequence().execute(iter->first, *ctrl, duration, /*outOfRange*/true);
+                        if (isActiveDialogueTarget(iter->first))
+                        {
+                            Movement& movement = iter->first.getClass().getMovementSettings(iter->first);
+                            movement.mPosition[0] = 0.f;
+                            movement.mPosition[1] = 0.f;
+                            movement.mPosition[2] = 0.f;
+                            movement.mRotation[0] = 0.f;
+                            movement.mRotation[1] = 0.f;
+                            movement.mRotation[2] = 0.f;
+                        }
+                        else
+                            stats.getAiSequence().execute(
+                                iter->first, *ctrl, duration, /*outOfRange*/true);
                     }
                     /*
                         End of tes3mp change (major)
@@ -2727,7 +2771,9 @@ namespace MWMechanics
             updateSneaking(playerCharacter, duration);
         }
 
-        updateCombatMusic();
+        // Escape-menu pause must also freeze state-driven music changes.
+        if (!paused)
+            updateCombatMusic();
     }
 
     void Actors::notifyDied(const MWWorld::Ptr &actor)

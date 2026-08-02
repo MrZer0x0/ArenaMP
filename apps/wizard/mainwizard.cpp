@@ -14,6 +14,7 @@
 #include <QTextStream>
 
 #include <components/config/buildmanifest.hpp>
+#include <components/config/contentorder.hpp>
 #include <QStringList>
 #include <algorithm>
 
@@ -55,11 +56,9 @@ namespace
         return false;
     }
 
-    bool isBaseMaster(const QString& fileName)
+    bool isPriorityContent(const QString& fileName)
     {
-        return fileName.compare(QStringLiteral("Morrowind.esm"), Qt::CaseInsensitive) == 0
-            || fileName.compare(QStringLiteral("Tribunal.esm"), Qt::CaseInsensitive) == 0
-            || fileName.compare(QStringLiteral("Bloodmoon.esm"), Qt::CaseInsensitive) == 0;
+        return Config::isCanonicalContentFile(fileName);
     }
 
     bool isBaseArchive(const QString& fileName)
@@ -81,6 +80,46 @@ namespace
             || fileName.endsWith(QLatin1String(".esp"), Qt::CaseInsensitive)
             || fileName.endsWith(QLatin1String(".omwgame"), Qt::CaseInsensitive)
             || fileName.endsWith(QLatin1String(".omwaddon"), Qt::CaseInsensitive);
+    }
+
+    bool containsWizardData(const QDir& dir)
+    {
+        if (!dir.exists())
+            return false;
+
+        const QStringList files = dir.entryList(
+            QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
+        for (const QString& fileName : files)
+        {
+            if (isContentFile(fileName)
+                || fileName.endsWith(QLatin1String(".bsa"), Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+
+    QString resolveWizardDataPath(const QString& selectedPath)
+    {
+        if (selectedPath.trimmed().isEmpty())
+            return QString();
+
+        const QString cleanPath = QDir::cleanPath(selectedPath);
+        const QDir selectedDir(cleanPath);
+        if (!selectedDir.exists() || containsWizardData(selectedDir))
+            return cleanPath;
+
+        const QStringList childDirectories = selectedDir.entryList(
+            QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase);
+        for (const QString& childName : childDirectories)
+        {
+            if (childName.compare(QLatin1String("Data Files"), Qt::CaseInsensitive) != 0)
+                continue;
+
+            const QString childPath = QDir::cleanPath(selectedDir.filePath(childName));
+            if (containsWizardData(QDir(childPath)))
+                return childPath;
+        }
+        return cleanPath;
     }
 
     QString encodingForLanguage(const QString& language)
@@ -429,7 +468,8 @@ void Wizard::MainWizard::setupInstallations()
     // contains at least one ESM or BSA. Morrowind.bsa is no longer mandatory.
     for (const QString& path : mGameSettings.getDataDirs())
     {
-        QDir dir(path);
+        const QString resolvedPath = resolveWizardDataPath(path);
+        QDir dir(resolvedPath);
         if (!dir.exists())
             continue;
 
@@ -446,7 +486,7 @@ void Wizard::MainWizard::setupInstallations()
         }
 
         if (hasDataFiles)
-            addInstallation(path, false);
+            addInstallation(resolvedPath, false);
     }
 }
 
@@ -501,7 +541,7 @@ void Wizard::MainWizard::runSettingsImporter()
 
 void Wizard::MainWizard::addInstallation(const QString &path, bool configureSelected)
 {
-    const QString cleanPath = QDir::cleanPath(path);
+    const QString cleanPath = resolveWizardDataPath(path);
     qDebug() << "add Data Files folder:" << cleanPath;
 
     Installation install;
@@ -669,13 +709,15 @@ bool Wizard::MainWizard::loadBuildManifest(const QString& dataFilesPath)
         return false;
     }
 
-    mGameSettings.setContentList(manifest.contentFiles);
+    const QStringList orderedContent
+        = Config::applyCanonicalContentOrder(manifest.contentFiles, QDir(resolvedDataPath));
+    mGameSettings.setContentList(orderedContent);
     mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
     mGameSettings.remove(QStringLiteral("fallback-archive"));
     for (const QString& archive : manifest.archives)
         mGameSettings.setMultiValue(QStringLiteral("fallback-archive"), archive);
 
-    QStringList profileFiles = manifest.contentFiles;
+    QStringList profileFiles = orderedContent;
     profileFiles.append(manifest.groundcoverFiles);
     mLauncherSettings.setContentList(mBuildName, profileFiles, manifest.groundcoverFiles,
         !manifest.groundcoverFiles.isEmpty());
@@ -777,21 +819,18 @@ bool Wizard::MainWizard::writeBuildManifest(const QString& dataFilesPath)
 
 void Wizard::MainWizard::configureDataFiles(const QString& path)
 {
-    const QDir dir(QDir::cleanPath(path));
+    const QString resolvedPath = resolveWizardDataPath(path);
+    const QDir dir(resolvedPath);
     if (!dir.exists())
         return;
 
-    if (loadBuildManifest(path))
+    if (loadBuildManifest(resolvedPath))
         return;
 
-    // Base masters are enabled automatically in the canonical dependency order
-    // when they exist. Other already selected plugins are preserved afterwards.
+    // Canonical build content is enabled automatically in the requested load
+    // order when present. Other selected plugins are preserved afterwards.
     QStringList content;
-    const QStringList baseMasters = {
-        QStringLiteral("Morrowind.esm"),
-        QStringLiteral("Tribunal.esm"),
-        QStringLiteral("Bloodmoon.esm")
-    };
+    const QStringList& baseMasters = Config::canonicalContentOrder();
 
     for (const QString& requested : baseMasters)
     {
@@ -805,7 +844,7 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     const QStringList previousGroundcover = mGameSettings.getGroundcoverList();
     for (const QString& previous : previousContent)
     {
-        if (!isBaseMaster(previous) && !containsCaseInsensitive(content, previous))
+        if (!isPriorityContent(previous) && !containsCaseInsensitive(content, previous))
         {
             if (isGroundcoverCandidate(previous))
                 groundcover.append(previous);
@@ -826,7 +865,7 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     const QStringList directoryFilesForContent = dir.entryList(QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
     for (const QString& fileName : directoryFilesForContent)
     {
-        if (isContentFile(fileName) && !isBaseMaster(fileName))
+        if (isContentFile(fileName) && !isPriorityContent(fileName))
             discoveredPlugins.append(fileName);
     }
     std::sort(discoveredPlugins.begin(), discoveredPlugins.end(), [](const QString& left, const QString& right) {
@@ -1053,7 +1092,9 @@ void Wizard::MainWizard::writeSettings()
     mGameSettings.setValue(QLatin1String("encoding"), encodingForLanguage(language));
 
     // Write the installation path so that openmw can find them
-    QString path(field(QLatin1String("installation.path")).toString());
+    QString path = resolveWizardDataPath(
+        field(QLatin1String("installation.path")).toString());
+    setField(QLatin1String("installation.path"), path);
 
     // Make sure the installation path is the last data= entry.
     configureDataFiles(path);
@@ -1104,6 +1145,10 @@ void Wizard::MainWizard::writeSettings()
 
     mLauncherSettings.setValue(QStringLiteral("General/Build/name"),
         mBuildName.trimmed().isEmpty() ? QStringLiteral("ArenaMP") : mBuildName.trimmed());
+    // A completed Wizard run is authoritative. Without this flag the next
+    // Launcher process can start the Wizard again despite valid configuration.
+    mLauncherSettings.remove(QStringLiteral("General/firstrun"));
+    mLauncherSettings.setValue(QStringLiteral("General/firstrun"), QStringLiteral("false"));
     writeBuildManifest(path);
     initializeNativeDisplaySettings();
 

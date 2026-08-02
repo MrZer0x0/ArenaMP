@@ -77,21 +77,33 @@ namespace Gui
                 MyGUI::Button* button = mScrollView->createWidget<MyGUI::Button>(
                     mListItemSkin, MyGUI::IntCoord(0, mItemHeight, mScrollView->getSize().width - scrollBarWidth - 2, 24),
                     MyGUI::Align::Left | MyGUI::Align::Top, getName() + "_item_" + std::to_string(i));
-                button->setCaption(i == mSelectedIndex && !mSelectedPrefix.empty()
-                    ? mSelectedPrefix + *it : *it);
                 if (mItemFontHeight > 0)
                     button->setProperty("FontHeight", std::to_string(mItemFontHeight));
                 button->getSubWidgetText()->setWordWrap(true);
                 button->getSubWidgetText()->setTextAlign(MyGUI::Align::Left);
+
+                // Measure both captions: a selection marker can wrap a line
+                // that fits without the marker and otherwise clip the answer.
+                button->setCaption(*it);
+                int height = button->getTextSize().height;
+                if (!mSelectedPrefix.empty())
+                {
+                    button->setCaption(mSelectedPrefix + *it);
+                    height = std::max(height, button->getTextSize().height);
+                }
+                button->setCaption(i == mSelectedIndex && !mSelectedPrefix.empty()
+                    ? mSelectedPrefix + *it : *it);
                 button->eventMouseWheel += MyGUI::newDelegate(this, &MWList::onMouseWheelMoved);
                 button->eventMouseButtonClick += MyGUI::newDelegate(this, &MWList::onItemSelected);
                 button->eventMouseButtonPressed += MyGUI::newDelegate(this, &MWList::onDragStart);
                 button->eventMouseDrag += MyGUI::newDelegate(this, &MWList::onMouseDrag);
                 button->setNeedKeyFocus(true);
 
-                int height = button->getTextSize().height;
                 if (mItemMinHeight > 0)
                     height = std::max(height, mItemMinHeight);
+                // Fractional UI scaling may round the measured glyph height
+                // down, so leave a small safety margin for the last line.
+                height += 4;
                 button->setSize(MyGUI::IntSize(button->getSize().width, height));
                 button->setUserData(i);
                 button->setStateSelected(i == mSelectedIndex);

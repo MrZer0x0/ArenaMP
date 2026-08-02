@@ -82,6 +82,13 @@ namespace
             return mode;
         return Settings::Manager::getBool("quick loot", "GUI") ? "item" : "disabled";
     }
+
+    bool isGraphicHerbalismContainer(const MWWorld::Ptr& ptr)
+    {
+        return !ptr.isEmpty()
+            && ptr.getTypeName() == typeid(ESM::Container).name()
+            && ptr.getClass().canBeHarvested(ptr);
+    }
 }
 
 namespace MWGui
@@ -633,6 +640,7 @@ namespace MWGui
         const bool inCombat = MWBase::Environment::get().getWorld()->getPlayer().isInCombat();
 
         if (guiMode || mFocusObject.isEmpty() || mwmp::PlayerList::isDedicatedPlayer(mFocusObject)
+            || isGraphicHerbalismContainer(mFocusObject)
             || mFocusObject.getCellRef().getLockLevel() > 0)
         {
             clearModels();
@@ -867,6 +875,7 @@ namespace MWGui
 
         if (focus.isEmpty() || MWBase::Environment::get().getWindowManager()->isGuiMode() || werewolf
             || incapacitated || mwmp::PlayerList::isDedicatedPlayer(focus)
+            || isGraphicHerbalismContainer(focus)
             || (focus.getTypeName() != typeid(ESM::Container).name()
                 && !focus.getClass().hasInventoryStore(focus)))
         {
