@@ -788,9 +788,11 @@ bool Launcher::MainDialog::writeBuildManifest()
     if (dataDir.isEmpty() || !QFileInfo(dataDir).isDir())
         return true;
 
-    QString manifestPath = mBuildManifestPath;
-    if (manifestPath.isEmpty())
-        manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataDir);
+    // Always save the active manifest beside the selected Data Files. If an
+    // older patch loaded a fallback copy beside the executable, read it as the
+    // source once and migrate its values to the canonical location.
+    const QString sourceManifestPath = mBuildManifestPath;
+    const QString manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataDir);
 
     Config::BuildManifest manifest;
     bool existingManifestRead = false;
@@ -799,9 +801,13 @@ bool Launcher::MainDialog::writeBuildManifest()
     QString storedServerPort;
     bool storedServerPortSpecified = false;
     bool storedVanillaCompatibility = false;
-    if (QFileInfo::exists(manifestPath))
+    QString existingManifestPath = manifestPath;
+    if (!sourceManifestPath.isEmpty() && QFileInfo::exists(sourceManifestPath))
+        existingManifestPath = sourceManifestPath;
+
+    if (QFileInfo::exists(existingManifestPath))
     {
-        existingManifestRead = manifest.read(manifestPath);
+        existingManifestRead = manifest.read(existingManifestPath);
         if (existingManifestRead)
         {
             storedServerAddress = manifest.serverAddress;

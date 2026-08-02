@@ -25,6 +25,15 @@
 
 namespace MWGui
 {
+    namespace
+    {
+        // The window skin reserves this many logical pixels below the client area
+        // for its lower frame. Using the full Window height makes the ScrollView
+        // continue underneath that frame and clips the final statistics rows.
+        constexpr int StatsWindowBottomFrameInset = 23;
+        constexpr int StatsDocumentBottomPadding = 24;
+    }
+
     StatsWindow::StatsWindow (DragAndDrop* drag)
       : WindowPinnableBase("openmw_stats_window.layout")
       , NoDrop(drag, mMainWidget)
@@ -109,6 +118,7 @@ namespace MWGui
     {
         int windowWidth = window->getSize().width;
         int windowHeight = window->getSize().height;
+        const int paneHeight = std::max(1, windowHeight - StatsWindowBottomFrameInset);
 
         //initial values defined in openmw_stats_window.layout, if custom options are not present in .layout, a default is loaded
         float leftPaneRatio = 0.44f;
@@ -128,7 +138,7 @@ namespace MWGui
         {
             mRightPane->setVisible(false);
             mLeftPane->setCoord(MyGUI::IntCoord(0, 0,
-                std::max(1, windowWidth - leftOffsetWidth), windowHeight));
+                std::max(1, windowWidth - leftOffsetWidth), paneHeight));
 
             MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
             MyGUI::Widget* skillsBox = mSkillView->getParent();
@@ -138,7 +148,7 @@ namespace MWGui
             const int documentWidth = std::max(120, statsView->getWidth() - 20);
             const int sectionWidth = std::max(104, documentWidth - 16);
             const int currentCanvasHeight = std::max(statsView->getCanvasSize().height,
-                skillsBox->getTop() + skillsBox->getHeight() + 8);
+                skillsBox->getTop() + skillsBox->getHeight() + StatsDocumentBottomPadding);
 
             statsView->setVisibleVScroll(false);
             statsView->setCanvasSize(documentWidth, currentCanvasHeight);
@@ -160,7 +170,7 @@ namespace MWGui
 
             statsView->setVisibleVScroll(false);
             statsView->setCanvasSize(documentWidth,
-                skillsBox->getTop() + skillsBox->getHeight() + 8);
+                skillsBox->getTop() + skillsBox->getHeight() + StatsDocumentBottomPadding);
             statsView->setVisibleVScroll(true);
 
             // Rebuild dynamic skills/faction rows on the next frame using the new width.
@@ -175,19 +185,19 @@ namespace MWGui
         mRightPane->setVisible(windowWidth >= minLeftOffsetWidth);
         if (!mRightPane->getVisible())
         {
-            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, windowWidth - leftOffsetWidth, windowHeight));
+            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, windowWidth - leftOffsetWidth, paneHeight));
         }
         //if there's some space for right pane
         else if (windowWidth < mMinFullWidth)
         {
-            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, minLeftWidth, windowHeight));
-            mRightPane->setCoord(MyGUI::IntCoord(minLeftWidth, 0, windowWidth - minLeftWidth, windowHeight));
+            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, minLeftWidth, paneHeight));
+            mRightPane->setCoord(MyGUI::IntCoord(minLeftWidth, 0, windowWidth - minLeftWidth, paneHeight));
         }
         //if there's enough space for both panes
         else
         {
-            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, static_cast<int>(leftPaneRatio*windowWidth), windowHeight));
-            mRightPane->setCoord(MyGUI::IntCoord(static_cast<int>(leftPaneRatio*windowWidth), 0, static_cast<int>(rightPaneRatio*windowWidth), windowHeight));
+            mLeftPane->setCoord(MyGUI::IntCoord(0, 0, static_cast<int>(leftPaneRatio*windowWidth), paneHeight));
+            mRightPane->setCoord(MyGUI::IntCoord(static_cast<int>(leftPaneRatio*windowWidth), 0, static_cast<int>(rightPaneRatio*windowWidth), paneHeight));
         }
 
         MyGUI::Widget* skillsBox = mSkillView->getParent();
@@ -201,7 +211,7 @@ namespace MWGui
         statsView->setVisibleVScroll(false);
         const int documentWidth = std::max(1, statsView->getWidth() - 20);
         statsView->setCanvasSize(documentWidth,
-            skillsBox->getTop() + skillsBox->getHeight() + 8);
+            skillsBox->getTop() + skillsBox->getHeight() + StatsDocumentBottomPadding);
         statsView->setVisibleVScroll(true);
         mChanged = true;
     }
@@ -779,7 +789,7 @@ namespace MWGui
         statsView->setVisibleVScroll(false);
         const int documentWidth = std::max(1, statsView->getWidth() - 20);
         statsView->setCanvasSize(documentWidth,
-            skillsBox->getTop() + skillsBox->getHeight() + 8);
+            skillsBox->getTop() + skillsBox->getHeight() + StatsDocumentBottomPadding);
         statsView->setVisibleVScroll(true);
     }
 

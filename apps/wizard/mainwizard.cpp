@@ -686,14 +686,8 @@ bool Wizard::MainWizard::loadBuildManifest(const QString& dataFilesPath)
         manifest.vanillaServerCompatibility ? QStringLiteral("true") : QStringLiteral("false"));
     writeClientEndpoint(mBuildServerAddress, mBuildServerPort);
 
-    const bool hasOrderedConfiguration = !manifest.contentFiles.isEmpty()
-        || !manifest.groundcoverFiles.isEmpty() || !manifest.archives.isEmpty();
-    if (!hasOrderedConfiguration)
-    {
-        addLogText(tr("The detected build.ini does not contain content, groundcover or archive entries; its build, language, data path and server settings were applied, and content will be detected automatically."));
-        return false;
-    }
-
+    // The mere presence of build.ini is authoritative, including an
+    // intentionally empty plug-in list. Never fall back to scanning every ESP.
     const QStringList orderedContent = manifest.contentFiles;
     mGameSettings.setContentList(orderedContent);
     mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
@@ -719,12 +713,19 @@ bool Wizard::MainWizard::writeBuildManifest(const QString& dataFilesPath)
     if (dataPath.isEmpty() || !QFileInfo(dataPath).isDir())
         return false;
 
-    QString manifestPath = mBuildManifestPath;
-    if (manifestPath.isEmpty())
-        manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataPath);
+    // Wizard output is canonical beside Data Files. A legacy manifest beside
+    // the executable is accepted as the source and migrated on this save.
+    const QString sourceManifestPath = mBuildManifestPath;
+    const QString manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataPath);
 
-    // Always build a fresh manifest. An existing build.ini belongs to the
-    // previous Wizard/Launcher configuration and is intentionally replaced.
+    // Recreate launcher/openmw settings, but preserve authoritative values
+    // from an existing manifest unless the Wizard is creating the first one.
+    Config::BuildManifest previousManifest;
+    QString previousManifestPath = manifestPath;
+    if (!sourceManifestPath.isEmpty() && QFileInfo::exists(sourceManifestPath))
+        previousManifestPath = sourceManifestPath;
+    const bool previousManifestLoaded = QFileInfo::exists(previousManifestPath)
+        && previousManifest.read(previousManifestPath);
     Config::BuildManifest manifest;
 
     QString address = mBuildServerAddress;
@@ -735,9 +736,9 @@ bool Wizard::MainWizard::writeBuildManifest(const QString& dataFilesPath)
     manifest.formatVersion = 1;
     manifest.buildName = mBuildName.trimmed().isEmpty() ? QStringLiteral("ArenaMP") : mBuildName.trimmed();
     manifest.dataPath = Config::BuildManifest::portableDataPath(manifestPath, dataPath);
-    if (manifest.languageSpecified)
+    if (previousManifestLoaded && previousManifest.languageSpecified)
     {
-        mBuildLanguage = Config::BuildManifest::canonicalLanguage(manifest.language);
+        mBuildLanguage = Config::BuildManifest::canonicalLanguage(previousManifest.language);
         mBuildLanguageLocked = true;
     }
     manifest.language = mBuildLanguageLocked
@@ -784,19 +785,34 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     if (!dir.exists())
         return;
 
-    // Running the Wizard again is an explicit rebuild of Launcher state. Ignore
-    // any old build.ini here and create a new manifest from the choices/detection
-    // performed by this run.
+    // An existing portable build.ini is the single source of truth. Reload it
+    // on every Wizard pass so resetting launcher.cfg recreates exactly the
+    // saved language and plug-in order instead of enabling every ESP found in
+    // Data Files.
+    if (!Config::BuildManifest::findForDataDir(resolvedPath).isEmpty())
+    {
+        if (loadBuildManifest(resolvedPath))
+        {
+            addLogText(tr("Applied the exact language and plug-in order from build.ini."));
+            return;
+        }
+
+        // A present but unreadable manifest must not trigger an all-plugin
+        // fallback. Leave the content list empty and report the problem.
+        mGameSettings.setContentList(QStringList());
+        mGameSettings.setGroundcoverList(QStringList());
+        addLogText(tr("build.ini exists but could not be loaded; no additional plug-ins were enabled."));
+        return;
+    }
+
     mBuildManifestLoaded = false;
     mBuildManifestPath.clear();
     mBuildDataPath = resolvedPath;
     mBuildName = QStringLiteral("ArenaMP");
-    // Keep a language explicitly read from build.ini locked while the Wizard
-    // rebuilds the remaining launcher/content settings. The hidden/default
-    // language page must not silently replace it with English.
+    mBuildLanguageLocked = false;
 
-    // Canonical build content is enabled automatically in the requested load
-    // order when present. Other selected plugins are preserved afterwards.
+    // No build.ini exists yet: apply only the known recommended order. Do not
+    // auto-enable unrelated ESP/ESM files merely because they are installed.
     QStringList content;
     const QStringList& baseMasters = Config::canonicalContentOrder();
 
@@ -808,31 +824,6 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     }
 
     QStringList groundcover;
-
-    // A fresh Wizard run intentionally starts a fresh order.
-    // Use a deterministic order:
-    // base masters first, then all other plugins alphabetically. Grass and
-    // groundcover plugins are stored separately as groundcover entries.
-    QStringList discoveredPlugins;
-    const QStringList directoryFilesForContent = dir.entryList(QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
-    for (const QString& fileName : directoryFilesForContent)
-    {
-        if (isContentFile(fileName) && !isPriorityContent(fileName))
-            discoveredPlugins.append(fileName);
-    }
-    std::sort(discoveredPlugins.begin(), discoveredPlugins.end(), [](const QString& left, const QString& right) {
-        return QString::localeAwareCompare(left.toLower(), right.toLower()) < 0;
-    });
-    for (const QString& fileName : discoveredPlugins)
-    {
-        if (isGroundcoverCandidate(fileName))
-        {
-            if (!containsCaseInsensitive(groundcover, fileName))
-                groundcover.append(fileName);
-        }
-        else if (!containsCaseInsensitive(content, fileName))
-            content.append(fileName);
-    }
 
     mGameSettings.setContentList(content);
     mGameSettings.setGroundcoverList(groundcover);

@@ -1,5 +1,6 @@
 #include "buildmanifest.hpp"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -77,31 +78,12 @@ namespace
             || section == QLatin1String("general") || section == QLatin1String("manifest");
     }
 
-    bool isLanguageSection(const QString& section)
-    {
-        return isBuildSection(section) || section == QLatin1String("language")
-            || section == QLatin1String("locale");
-    }
-
     bool isServerSection(const QString& section)
     {
         return section.isEmpty() || section == QLatin1String("server")
             || section == QLatin1String("network") || section == QLatin1String("connection");
     }
 
-    bool isContentSection(const QString& section)
-    {
-        return section.isEmpty() || section == QLatin1String("content")
-            || section == QLatin1String("plugins") || section == QLatin1String("plugin")
-            || section == QLatin1String("datafiles") || section == QLatin1String("data files")
-            || section == QLatin1String("loadorder") || section == QLatin1String("load order");
-    }
-
-    bool isArchiveSection(const QString& section)
-    {
-        return section.isEmpty() || section == QLatin1String("archives")
-            || section == QLatin1String("archive") || section == QLatin1String("content");
-    }
 }
 
 Config::BuildManifest::BuildManifest()
@@ -176,11 +158,10 @@ bool Config::BuildManifest::read(const QString& filePath, QString* errorMessage)
         else if (isBuildSection(section)
             && (key == QLatin1String("data") || key == QLatin1String("data-path") || key == QLatin1String("datafiles")))
             dataPath = value;
-        else if (isLanguageSection(section)
-            && (key == QLatin1String("language") || key == QLatin1String("locale")
-                || ((section == QLatin1String("language") || section == QLatin1String("locale"))
-                    && (key == QLatin1String("value") || key == QLatin1String("name")
-                        || key == QLatin1String("selected") || key == QLatin1String("current")))))
+        else if (key == QLatin1String("language") || key == QLatin1String("locale")
+            || ((section == QLatin1String("language") || section == QLatin1String("locale"))
+                && (key == QLatin1String("value") || key == QLatin1String("name")
+                    || key == QLatin1String("selected") || key == QLatin1String("current"))))
         {
             language = canonicalLanguage(value);
             languageSpecified = !value.trimmed().isEmpty();
@@ -206,13 +187,12 @@ bool Config::BuildManifest::read(const QString& filePath, QString* errorMessage)
                 || key == QLatin1String("legacy-client")))
             vanillaServerCompatibility = value.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
                 || value == QLatin1String("1") || value.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
-        else if (isContentSection(section) && isContentExtensionKey(key))
+        else if (isContentExtensionKey(key))
             contentFiles.append(value);
-        else if (isContentSection(section)
-            && (key == QLatin1String("groundcover") || key == QLatin1String("grass")))
+        else if (key == QLatin1String("groundcover") || key == QLatin1String("grass"))
             groundcoverFiles.append(value);
-        else if (isArchiveSection(section)
-            && (key == QLatin1String("archive") || key == QLatin1String("bsa") || key == QLatin1String("fallback-archive")))
+        else if (key == QLatin1String("archive") || key == QLatin1String("bsa")
+            || key == QLatin1String("fallback-archive"))
             archives.append(value);
     }
 
@@ -347,24 +327,64 @@ QString Config::BuildManifest::canonicalLanguage(const QString& language)
 
 QString Config::BuildManifest::canonicalPathForDataDir(const QString& dataDir)
 {
-    QDir dir(QDir::cleanPath(dataDir));
-    if (dir.dirName().compare(QStringLiteral("Data Files"), Qt::CaseInsensitive) == 0)
+    // build.ini describes one concrete Data Files installation, therefore its
+    // canonical location is beside that Data Files directory. This also keeps
+    // several independent Morrowind installations from sharing one manifest.
+    QDir dataDirectory(QDir::cleanPath(dataDir));
+    if (dataDirectory.dirName().compare(QStringLiteral("Data Files"), Qt::CaseInsensitive) == 0)
     {
-        dir.cdUp();
-        return dir.absoluteFilePath(QStringLiteral("build.ini"));
+        QDir parentDirectory(dataDirectory);
+        if (parentDirectory.cdUp())
+            return parentDirectory.absoluteFilePath(QStringLiteral("build.ini"));
     }
-    return dir.absoluteFilePath(QStringLiteral("build.ini"));
+
+    // Non-standard data directory names keep the manifest directly in that
+    // selected directory, since there is no reliable Data Files parent marker.
+    if (!dataDirectory.absolutePath().isEmpty())
+        return dataDirectory.absoluteFilePath(QStringLiteral("build.ini"));
+
+    // Last-resort fallback used only before a valid data directory is known.
+    return QDir(QCoreApplication::applicationDirPath())
+        .absoluteFilePath(QStringLiteral("build.ini"));
 }
 
 QString Config::BuildManifest::findForDataDir(const QString& dataDir)
 {
-    const QString canonical = canonicalPathForDataDir(dataDir);
-    if (QFileInfo::exists(canonical))
-        return canonical;
+    QStringList candidates;
 
-    const QString inside = QDir(QDir::cleanPath(dataDir)).absoluteFilePath(QStringLiteral("build.ini"));
-    if (QFileInfo::exists(inside))
-        return inside;
+    // The manifest beside Data Files is authoritative and must be checked
+    // before legacy portable locations.
+    const QString canonicalManifest = canonicalPathForDataDir(dataDir);
+    if (!canonicalManifest.isEmpty())
+        candidates.append(canonicalManifest);
+
+    QDir dataDirectory(QDir::cleanPath(dataDir));
+    const QString legacyInsideDataFiles
+        = dataDirectory.absoluteFilePath(QStringLiteral("build.ini"));
+    if (!candidates.contains(legacyInsideDataFiles, Qt::CaseInsensitive))
+        candidates.append(legacyInsideDataFiles);
+
+    // Backward-compatible fallbacks for builds created by earlier patches.
+    const QString applicationDir = QCoreApplication::applicationDirPath();
+    if (!applicationDir.isEmpty())
+    {
+        const QString besideExecutable
+            = QDir(applicationDir).absoluteFilePath(QStringLiteral("build.ini"));
+        if (!candidates.contains(besideExecutable, Qt::CaseInsensitive))
+            candidates.append(besideExecutable);
+    }
+
+    const QString workingDirectoryManifest
+        = QDir::current().absoluteFilePath(QStringLiteral("build.ini"));
+    if (!candidates.contains(workingDirectoryManifest, Qt::CaseInsensitive))
+        candidates.append(workingDirectoryManifest);
+
+    for (const QString& candidate : candidates)
+    {
+        const QFileInfo info(candidate);
+        if (info.exists() && info.isFile() && info.isReadable())
+            return QDir::cleanPath(info.absoluteFilePath());
+    }
 
     return QString();
 }
