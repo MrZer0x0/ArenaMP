@@ -36,6 +36,7 @@ varying vec3 passNormal;
 
 #include "vertexcolors.glsl"
 #include "shadows_fragment.glsl"
+#define ARENAMP_FRAGMENT_SHADER 1
 #include "lighting.glsl"
 #include "alpha.glsl"
 #include "atmosphere.glsl"

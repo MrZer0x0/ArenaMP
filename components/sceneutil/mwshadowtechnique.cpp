@@ -612,9 +612,10 @@ MWShadowTechnique::ShadowData::ShadowData(MWShadowTechnique::ViewDependentData* 
     _texture->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::LINEAR);
 
     // the shadow comparison should fail if object is outside the texture
-    _texture->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::CLAMP_TO_BORDER);
-    _texture->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::CLAMP_TO_BORDER);
-    _texture->setBorderColor(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
+    // Coordinates outside the shadow map are rejected in the shader. Clamp to
+    // edge here to avoid driver-dependent border sampling and dark seams.
+    _texture->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::CLAMP_TO_EDGE);
+    _texture->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::CLAMP_TO_EDGE);
     //_texture->setBorderColor(osg::Vec4(0.0f,0.0f,0.0f,0.0f));
 
     // set up the camera
@@ -698,6 +699,11 @@ MWShadowTechnique::Frustum::Frustum(osgUtil::CullVisitor* cv, double minZNear, d
     {
         osg::Matrix::value_type zNear = osg::maximum<osg::Matrix::value_type>(cv->getCalculatedNearPlane(),minZNear);
         osg::Matrix::value_type zFar = osg::minimum<osg::Matrix::value_type>(cv->getCalculatedFarPlane(),maxZFar);
+        // OpenMW 0.52 guards empty/invalid bounds before clamping. Without this,
+        // rapidly changing cells or cached local pages can produce unstable matrices.
+        if (zFar < 0)
+            zFar = minZNear;
+        zNear = std::min(zNear, zFar);
 
         cv->clampProjectionMatrix(projectionMatrix, zNear, zFar);
 
@@ -1776,8 +1782,8 @@ void MWShadowTechnique::createShaders()
         _fallbackBaseTexture->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::NEAREST);
 
         _fallbackShadowMapTexture = new osg::Texture2D(image.get());
-        _fallbackShadowMapTexture->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::REPEAT);
-        _fallbackShadowMapTexture->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::REPEAT);
+        _fallbackShadowMapTexture->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::CLAMP_TO_EDGE);
+        _fallbackShadowMapTexture->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::CLAMP_TO_EDGE);
         _fallbackShadowMapTexture->setFilter(osg::Texture2D::MIN_FILTER,osg::Texture2D::NEAREST);
         _fallbackShadowMapTexture->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::NEAREST);
         _fallbackShadowMapTexture->setShadowComparison(true);

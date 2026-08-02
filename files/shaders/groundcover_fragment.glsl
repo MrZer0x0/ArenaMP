@@ -47,6 +47,7 @@ centroid varying vec3 shadowDiffuseLighting;
 
 #include "helpsettings.glsl"
 #include "shadows_fragment.glsl"
+#define ARENAMP_FRAGMENT_SHADER 1
 #include "lighting.glsl"
 #include "alpha.glsl"
 #include "atmosphere.glsl"

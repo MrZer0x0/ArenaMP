@@ -3,11 +3,13 @@
 #if @hdrLighting
 #include "lighting_util.glsl"
 
+#ifdef ARENAMP_FRAGMENT_SHADER
 uniform int arenaLocalShadowActive;
 uniform vec3 arenaLocalShadowPosition0;
 uniform vec3 arenaLocalShadowPosition1;
 uniform float arenaLocalShadowStrength0;
 uniform float arenaLocalShadowStrength1;
+#endif
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -25,6 +27,7 @@ float arenaPointIllumination(int lightIndex, float lightDistance)
 
 float arenaPointShadowFactor(int lightIndex, float shadowing)
 {
+#ifdef ARENAMP_FRAGMENT_SHADER
 #if @advancedLocalLighting
     if (arenaLocalShadowActive != 0)
     {
@@ -41,6 +44,7 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
             return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
 #endif
     }
+#endif
 #endif
     return 1.0;
 }
@@ -273,11 +277,13 @@ vec3 getSpecular(vec3 viewNormal, vec3 viewPos, float shininess, vec3 matSpec, f
 #else
 #include "lighting_util.glsl"
 
+#ifdef ARENAMP_FRAGMENT_SHADER
 uniform int arenaLocalShadowActive;
 uniform vec3 arenaLocalShadowPosition0;
 uniform vec3 arenaLocalShadowPosition1;
 uniform float arenaLocalShadowStrength0;
 uniform float arenaLocalShadowStrength1;
+#endif
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -295,6 +301,7 @@ float arenaPointIllumination(int lightIndex, float lightDistance)
 
 float arenaPointShadowFactor(int lightIndex, float shadowing)
 {
+#ifdef ARENAMP_FRAGMENT_SHADER
 #if @advancedLocalLighting
     if (arenaLocalShadowActive != 0)
     {
@@ -311,6 +318,7 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
             return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
 #endif
     }
+#endif
 #endif
     return 1.0;
 }
