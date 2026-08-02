@@ -676,6 +676,7 @@ bool Wizard::MainWizard::loadBuildManifest(const QString& dataFilesPath)
         mBuildLanguage = Config::BuildManifest::canonicalLanguage(manifest.language);
         mBuildLanguageLocked = true;
         setField(QStringLiteral("installation.language"), mBuildLanguage);
+        mLauncherSettings.remove(QStringLiteral("Settings/language"));
         mLauncherSettings.setValue(QStringLiteral("Settings/language"), mBuildLanguage);
         mGameSettings.setValue(QStringLiteral("encoding"), encodingForLanguage(mBuildLanguage));
     }
@@ -790,7 +791,9 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     mBuildManifestPath.clear();
     mBuildDataPath = resolvedPath;
     mBuildName = QStringLiteral("ArenaMP");
-    mBuildLanguageLocked = false;
+    // Keep a language explicitly read from build.ini locked while the Wizard
+    // rebuilds the remaining launcher/content settings. The hidden/default
+    // language page must not silently replace it with English.
 
     // Canonical build content is enabled automatically in the requested load
     // order when present. Other selected plugins are preserved afterwards.
@@ -1033,6 +1036,7 @@ void Wizard::MainWizard::writeSettings()
         : Config::BuildManifest::canonicalLanguage(
             field(QLatin1String("installation.language")).toString());
     setField(QLatin1String("installation.language"), language);
+    mLauncherSettings.remove(QLatin1String("Settings/language"));
     mLauncherSettings.setValue(QLatin1String("Settings/language"), language);
     mGameSettings.setValue(QLatin1String("encoding"), encodingForLanguage(language));
 

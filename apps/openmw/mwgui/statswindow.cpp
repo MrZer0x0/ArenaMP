@@ -130,21 +130,41 @@ namespace MWGui
             mLeftPane->setCoord(MyGUI::IntCoord(0, 0,
                 std::max(1, windowWidth - leftOffsetWidth), windowHeight));
 
-            // Skills are expanded to their full content height. The outer LeftPane
-            // ScrollView then scrolls attributes, skills, factions and reputation as
-            // one continuous document instead of keeping attributes permanently fixed.
+            MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
             MyGUI::Widget* skillsBox = mSkillView->getParent();
+
+            // Reserve the outer vertical scrollbar in the document width. All section
+            // boxes then end before the scrollbar instead of being drawn underneath it.
+            const int documentWidth = std::max(120, statsView->getWidth() - 20);
+            const int sectionWidth = std::max(104, documentWidth - 16);
+            const int currentCanvasHeight = std::max(statsView->getCanvasSize().height,
+                skillsBox->getTop() + skillsBox->getHeight() + 8);
+
+            statsView->setVisibleVScroll(false);
+            statsView->setCanvasSize(documentWidth, currentCanvasHeight);
+            statsView->setVisibleVScroll(true);
+
+            const char* sectionNames[] = { "VitalsBox", "IdentityBox", "AttributesBox", "StatsSkillsBox" };
+            for (const char* sectionName : sectionNames)
+            {
+                MyGUI::Widget* section;
+                getWidget(section, sectionName);
+                section->setWidth(sectionWidth);
+            }
+
             const int skillContentHeight = std::max(1, mSkillView->getCanvasSize().height);
             mSkillView->setVisibleVScroll(false);
-            mSkillView->setSize(std::max(1, skillsBox->getWidth() - 8), skillContentHeight);
+            mSkillView->setSize(std::max(1, sectionWidth - 8), skillContentHeight);
             mSkillView->setCanvasSize(mSkillView->getWidth(), skillContentHeight);
-            skillsBox->setSize(skillsBox->getWidth(), skillContentHeight + 4);
+            skillsBox->setSize(sectionWidth, skillContentHeight + 4);
 
-            MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
             statsView->setVisibleVScroll(false);
-            statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+            statsView->setCanvasSize(documentWidth,
                 skillsBox->getTop() + skillsBox->getHeight() + 8);
             statsView->setVisibleVScroll(true);
+
+            // Rebuild dynamic skills/faction rows on the next frame using the new width.
+            mChanged = true;
             return;
         }
 
@@ -179,9 +199,11 @@ namespace MWGui
 
         MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
         statsView->setVisibleVScroll(false);
-        statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+        const int documentWidth = std::max(1, statsView->getWidth() - 20);
+        statsView->setCanvasSize(documentWidth,
             skillsBox->getTop() + skillsBox->getHeight() + 8);
         statsView->setVisibleVScroll(true);
+        mChanged = true;
     }
 
     void StatsWindow::setBar(const std::string& name, const std::string& tname, int val, int max)
@@ -316,17 +338,8 @@ namespace MWGui
             else if (modified < base)
                 state = "decreased";
 
-            int widthBefore = valueWidget->getTextSize().width;
-
             valueWidget->setCaption(text);
             valueWidget->_setWidgetState(state);
-
-            int widthAfter = valueWidget->getTextSize().width;
-            if (widthBefore != widthAfter)
-            {
-                valueWidget->setCoord(valueWidget->getLeft() - (widthAfter-widthBefore), valueWidget->getTop(), valueWidget->getWidth() + (widthAfter-widthBefore), valueWidget->getHeight());
-                nameWidget->setSize(nameWidget->getWidth() - (widthAfter-widthBefore), nameWidget->getHeight());
-            }
 
             if (value.getBase() < 100)
             {
@@ -451,9 +464,15 @@ namespace MWGui
 
     void StatsWindow::addSeparator(MyGUI::IntCoord &coord1, MyGUI::IntCoord &coord2)
     {
+        // Use an explicit width inside the SkillView canvas. HStretch on widgets
+        // created in a ScrollView may stretch against the outer viewport and draw
+        // the separator through the vertical scrollbar after resizing.
+        const int contentRight = coord2.left + coord2.width;
+        const int separatorLeft = coord1.left;
+        const int separatorWidth = std::max(1, contentRight - separatorLeft);
         MyGUI::ImageBox* separator = mSkillView->createWidget<MyGUI::ImageBox>("MW_HLine",
-            MyGUI::IntCoord(10, coord1.top, coord1.width + coord2.width - 4, 18),
-            MyGUI::Align::Left | MyGUI::Align::Top | MyGUI::Align::HStretch);
+            MyGUI::IntCoord(separatorLeft, coord1.top, separatorWidth, 18),
+            MyGUI::Align::Left | MyGUI::Align::Top);
         separator->eventMouseWheel += MyGUI::newDelegate(this, &StatsWindow::onMouseWheel);
         mSkillWidgets.push_back(separator);
 
@@ -463,9 +482,10 @@ namespace MWGui
 
     void StatsWindow::addGroup(const std::string &label, MyGUI::IntCoord &coord1, MyGUI::IntCoord &coord2)
     {
+        const int contentRight = coord2.left + coord2.width;
         MyGUI::TextBox* groupWidget = mSkillView->createWidget<MyGUI::TextBox>("SandBrightText",
-            MyGUI::IntCoord(0, coord1.top, coord1.width + coord2.width, coord1.height),
-            MyGUI::Align::Left | MyGUI::Align::Top | MyGUI::Align::HStretch);
+            MyGUI::IntCoord(coord1.left, coord1.top, std::max(1, contentRight - coord1.left), coord1.height),
+            MyGUI::Align::Left | MyGUI::Align::Top);
         groupWidget->setCaption(label);
         groupWidget->eventMouseWheel += MyGUI::newDelegate(this, &StatsWindow::onMouseWheel);
         mSkillWidgets.push_back(groupWidget);
@@ -479,19 +499,19 @@ namespace MWGui
     {
         MyGUI::TextBox *skillNameWidget, *skillValueWidget;
 
-        skillNameWidget = mSkillView->createWidget<MyGUI::TextBox>("SandText", coord1, MyGUI::Align::Left | MyGUI::Align::Top | MyGUI::Align::HStretch);
+        // Coordinates are rebuilt from the current SkillView width, keeping the
+        // value column pinned to the right edge at every window size.
+        skillNameWidget = mSkillView->createWidget<MyGUI::TextBox>("SandText", coord1,
+            MyGUI::Align::Left | MyGUI::Align::Top);
         skillNameWidget->setCaption(text);
         skillNameWidget->eventMouseWheel += MyGUI::newDelegate(this, &StatsWindow::onMouseWheel);
 
-        skillValueWidget = mSkillView->createWidget<MyGUI::TextBox>("SandTextRight", coord2, MyGUI::Align::Right | MyGUI::Align::Top);
+        skillValueWidget = mSkillView->createWidget<MyGUI::TextBox>("SandTextRight", coord2,
+            MyGUI::Align::Left | MyGUI::Align::Top);
+        skillValueWidget->setTextAlign(MyGUI::Align::Right | MyGUI::Align::VCenter);
         skillValueWidget->setCaption(value);
         skillValueWidget->_setWidgetState(state);
         skillValueWidget->eventMouseWheel += MyGUI::newDelegate(this, &StatsWindow::onMouseWheel);
-
-        // resize dynamically according to text size
-        int textWidthPlusMargin = skillValueWidget->getTextSize().width + 12;
-        skillValueWidget->setCoord(coord2.left + coord2.width - textWidthPlusMargin, coord2.top, textWidthPlusMargin, coord2.height);
-        skillNameWidget->setSize(skillNameWidget->getSize() + MyGUI::IntSize(coord2.width - textWidthPlusMargin, 0));
 
         mSkillWidgets.push_back(skillNameWidget);
         mSkillWidgets.push_back(skillValueWidget);
@@ -579,9 +599,17 @@ namespace MWGui
         }
         mSkillWidgets.clear();
 
-        const int valueSize = 40;
-        MyGUI::IntCoord coord1(10, 0, mSkillView->getWidth() - (10 + valueSize) - 24, 18);
-        MyGUI::IntCoord coord2(coord1.left + coord1.width, coord1.top, valueSize, coord1.height);
+        // Fill the current SkillView width. The value column remains fixed in size
+        // but moves with the right edge when the statistics window is stretched.
+        constexpr int valueSize = 52;
+        constexpr int leftMargin = 10;
+        constexpr int rightMargin = 2;
+        const int contentRight = std::max(leftMargin + valueSize + 44,
+            mSkillView->getWidth() - rightMargin);
+        MyGUI::IntCoord coord1(leftMargin, 0,
+            std::max(44, contentRight - leftMargin - valueSize), 18);
+        MyGUI::IntCoord coord2(contentRight - valueSize, coord1.top,
+            valueSize, coord1.height);
 
         if (!mMajorSkills.empty())
             addSkills(mMajorSkills, "sSkillClassMajor", "Major Skills", coord1, coord2);
@@ -749,7 +777,8 @@ namespace MWGui
 
         MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
         statsView->setVisibleVScroll(false);
-        statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+        const int documentWidth = std::max(1, statsView->getWidth() - 20);
+        statsView->setCanvasSize(documentWidth,
             skillsBox->getTop() + skillsBox->getHeight() + 8);
         statsView->setVisibleVScroll(true);
     }

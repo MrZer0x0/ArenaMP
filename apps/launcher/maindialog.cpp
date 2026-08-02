@@ -384,7 +384,12 @@ bool Launcher::MainDialog::setup()
     loadBuildManifest();
     setVersionLabel();
 
-    mLauncherSettings.setContentList(mGameSettings);
+    // An existing build.ini is authoritative. Its exact content list was
+    // already copied into the named launcher profile by loadBuildManifest().
+    // Re-synchronising from merged openmw.cfg here could select stale plugins
+    // that are installed but are not present in build.ini.
+    if (!mBuildManifestLoaded)
+        mLauncherSettings.setContentList(mGameSettings);
 
     if (!setupGraphicsSettings())
         return false;
@@ -411,7 +416,8 @@ bool Launcher::MainDialog::reloadSettings()
 
     loadBuildManifest();
     applyBuildManifestRestrictions();
-    mLauncherSettings.setContentList(mGameSettings);
+    if (!mBuildManifestLoaded)
+        mLauncherSettings.setContentList(mGameSettings);
 
     if (!setupGraphicsSettings())
         return false;
@@ -705,18 +711,18 @@ bool Launcher::MainDialog::loadBuildManifest()
 
     const QString effectiveBuildName = manifest.buildName.trimmed().isEmpty()
         ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
-    if (!manifest.contentFiles.isEmpty() || !manifest.groundcoverFiles.isEmpty())
-    {
-        const QStringList orderedContent = manifest.contentFiles;
-        mGameSettings.setContentList(orderedContent);
-        mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
+    // A present build.ini always owns the enabled plug-in list, including an
+    // intentionally empty one. Never merge it with launcher.cfg/openmw.cfg or
+    // auto-enable other plug-ins merely because they exist in Data Files.
+    const QStringList orderedContent = manifest.contentFiles;
+    mGameSettings.setContentList(orderedContent);
+    mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
 
-        QStringList profileFiles = orderedContent;
-        profileFiles.append(manifest.groundcoverFiles);
-        mLauncherSettings.setContentList(effectiveBuildName, profileFiles,
-            manifest.groundcoverFiles, !manifest.groundcoverFiles.isEmpty());
-        mLauncherSettings.setCurrentContentListName(effectiveBuildName);
-    }
+    QStringList profileFiles = orderedContent;
+    profileFiles.append(manifest.groundcoverFiles);
+    mLauncherSettings.setContentList(effectiveBuildName, profileFiles,
+        manifest.groundcoverFiles, !manifest.groundcoverFiles.isEmpty());
+    mLauncherSettings.setCurrentContentListName(effectiveBuildName);
 
     if (!manifest.archives.isEmpty())
     {
@@ -725,15 +731,21 @@ bool Launcher::MainDialog::loadBuildManifest()
             mGameSettings.setMultiValue(QStringLiteral("fallback-archive"), archive);
     }
 
-    const QString manifestLanguage = manifest.language.trimmed().isEmpty()
-        ? QStringLiteral("English") : manifest.language.trimmed();
-    mLauncherSettings.setValue(QStringLiteral("Settings/language"), manifestLanguage);
-    if (manifestLanguage == QLatin1String("Polish"))
-        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1250"));
-    else if (manifestLanguage == QLatin1String("Russian"))
-        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1251"));
-    else
-        mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1252"));
+    // Do not manufacture English when an older manifest has no language field.
+    // When the field is present, build.ini is authoritative and the translated
+    // launcher UI must not replace its canonical value.
+    if (manifest.languageSpecified)
+    {
+        const QString manifestLanguage = Config::BuildManifest::canonicalLanguage(manifest.language);
+        mLauncherSettings.remove(QStringLiteral("Settings/language"));
+        mLauncherSettings.setValue(QStringLiteral("Settings/language"), manifestLanguage);
+        if (manifestLanguage == QLatin1String("Polish"))
+            mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1250"));
+        else if (manifestLanguage == QLatin1String("Russian"))
+            mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1251"));
+        else
+            mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1252"));
+    }
 
     mBuildManifestLoaded = true;
     mBuildManifestPath = manifestPath;

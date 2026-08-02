@@ -902,9 +902,11 @@ namespace MWGui
             || MWBase::Environment::get().getDialogueManager()->isInChoice())
             return;
 
-        // Persuasion always reopens in the canonical centred Arena layout.
-        positionDialogueWindow();
+        // Set the mode before resizing the window. MyGUI emits the resize callback
+        // synchronously, so the very first opening must already be laid out as a
+        // persuasion pane rather than briefly using the ordinary topic geometry.
         mPersuasionMode = true;
+        positionDialogueWindow();
         updateHistory();
         selectInitialItem();
     }
@@ -1029,6 +1031,12 @@ namespace MWGui
             const int choicesHeight = std::max(80, contentBottom - choicesTop);
             mChoicesLabel->setCoord(rightX, choicesLabelTop, rightWidth, 18);
             mChoicesList->setCoord(rightX, choicesTop, rightWidth, choicesHeight);
+
+            // Rebuild after the final coordinates are known. On the first opening
+            // the list was previously created with the old topic-pane dimensions,
+            // leaving wrapped captions and controls in the wrong positions until
+            // persuasion was closed and opened a second time.
+            mChoicesList->adjustSize();
         }
         else
         {

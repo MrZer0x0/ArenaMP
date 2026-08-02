@@ -3,6 +3,7 @@
 #include <components/debug/debuglog.hpp>
 #include <components/fallback/fallback.hpp>
 #include <components/misc/rng.hpp>
+#include <components/settings/settings.hpp>
 
 #include "../mwbase/environment.hpp"
 #include "../mwbase/soundmanager.hpp"
@@ -198,6 +199,11 @@ namespace MWGui
                     mNameDialog = nullptr;
                     mNameDialog = new TextInputDialog();
                     mNameDialog->setTextLabel(MWBase::Environment::get().getWindowManager()->getGameSettingString("sName", "Name"));
+
+                    // Reuse the last account/character name on the next connection. Keep an
+                    // in-progress name when the player goes back during character creation.
+                    if (mPlayerName.empty())
+                        mPlayerName = Settings::Manager::getString("name", "Login");
                     mNameDialog->setTextInput(mPlayerName);
                     mNameDialog->setNextButtonShow(mCreationStage >= CSE_NameChosen);
                     mNameDialog->eventDone += MyGUI::newDelegate(this, &CharacterCreation::onNameDialogDone);
@@ -473,6 +479,11 @@ namespace MWGui
             /*
                 End of tes3mp change (major)
             */
+
+            // Store the name in the regular user settings file so the same field is
+            // automatically filled on the next launch.
+            Settings::Manager::setString("name", "Login", mPlayerName);
+            Settings::Manager::saveUser();
 
             MWBase::Environment::get().getMechanicsManager()->setPlayerName(mPlayerName);
             MWBase::Environment::get().getWindowManager()->removeDialog(mNameDialog);

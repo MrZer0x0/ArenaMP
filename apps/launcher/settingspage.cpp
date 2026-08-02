@@ -8,6 +8,7 @@
 
 #include <components/config/gamesettings.hpp>
 #include <components/config/launchersettings.hpp>
+#include <components/config/buildmanifest.hpp>
 
 #include "utils/textinputdialog.hpp"
 #include "datafilespage.hpp"
@@ -25,16 +26,17 @@ Launcher::SettingsPage::SettingsPage(Files::ConfigurationManager &cfg,
 {
     setupUi(this);
 
-    QStringList languages;
-    languages << tr("English")
-              << tr("French")
-              << tr("German")
-              << tr("Italian")
-              << tr("Polish")
-              << tr("Russian")
-              << tr("Spanish");
-
-    languageComboBox->addItems(languages);
+    // Display names may be translated, but build.ini and launcher.cfg always
+    // store stable canonical language identifiers in item data. Using visible
+    // text here caused a Russian UI to fail to match "Russian" and then save
+    // the first combo-box item back over the manifest.
+    languageComboBox->addItem(tr("English"), QStringLiteral("English"));
+    languageComboBox->addItem(tr("French"), QStringLiteral("French"));
+    languageComboBox->addItem(tr("German"), QStringLiteral("German"));
+    languageComboBox->addItem(tr("Italian"), QStringLiteral("Italian"));
+    languageComboBox->addItem(tr("Polish"), QStringLiteral("Polish"));
+    languageComboBox->addItem(tr("Russian"), QStringLiteral("Russian"));
+    languageComboBox->addItem(tr("Spanish"), QStringLiteral("Spanish"));
 
     mWizardInvoker = new ProcessInvoker();
     mImporterInvoker = new ProcessInvoker();
@@ -249,8 +251,13 @@ void Launcher::SettingsPage::updateOkButton(const QString &text)
 
 void Launcher::SettingsPage::saveSettings()
 {
-    QString language(languageComboBox->currentText());
+    QString language = languageComboBox->currentData().toString();
+    if (language.isEmpty())
+        language = Config::BuildManifest::canonicalLanguage(languageComboBox->currentText());
+    else
+        language = Config::BuildManifest::canonicalLanguage(language);
 
+    mLauncherSettings.remove(QLatin1String("Settings/language"));
     mLauncherSettings.setValue(QLatin1String("Settings/language"), language);
 
     if (language == QLatin1String("Polish")) {
@@ -264,9 +271,12 @@ void Launcher::SettingsPage::saveSettings()
 
 bool Launcher::SettingsPage::loadSettings()
 {
-    QString language(mLauncherSettings.value(QLatin1String("Settings/language")));
+    const QString language = Config::BuildManifest::canonicalLanguage(
+        mLauncherSettings.value(QLatin1String("Settings/language"), QLatin1String("English")));
 
-    int index = languageComboBox->findText(language);
+    int index = languageComboBox->findData(language, Qt::UserRole, Qt::MatchFixedString);
+    if (index == -1)
+        index = languageComboBox->findText(language, Qt::MatchFixedString);
 
     if (index != -1)
         languageComboBox->setCurrentIndex(index);

@@ -164,7 +164,13 @@ void mwmp::GUIController::showInputBox(const BasePlayer::GUIMessageBox &guiMessa
     mInputBox = 0;
     mInputBox = new TextInputDialog();
 
-    mInputBox->setEditPassword(guiMessageBox.type == BasePlayer::GUIMessageBox::PasswordDialog);
+    const bool passwordDialog = guiMessageBox.type == BasePlayer::GUIMessageBox::PasswordDialog;
+    mInputBox->setEditPassword(passwordDialog);
+
+    // Password dialogs shown before login are the account login/registration prompt.
+    // Fill them from the regular user settings file exactly as requested by the user.
+    if (passwordDialog && !Main::get().getLocalPlayer()->isLoggedIn())
+        mInputBox->setTextInput(Settings::Manager::getString("password", "Login"));
 
     mInputBox->setTextLabel(guiMessageBox.label);
     mInputBox->setTextNote(guiMessageBox.note);
@@ -183,6 +189,14 @@ void mwmp::GUIController::onInputBoxDone(MWGui::WindowBase *parWindow)
     // extra security that doesn't require the client to keep storing a salt
     if (localPlayer->guiMessageBox.type == BasePlayer::GUIMessageBox::PasswordDialog)
     {
+        // Preserve the plain text entered for login/registration in settings.cfg before
+        // producing the protocol hash that is sent to the server.
+        if (!localPlayer->isLoggedIn())
+        {
+            Settings::Manager::setString("password", "Login", textInput);
+            Settings::Manager::saveUser();
+        }
+
         textInput = picosha2::hash256_hex_string(textInput);
         textInput = picosha2::hash256_hex_string(textInput + picosha2::hash256_hex_string(picosha2::hash256_hex_string((textInput))));
     }

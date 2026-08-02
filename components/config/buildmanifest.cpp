@@ -70,6 +70,38 @@ namespace
             || key == QLatin1String("esm") || key == QLatin1String("esp")
             || key == QLatin1String("omwgame") || key == QLatin1String("omwaddon");
     }
+
+    bool isBuildSection(const QString& section)
+    {
+        return section.isEmpty() || section == QLatin1String("build")
+            || section == QLatin1String("general") || section == QLatin1String("manifest");
+    }
+
+    bool isLanguageSection(const QString& section)
+    {
+        return isBuildSection(section) || section == QLatin1String("language")
+            || section == QLatin1String("locale");
+    }
+
+    bool isServerSection(const QString& section)
+    {
+        return section.isEmpty() || section == QLatin1String("server")
+            || section == QLatin1String("network") || section == QLatin1String("connection");
+    }
+
+    bool isContentSection(const QString& section)
+    {
+        return section.isEmpty() || section == QLatin1String("content")
+            || section == QLatin1String("plugins") || section == QLatin1String("plugin")
+            || section == QLatin1String("datafiles") || section == QLatin1String("data files")
+            || section == QLatin1String("loadorder") || section == QLatin1String("load order");
+    }
+
+    bool isArchiveSection(const QString& section)
+    {
+        return section.isEmpty() || section == QLatin1String("archives")
+            || section == QLatin1String("archive") || section == QLatin1String("content");
+    }
 }
 
 Config::BuildManifest::BuildManifest()
@@ -130,7 +162,7 @@ bool Config::BuildManifest::read(const QString& filePath, QString* errorMessage)
         const QString key = line.left(equals).trimmed().toLower();
         const QString value = decodeValue(line.mid(equals + 1));
 
-        if ((section == QLatin1String("build") || section.isEmpty())
+        if (isBuildSection(section)
             && (key == QLatin1String("format") || key == QLatin1String("version")))
         {
             bool ok = false;
@@ -138,45 +170,48 @@ bool Config::BuildManifest::read(const QString& filePath, QString* errorMessage)
             if (ok && parsed > 0)
                 formatVersion = parsed;
         }
-        else if ((section == QLatin1String("build") || section.isEmpty())
+        else if (isBuildSection(section)
             && (key == QLatin1String("name") || key == QLatin1String("build-name")))
             buildName = value;
-        else if ((section == QLatin1String("build") || section.isEmpty())
+        else if (isBuildSection(section)
             && (key == QLatin1String("data") || key == QLatin1String("data-path") || key == QLatin1String("datafiles")))
             dataPath = value;
-        else if ((section == QLatin1String("build") || section.isEmpty())
-            && (key == QLatin1String("language") || key == QLatin1String("locale")))
+        else if (isLanguageSection(section)
+            && (key == QLatin1String("language") || key == QLatin1String("locale")
+                || ((section == QLatin1String("language") || section == QLatin1String("locale"))
+                    && (key == QLatin1String("value") || key == QLatin1String("name")
+                        || key == QLatin1String("selected") || key == QLatin1String("current")))))
         {
             language = canonicalLanguage(value);
             languageSpecified = !value.trimmed().isEmpty();
         }
-        else if ((section == QLatin1String("build") || section.isEmpty())
+        else if (isBuildSection(section)
             && (key == QLatin1String("complete") || key == QLatin1String("locked")
                 || key == QLatin1String("read-only")))
             complete = value.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
                 || value == QLatin1String("1") || value.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
-        else if ((section == QLatin1String("server") || section.isEmpty())
+        else if (isServerSection(section)
             && (key == QLatin1String("address") || key == QLatin1String("ip") || key == QLatin1String("host")))
         {
             serverAddress = value;
             serverAddressSpecified = !value.trimmed().isEmpty();
         }
-        else if ((section == QLatin1String("server") || section.isEmpty()) && key == QLatin1String("port"))
+        else if (isServerSection(section) && key == QLatin1String("port"))
         {
             serverPort = value;
             serverPortSpecified = !value.trimmed().isEmpty();
         }
-        else if ((section == QLatin1String("server") || section.isEmpty())
+        else if (isServerSection(section)
             && (key == QLatin1String("vanilla-build-server") || key == QLatin1String("vanilla")
                 || key == QLatin1String("legacy-client")))
             vanillaServerCompatibility = value.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0
                 || value == QLatin1String("1") || value.compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
-        else if ((section == QLatin1String("content") || section.isEmpty()) && isContentExtensionKey(key))
+        else if (isContentSection(section) && isContentExtensionKey(key))
             contentFiles.append(value);
-        else if ((section == QLatin1String("content") || section.isEmpty())
+        else if (isContentSection(section)
             && (key == QLatin1String("groundcover") || key == QLatin1String("grass")))
             groundcoverFiles.append(value);
-        else if ((section == QLatin1String("archives") || section == QLatin1String("content") || section.isEmpty())
+        else if (isArchiveSection(section)
             && (key == QLatin1String("archive") || key == QLatin1String("bsa") || key == QLatin1String("fallback-archive")))
             archives.append(value);
     }
@@ -275,23 +310,39 @@ QString Config::BuildManifest::resolvedDataPath(const QString& manifestPath) con
 QString Config::BuildManifest::canonicalLanguage(const QString& language)
 {
     const QString value = language.trimmed();
-    static const QStringList supportedLanguages = {
-        QStringLiteral("English"),
-        QStringLiteral("French"),
-        QStringLiteral("German"),
-        QStringLiteral("Italian"),
-        QStringLiteral("Polish"),
-        QStringLiteral("Russian"),
-        QStringLiteral("Spanish")
+    if (value.isEmpty())
+        return QStringLiteral("English");
+
+    struct LanguageAlias
+    {
+        const char* canonical;
+        const char* aliases[4];
     };
 
-    for (const QString& supported : supportedLanguages)
+    // Accept both the canonical identifiers written by current ArenaMP builds
+    // and translated values produced by older Launcher/Wizard revisions.
+    static const LanguageAlias supportedLanguages[] = {
+        { "English", { "English", "Английский", "Anglais", nullptr } },
+        { "French",  { "French", "Французский", "Français", nullptr } },
+        { "German",  { "German", "Немецкий", "Deutsch", nullptr } },
+        { "Italian", { "Italian", "Итальянский", "Italiano", nullptr } },
+        { "Polish",  { "Polish", "Польский", "Polski", nullptr } },
+        { "Russian", { "Russian", "Русский", "Русский язык", nullptr } },
+        { "Spanish", { "Spanish", "Испанский", "Español", nullptr } }
+    };
+
+    for (const LanguageAlias& languageAlias : supportedLanguages)
     {
-        if (value.compare(supported, Qt::CaseInsensitive) == 0)
-            return supported;
+        for (const char* alias : languageAlias.aliases)
+        {
+            if (alias == nullptr)
+                break;
+            if (value.compare(QString::fromUtf8(alias), Qt::CaseInsensitive) == 0)
+                return QString::fromLatin1(languageAlias.canonical);
+        }
     }
 
-    return value.isEmpty() ? QStringLiteral("English") : value;
+    return value;
 }
 
 QString Config::BuildManifest::canonicalPathForDataDir(const QString& dataDir)
