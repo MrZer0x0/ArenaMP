@@ -713,8 +713,22 @@ bool Wizard::MainWizard::writeBuildManifest(const QString& dataFilesPath)
     if (dataPath.isEmpty() || !QFileInfo(dataPath).isDir())
         return false;
 
-    // Wizard output is canonical beside Data Files. A legacy manifest beside
-    // the executable is accepted as the source and migrated on this save.
+    // An existing build.ini is user-owned. The Wizard may rebuild launcher.cfg
+    // and openmw.cfg, but it must never rewrite the manifest's language, plug-in
+    // list, order, comments, or formatting. Only create build.ini for a new
+    // installation where no manifest exists in any supported location.
+    const QString existingManifestPath = Config::BuildManifest::findForDataDir(dataPath);
+    if (!existingManifestPath.isEmpty())
+    {
+        mBuildManifestLoaded = true;
+        mBuildManifestPath = existingManifestPath;
+        mBuildDataPath = dataPath;
+        addLogText(tr("Preserved existing build manifest without changes: %1")
+            .arg(existingManifestPath));
+        return true;
+    }
+
+    // No manifest exists yet, so create the canonical one beside Data Files.
     const QString sourceManifestPath = mBuildManifestPath;
     const QString manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataPath);
 
@@ -1020,6 +1034,17 @@ void Wizard::MainWizard::initializeNativeDisplaySettings()
 
 void Wizard::MainWizard::writeSettings()
 {
+    // Resolve and load the selected installation first. This is intentionally
+    // done before reading the language field: loading build.ini may lock a
+    // non-English language and an exact content list that the Wizard must use.
+    QString path = resolveWizardDataPath(
+        field(QLatin1String("installation.path")).toString());
+    setField(QLatin1String("installation.path"), path);
+
+    configureDataFiles(path);
+    if (!mBuildDataPath.isEmpty() && QFileInfo(mBuildDataPath).isDir())
+        path = mBuildDataPath;
+
     // A language explicitly stored in build.ini is authoritative. Do not let
     // the hidden language page or its default English item replace it.
     const QString language = mBuildLanguageLocked
@@ -1031,15 +1056,7 @@ void Wizard::MainWizard::writeSettings()
     mLauncherSettings.setValue(QLatin1String("Settings/language"), language);
     mGameSettings.setValue(QLatin1String("encoding"), encodingForLanguage(language));
 
-    // Write the installation path so that openmw can find them
-    QString path = resolveWizardDataPath(
-        field(QLatin1String("installation.path")).toString());
-    setField(QLatin1String("installation.path"), path);
-
     // Make sure the installation path is the last data= entry.
-    configureDataFiles(path);
-    if (!mBuildDataPath.isEmpty() && QFileInfo(mBuildDataPath).isDir())
-        path = mBuildDataPath;
     mGameSettings.removeDataDir(path);
     mGameSettings.addDataDir(path);
     mGameSettings.setMultiValue(QLatin1String("data"), path);

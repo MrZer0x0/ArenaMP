@@ -30,8 +30,8 @@ namespace MWGui
         // The window skin reserves this many logical pixels below the client area
         // for its lower frame. Using the full Window height makes the ScrollView
         // continue underneath that frame and clips the final statistics rows.
-        constexpr int StatsWindowBottomFrameInset = 23;
-        constexpr int StatsDocumentBottomPadding = 24;
+        constexpr int StatsWindowBottomFrameInset = 34;
+        constexpr int StatsDocumentBottomPadding = 52;
     }
 
     StatsWindow::StatsWindow (DragAndDrop* drag)
@@ -110,7 +110,9 @@ namespace MWGui
         MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
         constexpr int wheelStep = 36;
         const int delta = rel > 0 ? wheelStep : -wheelStep;
-        const int nextTop = std::min(0, statsView->getViewOffset().top + delta);
+        const int minimumTop = std::min(0, statsView->getHeight() - statsView->getCanvasSize().height);
+        const int nextTop = std::max(minimumTop,
+            std::min(0, statsView->getViewOffset().top + delta));
         statsView->setViewOffset(MyGUI::IntPoint(0, nextTop));
     }
 
@@ -778,7 +780,7 @@ namespace MWGui
 
         // Expand the skills section to its full content height and let the outer
         // statistics view perform the only vertical scrolling operation.
-        const int skillContentHeight = std::max(1, coord1.top + 4);
+        const int skillContentHeight = std::max(1, coord1.top + 22);
         MyGUI::Widget* skillsBox = mSkillView->getParent();
         mSkillView->setVisibleVScroll(false);
         mSkillView->setSize(std::max(1, skillsBox->getWidth() - 8), skillContentHeight);
