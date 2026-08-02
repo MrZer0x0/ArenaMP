@@ -24,6 +24,10 @@ namespace SceneUtil
 
         void setMaximumShadowMapDistance(float distance);
 
+        /// Select the light used by the view-dependent shadow map. Light 0 is
+        /// the sun; light 1 is ArenaMP's nearest-local-light proxy.
+        void setActiveLightNum(int lightNum);
+
         Shader::ShaderManager::DefineMap getShadowDefines();
 
         void enableIndoorMode();

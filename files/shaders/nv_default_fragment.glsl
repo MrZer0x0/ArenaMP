@@ -89,7 +89,7 @@ void main()
 #endif
 
     if (matSpec != vec3(0.0))
-        gl_FragData[0].xyz += getSpecular(normalize(viewNormal), normalize(passViewPos.xyz), shininess, matSpec) * shadowing;
+        gl_FragData[0].xyz += getSpecular(normalize(viewNormal), passViewPos.xyz, shininess, matSpec, shadowing);
 #if @radialFog
     float fogValue = clamp((euclideanDepth - gl_Fog.start) * gl_Fog.scale, 0.0, 1.0);
 #else

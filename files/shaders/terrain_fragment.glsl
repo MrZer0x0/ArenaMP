@@ -144,7 +144,7 @@ void main()
 #if (!@normalMap && !@parallax && !@forcePPL)
         vec3 viewNormal = gl_NormalMatrix * normalize(passNormal);
 #endif
-        gl_FragData[0].xyz += getSpecular(normalize(viewNormal), normalize(passViewPos), shininess, matSpec) * shadowing;
+        gl_FragData[0].xyz += getSpecular(normalize(viewNormal), passViewPos, shininess, matSpec, shadowing);
     }
 #endif
 

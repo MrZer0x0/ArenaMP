@@ -906,6 +906,11 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const int occlusionMaxMeshResolution[] = { 24, 24, 28, 28, 32, 36 };
     static const float occlusionInsideThreshold[] = { 0.96f, 0.95f, 0.94f, 0.93f, 0.92f, 0.91f };
     static const float occlusionMaxDistance[] = { 3072.f, 3584.f, 4096.f, 5120.f, 6144.f, 7168.f };
+    static const float pointLightIntensity[] = { 0.85f, 0.90f, 1.00f, 1.08f, 1.15f, 1.20f };
+    static const float pointLightSpecular[] = { 0.00f, 0.10f, 0.25f, 0.40f, 0.55f, 0.70f };
+    static const float pointLightFalloff[] = { 0.00f, 0.20f, 0.45f, 0.65f, 0.80f, 1.00f };
+    static const int localShadowDistance[] = { 0, 0, 768, 1024, 1536, 2048 };
+    static const int localShadowMinRadius[] = { 384, 320, 256, 192, 160, 128 };
 
     int effectiveAa = antialiasing[level];
     int effectiveShadowResolution = shadowResolution[level];
@@ -986,6 +991,14 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     // All ArenaMP presets use the shader-compatible lighting backend. Legacy
     // lighting is never selected by a preset, including the minimum profile.
     Settings::Manager::setString("lighting method", "Shaders", "shaders compatibility");
+    Settings::Manager::setBool("advanced local lighting", "Shaders", level >= 1);
+    Settings::Manager::setFloat("point light intensity", "Shaders", pointLightIntensity[level]);
+    Settings::Manager::setFloat("point light specular strength", "Shaders", pointLightSpecular[level]);
+    Settings::Manager::setFloat("point light falloff strength", "Shaders", pointLightFalloff[level]);
+    Settings::Manager::setBool("weather particle occlusion", "Shaders", true);
+    Settings::Manager::setInt("weather particle occlusion distance", "Shaders", level <= 1 ? 3072 : 4096);
+    Settings::Manager::setInt("weather particle occlusion radius", "Shaders", level <= 1 ? 96 : 160);
+    Settings::Manager::setFloat("weather particle occlusion interval", "Shaders", level <= 1 ? 0.25f : 0.15f);
 
     // Every preset uses shader water so its reflection/refraction tier is
     // applied even when an older user profile explicitly disabled the shader.
@@ -1002,6 +1015,10 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setBool("object shadows", "Shadows", level >= 2);
     Settings::Manager::setBool("terrain shadows", "Shadows", level >= 3);
     Settings::Manager::setBool("enable indoor shadows", "Shadows", level >= 2);
+    Settings::Manager::setBool("local light shadows", "Shadows", level >= 2);
+    Settings::Manager::setInt("local light shadow distance", "Shadows", localShadowDistance[level]);
+    Settings::Manager::setInt("local light shadow minimum radius", "Shadows", localShadowMinRadius[level]);
+    Settings::Manager::setBool("local light shadows outdoors", "Shadows", level >= 5);
     Settings::Manager::setInt("maximum shadow map distance", "Shadows", effectiveShadowDistance);
     Settings::Manager::setInt("shadow map resolution", "Shadows", effectiveShadowResolution);
     Settings::Manager::setString("compute scene bounds", "Shadows", level >= 5 ? "primitives" : "bounds");

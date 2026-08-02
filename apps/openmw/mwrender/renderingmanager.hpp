@@ -22,6 +22,7 @@ namespace osg
     class Group;
     class PositionAttitudeTransform;
     class Uniform;
+    class LightSource;
 }
 
 namespace osgUtil
@@ -260,6 +261,8 @@ namespace MWRender
         void updateThirdPersonViewMode();
         void updateHdrSettings();
         void updateHdrEnvironment();
+        void updateLocalLightShadows(const osg::Vec3f& cameraPosition);
+        void updateWeatherParticleOcclusion(float dt, const osg::Vec3f& cameraPosition);
 
         void reportStats() const;
 
@@ -283,6 +286,8 @@ namespace MWRender
         osg::ref_ptr<SceneUtil::UnrefQueue> mUnrefQueue;
 
         osg::ref_ptr<osg::Light> mSunLight;
+        osg::ref_ptr<osg::Light> mLocalShadowLight;
+        osg::ref_ptr<osg::LightSource> mLocalShadowLightSource;
 
         DetourNavigator::Navigator& mNavigator;
         std::unique_ptr<NavMesh> mNavMesh;
@@ -321,6 +326,8 @@ namespace MWRender
         osg::ref_ptr<osg::Uniform> mHdrSaturationUniform;
         osg::ref_ptr<osg::Uniform> mHdrIsInteriorUniform;
         osg::ref_ptr<osg::Uniform> mHdrNightFactorUniform;
+        osg::ref_ptr<osg::Uniform> mLocalShadowActiveUniform;
+        osg::ref_ptr<osg::Uniform> mLocalShadowPositionUniform;
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;
@@ -338,6 +345,9 @@ namespace MWRender
         bool mLandOptimizationEnabled;
         bool mLandOptimizationWasExterior;
         bool mUnderwaterFogActive;
+        float mWeatherOcclusionTimer;
+        float mWeatherParticleExposure;
+        int mActiveShadowLightNum;
         bool mFieldOfViewOverridden;
         float mFieldOfViewOverride;
         float mFieldOfView;

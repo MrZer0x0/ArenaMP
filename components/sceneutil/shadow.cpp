@@ -23,7 +23,11 @@ namespace SceneUtil
         
         mShadowTechnique->enableShadows();
 
-        mShadowSettings->setLightNum(0);
+        // The active light can be switched at runtime between the sun (0) and
+        // ArenaMP's nearest local-light proxy (1). Keep the current selection
+        // when settings are rebuilt instead of forcing it back to the sun.
+        if (mShadowSettings->getLightNum() < 0)
+            mShadowSettings->setLightNum(0);
         mShadowSettings->setReceivesShadowTraversalMask(~0u);
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
@@ -90,6 +94,13 @@ namespace SceneUtil
         const float fadeStart = std::clamp(
             Settings::Manager::getFloat("shadow fade start", "Shadows"), 0.f, 1.f);
         mShadowTechnique->setShadowFadeStart(distance * fadeStart);
+    }
+
+    void ShadowManager::setActiveLightNum(int lightNum)
+    {
+        if (!mShadowSettings.valid())
+            return;
+        mShadowSettings->setLightNum(std::max(0, lightNum));
     }
 
     void ShadowManager::disableShadowsForStateSet(osg::ref_ptr<osg::StateSet> stateset)
@@ -190,8 +201,13 @@ namespace SceneUtil
 
     void ShadowManager::enableIndoorMode()
     {
-        if (Settings::Manager::getBool("enable indoor shadows", "Shadows"))
+        const bool localLightShadows = Settings::Manager::getBool("local light shadows", "Shadows");
+        if (Settings::Manager::getBool("enable indoor shadows", "Shadows") || localLightShadows)
+        {
+            if (mEnableShadows)
+                mShadowTechnique->enableShadows();
             mShadowSettings->setCastsShadowTraversalMask(mIndoorShadowCastingMask);
+        }
         else
             mShadowTechnique->disableShadows(true);
     }

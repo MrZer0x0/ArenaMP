@@ -1,6 +1,9 @@
 #include "lightmanager.hpp"
 
 #include <array>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 #include <osg/BufferObject>
 #include <osg/BufferIndexBinding>
@@ -1166,6 +1169,63 @@ namespace SceneUtil
     osg::ref_ptr<osg::Light> LightManager::getSunlight()
     {
         return mSun;
+    }
+
+    bool LightManager::getNearestShadowLight(const osg::Vec3f& worldPosition, float maximumDistance,
+        float minimumRadius, size_t frameNum, osg::Light& result) const
+    {
+        maximumDistance = std::max(0.f, maximumDistance);
+        minimumRadius = std::max(0.f, minimumRadius);
+        if (maximumDistance <= 0.f)
+            return false;
+
+        const LightSourceTransform* best = nullptr;
+        float bestScore = std::numeric_limits<float>::max();
+
+        for (const LightSourceTransform& candidate : mLights)
+        {
+            if (!candidate.mLightSource || candidate.mLightSource->getRadius() < minimumRadius)
+                continue;
+
+            const osg::Light* light = candidate.mLightSource->getLight(frameNum);
+            if (!light)
+                continue;
+
+            const osg::Vec4f diffuse = light->getDiffuse();
+            const float luminance = diffuse.r() * 0.2126f + diffuse.g() * 0.7152f + diffuse.b() * 0.0722f;
+            if (luminance <= 0.001f)
+                continue;
+
+            const osg::Vec3f position = candidate.mWorldMatrix.getTrans();
+            const float distance = (position - worldPosition).length();
+            const float effectiveDistance = std::min(maximumDistance,
+                std::max(minimumRadius, candidate.mLightSource->getRadius()) * 2.5f);
+            if (distance > effectiveDistance)
+                continue;
+
+            // Prefer bright, large lights while keeping selection stable around the camera.
+            const float score = distance / std::max(1.f,
+                candidate.mLightSource->getRadius() * std::sqrt(std::max(luminance, 0.01f)));
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = &candidate;
+            }
+        }
+
+        if (!best)
+            return false;
+
+        const osg::Light* source = best->mLightSource->getLight(frameNum);
+        const osg::Vec3f position = best->mWorldMatrix.getTrans();
+        result.setPosition(osg::Vec4f(position, 1.f));
+        result.setAmbient(source->getAmbient());
+        result.setDiffuse(source->getDiffuse());
+        result.setSpecular(source->getSpecular());
+        result.setConstantAttenuation(source->getConstantAttenuation());
+        result.setLinearAttenuation(source->getLinearAttenuation());
+        result.setQuadraticAttenuation(source->getQuadraticAttenuation());
+        return true;
     }
 
     osg::ref_ptr<osg::StateSet> LightManager::getLightListStateSet(const LightList& lightList, size_t frameNum, const osg::RefMatrix* viewMatrix)

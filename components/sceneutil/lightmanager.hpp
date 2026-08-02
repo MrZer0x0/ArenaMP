@@ -91,6 +91,11 @@ namespace SceneUtil
             return mLight[frame % 2];
         }
 
+        const osg::Light* getLight(size_t frame) const
+        {
+            return mLight[frame % 2];
+        }
+
         /// @warning It is recommended not to replace an existing osg::Light, because there might still be
         /// references to it in the light StateSet cache that are associated with this LightSource's ID.
         /// These references will stay valid due to ref_ptr but will point to the old object.
@@ -162,6 +167,11 @@ namespace SceneUtil
 
         void setSunlight(osg::ref_ptr<osg::Light> sun);
         osg::ref_ptr<osg::Light> getSunlight();
+
+        /// Find the most useful nearby positive point light for the view-dependent
+        /// local shadow proxy. The returned light keeps its world-space position.
+        bool getNearestShadowLight(const osg::Vec3f& worldPosition, float maximumDistance,
+            float minimumRadius, size_t frameNum, osg::Light& result) const;
 
         bool usingFFP() const;
 

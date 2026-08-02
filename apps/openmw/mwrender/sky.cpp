@@ -1,6 +1,7 @@
 #include "sky.hpp"
 
 #include <cmath>
+#include <algorithm>
 
 #include <osg/ClipPlane>
 #include <osg/Fog>
@@ -1139,6 +1140,7 @@ SkyManager::SkyManager(osg::Group* parentNode, Resource::SceneManager* sceneMana
     , mEnabled(true)
     , mSunEnabled(true)
     , mPrecipitationAlpha(0.f)
+    , mWeatherParticleExposure(1.f)
 {
     osg::ref_ptr<CameraRelativeTransform> skyroot (new CameraRelativeTransform);
     skyroot->setName("Sky Root");
@@ -1425,8 +1427,9 @@ protected:
 class WeatherAlphaOperator : public osgParticle::Operator
 {
 public:
-    WeatherAlphaOperator(float& alpha, bool rain)
+    WeatherAlphaOperator(float& alpha, float& exposure, bool rain)
         : mAlpha(alpha)
+        , mExposure(exposure)
         , mIsRain(rain)
     {
     }
@@ -1444,12 +1447,14 @@ public:
     void operate(osgParticle::Particle *particle, double dt) override
     {
         constexpr float rainThreshold = 0.6f; // Rain_Threshold?
-        const float alpha = mIsRain ? mAlpha * rainThreshold : mAlpha;
+        const float weatherAlpha = mAlpha * std::clamp(mExposure, 0.f, 1.f);
+        const float alpha = mIsRain ? weatherAlpha * rainThreshold : weatherAlpha;
         particle->setAlphaRange(osgParticle::rangef(alpha, alpha));
     }
 
 private:
     float &mAlpha;
+    float &mExposure;
     bool mIsRain;
 };
 
@@ -1517,7 +1522,7 @@ void SkyManager::createRain()
 
     osg::ref_ptr<osgParticle::ModularProgram> program (new osgParticle::ModularProgram);
     program->addOperator(new WrapAroundOperator(mCamera,rainRange));
-    program->addOperator(new WeatherAlphaOperator(mPrecipitationAlpha, true));
+    program->addOperator(new WeatherAlphaOperator(mPrecipitationAlpha, mWeatherParticleExposure, true));
     program->setParticleSystem(mRainParticleSystem);
     mRainNode->addChild(program);
 
@@ -1582,6 +1587,16 @@ float SkyManager::getPrecipitationAlpha() const
         return mPrecipitationAlpha;
 
     return 0.f;
+}
+
+void SkyManager::setWeatherParticleExposure(float exposure)
+{
+    mWeatherParticleExposure = std::clamp(exposure, 0.f, 1.f);
+}
+
+float SkyManager::getWeatherParticleExposure() const
+{
+    return mWeatherParticleExposure;
 }
 
 void SkyManager::update(float duration)
@@ -1743,7 +1758,7 @@ void SkyManager::setWeather(const WeatherResult& weather)
                 osg::ref_ptr<osgParticle::ModularProgram> program (new osgParticle::ModularProgram);
                 if (!mIsStorm)
                     program->addOperator(new WrapAroundOperator(mCamera,osg::Vec3(1024,1024,800)));
-                program->addOperator(new WeatherAlphaOperator(mPrecipitationAlpha, false));
+                program->addOperator(new WeatherAlphaOperator(mPrecipitationAlpha, mWeatherParticleExposure, false));
                 program->setParticleSystem(ps);
                 mParticleNode->addChild(program);
             }
