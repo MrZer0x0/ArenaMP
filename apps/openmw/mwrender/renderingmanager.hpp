@@ -338,9 +338,6 @@ namespace MWRender
         bool mLandOptimizationEnabled;
         bool mLandOptimizationWasExterior;
         bool mUnderwaterFogActive;
-        bool mUnderwaterFogCandidate;
-        float mUnderwaterFogCandidateTime;
-        float mUnderwaterFogBlend;
         bool mFieldOfViewOverridden;
         float mFieldOfViewOverride;
         float mFieldOfView;

@@ -20,8 +20,8 @@
             <Property key="Visible" value="false"/>
             <Property key="NeedMouse" value="false"/>
             <!-- Soft inner shade keeps compass marks readable without making the bar visually heavy. -->
-            <Widget type="Widget" skin="HUD_Box_Transparent" position="2 2 416 22" name="HorizontalCompassShade" align="Stretch">
-                <Property key="Alpha" value="0.55"/>
+            <Widget type="Widget" skin="HUD_Box" position="2 2 416 22" name="HorizontalCompassShade" align="Stretch">
+                <Property key="Alpha" value="0.72"/>
                 <Property key="NeedMouse" value="false"/>
             </Widget>
         </Widget>
@@ -202,13 +202,16 @@
   <!-- Mr.Zer0 OTF Team -->
 
 
-        <!-- Cell name display when cell changes -->
-        <Widget type="TextBox" skin="SandText" position="0 40 300 30" name="CellName" align="Center Top">
-            <Property key="Visible" value="false"/>
-            <Property key="TextAlign" value="Center"/>
-            <Property key="TextShadow" value="true"/>
-            <Property key="TextShadowColour" value="0 0 0"/>
+        <!-- Cell name display when cell changes. The parent clips long names while HUD.cpp scrolls the text. -->
+        <Widget type="Widget" skin="" position="0 40 300 30" name="CellNameClip" align="HCenter Top">
             <Property key="NeedMouse" value="false"/>
+            <Widget type="TextBox" skin="SandText" position="0 0 300 30" name="CellName" align="Left Top">
+                <Property key="Visible" value="false"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="TextShadow" value="true"/>
+                <Property key="TextShadowColour" value="0 0 0"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
         </Widget>
 
  

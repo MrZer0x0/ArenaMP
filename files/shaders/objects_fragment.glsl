@@ -298,7 +298,7 @@ void main()
     
     // Проверяем позицию КАМЕРЫ
     vec3 cameraPos = (osg_ViewMatrixInverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-    // CPU-side hysteresis/debounce supplies a stable camera underwater blend.
+    // CPU-side water-plane hysteresis supplies a stable immediate 0/1 underwater state.
     // Do not compare the camera against animated waves per fragment: that made
     // the tint alternate on/off near the surface.
     

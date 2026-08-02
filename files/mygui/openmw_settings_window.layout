@@ -196,17 +196,6 @@
                 <Property key="Caption" value="#{arenamp=hud.show_minimap}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="8 358 442 24">
-              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
-                <Property key="ExpandDirection" value="Right" />
-                <UserString key="SettingCategory" value="HUD" />
-                <UserString key="SettingName" value="show minimap compass" />
-                <UserString key="SettingType" value="CheckButton" />
-              </Widget>
-              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
-                <Property key="Caption" value="#{arenamp=hud.show_minimap_compass}" />
-              </Widget>
-            </Widget>
             <Widget type="HBox" skin="" position="8 386 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />

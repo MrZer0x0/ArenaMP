@@ -82,6 +82,7 @@ namespace MWGui
         MyGUI::Button* mMinimapButton;
         MyGUI::ScrollView* mMinimap;
         MyGUI::ImageBox* mCrosshair;
+        MyGUI::Widget* mCellNameClip;
         MyGUI::TextBox* mCellNameBox;
         MyGUI::TextBox* mWeaponSpellBox;
         MyGUI::TextBox* mGameTimeBox;
@@ -99,6 +100,10 @@ namespace MWGui
 
         std::string mCellName;
         float mCellNameTimer;
+        float mCellNameScrollOffset;
+        float mCellNameScrollPause;
+        int mCellNameScrollDirection;
+        bool mCellNameScrolling;
 
         std::string mWeaponName;
         std::string mSpellName;

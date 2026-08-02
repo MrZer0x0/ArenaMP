@@ -182,6 +182,7 @@ namespace MWGui
         , mEffectBox(nullptr)
         , mMinimap(nullptr)
         , mCrosshair(nullptr)
+        , mCellNameClip(nullptr)
         , mCellNameBox(nullptr)
         , mGameTimeBox(nullptr)
         , mHorizontalCompass(nullptr)
@@ -195,6 +196,10 @@ namespace MWGui
         , mEffectBoxBaseRight(0)
         , mDragAndDrop(dragAndDrop)
         , mCellNameTimer(0.0f)
+        , mCellNameScrollOffset(0.f)
+        , mCellNameScrollPause(0.f)
+        , mCellNameScrollDirection(-1)
+        , mCellNameScrolling(false)
         , mWeaponSpellTimer(0.f)
         , mGameTimeUpdateTimer(0.f)
         , mMapVisible(true)
@@ -279,6 +284,7 @@ namespace MWGui
         getWidget(mMinimapButton, "MiniMapButton");
         mMinimapButton->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onMapClicked);
 
+        getWidget(mCellNameClip, "CellNameClip");
         getWidget(mCellNameBox, "CellName");
         getWidget(mWeaponSpellBox, "WeaponSpellName");
         getWidget(mGameTimeBox, "GameTime");
@@ -525,6 +531,26 @@ namespace MWGui
             mCellName = cellName;
 
             mCellNameBox->setCaptionWithReplacing("#{sCell=" + mCellName + "}");
+
+            const int clipWidth = mCellNameClip ? mCellNameClip->getWidth() : mCellNameBox->getWidth();
+            const int clipHeight = mCellNameClip ? mCellNameClip->getHeight() : mCellNameBox->getHeight();
+            const int textWidth = mCellNameBox->getTextSize().width + 8;
+            mCellNameScrolling = textWidth > clipWidth;
+            mCellNameScrollOffset = 0.f;
+            mCellNameScrollPause = mCellNameScrolling ? 0.75f : 0.f;
+            mCellNameScrollDirection = -1;
+
+            if (mCellNameScrolling)
+            {
+                mCellNameBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                mCellNameBox->setCoord(0, 0, textWidth, clipHeight);
+            }
+            else
+            {
+                mCellNameBox->setTextAlign(MyGUI::Align::Center);
+                mCellNameBox->setCoord(0, 0, clipWidth, clipHeight);
+            }
+
             mCellNameBox->setVisible(mMapVisible && Settings::Manager::getBool("show cell name", "HUD"));
         }
     }
@@ -553,7 +579,7 @@ namespace MWGui
             updatePositions();
         }
         if (mCompass)
-            mCompass->setVisible(showMinimap && Settings::Manager::getBool("show minimap compass", "HUD"));
+            mCompass->setVisible(showMinimap);
         if (mGameTimeBox)
             mGameTimeBox->setVisible(Settings::Manager::getBool("show game time", "HUD"));
         if (mEffectBox)
@@ -592,6 +618,32 @@ namespace MWGui
         mWeaponSpellTimer -= dt;
         if (mCellNameTimer < 0 || !Settings::Manager::getBool("show cell name", "HUD"))
             mCellNameBox->setVisible(false);
+        else if (mCellNameBox->getVisible() && mCellNameScrolling && mCellNameClip)
+        {
+            if (mCellNameScrollPause > 0.f)
+                mCellNameScrollPause = std::max(0.f, mCellNameScrollPause - dt);
+            else
+            {
+                constexpr float cellNameScrollSpeed = 34.f;
+                mCellNameScrollOffset += mCellNameScrollDirection * cellNameScrollSpeed * std::max(0.f, dt);
+                const float minimumOffset = static_cast<float>(mCellNameClip->getWidth() - mCellNameBox->getWidth());
+
+                if (mCellNameScrollOffset <= minimumOffset)
+                {
+                    mCellNameScrollOffset = minimumOffset;
+                    mCellNameScrollDirection = 1;
+                    mCellNameScrollPause = 0.75f;
+                }
+                else if (mCellNameScrollOffset >= 0.f)
+                {
+                    mCellNameScrollOffset = 0.f;
+                    mCellNameScrollDirection = -1;
+                    mCellNameScrollPause = 0.75f;
+                }
+
+                mCellNameBox->setPosition(static_cast<int>(std::lround(mCellNameScrollOffset)), 0);
+            }
+        }
         if (mWeaponSpellTimer < 0)
             mWeaponSpellBox->setVisible(false);
 
