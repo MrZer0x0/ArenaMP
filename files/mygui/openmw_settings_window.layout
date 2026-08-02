@@ -1262,7 +1262,37 @@
                 <Property key="Caption" value="#{arenamp=settings.local_light_shadows_outdoors}" />
               </Widget>
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="8 586 442 72">
+            <Widget type="TextBox" skin="NormalText" position="8 586 442 18" name="LocalLightShadowStabilityLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_stability}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 608 442 16">
+              <Property key="Range" value="81" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local light shadow switch hysteresis" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.0" />
+              <UserString key="SettingMax" value="0.8" />
+              <UserString key="SettingLabelWidget" value="LocalLightShadowStabilityLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_stability}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 638 442 18" name="LocalLightShadowRetentionLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_retention}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 660 442 16">
+              <Property key="Range" value="51" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local light shadow retention multiplier" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="1.0" />
+              <UserString key="SettingMax" value="1.5" />
+              <UserString key="SettingLabelWidget" value="LocalLightShadowRetentionLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_retention}" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="8 696 442 90">
               <Property key="Caption" value="#{arenamp=settings.local_shadow_note}" />
               <Property key="MultiLine" value="true" />
               <Property key="TextAlign" value="Left Top" />

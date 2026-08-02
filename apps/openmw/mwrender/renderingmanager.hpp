@@ -328,6 +328,7 @@ namespace MWRender
         osg::ref_ptr<osg::Uniform> mHdrNightFactorUniform;
         osg::ref_ptr<osg::Uniform> mLocalShadowActiveUniform;
         osg::ref_ptr<osg::Uniform> mLocalShadowPositionUniform;
+        osg::ref_ptr<osg::Uniform> mLocalShadowStrengthUniform;
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;

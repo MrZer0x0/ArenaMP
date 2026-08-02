@@ -171,7 +171,10 @@ namespace SceneUtil
         /// Find the most useful nearby positive point light for the view-dependent
         /// local shadow proxy. The returned light keeps its world-space position.
         bool getNearestShadowLight(const osg::Vec3f& worldPosition, float maximumDistance,
-            float minimumRadius, size_t frameNum, osg::Light& result) const;
+            float minimumRadius, size_t frameNum, osg::Light& result,
+            const osg::Vec3f* preferredPosition = nullptr, float switchHysteresis = 0.35f,
+            float retentionMultiplier = 1.15f, float* selectedDistance = nullptr,
+            float* selectedRadius = nullptr) const;
 
         bool usingFFP() const;
 

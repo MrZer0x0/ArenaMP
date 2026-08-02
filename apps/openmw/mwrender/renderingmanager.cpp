@@ -697,8 +697,10 @@ namespace MWRender
         sceneRoot->addChild(mLocalShadowLightSource);
         mLocalShadowActiveUniform = new osg::Uniform("arenaLocalShadowActive", 0);
         mLocalShadowPositionUniform = new osg::Uniform("arenaLocalShadowPosition", osg::Vec3f());
+        mLocalShadowStrengthUniform = new osg::Uniform("arenaLocalShadowStrength", 0.f);
         sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowActiveUniform);
         sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowPositionUniform);
+        sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowStrengthUniform);
 
         int shadowCastingTraversalMask = Mask_Scene;
         if (Settings::Manager::getBool("actor shadows", "Shadows"))
@@ -1422,48 +1424,64 @@ namespace MWRender
             if (player.isInCell())
                 shadowAnchor = player.getRefData().getPosition().asVec3();
 
+            const float localShadowDistance = Settings::Manager::getFloat(
+                "local light shadow distance", "Shadows");
+            const float localShadowMinimumRadius = Settings::Manager::getFloat(
+                "local light shadow minimum radius", "Shadows");
+            const osg::Vec3f previousPosition(previousShadowPosition.x(),
+                previousShadowPosition.y(), previousShadowPosition.z());
+            const osg::Vec3f* preferredPosition = hadLocalShadow ? &previousPosition : nullptr;
+            float selectedDistance = 0.f;
+            float selectedRadius = 0.f;
             found = lightManager->getNearestShadowLight(shadowAnchor,
-                Settings::Manager::getFloat("local light shadow distance", "Shadows"),
-                Settings::Manager::getFloat("local light shadow minimum radius", "Shadows"),
-                frameNum, *mLocalShadowLight);
+                localShadowDistance, localShadowMinimumRadius, frameNum, *mLocalShadowLight,
+                preferredPosition,
+                Settings::Manager::getFloat("local light shadow switch hysteresis", "Shadows"),
+                Settings::Manager::getFloat("local light shadow retention multiplier", "Shadows"),
+                &selectedDistance, &selectedRadius);
             if (found)
             {
                 const osg::Vec4f selectedPosition4 = mLocalShadowLight->getPosition();
                 const osg::Vec3f selectedPosition(
                     selectedPosition4.x(), selectedPosition4.y(), selectedPosition4.z());
-                osg::Vec3f toPlayer = shadowAnchor - selectedPosition;
-                if (toPlayer.length2() < 1e-4f)
-                    toPlayer.set(1.f, 0.f, 0.f);
-                toPlayer.normalize();
-
-                // Quantize the hemisphere axis to a world cardinal direction and
-                // keep the previous axis until the new one is clearly better. This
-                // avoids rapid 90-degree flips near direction boundaries.
-                osg::Vec3f candidateDirection;
-                const osg::Vec3f absDirection(
-                    std::abs(toPlayer.x()), std::abs(toPlayer.y()), std::abs(toPlayer.z()));
-                if (absDirection.x() >= absDirection.y() && absDirection.x() >= absDirection.z())
-                    candidateDirection.set(toPlayer.x() >= 0.f ? 1.f : -1.f, 0.f, 0.f);
-                else if (absDirection.y() >= absDirection.z())
-                    candidateDirection.set(0.f, toPlayer.y() >= 0.f ? 1.f : -1.f, 0.f);
-                else
-                    candidateDirection.set(0.f, 0.f, toPlayer.z() >= 0.f ? 1.f : -1.f);
-
-                osg::Vec3f stableDirection = candidateDirection;
-                const osg::Vec3f previousPosition(
-                    previousShadowPosition.x(), previousShadowPosition.y(), previousShadowPosition.z());
+                // Keep the hemisphere axis fixed in world space. With two opposite
+                // hemispheres there is no reason to rotate it toward the player, and
+                // doing so makes the seam and the projection jump while moving around
+                // an otherwise stationary lamp.
+                osg::Vec3f stableDirection(1.f, 0.f, 0.f);
                 const bool sameLight = hadLocalShadow
-                    && (previousPosition - selectedPosition).length2() < 4.f;
+                    && (previousPosition - selectedPosition).length2() < 16.f;
                 if (sameLight && previousShadowDirection.length2() > 0.5f)
                 {
-                    osg::Vec3f normalizedPrevious = previousShadowDirection;
-                    normalizedPrevious.normalize();
-                    const float previousScore = toPlayer * normalizedPrevious;
-                    const float candidateScore = toPlayer * candidateDirection;
-                    if (candidateScore < previousScore + 0.15f)
-                        stableDirection = normalizedPrevious;
+                    stableDirection = previousShadowDirection;
+                    stableDirection.normalize();
                 }
                 mLocalShadowLight->setDirection(stableDirection);
+
+                // Automatic near/mid/far tiers share the existing maximum-distance
+                // slider. Near shadows are full strength, medium shadows are slightly
+                // softer, and far shadows fade to zero before the retained source is
+                // finally released. This removes distance-boundary popping.
+                const float effectiveDistance = std::min(localShadowDistance,
+                    std::max(localShadowMinimumRadius, selectedRadius) * 6.f);
+                const float nearEnd = effectiveDistance * 0.35f;
+                const float midEnd = effectiveDistance * 0.70f;
+                float shadowStrength = 1.f;
+                if (selectedDistance > nearEnd && selectedDistance <= midEnd)
+                {
+                    const float t = (selectedDistance - nearEnd)
+                        / std::max(1.f, midEnd - nearEnd);
+                    shadowStrength = 1.f - 0.15f * t;
+                }
+                else if (selectedDistance > midEnd)
+                {
+                    const float t = std::clamp((selectedDistance - midEnd)
+                        / std::max(1.f, effectiveDistance - midEnd), 0.f, 1.f);
+                    const float smooth = t * t * (3.f - 2.f * t);
+                    shadowStrength = 0.85f * (1.f - smooth);
+                }
+                if (mLocalShadowStrengthUniform)
+                    mLocalShadowStrengthUniform->set(std::clamp(shadowStrength, 0.f, 1.f));
 
                 // The proxy must not add a second copy of the light to the scene.
                 // Only its position and stable hemisphere axis are consumed by
@@ -1480,6 +1498,8 @@ namespace MWRender
         mLocalShadowLightSource->setNodeMask(found ? Mask_Lighting : 0u);
         if (mLocalShadowActiveUniform)
             mLocalShadowActiveUniform->set(found ? 1 : 0);
+        if (!found && mLocalShadowStrengthUniform)
+            mLocalShadowStrengthUniform->set(0.f);
         if (found && mLocalShadowPositionUniform)
         {
             const osg::Vec4f worldPosition = mLocalShadowLight->getPosition();

@@ -5,6 +5,7 @@
 
 uniform int arenaLocalShadowActive;
 uniform vec3 arenaLocalShadowPosition;
+uniform float arenaLocalShadowStrength;
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -30,7 +31,7 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
         tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
 #endif
         if (distance(lcalcPosition(lightIndex), arenaLocalShadowPosition) <= tolerance)
-            return shadowing;
+            return mix(1.0, shadowing, clamp(arenaLocalShadowStrength, 0.0, 1.0));
     }
 #endif
     return 1.0;
@@ -266,6 +267,7 @@ vec3 getSpecular(vec3 viewNormal, vec3 viewPos, float shininess, vec3 matSpec, f
 
 uniform int arenaLocalShadowActive;
 uniform vec3 arenaLocalShadowPosition;
+uniform float arenaLocalShadowStrength;
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -291,7 +293,7 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
         tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
 #endif
         if (distance(lcalcPosition(lightIndex), arenaLocalShadowPosition) <= tolerance)
-            return shadowing;
+            return mix(1.0, shadowing, clamp(arenaLocalShadowStrength, 0.0, 1.0));
     }
 #endif
     return 1.0;

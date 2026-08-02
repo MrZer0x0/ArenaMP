@@ -1170,7 +1170,7 @@ namespace MWGui
         Settings::Manager::setBool("object shadows", "Shadows", pos >= 3);
         Settings::Manager::setBool("terrain shadows", "Shadows", pos >= 4);
         Settings::Manager::setBool("enable indoor shadows", "Shadows", pos >= 5);
-        Settings::Manager::setBool("local light shadows", "Shadows", pos >= 4);
+        Settings::Manager::setBool("local light shadows", "Shadows", pos >= 1);
         if (pos < 5)
             Settings::Manager::setBool("local light shadows outdoors", "Shadows", false);
         apply();

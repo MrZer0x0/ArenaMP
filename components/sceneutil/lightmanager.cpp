@@ -1172,15 +1172,30 @@ namespace SceneUtil
     }
 
     bool LightManager::getNearestShadowLight(const osg::Vec3f& worldPosition, float maximumDistance,
-        float minimumRadius, size_t frameNum, osg::Light& result) const
+        float minimumRadius, size_t frameNum, osg::Light& result, const osg::Vec3f* preferredPosition,
+        float switchHysteresis, float retentionMultiplier, float* selectedDistance,
+        float* selectedRadius) const
     {
         maximumDistance = std::max(0.f, maximumDistance);
         minimumRadius = std::max(0.f, minimumRadius);
+        switchHysteresis = std::clamp(switchHysteresis, 0.f, 0.9f);
+        retentionMultiplier = std::clamp(retentionMultiplier, 1.f, 2.f);
         if (maximumDistance <= 0.f)
             return false;
 
         const LightSourceTransform* best = nullptr;
+        const osg::Light* bestLight = nullptr;
+        osg::Vec3f bestPosition;
         float bestScore = std::numeric_limits<float>::max();
+        float bestDistance = 0.f;
+        float bestRadius = 0.f;
+
+        const LightSourceTransform* preferred = nullptr;
+        const osg::Light* preferredLight = nullptr;
+        osg::Vec3f preferredWorldPosition;
+        float preferredScore = std::numeric_limits<float>::max();
+        float preferredDistance = 0.f;
+        float preferredRadius = 0.f;
 
         for (const LightSourceTransform& candidate : mLights)
         {
@@ -1198,33 +1213,69 @@ namespace SceneUtil
 
             const osg::Vec3f position = candidate.mWorldMatrix.getTrans();
             const float distance = (position - worldPosition).length();
-            const float effectiveDistance = std::min(maximumDistance,
-                std::max(minimumRadius, candidate.mLightSource->getRadius()) * 2.5f);
-            if (distance > effectiveDistance)
+            const float radius = std::max(minimumRadius, candidate.mLightSource->getRadius());
+
+            // Large, bright lights remain useful farther away than small candles.
+            // The single user-facing maximum distance is split automatically into
+            // near, medium and far tiers through this radius-scaled influence range.
+            const float effectiveDistance = std::min(maximumDistance, radius * 6.f);
+            const bool isPreferred = preferredPosition
+                && (position - *preferredPosition).length2() <= 16.f;
+            const float allowedDistance = effectiveDistance * (isPreferred ? retentionMultiplier : 1.f);
+            if (distance > allowedDistance)
                 continue;
 
-            // Prefer bright, large lights while keeping selection stable around the camera.
             const float score = distance / std::max(1.f,
-                candidate.mLightSource->getRadius() * std::sqrt(std::max(luminance, 0.01f)));
+                radius * std::sqrt(std::max(luminance, 0.01f)));
+
             if (score < bestScore)
             {
                 bestScore = score;
                 best = &candidate;
+                bestLight = light;
+                bestPosition = position;
+                bestDistance = distance;
+                bestRadius = radius;
+            }
+
+            if (isPreferred)
+            {
+                preferred = &candidate;
+                preferredLight = light;
+                preferredWorldPosition = position;
+                preferredScore = score;
+                preferredDistance = distance;
+                preferredRadius = radius;
             }
         }
 
-        if (!best)
+        // Keep the current source unless a different light is clearly better.
+        // This prevents lamps with nearly equal scores from alternating every frame
+        // while the player or camera moves by a few pixels.
+        if (preferred && best != preferred
+            && bestScore >= preferredScore * (1.f - switchHysteresis))
+        {
+            best = preferred;
+            bestLight = preferredLight;
+            bestPosition = preferredWorldPosition;
+            bestDistance = preferredDistance;
+            bestRadius = preferredRadius;
+        }
+
+        if (!best || !bestLight)
             return false;
 
-        const osg::Light* source = best->mLightSource->getLight(frameNum);
-        const osg::Vec3f position = best->mWorldMatrix.getTrans();
-        result.setPosition(osg::Vec4f(position, 1.f));
-        result.setAmbient(source->getAmbient());
-        result.setDiffuse(source->getDiffuse());
-        result.setSpecular(source->getSpecular());
-        result.setConstantAttenuation(source->getConstantAttenuation());
-        result.setLinearAttenuation(source->getLinearAttenuation());
-        result.setQuadraticAttenuation(source->getQuadraticAttenuation());
+        result.setPosition(osg::Vec4f(bestPosition, 1.f));
+        result.setAmbient(bestLight->getAmbient());
+        result.setDiffuse(bestLight->getDiffuse());
+        result.setSpecular(bestLight->getSpecular());
+        result.setConstantAttenuation(bestLight->getConstantAttenuation());
+        result.setLinearAttenuation(bestLight->getLinearAttenuation());
+        result.setQuadraticAttenuation(bestLight->getQuadraticAttenuation());
+        if (selectedDistance)
+            *selectedDistance = bestDistance;
+        if (selectedRadius)
+            *selectedRadius = bestRadius;
         return true;
     }
 
