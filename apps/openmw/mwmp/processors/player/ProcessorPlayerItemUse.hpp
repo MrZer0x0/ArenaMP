@@ -1,6 +1,8 @@
 #ifndef OPENMW_PROCESSORPLAYERITEMUSE_HPP
 #define OPENMW_PROCESSORPLAYERITEMUSE_HPP
 
+#include <components/esm/loadbook.hpp>
+
 #include "apps/openmw/mwbase/environment.hpp"
 #include "apps/openmw/mwgui/inventorywindow.hpp"
 #include "apps/openmw/mwgui/windowmanagerimp.hpp"
@@ -39,7 +41,21 @@ namespace mwmp
 
                 if (itemPtr)
                 {
-                    MWBase::Environment::get().getWindowManager()->getInventoryWindow()->useItem(itemPtr);
+                    // A magic scroll is selected for casting, not used as a
+                    // regular book. Calling useItem() here would execute
+                    // ActionRead and open GM_Scroll before the enchantment is
+                    // selected.
+                    bool isEnchantedScroll = false;
+                    if (player->usingItemMagic
+                        && itemPtr.getTypeName() == typeid(ESM::Book).name())
+                    {
+                        const MWWorld::LiveCellRef<ESM::Book>* book = itemPtr.get<ESM::Book>();
+                        isEnchantedScroll = book->mBase->mData.mIsScroll
+                            && !book->mBase->mEnchant.empty();
+                    }
+
+                    if (!isEnchantedScroll)
+                        MWBase::Environment::get().getWindowManager()->getInventoryWindow()->useItem(itemPtr);
 
                     if (player->usingItemMagic)
                     {
@@ -50,7 +66,14 @@ namespace mwmp
                                 break;
                         }
 
-                        inventoryStore.setSelectedEnchantItem(storeIterator);
+                        if (storeIterator != inventoryStore.end())
+                        {
+                            inventoryStore.setSelectedEnchantItem(storeIterator);
+                            // Update the HUD and clear a previously selected
+                            // regular spell immediately, in the same frame.
+                            MWBase::Environment::get().getWindowManager()
+                                ->setSelectedEnchantItem(*storeIterator);
+                        }
                     }
 
                     if (player->itemUseDrawState != MWMechanics::DrawState_Nothing)
