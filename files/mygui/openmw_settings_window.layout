@@ -435,7 +435,7 @@
             </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="0 28 462 16" name="OptimizedRenderingDistanceSlider">
               <Property key="Range" value="36001" />
-              <Property key="Page" value="500" />
+              <Property key="Page" value="100" />
               <UserString key="SettingType" value="Slider" />
               <UserString key="SettingCategory" value="Camera" />
               <UserString key="SettingName" value="viewing distance" />

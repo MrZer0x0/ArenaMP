@@ -95,6 +95,10 @@ namespace
     constexpr float sLandOptimizationMinimumStep = 256.f;
     constexpr float sLandOptimizationMaximumStep = 2048.f;
     constexpr float sLandOptimizationRecoveryStep = 512.f;
+    // The optimizer still reacts at the same rate, but its target distance is approached
+    // continuously instead of being applied as a visible 256-2048 unit jump every 0.5 s.
+    constexpr float sLandOptimizationDistanceResponse = 4.f;
+    constexpr float sLandOptimizationSmoothingMaxFrameTime = 0.1f;
     constexpr float sLandOptimizationMinimumScale = 0.5f;
     constexpr float sLandOptimizationShadowDistanceRatio = 0.25f;
     constexpr float sLandOptimizationGroundcoverDistanceRatio = 0.40f;
@@ -1657,6 +1661,10 @@ namespace MWRender
             return;
 
         mViewDistance = distance;
+        // Keep the current weather/cell fog envelope attached to the moving far plane.
+        // Without this, adaptive distance changes can expose a hard terrain cut before fog.
+        if (mFog)
+            mFog->setViewDistance(mViewDistance);
         updateProjectionMatrix();
     }
 
@@ -1734,11 +1742,27 @@ namespace MWRender
         mLandOptimizationDistance = std::clamp(mLandOptimizationDistance, minDistance, mConfiguredViewDistance);
 
         if (!mLandOptimizationWasExterior)
-        {
             mLandOptimizationWasExterior = true;
-            applyViewDistance(mLandOptimizationDistance);
+
+        if (frameDuration <= 0.f || !std::isfinite(frameDuration))
+            return;
+
+        // Smoothly move the actual camera/terrain distance toward the optimizer target.
+        // Exponential response is frame-rate independent and naturally makes large corrections
+        // fast while easing the last part, eliminating the visible concentric "steps".
+        const float distanceDelta = mLandOptimizationDistance - mViewDistance;
+        if (std::abs(distanceDelta) >= 0.5f)
+        {
+            const float smoothingDt = std::min(frameDuration, sLandOptimizationSmoothingMaxFrameTime);
+            const float blend = 1.f - std::exp(-sLandOptimizationDistanceResponse * smoothingDt);
+            float smoothedDistance = mViewDistance + distanceDelta * blend;
+            if (std::abs(mLandOptimizationDistance - smoothedDistance) < 0.5f)
+                smoothedDistance = mLandOptimizationDistance;
+            applyViewDistance(smoothedDistance);
         }
 
+        // Continue smoothing while a GUI is open, but do not use menu/loading frame times
+        // for adaptive FPS decisions.
         if (paused || MWBase::Environment::get().getWindowManager()->isGuiMode())
         {
             mLandOptimizationTimer = 0.f;
@@ -1746,9 +1770,6 @@ namespace MWRender
             mLandOptimizationFrameCount = 0;
             return;
         }
-
-        if (frameDuration <= 0.f || !std::isfinite(frameDuration))
-            return;
 
         mLandOptimizationTimer += frameDuration;
         mLandOptimizationFrameTime += frameDuration;
@@ -1788,8 +1809,8 @@ namespace MWRender
         if (std::abs(newDistance - mLandOptimizationDistance) < 0.5f)
             return;
 
+        // Store a target only. The actual view distance is eased toward it every frame above.
         mLandOptimizationDistance = newDistance;
-        applyViewDistance(mLandOptimizationDistance);
     }
 
     void RenderingManager::updateTextureFiltering()

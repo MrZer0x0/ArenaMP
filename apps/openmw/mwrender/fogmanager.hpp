@@ -17,6 +17,7 @@ namespace MWRender
 
         void configure(float viewDistance, const ESM::Cell *cell);
         void configure(float viewDistance, float fogDepth, float underwaterFog, float dlFactor, float dlOffset, const osg::Vec4f &color);
+        void setViewDistance(float viewDistance);
 
         osg::Vec4f getFogColor(bool isUnderwater) const;
         float getFogStart(bool isUnderwater) const;

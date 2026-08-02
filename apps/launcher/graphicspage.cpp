@@ -865,7 +865,9 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     // resolution, fullscreen mode and GUI scaling were reset after Play.
 
     static const int viewDistance[] = { 5000, 6000, 8192, 10000, 12288, 16384 };
-    static const int cullingPixels[] = { 20, 17, 14, 12, 10, 8 };
+    // Conservative cutoffs reduce visible popping of thin geometry and distant details.
+    // Lower values cull fewer small projected features.
+    static const int cullingPixels[] = { 12, 11, 10, 8, 7, 6 };
     static const int cellCache[] = { 24, 32, 48, 64, 96, 128 };
     static const int targetFps[] = { 20, 25, 30, 45, 60, 75 };
     // Distant land is always enabled. Minimum is the safe baseline requested
@@ -891,8 +893,19 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const float grassDensity[] = { 0.30f, 0.45f, 0.65f, 0.80f, 0.90f, 1.00f };
     static const float grassDistance[] = { 4096.f, 6144.f, 8192.f, 10240.f, 12288.f, 16384.f };
     static const int physicsThreads[] = { 0, 0, 1, 1, 2, 2 };
-    static const int occlusionWidth[] = { 256, 256, 384, 512, 640, 768 };
-    static const int occlusionHeight[] = { 128, 128, 192, 256, 320, 384 };
+    // Occlusion presets are intentionally conservative. A slightly denser depth buffer
+    // avoids coarse false-positive occlusion on the minimum and low profiles, while the
+    // remaining limits control CPU cost by reducing the number and reach of occluders.
+    static const int occlusionWidth[] = { 384, 384, 512, 512, 640, 768 };
+    static const int occlusionHeight[] = { 192, 192, 256, 256, 320, 384 };
+    static const int occlusionTerrainRadius[] = { 4, 4, 6, 8, 10, 12 };
+    static const float occlusionMinRadius[] = { 650.f, 600.f, 550.f, 500.f, 450.f, 400.f };
+    static const float occlusionMaxRadius[] = { 3200.f, 3600.f, 4000.f, 4400.f, 4800.f, 5000.f };
+    static const float occlusionShrinkFactor[] = { 0.70f, 0.72f, 0.74f, 0.76f, 0.78f, 0.80f };
+    static const int occlusionMeshResolution[] = { 8, 8, 10, 10, 12, 12 };
+    static const int occlusionMaxMeshResolution[] = { 24, 24, 28, 28, 32, 36 };
+    static const float occlusionInsideThreshold[] = { 0.96f, 0.95f, 0.94f, 0.93f, 0.92f, 0.91f };
+    static const float occlusionMaxDistance[] = { 3072.f, 3584.f, 4096.f, 5120.f, 6144.f, 7168.f };
 
     int effectiveAa = antialiasing[level];
     int effectiveShadowResolution = shadowResolution[level];
@@ -922,9 +935,15 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setBool("occlusion culling", "Camera", true);
     Settings::Manager::setInt("occlusion buffer width", "Camera", occlusionWidth[level]);
     Settings::Manager::setInt("occlusion buffer height", "Camera", occlusionHeight[level]);
-    Settings::Manager::setInt("occlusion terrain radius", "Camera", level <= 1 ? 6 : (level <= 3 ? 10 : 14));
-    Settings::Manager::setInt("occlusion occluder max distance", "Camera",
-        std::min(viewDistance[level], level <= 2 ? 5120 : 10240));
+    Settings::Manager::setInt("occlusion terrain radius", "Camera", occlusionTerrainRadius[level]);
+    Settings::Manager::setFloat("occlusion occluder min radius", "Camera", occlusionMinRadius[level]);
+    Settings::Manager::setFloat("occlusion occluder max radius", "Camera", occlusionMaxRadius[level]);
+    Settings::Manager::setFloat("occlusion occluder shrink factor", "Camera", occlusionShrinkFactor[level]);
+    Settings::Manager::setInt("occlusion occluder mesh resolution", "Camera", occlusionMeshResolution[level]);
+    Settings::Manager::setInt("occlusion occluder max mesh resolution", "Camera", occlusionMaxMeshResolution[level]);
+    Settings::Manager::setFloat("occlusion occluder inside threshold", "Camera", occlusionInsideThreshold[level]);
+    Settings::Manager::setFloat("occlusion occluder max distance", "Camera",
+        std::min(static_cast<float>(viewDistance[level]), occlusionMaxDistance[level]));
 
     // Preloading must remain enabled for every graphics quality preset.
     // Quality levels may tune thread and cache limits, but must not disable

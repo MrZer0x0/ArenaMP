@@ -46,6 +46,30 @@ namespace MWRender
         mFogColor = color;
     }
 
+    void FogManager::setViewDistance(float viewDistance)
+    {
+        viewDistance = std::max(1.f, viewDistance);
+        const float noFog = std::numeric_limits<float>::max();
+
+        // Preserve the currently configured fog density while moving its start/end
+        // together with the adaptive view distance. The max-float sentinel means
+        // that this cell/weather intentionally has no distance fog.
+        if (mLandFogEnd != noFog && mLandFogEnd > 0.f)
+        {
+            const float fogDepth = std::clamp(1.f - mLandFogStart / mLandFogEnd, 0.f, 1.f);
+            mLandFogEnd = viewDistance;
+            mLandFogStart = mLandFogEnd * (1.f - fogDepth);
+        }
+
+        if (mUnderwaterFogEnd != noFog && mUnderwaterFogEnd > 0.f)
+        {
+            const float underwaterFog = std::clamp(
+                1.f - mUnderwaterFogStart / mUnderwaterFogEnd, 0.f, 1.f);
+            mUnderwaterFogEnd = std::min(viewDistance, 7168.f);
+            mUnderwaterFogStart = mUnderwaterFogEnd * (1.f - underwaterFog);
+        }
+    }
+
     float FogManager::getFogStart(bool isUnderwater) const
     {
         return isUnderwater ? mUnderwaterFogStart : mLandFogStart;
