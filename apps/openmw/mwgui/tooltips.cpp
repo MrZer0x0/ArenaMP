@@ -308,8 +308,12 @@ namespace MWGui
             {
                 if (Settings::Manager::getBool("target info panel", "GUI")
                     && mFocusObject.getClass().isActor()
-                    && mFocusObject != MWMechanics::getPlayer())
+                    && mFocusObject != MWMechanics::getPlayer()
+                    && !mFocusObject.getClass().getCreatureStats(mFocusObject).isDead())
                 {
+                    // Living actors use the compact name/level/health panel.
+                    // Corpses keep the classic world tooltip so the player can
+                    // still identify them while aiming or preparing to loot.
                     mDynamicToolTipBox->setVisible(false);
                     return;
                 }

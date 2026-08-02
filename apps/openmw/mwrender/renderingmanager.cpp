@@ -1906,7 +1906,8 @@ namespace MWRender
                 || setting.second == "dynamic camera jump pitch"
                 || setting.second == "dynamic camera landing pitch"
                 || setting.second == "dynamic camera smoothing"
-                || setting.second == "head bobbing"))
+                || setting.second == "head bobbing"
+                || setting.second == "immersive first person"))
             {
                 mCamera->reloadSettings();
             }

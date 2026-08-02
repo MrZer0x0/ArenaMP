@@ -99,6 +99,7 @@ namespace MWRender
       mDynamicCameraDistanceEnabled(false),
       mShowCrosshairInThirdPersonMode(false),
       mHeadBobbingEnabled(Settings::Manager::getBool("head bobbing", "Camera")),
+      mImmersiveFirstPersonEnabled(Settings::Manager::getBool("immersive first person", "Camera")),
       mHeadBobbingOffset(0.f),
       mHeadBobbingRoll(0.f),
       mHeadBobbingWeight(0.f),
@@ -458,6 +459,11 @@ namespace MWRender
 
     void Camera::reloadSettings()
     {
+        const bool immersiveFirstPersonEnabled
+            = Settings::Manager::getBool("immersive first person", "Camera");
+        const bool immersiveFirstPersonChanged
+            = immersiveFirstPersonEnabled != mImmersiveFirstPersonEnabled;
+        mImmersiveFirstPersonEnabled = immersiveFirstPersonEnabled;
         mHeadBobbingEnabled = Settings::Manager::getBool("head bobbing", "Camera");
         mDynamicCameraEnabled = Settings::Manager::getBool("dynamic camera", "Camera");
         mDynamicCameraStrafeRollStrength = Settings::Manager::getFloat("dynamic camera strafe roll", "Camera");
@@ -468,6 +474,11 @@ namespace MWRender
 
         if (!mDynamicCameraEnabled)
             resetDynamicCameraState();
+
+        // Rebuild only the local player's render skeleton. The logical camera
+        // mode and all multiplayer state remain unchanged.
+        if (immersiveFirstPersonChanged && mAnimation && isFirstPerson())
+            processViewChange();
     }
 
     void Camera::updateDynamicCamera(float duration)
@@ -982,7 +993,8 @@ namespace MWRender
     {
         if(isFirstPerson())
         {
-            mAnimation->setViewMode(NpcAnimation::VM_FirstPerson);
+            mAnimation->setViewMode(mImmersiveFirstPersonEnabled
+                ? NpcAnimation::VM_ImmersiveFirstPerson : NpcAnimation::VM_FirstPerson);
             mTrackingNode = mAnimation->getNode("Camera");
             if (!mTrackingNode)
                 mTrackingNode = mAnimation->getNode("Head");

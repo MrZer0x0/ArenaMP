@@ -6,6 +6,7 @@
 #include <MyGUI_InputManager.h>
 #include <MyGUI_ImageBox.h>
 #include <MyGUI_ScrollView.h>
+#include <MyGUI_TextBox.h>
 
 #include <algorithm>
 #include <cmath>
@@ -154,6 +155,8 @@ namespace MWGui
         , mCrosshair(nullptr)
         , mCellNameBox(nullptr)
         , mGameTimeBox(nullptr)
+        , mHorizontalCompass(nullptr)
+        , mHorizontalCompassCenter(nullptr)
         , mDrowningFrame(nullptr)
         , mDrowningFlash(nullptr)
         , mHealthManaStaminaBaseLeft(0)
@@ -169,6 +172,8 @@ namespace MWGui
         , mWeaponVisible(true)
         , mSpellVisible(true)
         , mWorldMouseOver(false)
+        , mHorizontalCompassAngle(0.f)
+        , mHorizontalCompassDirty(true)
         , mEnemyActorId(-1)
         , mEnemyHealthTimer(-1)
         , mFocusActorScreenX(0.5f)
@@ -239,6 +244,26 @@ namespace MWGui
         getWidget(mCellNameBox, "CellName");
         getWidget(mWeaponSpellBox, "WeaponSpellName");
         getWidget(mGameTimeBox, "GameTime");
+
+        getWidget(mHorizontalCompass, "HorizontalCompass");
+        constexpr int horizontalCompassTickCount = 11;
+        for (int i = 0; i < horizontalCompassTickCount; ++i)
+        {
+            MyGUI::TextBox* tick = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
+                MyGUI::IntCoord(0, 4, 48, 22), MyGUI::Align::Default);
+            tick->setTextAlign(MyGUI::Align::Center);
+            tick->setTextShadow(true);
+            tick->setTextShadowColour(MyGUI::Colour::Black);
+            tick->setNeedMouseFocus(false);
+            mHorizontalCompassTicks.push_back(tick);
+        }
+        mHorizontalCompassCenter = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
+            MyGUI::IntCoord(mHorizontalCompass->getWidth() / 2 - 12, 18, 24, 14), MyGUI::Align::Default);
+        mHorizontalCompassCenter->setCaption("^");
+        mHorizontalCompassCenter->setTextAlign(MyGUI::Align::Center);
+        mHorizontalCompassCenter->setTextShadow(true);
+        mHorizontalCompassCenter->setTextShadowColour(MyGUI::Colour::Black);
+        mHorizontalCompassCenter->setNeedMouseFocus(false);
 
         getWidget(mCrosshair, "Crosshair");
 
@@ -470,6 +495,8 @@ namespace MWGui
     {
         LocalMapBase::onFrame(dt);
 
+        updateHorizontalCompass();
+
 
         if (mGameTimeBox)
         {
@@ -573,6 +600,63 @@ namespace MWGui
             drawState == MWMechanics::DrawState_Spell, mSpellBox);
         updateAutoHideBar(mFatigueFrame, mStaminaBarState, dt,
             drawState == MWMechanics::DrawState_Weapon, mWeapBox);
+    }
+
+    void HUD::setPlayerDir(float x, float y)
+    {
+        LocalMapBase::setPlayerDir(x, y);
+        const float angle = std::atan2(x, y);
+        if (angle != mHorizontalCompassAngle)
+        {
+            mHorizontalCompassAngle = angle;
+            mHorizontalCompassDirty = true;
+        }
+    }
+
+    void HUD::updateHorizontalCompass()
+    {
+        if (!mHorizontalCompass)
+            return;
+
+        const bool enabled = Settings::Manager::getBool("horizontal compass", "HUD");
+        if (mHorizontalCompass->getVisible() != enabled)
+            mHorizontalCompass->setVisible(enabled);
+        if (!enabled || !mHorizontalCompassDirty)
+            return;
+
+        static const char* directions[] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+        constexpr float stepDegrees = 15.f;
+        constexpr float pixelsPerDegree = 4.f;
+        constexpr int labelWidth = 48;
+
+        float heading = osg::RadiansToDegrees(mHorizontalCompassAngle);
+        while (heading < 0.f)
+            heading += 360.f;
+        while (heading >= 360.f)
+            heading -= 360.f;
+
+        const int nearestStep = static_cast<int>(std::floor(heading / stepDegrees + 0.5f));
+        const int halfCount = static_cast<int>(mHorizontalCompassTicks.size()) / 2;
+        for (size_t i = 0; i < mHorizontalCompassTicks.size(); ++i)
+        {
+            const int markerStep = nearestStep + static_cast<int>(i) - halfCount;
+            const float markerDegrees = markerStep * stepDegrees;
+            const float delta = markerDegrees - heading;
+            const int left = static_cast<int>(std::lround(
+                mHorizontalCompass->getWidth() * 0.5f + delta * pixelsPerDegree - labelWidth * 0.5f));
+            MyGUI::TextBox* tick = mHorizontalCompassTicks[i];
+            tick->setPosition(left, 4);
+
+            int wrappedStep = markerStep % 24;
+            if (wrappedStep < 0)
+                wrappedStep += 24;
+            if (wrappedStep % 3 == 0)
+                tick->setCaption(directions[(wrappedStep / 3) % 8]);
+            else
+                tick->setCaption("|");
+        }
+
+        mHorizontalCompassDirty = false;
     }
 
 

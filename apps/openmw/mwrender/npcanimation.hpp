@@ -39,6 +39,10 @@ public:
     enum ViewMode {
         VM_Normal,
         VM_FirstPerson,
+        // Full third-person skeleton rendered through the first-person pass.
+        // Used by the native immersive first-person mode so the player can see
+        // their body without placing head geometry around the camera.
+        VM_ImmersiveFirstPerson,
         VM_HeadOnly
     };
 

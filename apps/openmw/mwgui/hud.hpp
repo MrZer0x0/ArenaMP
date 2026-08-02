@@ -4,6 +4,8 @@
 #include "mapwindow.hpp"
 #include "statswatcher.hpp"
 
+#include <vector>
+
 namespace MWWorld
 {
     class Ptr;
@@ -52,6 +54,9 @@ namespace MWGui
 
         void setCellName(const std::string& cellName);
 
+        /// Update both the rotating minimap marker and the native horizontal compass.
+        void setPlayerDir(float x, float y);
+
         bool getWorldMouseOver() { return mWorldMouseOver; }
 
         MyGUI::Widget* getEffectBox() { return mEffectBox; }
@@ -79,6 +84,9 @@ namespace MWGui
         MyGUI::TextBox* mCellNameBox;
         MyGUI::TextBox* mWeaponSpellBox;
         MyGUI::TextBox* mGameTimeBox;
+        MyGUI::Widget* mHorizontalCompass;
+        MyGUI::TextBox* mHorizontalCompassCenter;
+        std::vector<MyGUI::TextBox*> mHorizontalCompassTicks;
         MyGUI::Widget *mDrowningFrame, *mDrowningFlash;
 
         // bottom left elements
@@ -101,6 +109,8 @@ namespace MWGui
         bool mSpellVisible;
 
         bool mWorldMouseOver;
+        float mHorizontalCompassAngle;
+        bool mHorizontalCompassDirty;
 
         SpellIcons* mSpellIcons;
 
@@ -153,6 +163,7 @@ namespace MWGui
         bool isFocusedTargetTooClose() const;
 
         void updatePositions();
+        void updateHorizontalCompass();
     };
 }
 

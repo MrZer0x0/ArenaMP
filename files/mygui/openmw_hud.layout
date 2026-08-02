@@ -12,6 +12,12 @@
             <Property key="Caption" value="0"/>
         </Widget>
 
+        <!-- Engine-native horizontal compass; tick labels are populated by HUD.cpp. -->
+        <Widget type="Widget" skin="MW_Box" position="0 8 420 34" name="HorizontalCompass" align="HCenter Top">
+            <Property key="Visible" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+        </Widget>
+
         <!-- Energy bars -->
         
         <!-- Compact target panel above the player's health bar -->

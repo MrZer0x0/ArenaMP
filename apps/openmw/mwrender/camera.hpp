@@ -88,6 +88,7 @@ namespace MWRender
         bool mShowCrosshairInThirdPersonMode;
 
         bool mHeadBobbingEnabled;
+        bool mImmersiveFirstPersonEnabled;
         float mHeadBobbingOffset;
         float mHeadBobbingRoll;
         float mHeadBobbingWeight; // Value from 0 to 1 for smooth enabling/disabling.

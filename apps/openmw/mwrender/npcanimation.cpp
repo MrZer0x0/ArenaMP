@@ -427,7 +427,7 @@ private:
 
 void NpcAnimation::setRenderBin()
 {
-    if (mViewMode == VM_FirstPerson)
+    if (mViewMode == VM_FirstPerson || mViewMode == VM_ImmersiveFirstPerson)
     {
         static bool prototypeAdded = false;
         if (!prototypeAdded)
@@ -508,6 +508,9 @@ void NpcAnimation::updateNpcBase()
     if (!isWerewolf && isVampire && !vampireHead.empty())
         mHeadModel = vampireHead;
 
+    // Immersive first person deliberately uses the complete third-person
+    // skeleton and animation sources. It is still rendered in the dedicated
+    // first-person pass below so nearby world geometry cannot erase the body.
     bool is1stPerson = mViewMode == VM_FirstPerson;
     bool isBeast = (race->mData.mFlags & ESM::Race::Beast) != 0;
 
@@ -544,6 +547,12 @@ void NpcAnimation::updateNpcBase()
 
         addAnimSource(smodel, smodel);
 
+        mObjectRoot->setNodeMask(Mask_FirstPerson);
+        mObjectRoot->addCullCallback(new OverrideFieldOfViewCallback(mFirstPersonFieldOfView));
+    }
+
+    if (mViewMode == VM_ImmersiveFirstPerson)
+    {
         mObjectRoot->setNodeMask(Mask_FirstPerson);
         mObjectRoot->addCullCallback(new OverrideFieldOfViewCallback(mFirstPersonFieldOfView));
     }
@@ -664,7 +673,7 @@ void NpcAnimation::updateParts()
         }
     }
 
-    if(mViewMode != VM_FirstPerson)
+    if(mViewMode == VM_Normal || mViewMode == VM_HeadOnly)
     {
         if(mPartPriorities[ESM::PRT_Head] < 1 && !mHeadModel.empty())
             addOrReplaceIndividualPart(ESM::PRT_Head, -1,1, mHeadModel);
@@ -673,6 +682,15 @@ void NpcAnimation::updateParts()
     }
     if(mViewMode == VM_HeadOnly)
         return;
+
+    // Never render geometry attached to the head in immersive first person.
+    // This also covers helmets that replace the base head or hair parts and
+    // avoids the invisible-helmet record used by the Lua implementation.
+    if (mViewMode == VM_ImmersiveFirstPerson)
+    {
+        removeIndividualPart(ESM::PRT_Head);
+        removeIndividualPart(ESM::PRT_Hair);
+    }
 
     if(mPartPriorities[ESM::PRT_Shield] < 1)
     {
@@ -959,7 +977,7 @@ void NpcAnimation::addControllers()
             mActiveControllers.emplace_back(node, mFirstPersonNeckController);
         }
     }
-    else if (mViewMode == VM_Normal)
+    else if (mViewMode == VM_Normal || mViewMode == VM_ImmersiveFirstPerson)
     {
         WeaponAnimation::addControllers(mNodeMap, mActiveControllers, mObjectRoot.get());
     }

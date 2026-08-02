@@ -14,7 +14,7 @@
           <Property key="Caption" value="#{arenamp=settings.section.interface}" />
           <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="InterfaceScroll">
             <Property key="CanvasAlign" value="Left Top" />
-            <Property key="CanvasSize" value="458 430" />
+            <Property key="CanvasSize" value="458 478" />
             <Widget type="ImageBox" skin="MW_HLine" position="8 28 442 2" />
             <Widget type="HBox" skin="" position="8 8 200 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 24 24">
@@ -60,7 +60,7 @@
                 <Property key="TextAlign" value="Left Top" />
               </Widget>
             </Widget>
-			 <Widget type="ImageBox" skin="MW_HLine" position="8 420 442 2" />
+             <Widget type="ImageBox" skin="MW_HLine" position="8 468 442 2" />
             <Widget type="HBox" skin="" position="200 8 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
@@ -135,6 +135,28 @@
               </Widget>
               <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
                 <Property key="Caption" value="#{arenamp=settings.dynamic_camera}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 402 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="Camera" />
+                <UserString key="SettingName" value="immersive first person" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+                <Property key="Caption" value="#{arenamp=settings.immersive_fpv}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 430 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="horizontal compass" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+                <Property key="Caption" value="#{arenamp=settings.horizontal_compass}" />
               </Widget>
             </Widget>
           </Widget>
