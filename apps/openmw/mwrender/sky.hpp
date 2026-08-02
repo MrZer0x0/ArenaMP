@@ -160,11 +160,6 @@ namespace MWRender
 
         float getPrecipitationAlpha() const;
 
-        /// Set the fraction of open sky around the camera used by rain and snow.
-        /// 0 means fully covered by geometry, 1 means fully exposed.
-        void setWeatherParticleExposure(float exposure);
-        float getWeatherParticleExposure() const;
-
         void setRainSpeed(float speed);
 
         void setStormDirection(const osg::Vec3f& direction);
@@ -277,7 +272,6 @@ namespace MWRender
         bool mSunEnabled;
 
         float mPrecipitationAlpha;
-        float mWeatherParticleExposure;
 
         osg::Vec4f mMoonScriptColor;
     };

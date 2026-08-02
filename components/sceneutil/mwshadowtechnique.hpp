@@ -83,11 +83,6 @@ namespace SceneUtil {
 
         virtual void setMaximumShadowMapDistance(float maximumShadowMapDistance);
 
-        /// Select a stable range of ArenaMP proxy lights (light numbers 1..count)
-        /// for the local-light shadow atlas. A count of zero returns to the normal
-        /// single light selected by osgShadow::ShadowSettings.
-        virtual void setActiveLocalLightCount(unsigned int count);
-
         virtual void enableFrontFaceCulling();
 
         virtual void disableFrontFaceCulling();
@@ -272,11 +267,6 @@ namespace SceneUtil {
         bool                                    _useFrontFaceCulling = true;
 
         float                                   _shadowFadeStart = 0.0;
-
-        unsigned int                            _activeLocalLightCount = 0;
-        std::array<osg::Vec3d, 4>               _localAtlasCachedPositions{};
-        std::array<unsigned int, 4>              _localAtlasLastUpdateFrame{};
-        std::array<bool, 4>                      _localAtlasPageValid{{false, false, false, false}};
 
         class DebugHUD final : public osg::Referenced
         {

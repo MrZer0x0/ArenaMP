@@ -801,21 +801,13 @@ namespace MWGui
         if (selectedButton == 1 || selectedButton == -1)
             return;
 
-        constexpr std::array<const char*, 14> settings = {
+        constexpr std::array<const char*, 6> settings = {
             "light bounds multiplier",
             "maximum light distance",
             "light fade start",
             "minimum interior brightness",
             "max lights",
             "lighting method",
-            "advanced local lighting",
-            "point light intensity",
-            "point light specular strength",
-            "point light falloff strength",
-            "weather particle occlusion",
-            "weather particle occlusion distance",
-            "weather particle occlusion radius",
-            "weather particle occlusion interval",
         };
         for (const auto& setting : settings)
             Settings::Manager::setString(setting, "Shaders", Settings::Manager::mDefaultSettings[{"Shaders", setting}]);
@@ -1170,9 +1162,6 @@ namespace MWGui
         Settings::Manager::setBool("object shadows", "Shadows", pos >= 3);
         Settings::Manager::setBool("terrain shadows", "Shadows", pos >= 4);
         Settings::Manager::setBool("enable indoor shadows", "Shadows", pos >= 5);
-        Settings::Manager::setBool("local light shadows", "Shadows", pos >= 1);
-        if (pos < 5)
-            Settings::Manager::setBool("local light shadows outdoors", "Shadows", false);
         apply();
     }
 

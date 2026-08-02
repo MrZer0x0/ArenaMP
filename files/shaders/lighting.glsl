@@ -3,53 +3,6 @@
 #if @hdrLighting
 #include "lighting_util.glsl"
 
-#ifdef ARENAMP_FRAGMENT_SHADER
-uniform int arenaLocalShadowActive;
-uniform vec3 arenaLocalShadowPosition0;
-uniform vec3 arenaLocalShadowPosition1;
-uniform float arenaLocalShadowStrength0;
-uniform float arenaLocalShadowStrength1;
-#endif
-
-float arenaPointIllumination(int lightIndex, float lightDistance)
-{
-    float illumination = lcalcIllumination(lightIndex, lightDistance);
-#if @advancedLocalLighting && !@lightingMethodFFP
-    float radius = max(lcalcRadius(lightIndex), 1.0);
-    float normalizedDistance = clamp(lightDistance / radius, 0.0, 1.5);
-    float cutoff = max(0.0, 1.0 - pow(normalizedDistance, 4.0));
-    cutoff *= cutoff;
-    float physicalFalloff = cutoff / (1.0 + 4.0 * normalizedDistance * normalizedDistance);
-    illumination = mix(illumination, physicalFalloff, clamp(@pointLightFalloffStrength, 0.0, 1.0));
-#endif
-    return illumination * max(@pointLightIntensity, 0.0);
-}
-
-float arenaPointShadowFactor(int lightIndex, float shadowing)
-{
-#ifdef ARENAMP_FRAGMENT_SHADER
-#if @advancedLocalLighting
-    if (arenaLocalShadowActive != 0)
-    {
-        float tolerance = 24.0;
-#if !@lightingMethodFFP
-        tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
-#endif
-        vec3 lightPosition = lcalcPosition(lightIndex);
-        if (distance(lightPosition, arenaLocalShadowPosition0) <= tolerance)
-            return mix(1.0, arenaLocalShadowRatio(0), clamp(arenaLocalShadowStrength0, 0.0, 1.0));
-#if @localShadowAtlasLights > 1
-        if (arenaLocalShadowActive > 1
-            && distance(lightPosition, arenaLocalShadowPosition1) <= tolerance)
-            return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
-#endif
-    }
-#endif
-#endif
-    return 1.0;
-}
-
-
 // Bloom и glow параметры (можно настроить через uniforms или defines)
 #ifndef BLOOM_STRENGTH
 #define BLOOM_STRENGTH 0.15  // Снижено для интерьеров
@@ -116,7 +69,7 @@ void perLightSun(out vec3 diffuseOut, vec3 viewPos, vec3 viewNormal)
     bloomAccumulator += sunDiffuse * sunBloom * BLOOM_STRENGTH * 0.5;
 }
 
-void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec3 viewPos, vec3 viewNormal, float shadowing)
+void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec3 viewPos, vec3 viewNormal)
 {
     vec3 lightPos = lcalcPosition(lightIndex) - viewPos;
     float lightDistance = length(lightPos);
@@ -136,12 +89,11 @@ void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec
 
     lightPos = normalize(lightPos);
 
-    float illumination = arenaPointIllumination(lightIndex, lightDistance);
+    float illumination = lcalcIllumination(lightIndex, lightDistance);
     vec3 lightDiffuse = lcalcDiffuse(lightIndex);
     
     ambientOut = lcalcAmbient(lightIndex) * illumination;
-    float lambert = dot(viewNormal.xyz, lightPos) * illumination
-        * arenaPointShadowFactor(lightIndex, shadowing);
+    float lambert = dot(viewNormal.xyz, lightPos) * illumination;
 
 #ifndef GROUNDCOVER
     lambert = max(lambert, 0.0);
@@ -185,8 +137,7 @@ void doLighting(vec3 viewPos, vec3 viewNormal, out vec3 diffuseLight, out vec3 a
 #if PER_PIXEL_LIGHTING
     // Ambient lift для осветления теней - делаем тени менее глубокими
     float ambientLift = 0.15;
-    float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-    diffuseLight = diffuseOut * max(sunShadowing, ambientLift);
+    diffuseLight = diffuseOut * max(shadowing, ambientLift);
 #else
     shadowDiffuse = diffuseOut;
     diffuseLight = vec3(0.0);
@@ -195,17 +146,9 @@ void doLighting(vec3 viewPos, vec3 viewNormal, out vec3 diffuseLight, out vec3 a
     for (int i = @startLight; i < @endLight; ++i)
     {
 #if @lightingMethodUBO
-        #if PER_PIXEL_LIGHTING
-        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal, shadowing);
+        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal);
 #else
-        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal, 1.0);
-#endif
-#else
-        #if PER_PIXEL_LIGHTING
-        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal, shadowing);
-#else
-        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal, 1.0);
-#endif
+        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal);
 #endif
         ambientLight += ambientOut;
         diffuseLight += diffuseOut;
@@ -215,114 +158,26 @@ void doLighting(vec3 viewPos, vec3 viewNormal, out vec3 diffuseLight, out vec3 a
     diffuseLight += bloomAccumulator;
 }
 
-vec3 getSpecular(vec3 viewNormal, vec3 viewPos, float shininess, vec3 matSpec, float shadowing)
+vec3 getSpecular(vec3 viewNormal, vec3 viewDirection, float shininess, vec3 matSpec)
 {
-    vec3 normal = normalize(viewNormal);
-    vec3 viewDir = normalize(-viewPos);
-    vec3 sunDir = normalize(lcalcPosition(0));
-    vec3 result = vec3(0.0);
-
+    vec3 lightDir = normalize(lcalcPosition(0));
 #if @materialQuality >= 4
-    float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-    result += pbrSunSpecular(normal, viewDir, sunDir, shininess,
-        lcalcSpecular(0).xyz * matSpec) * sunShadowing;
+    vec3 viewDir = normalize(-viewDirection);
+    return pbrSunSpecular(normalize(viewNormal), viewDir, lightDir, shininess,
+        lcalcSpecular(0).xyz * matSpec);
 #else
-    float sunNdotL = max(dot(normal, sunDir), 0.0);
-    if (sunNdotL > 0.0)
-    {
-        vec3 sunHalf = normalize(sunDir + viewDir);
-        float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-        result += pow(max(dot(normal, sunHalf), 0.0), max(1e-4, shininess))
-            * lcalcSpecular(0).xyz * matSpec * 0.35 * sunShadowing;
-    }
+    float NdotL = dot(viewNormal, lightDir);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+    vec3 halfVec = normalize(lightDir - viewDirection);
+    float NdotH = dot(viewNormal, halfVec);
+    return pow(max(NdotH, 0.0), max(1e-4, shininess))
+        * lcalcSpecular(0).xyz * matSpec * 0.35;
 #endif
-
-#if @advancedLocalLighting
-    for (int i = @startLight; i < @endLight; ++i)
-    {
-#if @lightingMethodUBO
-        int pointIndex = PointLightIndex[i];
-#else
-        int pointIndex = i;
-#endif
-        vec3 toLight = lcalcPosition(pointIndex) - viewPos;
-        float pointDistance = length(toLight);
-#if !@lightingMethodFFP
-        if (pointDistance > lcalcRadius(pointIndex) * 1.5)
-            continue;
-#endif
-        vec3 pointDir = toLight / max(pointDistance, 0.0001);
-        float NdotL = max(dot(normal, pointDir), 0.0);
-        if (NdotL <= 0.0)
-            continue;
-
-        float illumination = arenaPointIllumination(pointIndex, pointDistance);
-        float pointShadowing = arenaPointShadowFactor(pointIndex, shadowing);
-        vec3 pointColour = max(lcalcDiffuse(pointIndex).xyz, vec3(0.0));
-#if @materialQuality >= 4
-        result += pbrSunSpecular(normal, viewDir, pointDir, shininess,
-            pointColour * matSpec) * illumination * pointShadowing * @pointLightSpecularStrength;
-#else
-        vec3 halfVector = normalize(pointDir + viewDir);
-        float highlight = pow(max(dot(normal, halfVector), 0.0), max(1e-4, shininess));
-        result += highlight * NdotL * pointColour * matSpec * illumination
-            * pointShadowing * @pointLightSpecularStrength;
-#endif
-    }
-#endif
-
-    return result;
 }
 
 #else
 #include "lighting_util.glsl"
-
-#ifdef ARENAMP_FRAGMENT_SHADER
-uniform int arenaLocalShadowActive;
-uniform vec3 arenaLocalShadowPosition0;
-uniform vec3 arenaLocalShadowPosition1;
-uniform float arenaLocalShadowStrength0;
-uniform float arenaLocalShadowStrength1;
-#endif
-
-float arenaPointIllumination(int lightIndex, float lightDistance)
-{
-    float illumination = lcalcIllumination(lightIndex, lightDistance);
-#if @advancedLocalLighting && !@lightingMethodFFP
-    float radius = max(lcalcRadius(lightIndex), 1.0);
-    float normalizedDistance = clamp(lightDistance / radius, 0.0, 1.5);
-    float cutoff = max(0.0, 1.0 - pow(normalizedDistance, 4.0));
-    cutoff *= cutoff;
-    float physicalFalloff = cutoff / (1.0 + 4.0 * normalizedDistance * normalizedDistance);
-    illumination = mix(illumination, physicalFalloff, clamp(@pointLightFalloffStrength, 0.0, 1.0));
-#endif
-    return illumination * max(@pointLightIntensity, 0.0);
-}
-
-float arenaPointShadowFactor(int lightIndex, float shadowing)
-{
-#ifdef ARENAMP_FRAGMENT_SHADER
-#if @advancedLocalLighting
-    if (arenaLocalShadowActive != 0)
-    {
-        float tolerance = 24.0;
-#if !@lightingMethodFFP
-        tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
-#endif
-        vec3 lightPosition = lcalcPosition(lightIndex);
-        if (distance(lightPosition, arenaLocalShadowPosition0) <= tolerance)
-            return mix(1.0, arenaLocalShadowRatio(0), clamp(arenaLocalShadowStrength0, 0.0, 1.0));
-#if @localShadowAtlasLights > 1
-        if (arenaLocalShadowActive > 1
-            && distance(lightPosition, arenaLocalShadowPosition1) <= tolerance)
-            return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
-#endif
-    }
-#endif
-#endif
-    return 1.0;
-}
-
 
 void perLightSun(out vec3 diffuseOut, vec3 viewPos, vec3 viewNormal)
 {
@@ -344,7 +199,7 @@ void perLightSun(out vec3 diffuseOut, vec3 viewPos, vec3 viewNormal)
     diffuseOut = lcalcDiffuse(0).xyz * lambert;
 }
 
-void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec3 viewPos, vec3 viewNormal, float shadowing)
+void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec3 viewPos, vec3 viewNormal)
 {
     vec3 lightPos = lcalcPosition(lightIndex) - viewPos;
     float lightDistance = length(lightPos);
@@ -363,10 +218,9 @@ void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec
 
     lightPos = normalize(lightPos);
 
-    float illumination = arenaPointIllumination(lightIndex, lightDistance);
+    float illumination = lcalcIllumination(lightIndex, lightDistance);
     ambientOut = lcalcAmbient(lightIndex) * illumination;
-    float lambert = dot(viewNormal.xyz, lightPos) * illumination
-        * arenaPointShadowFactor(lightIndex, shadowing);
+    float lambert = dot(viewNormal.xyz, lightPos) * illumination;
 
 #ifndef GROUNDCOVER
     lambert = max(lambert, 0.0);
@@ -394,8 +248,7 @@ void doLighting(vec3 viewPos, vec3 viewNormal, out vec3 diffuseLight, out vec3 a
     perLightSun(diffuseOut, viewPos, viewNormal);
     ambientLight = gl_LightModel.ambient.xyz;
 #if PER_PIXEL_LIGHTING
-    float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-    diffuseLight = diffuseOut * sunShadowing;
+    diffuseLight = diffuseOut * shadowing;
 #else
     shadowDiffuse = diffuseOut;
     diffuseLight = vec3(0.0);
@@ -404,80 +257,31 @@ void doLighting(vec3 viewPos, vec3 viewNormal, out vec3 diffuseLight, out vec3 a
     for (int i = @startLight; i < @endLight; ++i)
     {
 #if @lightingMethodUBO
-        #if PER_PIXEL_LIGHTING
-        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal, shadowing);
+        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal);
 #else
-        perLightPoint(ambientOut, diffuseOut, PointLightIndex[i], viewPos, viewNormal, 1.0);
-#endif
-#else
-        #if PER_PIXEL_LIGHTING
-        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal, shadowing);
-#else
-        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal, 1.0);
-#endif
+        perLightPoint(ambientOut, diffuseOut, i, viewPos, viewNormal);
 #endif
         ambientLight += ambientOut;
         diffuseLight += diffuseOut;
     }
 }
 
-vec3 getSpecular(vec3 viewNormal, vec3 viewPos, float shininess, vec3 matSpec, float shadowing)
+vec3 getSpecular(vec3 viewNormal, vec3 viewDirection, float shininess, vec3 matSpec)
 {
-    vec3 normal = normalize(viewNormal);
-    vec3 viewDir = normalize(-viewPos);
-    vec3 sunDir = normalize(lcalcPosition(0));
-    vec3 result = vec3(0.0);
-
+    vec3 lightDir = normalize(lcalcPosition(0));
 #if @materialQuality >= 4
-    float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-    result += pbrSunSpecular(normal, viewDir, sunDir, shininess,
-        lcalcSpecular(0).xyz * matSpec) * sunShadowing;
+    vec3 viewDir = normalize(-viewDirection);
+    return pbrSunSpecular(normalize(viewNormal), viewDir, lightDir, shininess,
+        lcalcSpecular(0).xyz * matSpec);
 #else
-    float sunNdotL = max(dot(normal, sunDir), 0.0);
-    if (sunNdotL > 0.0)
-    {
-        vec3 sunHalf = normalize(sunDir + viewDir);
-        float sunShadowing = arenaLocalShadowActive != 0 ? 1.0 : shadowing;
-        result += pow(max(dot(normal, sunHalf), 0.0), max(1e-4, shininess))
-            * lcalcSpecular(0).xyz * matSpec * 0.35 * sunShadowing;
-    }
+    float NdotL = dot(viewNormal, lightDir);
+    if (NdotL <= 0.0)
+        return vec3(0.0);
+    vec3 halfVec = normalize(lightDir - viewDirection);
+    float NdotH = dot(viewNormal, halfVec);
+    return pow(max(NdotH, 0.0), max(1e-4, shininess))
+        * lcalcSpecular(0).xyz * matSpec * 0.35;
 #endif
-
-#if @advancedLocalLighting
-    for (int i = @startLight; i < @endLight; ++i)
-    {
-#if @lightingMethodUBO
-        int pointIndex = PointLightIndex[i];
-#else
-        int pointIndex = i;
-#endif
-        vec3 toLight = lcalcPosition(pointIndex) - viewPos;
-        float pointDistance = length(toLight);
-#if !@lightingMethodFFP
-        if (pointDistance > lcalcRadius(pointIndex) * 1.5)
-            continue;
-#endif
-        vec3 pointDir = toLight / max(pointDistance, 0.0001);
-        float NdotL = max(dot(normal, pointDir), 0.0);
-        if (NdotL <= 0.0)
-            continue;
-
-        float illumination = arenaPointIllumination(pointIndex, pointDistance);
-        float pointShadowing = arenaPointShadowFactor(pointIndex, shadowing);
-        vec3 pointColour = max(lcalcDiffuse(pointIndex).xyz, vec3(0.0));
-#if @materialQuality >= 4
-        result += pbrSunSpecular(normal, viewDir, pointDir, shininess,
-            pointColour * matSpec) * illumination * pointShadowing * @pointLightSpecularStrength;
-#else
-        vec3 halfVector = normalize(pointDir + viewDir);
-        float highlight = pow(max(dot(normal, halfVector), 0.0), max(1e-4, shininess));
-        result += highlight * NdotL * pointColour * matSpec * illumination
-            * pointShadowing * @pointLightSpecularStrength;
-#endif
-    }
-#endif
-
-    return result;
 }
 
 #endif

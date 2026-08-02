@@ -14,7 +14,6 @@
 #include "renderinginterface.hpp"
 #include "rendermode.hpp"
 
-#include <array>
 #include <deque>
 #include <memory>
 
@@ -23,7 +22,6 @@ namespace osg
     class Group;
     class PositionAttitudeTransform;
     class Uniform;
-    class LightSource;
 }
 
 namespace osgUtil
@@ -262,8 +260,6 @@ namespace MWRender
         void updateThirdPersonViewMode();
         void updateHdrSettings();
         void updateHdrEnvironment();
-        void updateLocalLightShadows(float dt, const osg::Vec3f& cameraPosition);
-        void updateWeatherParticleOcclusion(float dt, const osg::Vec3f& cameraPosition);
 
         void reportStats() const;
 
@@ -287,9 +283,6 @@ namespace MWRender
         osg::ref_ptr<SceneUtil::UnrefQueue> mUnrefQueue;
 
         osg::ref_ptr<osg::Light> mSunLight;
-        static constexpr std::size_t sLocalShadowAtlasMaxLights = 2;
-        std::array<osg::ref_ptr<osg::Light>, sLocalShadowAtlasMaxLights> mLocalShadowLights;
-        std::array<osg::ref_ptr<osg::LightSource>, sLocalShadowAtlasMaxLights> mLocalShadowLightSources;
 
         DetourNavigator::Navigator& mNavigator;
         std::unique_ptr<NavMesh> mNavMesh;
@@ -328,12 +321,6 @@ namespace MWRender
         osg::ref_ptr<osg::Uniform> mHdrSaturationUniform;
         osg::ref_ptr<osg::Uniform> mHdrIsInteriorUniform;
         osg::ref_ptr<osg::Uniform> mHdrNightFactorUniform;
-        osg::ref_ptr<osg::Uniform> mLocalShadowActiveUniform;
-        std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowPositionUniforms;
-        std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowStrengthUniforms;
-        std::array<float, sLocalShadowAtlasMaxLights> mLocalShadowSmoothedStrengths{{0.f, 0.f}};
-        std::array<osg::Vec3f, sLocalShadowAtlasMaxLights> mLocalShadowPreviousPositions{};
-        std::array<bool, sLocalShadowAtlasMaxLights> mLocalShadowPreviousPositionValid{{false, false}};
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;
@@ -351,9 +338,6 @@ namespace MWRender
         bool mLandOptimizationEnabled;
         bool mLandOptimizationWasExterior;
         bool mUnderwaterFogActive;
-        float mWeatherOcclusionTimer;
-        float mWeatherParticleExposure;
-        int mActiveShadowLightNum;
         bool mFieldOfViewOverridden;
         float mFieldOfViewOverride;
         float mFieldOfView;

@@ -2,12 +2,10 @@
 
 #include <algorithm>
 #include <limits>
-#include <vector>
 #include <cstdlib>
 #include <cmath>
 
 #include <osg/Light>
-#include <osg/LightSource>
 #include <osg/Math>
 #include <osg/LightModel>
 #include <osg/Fog>
@@ -640,9 +638,6 @@ namespace MWRender
         , mLandOptimizationEnabled(false)
         , mLandOptimizationWasExterior(false)
         , mUnderwaterFogActive(false)
-        , mWeatherOcclusionTimer(0.f)
-        , mWeatherParticleExposure(1.f)
-        , mActiveShadowLightNum(0)
         , mFieldOfViewOverridden(false)
         , mFieldOfViewOverride(0.f)
     {
@@ -653,9 +648,7 @@ namespace MWRender
         // Shadows and radial fog have problems with fixed-function mode
         bool forceShaders = Settings::Manager::getBool("radial fog", "Shaders")
                             || Settings::Manager::getBool("force shaders", "Shaders")
-                            || Settings::Manager::getBool("advanced local lighting", "Shaders")
                             || Settings::Manager::getBool("enable shadows", "Shadows")
-                            || Settings::Manager::getBool("local light shadows", "Shadows")
                             || lightingMethod != SceneUtil::LightingMethod::FFP;
         resourceSystem->getSceneManager()->setForceShaders(forceShaders);
         // FIXME: calling dummy method because terrain needs to know whether lighting is clamped
@@ -682,36 +675,6 @@ namespace MWRender
         sceneRoot->setNodeMask(Mask_Scene);
         sceneRoot->setName("Scene Root");
 
-        // Shadow-only proxies for the nearest ArenaMP point lights. Illumination
-        // still comes from LightManager; these zero-colour lights feed the stable
-        // two-page-per-source local shadow atlas.
-        mLocalShadowActiveUniform = new osg::Uniform("arenaLocalShadowActive", 0);
-        sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowActiveUniform);
-        for (std::size_t i = 0; i < sLocalShadowAtlasMaxLights; ++i)
-        {
-            mLocalShadowLights[i] = new osg::Light;
-            mLocalShadowLights[i]->setLightNum(static_cast<int>(i) + 1);
-            mLocalShadowLights[i]->setAmbient(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-            mLocalShadowLights[i]->setDiffuse(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-            mLocalShadowLights[i]->setSpecular(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-            mLocalShadowLights[i]->setPosition(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-            mLocalShadowLights[i]->setDirection(osg::Vec3f(1.f, 0.f, 0.f));
-
-            mLocalShadowLightSources[i] = new osg::LightSource;
-            mLocalShadowLightSources[i]->setLight(mLocalShadowLights[i]);
-            mLocalShadowLightSources[i]->setLocalStateSetModes(osg::StateAttribute::ON);
-            mLocalShadowLightSources[i]->setNodeMask(0u);
-            sceneRoot->addChild(mLocalShadowLightSources[i]);
-
-            const std::string suffix = std::to_string(i);
-            mLocalShadowPositionUniforms[i] = new osg::Uniform(
-                ("arenaLocalShadowPosition" + suffix).c_str(), osg::Vec3f());
-            mLocalShadowStrengthUniforms[i] = new osg::Uniform(
-                ("arenaLocalShadowStrength" + suffix).c_str(), 0.f);
-            sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowPositionUniforms[i]);
-            sceneRoot->getOrCreateStateSet()->addUniform(mLocalShadowStrengthUniforms[i]);
-        }
-
         int shadowCastingTraversalMask = Mask_Scene;
         if (Settings::Manager::getBool("actor shadows", "Shadows"))
             shadowCastingTraversalMask |= Mask_Actor;
@@ -722,11 +685,7 @@ namespace MWRender
 
         int indoorShadowCastingTraversalMask = shadowCastingTraversalMask;
         if (Settings::Manager::getBool("object shadows", "Shadows"))
-        {
-            shadowCastingTraversalMask |= (Mask_Object | Mask_Static);
-            if (Settings::Manager::getBool("local light shadows", "Shadows"))
-                indoorShadowCastingTraversalMask |= (Mask_Object | Mask_Static);
-        }
+            shadowCastingTraversalMask |= (Mask_Object|Mask_Static);
 
         mShadowManager.reset(new SceneUtil::ShadowManager(sceneRoot, mRootNode, shadowCastingTraversalMask, indoorShadowCastingTraversalMask, mResourceSystem->getSceneManager()->getShaderManager()));
 
@@ -737,16 +696,11 @@ namespace MWRender
         for (auto itr = shadowDefines.begin(); itr != shadowDefines.end(); itr++)
             globalDefines[itr->first] = itr->second;
 
-        globalDefines["forcePPL"] = (Settings::Manager::getBool("force per pixel lighting", "Shaders")
-            || Settings::Manager::getBool("local light shadows", "Shadows")) ? "1" : "0";
+        globalDefines["forcePPL"] = Settings::Manager::getBool("force per pixel lighting", "Shaders") ? "1" : "0";
         globalDefines["clamp"] = Settings::Manager::getBool("clamp lighting", "Shaders") ? "1" : "0";
         globalDefines["preLightEnv"] = Settings::Manager::getBool("apply lighting to environment maps", "Shaders") ? "1" : "0";
         globalDefines["radialFog"] = Settings::Manager::getBool("radial fog", "Shaders") ? "1" : "0";
         globalDefines["hdrLighting"] = Settings::Manager::getBool("hdr lighting", "Shaders") ? "1" : "0";
-        globalDefines["advancedLocalLighting"] = Settings::Manager::getBool("advanced local lighting", "Shaders") ? "1" : "0";
-        globalDefines["pointLightIntensity"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light intensity", "Shaders"), 0.f, 3.f));
-        globalDefines["pointLightSpecularStrength"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light specular strength", "Shaders"), 0.f, 2.f));
-        globalDefines["pointLightFalloffStrength"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light falloff strength", "Shaders"), 0.f, 1.f));
         globalDefines["materialQuality"] = std::to_string(materialQuality);
         globalDefines["useGPUShader4"] = "0";
 
@@ -1300,6 +1254,9 @@ namespace MWRender
 
         mUnrefQueue->flush(mWorkQueue.get());
 
+        float rainIntensity = mSky->getPrecipitationAlpha();
+        mWater->setRainIntensity(rainIntensity);
+
         if (!paused)
         {
             mEffectManager->update(dt);
@@ -1327,13 +1284,8 @@ namespace MWRender
 
         osg::Vec3d focal, cameraPos;
         mCamera->getPosition(focal, cameraPos);
-        const osg::Vec3f cameraPosition(static_cast<float>(cameraPos.x()),
-            static_cast<float>(cameraPos.y()), static_cast<float>(cameraPos.z()));
-        mCurrentCameraPos = cameraPosition;
+        mCurrentCameraPos = cameraPos;
 
-        updateWeatherParticleOcclusion(dt, cameraPosition);
-        updateLocalLightShadows(dt, cameraPosition);
-        mWater->setRainIntensity(mSky->getPrecipitationAlpha() * mWeatherParticleExposure);
 
         // Switch underwater colouring immediately. A very small hysteresis band
         // prevents head bob and animated water from toggling the state every frame,
@@ -1354,216 +1306,6 @@ namespace MWRender
         mStateUpdater->setFogEnd(mFog->getFogEnd(mUnderwaterFogActive));
         setFogColor(mFog->getFogColor(mUnderwaterFogActive));
         mStateUpdater->setUnderwaterBlend(mUnderwaterFogActive ? 1.f : 0.f);
-    }
-
-    void RenderingManager::updateWeatherParticleOcclusion(float dt, const osg::Vec3f& cameraPosition)
-    {
-        const bool exterior = MWBase::Environment::get().getWorld()->isCellExterior()
-            || MWBase::Environment::get().getWorld()->isCellQuasiExterior();
-        if (!Settings::Manager::getBool("weather particle occlusion", "Shaders")
-            || mSky->getPrecipitationAlpha() <= 0.001f || !exterior)
-        {
-            mWeatherParticleExposure = 1.f;
-            mWeatherOcclusionTimer = 0.f;
-            mSky->setWeatherParticleExposure(1.f);
-            return;
-        }
-
-        mWeatherOcclusionTimer -= std::max(0.f, dt);
-        if (mWeatherOcclusionTimer > 0.f)
-            return;
-
-        mWeatherOcclusionTimer = std::clamp(Settings::Manager::getFloat(
-            "weather particle occlusion interval", "Shaders"), 0.05f, 1.f);
-        const float traceHeight = std::clamp(Settings::Manager::getFloat(
-            "weather particle occlusion distance", "Shaders"), 256.f, 16384.f);
-        const float sampleRadius = std::clamp(Settings::Manager::getFloat(
-            "weather particle occlusion radius", "Shaders"), 0.f, 1024.f);
-
-        const osg::Vec3f offsets[] = {
-            osg::Vec3f(0.f, 0.f, 0.f),
-            osg::Vec3f(sampleRadius, 0.f, 0.f),
-            osg::Vec3f(-sampleRadius, 0.f, 0.f),
-            osg::Vec3f(0.f, sampleRadius, 0.f),
-            osg::Vec3f(0.f, -sampleRadius, 0.f),
-        };
-
-        int openSamples = 0;
-        for (const osg::Vec3f& offset : offsets)
-        {
-            const osg::Vec3f origin = cameraPosition + offset + osg::Vec3f(0.f, 0.f, 16.f);
-            const RayResult hit = castRay(origin, origin + osg::Vec3f(0.f, 0.f, traceHeight), true, true);
-            if (!hit.mHit)
-                ++openSamples;
-        }
-
-        mWeatherParticleExposure = static_cast<float>(openSamples)
-            / static_cast<float>(sizeof(offsets) / sizeof(offsets[0]));
-        mSky->setWeatherParticleExposure(mWeatherParticleExposure);
-    }
-
-    void RenderingManager::updateLocalLightShadows(float dt, const osg::Vec3f& cameraPosition)
-    {
-        if (!mShadowManager)
-            return;
-
-        const bool enabled = Settings::Manager::getBool("local light shadows", "Shadows");
-        const bool exterior = MWBase::Environment::get().getWorld()->isCellExterior()
-            || MWBase::Environment::get().getWorld()->isCellQuasiExterior();
-        const osg::Vec4f sunDiffuse = mSunLight ? mSunLight->getDiffuse() : osg::Vec4f();
-        const float sunLuminance = sunDiffuse.r() * 0.2126f + sunDiffuse.g() * 0.7152f
-            + sunDiffuse.b() * 0.0722f;
-        const bool allowExterior = Settings::Manager::getBool("local light shadows outdoors", "Shadows")
-            && sunLuminance < 0.18f;
-        const bool useLocal = enabled && (!exterior || allowExterior);
-
-        unsigned int foundCount = 0u;
-        if (useLocal)
-        {
-            auto* lightManager = static_cast<SceneUtil::LightManager*>(getLightRoot());
-            const size_t frameNum = mViewer->getFrameStamp()
-                ? mViewer->getFrameStamp()->getFrameNumber() : 0u;
-            osg::Vec3f shadowAnchor = cameraPosition;
-            const MWWorld::Ptr& player = MWMechanics::getPlayer();
-            if (player.isInCell())
-                shadowAnchor = player.getRefData().getPosition().asVec3();
-
-            const float localShadowDistance = Settings::Manager::getFloat(
-                "local light shadow distance", "Shadows");
-            const float localShadowMinimumRadius = Settings::Manager::getFloat(
-                "local light shadow minimum radius", "Shadows");
-            const float hysteresis = Settings::Manager::getFloat(
-                "local light shadow switch hysteresis", "Shadows");
-            const float retention = Settings::Manager::getFloat(
-                "local light shadow retention multiplier", "Shadows");
-            const unsigned int requestedCount = static_cast<unsigned int>(std::clamp(
-                Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2));
-            const float temporalResponse = std::clamp(Settings::Manager::getFloat(
-                "local shadow temporal response", "Shadows"), 2.f, 30.f);
-            const float temporalAlpha = 1.f - std::exp(-temporalResponse * std::max(0.f, dt));
-
-            std::vector<osg::Vec3f> selectedPositions;
-            selectedPositions.reserve(requestedCount);
-            for (unsigned int slot = 0; slot < requestedCount; ++slot)
-            {
-                osg::Light& proxy = *mLocalShadowLights[slot];
-                const osg::Vec4f previous4 = proxy.getPosition();
-                const osg::Vec3f previous(previous4.x(), previous4.y(), previous4.z());
-                const bool hadShadow = mLocalShadowLightSources[slot]->getNodeMask() != 0u;
-                const osg::Vec3f* preferred = hadShadow ? &previous : nullptr;
-                float selectedDistance = 0.f;
-                float selectedRadius = 0.f;
-                const bool found = lightManager->getNearestShadowLight(shadowAnchor,
-                    localShadowDistance, localShadowMinimumRadius, frameNum, proxy,
-                    preferred, hysteresis, retention, &selectedDistance, &selectedRadius,
-                    &selectedPositions);
-                if (!found)
-                    break;
-
-                const osg::Vec4f selected4 = proxy.getPosition();
-                const osg::Vec3f selected(selected4.x(), selected4.y(), selected4.z());
-                selectedPositions.push_back(selected);
-                proxy.setDirection(osg::Vec3f(1.f, 0.f, 0.f));
-
-                const float effectiveDistance = std::min(localShadowDistance,
-                    std::max(localShadowMinimumRadius, selectedRadius) * 6.f);
-                const float nearEnd = effectiveDistance * 0.35f;
-                const float midEnd = effectiveDistance * 0.70f;
-                float shadowStrength = 1.f;
-                if (selectedDistance > nearEnd && selectedDistance <= midEnd)
-                {
-                    const float alpha = (selectedDistance - nearEnd)
-                        / std::max(1.f, midEnd - nearEnd);
-                    shadowStrength = 1.f - 0.15f * alpha;
-                }
-                else if (selectedDistance > midEnd)
-                {
-                    const float alpha = std::clamp((selectedDistance - midEnd)
-                        / std::max(1.f, effectiveDistance - midEnd), 0.f, 1.f);
-                    const float smooth = alpha * alpha * (3.f - 2.f * alpha);
-                    shadowStrength = 0.85f * (1.f - smooth);
-                }
-
-                proxy.setAmbient(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-                proxy.setDiffuse(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-                proxy.setSpecular(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
-                proxy.setSpotCutoff(180.f);
-                proxy.setSpotExponent(0.f);
-                mLocalShadowLightSources[slot]->setNodeMask(Mask_Lighting);
-
-                // Fade a newly selected atlas light in instead of replacing the old
-                // shadow abruptly. Small movements of the same torch do not reset the
-                // filter, while an actual source change starts from a low opacity.
-                const float sourceChangeDistance = std::max(96.f, selectedRadius * 0.35f);
-                const bool sourceChanged = !mLocalShadowPreviousPositionValid[slot]
-                    || (mLocalShadowPreviousPositions[slot] - selected).length2()
-                        > sourceChangeDistance * sourceChangeDistance;
-                if (sourceChanged)
-                    mLocalShadowSmoothedStrengths[slot]
-                        = std::min(mLocalShadowSmoothedStrengths[slot], 0.12f);
-                mLocalShadowSmoothedStrengths[slot] += (std::clamp(shadowStrength, 0.f, 1.f)
-                    - mLocalShadowSmoothedStrengths[slot]) * temporalAlpha;
-                mLocalShadowPreviousPositions[slot] = selected;
-                mLocalShadowPreviousPositionValid[slot] = true;
-                mLocalShadowStrengthUniforms[slot]->set(
-                    std::clamp(mLocalShadowSmoothedStrengths[slot], 0.f, 1.f));
-
-                const osg::Vec3d viewPosition = osg::Vec3d(
-                    selected.x(), selected.y(), selected.z())
-                    * mViewer->getCamera()->getViewMatrix();
-                mLocalShadowPositionUniforms[slot]->set(osg::Vec3f(
-                    static_cast<float>(viewPosition.x()),
-                    static_cast<float>(viewPosition.y()),
-                    static_cast<float>(viewPosition.z())));
-                ++foundCount;
-            }
-        }
-
-        unsigned int visibleCount = foundCount;
-        const float temporalResponse = std::clamp(Settings::Manager::getFloat(
-            "local shadow temporal response", "Shadows"), 2.f, 30.f);
-        const float temporalAlpha = 1.f - std::exp(-temporalResponse * std::max(0.f, dt));
-        for (std::size_t slot = foundCount; slot < sLocalShadowAtlasMaxLights; ++slot)
-        {
-            mLocalShadowSmoothedStrengths[slot] += (0.f - mLocalShadowSmoothedStrengths[slot])
-                * temporalAlpha;
-            if (mLocalShadowSmoothedStrengths[slot] > 0.01f
-                && mLocalShadowPreviousPositionValid[slot])
-            {
-                // Retain the previous atlas light for a few frames while fading it out.
-                // This removes the last visible pop when leaving a light's range.
-                mLocalShadowLightSources[slot]->setNodeMask(Mask_Lighting);
-                mLocalShadowStrengthUniforms[slot]->set(mLocalShadowSmoothedStrengths[slot]);
-                const osg::Vec3f selected = mLocalShadowPreviousPositions[slot];
-                const osg::Vec3d viewPosition = osg::Vec3d(selected.x(), selected.y(), selected.z())
-                    * mViewer->getCamera()->getViewMatrix();
-                mLocalShadowPositionUniforms[slot]->set(osg::Vec3f(
-                    static_cast<float>(viewPosition.x()),
-                    static_cast<float>(viewPosition.y()),
-                    static_cast<float>(viewPosition.z())));
-                visibleCount = static_cast<unsigned int>(slot + 1);
-            }
-            else
-            {
-                mLocalShadowSmoothedStrengths[slot] = 0.f;
-                mLocalShadowPreviousPositionValid[slot] = false;
-                mLocalShadowLightSources[slot]->setNodeMask(0u);
-                mLocalShadowStrengthUniforms[slot]->set(0.f);
-            }
-        }
-        mLocalShadowActiveUniform->set(static_cast<int>(visibleCount));
-
-        if (static_cast<int>(visibleCount) != mActiveShadowLightNum)
-        {
-            mActiveShadowLightNum = static_cast<int>(visibleCount);
-            if (visibleCount > 0u)
-                mShadowManager->setActiveLocalLightCount(visibleCount);
-            else
-            {
-                mShadowManager->setActiveLocalLightCount(0u);
-                mShadowManager->setActiveLightNum(0);
-            }
-        }
     }
 
     void RenderingManager::updatePlayerPtr(const MWWorld::Ptr &ptr)
@@ -2290,11 +2032,7 @@ namespace MWRender
             {
                 mWater->processChangedSettings(changed);
             }
-            else if (setting.first == "Shaders" && (setting.second == "hdr lighting"
-                || setting.second == "advanced local lighting"
-                || setting.second == "point light intensity"
-                || setting.second == "point light specular strength"
-                || setting.second == "point light falloff strength"))
+            else if (setting.first == "Shaders" && setting.second == "hdr lighting")
             {
                 refreshShaderDefines = true;
             }
@@ -2315,13 +2053,6 @@ namespace MWRender
                 || setting.second == "bloom radius"))
             {
                 refreshBloomSettings = true;
-            }
-            else if (setting.first == "Shaders" && (setting.second == "weather particle occlusion"
-                || setting.second == "weather particle occlusion distance"
-                || setting.second == "weather particle occlusion radius"
-                || setting.second == "weather particle occlusion interval"))
-            {
-                mWeatherOcclusionTimer = 0.f;
             }
             else if (setting.first == "Shaders" && setting.second == "material quality")
             {
@@ -2438,13 +2169,11 @@ namespace MWRender
                 if (Settings::Manager::getBool("terrain shadows", "Shadows"))
                     outdoorShadowCastingMask |= Mask_Terrain;
 
-                int indoorShadowCastingMask = outdoorShadowCastingMask;
+                // Keep the established indoor rule: actors/player can cast indoors,
+                // while world objects remain an outdoor-only category.
+                const int indoorShadowCastingMask = outdoorShadowCastingMask;
                 if (Settings::Manager::getBool("object shadows", "Shadows"))
-                {
                     outdoorShadowCastingMask |= (Mask_Object | Mask_Static);
-                    if (Settings::Manager::getBool("local light shadows", "Shadows"))
-                        indoorShadowCastingMask |= (Mask_Object | Mask_Static);
-                }
 
                 mShadowManager->setShadowCastingMasks(outdoorShadowCastingMask, indoorShadowCastingMask);
                 mShadowManager->setupShadowSettings();
@@ -2467,10 +2196,6 @@ namespace MWRender
             }
 
             defines["hdrLighting"] = Settings::Manager::getBool("hdr lighting", "Shaders") ? "1" : "0";
-            defines["advancedLocalLighting"] = Settings::Manager::getBool("advanced local lighting", "Shaders") ? "1" : "0";
-            defines["pointLightIntensity"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light intensity", "Shaders"), 0.f, 3.f));
-            defines["pointLightSpecularStrength"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light specular strength", "Shaders"), 0.f, 2.f));
-            defines["pointLightFalloffStrength"] = std::to_string(std::clamp(Settings::Manager::getFloat("point light falloff strength", "Shaders"), 0.f, 1.f));
             defines["materialQuality"] = std::to_string(getMaterialQualityLevel());
             const float groundcoverDistance = std::max(0.f, Settings::Manager::getFloat("rendering distance", "Groundcover"));
             defines["groundcoverFadeStart"] = std::to_string(groundcoverDistance * 0.9f);

@@ -24,15 +24,6 @@ namespace SceneUtil
 
         void setMaximumShadowMapDistance(float distance);
 
-        /// Select the light used by the view-dependent shadow map. Light 0 is
-        /// the sun; light 1 is ArenaMP's nearest-local-light proxy.
-        void setActiveLightNum(int lightNum);
-
-        /// Enable the multi-page local-light atlas for proxy lights 1..count.
-        /// OpenMW 0.47's compatibility path supports two full point lights
-        /// (four hemisphere maps) without colliding with material texture units.
-        void setActiveLocalLightCount(unsigned int count);
-
         Shader::ShaderManager::DefineMap getShadowDefines();
 
         void enableIndoorMode();

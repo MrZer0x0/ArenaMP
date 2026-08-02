@@ -23,25 +23,11 @@ namespace SceneUtil
         
         mShadowTechnique->enableShadows();
 
-        // The active light can be switched at runtime between the sun (0) and
-        // ArenaMP's nearest local-light proxy (1). Keep the current selection
-        // when settings are rebuilt instead of forcing it back to the sun.
-        if (mShadowSettings->getLightNum() < 0)
-            mShadowSettings->setLightNum(0);
+        mShadowSettings->setLightNum(0);
         mShadowSettings->setReceivesShadowTraversalMask(~0u);
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
-        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 4));
-
-        // The local atlas allocates two fixed world-space hemispheres per source.
-        // The OpenMW 0.47 compatibility shader has four safe shadow texture units,
-        // giving two complete point-light entries without stealing material maps.
-        if (Settings::Manager::getBool("local light shadows", "Shadows"))
-        {
-            const int atlasLights = std::clamp(
-                Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2);
-            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, atlasLights * 2);
-        }
+        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
 
         mShadowSettings->setNumShadowMapsPerLight(numberOfShadowMapsPerLight);
         mShadowSettings->setBaseShadowTextureUnit(8 - numberOfShadowMapsPerLight);
@@ -106,38 +92,13 @@ namespace SceneUtil
         mShadowTechnique->setShadowFadeStart(distance * fadeStart);
     }
 
-    void ShadowManager::setActiveLightNum(int lightNum)
-    {
-        if (!mShadowSettings.valid())
-            return;
-        mShadowSettings->setLightNum(std::max(0, lightNum));
-    }
-
-    void ShadowManager::setActiveLocalLightCount(unsigned int count)
-    {
-        if (!mShadowSettings.valid() || !mShadowTechnique.valid())
-            return;
-        count = std::min(count, 2u);
-        mShadowTechnique->setActiveLocalLightCount(count);
-        if (count == 0u)
-            mShadowSettings->setLightNum(0);
-        else
-            mShadowSettings->setLightNum(-1);
-    }
-
     void ShadowManager::disableShadowsForStateSet(osg::ref_ptr<osg::StateSet> stateset)
     {
         if (!Settings::Manager::getBool("enable shadows", "Shadows"))
             return;
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
-        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 4));
-        if (Settings::Manager::getBool("local light shadows", "Shadows"))
-        {
-            const int atlasLights = std::clamp(
-                Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2);
-            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, atlasLights * 2);
-        }
+        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
 
         int baseShadowTextureUnit = 8 - numberOfShadowMapsPerLight;
         
@@ -145,8 +106,6 @@ namespace SceneUtil
         fakeShadowMapImage->allocateImage(1, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT);
         *(float*)fakeShadowMapImage->data() = std::numeric_limits<float>::infinity();
         osg::ref_ptr<osg::Texture> fakeShadowMapTexture = new osg::Texture2D(fakeShadowMapImage);
-        fakeShadowMapTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-        fakeShadowMapTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         fakeShadowMapTexture->setShadowComparison(true);
         fakeShadowMapTexture->setShadowCompareFunc(osg::Texture::ShadowCompareFunc::ALWAYS);
         for (int i = baseShadowTextureUnit; i < baseShadowTextureUnit + numberOfShadowMapsPerLight; ++i)
@@ -203,23 +162,6 @@ namespace SceneUtil
 
         definesWithShadows["limitShadowMapDistance"] = Settings::Manager::getFloat("maximum shadow map distance", "Shadows") > 0 ? "1" : "0";
 
-        int effectiveResolution = std::max(1,
-            Settings::Manager::getInt("shadow map resolution", "Shadows"));
-        definesWithShadows["shadowMapTexelSize"] = std::to_string(1.f / static_cast<float>(effectiveResolution));
-        definesWithShadows["localShadowAtlasLights"] = Settings::Manager::getBool(
-            "local light shadows", "Shadows")
-            ? std::to_string(std::clamp(Settings::Manager::getInt(
-                "local shadow atlas lights", "Shadows"), 1, 2))
-            : "0";
-        definesWithShadows["localShadowSoftness"] = std::to_string(std::clamp(
-            Settings::Manager::getFloat("local shadow softness", "Shadows"), 0.25f, 3.f));
-        const float localSurfaceBias = std::clamp(Settings::Manager::getFloat(
-            "local shadow surface bias", "Shadows"), 0.f, 3.f);
-        definesWithShadows["localShadowReceiverBias"] = std::to_string(
-            0.00015f + localSurfaceBias * 0.00025f);
-        definesWithShadows["localShadowSlopeBias"] = std::to_string(
-            0.75f + localSurfaceBias * 0.75f);
-
         return definesWithShadows;
     }
 
@@ -243,24 +185,13 @@ namespace SceneUtil
 
         definesWithoutShadows["limitShadowMapDistance"] = "0";
 
-        definesWithoutShadows["shadowMapTexelSize"] = "0.001";
-        definesWithoutShadows["localShadowAtlasLights"] = "0";
-        definesWithoutShadows["localShadowSoftness"] = "1.0";
-        definesWithoutShadows["localShadowReceiverBias"] = "0.0005";
-        definesWithoutShadows["localShadowSlopeBias"] = "1.5";
-
         return definesWithoutShadows;
     }
 
     void ShadowManager::enableIndoorMode()
     {
-        const bool localLightShadows = Settings::Manager::getBool("local light shadows", "Shadows");
-        if (Settings::Manager::getBool("enable indoor shadows", "Shadows") || localLightShadows)
-        {
-            if (mEnableShadows)
-                mShadowTechnique->enableShadows();
+        if (Settings::Manager::getBool("enable indoor shadows", "Shadows"))
             mShadowSettings->setCastsShadowTraversalMask(mIndoorShadowCastingMask);
-        }
         else
             mShadowTechnique->disableShadows(true);
     }

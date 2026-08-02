@@ -906,13 +906,6 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const int occlusionMaxMeshResolution[] = { 24, 24, 28, 28, 32, 36 };
     static const float occlusionInsideThreshold[] = { 0.96f, 0.95f, 0.94f, 0.93f, 0.92f, 0.91f };
     static const float occlusionMaxDistance[] = { 3072.f, 3584.f, 4096.f, 5120.f, 6144.f, 7168.f };
-    static const float pointLightIntensity[] = { 0.85f, 0.90f, 1.00f, 1.08f, 1.15f, 1.20f };
-    static const float pointLightSpecular[] = { 0.00f, 0.10f, 0.25f, 0.40f, 0.55f, 0.70f };
-    static const float pointLightFalloff[] = { 0.00f, 0.20f, 0.45f, 0.65f, 0.80f, 1.00f };
-    static const int localShadowDistance[] = { 512, 768, 1024, 1536, 2048, 3072 };
-    static const int localShadowMinRadius[] = { 512, 384, 256, 192, 128, 96 };
-    static const int localShadowNearClip[] = { 16, 12, 10, 8, 6, 4 };
-    static const int localShadowFieldOfView[] = { 170, 172, 174, 176, 178, 179 };
 
     int effectiveAa = antialiasing[level];
     int effectiveShadowResolution = shadowResolution[level];
@@ -993,14 +986,6 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     // All ArenaMP presets use the shader-compatible lighting backend. Legacy
     // lighting is never selected by a preset, including the minimum profile.
     Settings::Manager::setString("lighting method", "Shaders", "shaders compatibility");
-    Settings::Manager::setBool("advanced local lighting", "Shaders", level >= 1);
-    Settings::Manager::setFloat("point light intensity", "Shaders", pointLightIntensity[level]);
-    Settings::Manager::setFloat("point light specular strength", "Shaders", pointLightSpecular[level]);
-    Settings::Manager::setFloat("point light falloff strength", "Shaders", pointLightFalloff[level]);
-    Settings::Manager::setBool("weather particle occlusion", "Shaders", true);
-    Settings::Manager::setInt("weather particle occlusion distance", "Shaders", level <= 1 ? 3072 : 4096);
-    Settings::Manager::setInt("weather particle occlusion radius", "Shaders", level <= 1 ? 96 : 160);
-    Settings::Manager::setFloat("weather particle occlusion interval", "Shaders", level <= 1 ? 0.25f : 0.15f);
 
     // Every preset uses shader water so its reflection/refraction tier is
     // applied even when an older user profile explicitly disabled the shader.
@@ -1017,23 +1002,6 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setBool("object shadows", "Shadows", level >= 2);
     Settings::Manager::setBool("terrain shadows", "Shadows", level >= 3);
     Settings::Manager::setBool("enable indoor shadows", "Shadows", level >= 2);
-    Settings::Manager::setBool("local light shadows", "Shadows", true);
-    Settings::Manager::setInt("local light shadow distance", "Shadows", localShadowDistance[level]);
-    Settings::Manager::setInt("local light shadow minimum radius", "Shadows", localShadowMinRadius[level]);
-    Settings::Manager::setInt("local light shadow near clip", "Shadows", localShadowNearClip[level]);
-    Settings::Manager::setInt("local light shadow field of view", "Shadows", localShadowFieldOfView[level]);
-    Settings::Manager::setFloat("local light shadow switch hysteresis", "Shadows", level <= 2 ? 0.50f : 0.45f);
-    Settings::Manager::setFloat("local light shadow retention multiplier", "Shadows", level <= 2 ? 1.30f : 1.25f);
-    Settings::Manager::setInt("local shadow atlas lights", "Shadows", level <= 1 ? 1 : 2);
-    Settings::Manager::setInt("local shadow atlas update budget", "Shadows", level <= 2 ? 1 : 2);
-    Settings::Manager::setInt("local shadow atlas cache frames", "Shadows", level <= 1 ? 6 : (level <= 3 ? 4 : 2));
-    Settings::Manager::setFloat("local shadow softness", "Shadows",
-        level <= 1 ? 0.85f : (level <= 3 ? 1.15f : 1.40f));
-    Settings::Manager::setFloat("local shadow surface bias", "Shadows",
-        level <= 1 ? 1.65f : (level <= 3 ? 1.40f : 1.20f));
-    Settings::Manager::setFloat("local shadow temporal response", "Shadows",
-        level <= 1 ? 7.0f : (level <= 3 ? 9.0f : 11.0f));
-    Settings::Manager::setBool("local light shadows outdoors", "Shadows", level >= 5);
     Settings::Manager::setInt("maximum shadow map distance", "Shadows", effectiveShadowDistance);
     Settings::Manager::setInt("shadow map resolution", "Shadows", effectiveShadowResolution);
     Settings::Manager::setString("compute scene bounds", "Shadows", level >= 5 ? "primitives" : "bounds");
