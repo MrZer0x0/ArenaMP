@@ -2,6 +2,9 @@
 
 <MyGUI type="Layout">
     <Widget type="Widget" layer="HUD" position="0 0 300 200" name="_Main" align="Stretch">
+        <!-- All gameplay HUD widgets are grouped so they can remain hidden through the complete login/registration flow. -->
+        <Widget type="Widget" position="0 0 300 200" name="GameplayHud" align="Stretch">
+            <Property key="NeedMouse" value="false"/>
 	
         <Widget type="TextBox" skin="SandBrightText" position="8 6 72 22" name="FpsText" align="Left Top">
             <Property key="NeedMouse" value="false"/>
@@ -214,5 +217,6 @@
         <Widget type="ImageBox" skin="HUD_Crosshair" position="118 68 64 64" align="Center Center" name="Crosshair">
         </Widget>
 
+        </Widget>
     </Widget>
 </MyGUI>

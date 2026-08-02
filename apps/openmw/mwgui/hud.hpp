@@ -69,6 +69,7 @@ namespace MWGui
         void clear() override;
 
     private:
+        MyGUI::Widget* mGameplayHud;
         MyGUI::ProgressBar *mHealth, *mMagicka, *mStamina, *mEnemyHealth, *mDrowning;
         MyGUI::TextBox *mHealthText, *mMagickaText, *mStaminaText, *mFpsBox;
         MyGUI::TextBox *mEnemyName, *mEnemySummary;

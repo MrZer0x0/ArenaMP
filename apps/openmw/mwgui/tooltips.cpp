@@ -320,8 +320,19 @@ namespace MWGui
 
                 MyGUI::IntSize tooltipSize = getToolTipViaPtr(mFocusObject.getRefData().getCount(), true, checkOwned());
 
+                // Keep the classic world tooltip below the horizontal compass when it is enabled,
+                // so even the simple name panel never intersects the compass strip.
+                int minimumTop = 0;
+                if (Settings::Manager::getBool("horizontal compass", "HUD"))
+                {
+                    constexpr int horizontalCompassTop = 8;
+                    constexpr int horizontalCompassHeight = 26;
+                    constexpr int horizontalCompassGap = 6;
+                    minimumTop = horizontalCompassTop + horizontalCompassHeight + horizontalCompassGap;
+                }
+
                 setCoord(viewSize.width/2 - tooltipSize.width/2,
-                        std::max(0, int(mFocusToolTipY*viewSize.height - tooltipSize.height)),
+                        std::max(minimumTop, int(mFocusToolTipY*viewSize.height - tooltipSize.height)),
                         tooltipSize.width,
                         tooltipSize.height);
 

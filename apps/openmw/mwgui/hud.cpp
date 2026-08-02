@@ -20,6 +20,7 @@
     Include additional headers for multiplayer purposes
 */
 #include "../mwmp/Main.hpp"
+#include "../mwmp/LocalPlayer.hpp"
 #include "../mwmp/Networking.hpp"
 #include "../mwmp/ObjectList.hpp"
 #include "../mwworld/cellstore.hpp"
@@ -136,6 +137,7 @@ namespace MWGui
     HUD::HUD(CustomMarkerCollection &customMarkers, DragAndDrop* dragAndDrop, MWRender::LocalMap* localMapRender)
         : WindowBase("openmw_hud.layout")
         , LocalMapBase(customMarkers, localMapRender, Settings::Manager::getBool("local map hud fog of war", "Map"))
+        , mGameplayHud(nullptr)
         , mHealth(nullptr)
         , mMagicka(nullptr)
         , mStamina(nullptr)
@@ -186,6 +188,12 @@ namespace MWGui
         , mHmsBaseVisible(true)
     {
         mMainWidget->setSize(MyGUI::RenderManager::getInstance().getViewSize());
+        getWidget(mGameplayHud, "GameplayHud");
+
+        // Keep every gameplay HUD element hidden until authentication or new-character
+        // registration has completely finished. The login/registration dialogs and chat
+        // live outside this container and therefore remain usable.
+        mGameplayHud->setVisible(false);
 
         // Energy bars
         getWidget(mHealthFrame, "HealthFrame");
@@ -493,6 +501,17 @@ namespace MWGui
 
     void HUD::onFrame(float dt)
     {
+        const bool loginFinished = mwmp::Main::isInitialized()
+            && mwmp::Main::get().getLocalPlayer()
+            && mwmp::Main::get().getLocalPlayer()->isLoggedIn();
+
+        // LocalPlayer::isLoggedIn() becomes true only after an existing character has
+        // been received or after the complete new-character registration sequence.
+        // Toggling one parent preserves the individual visibility state of every HUD
+        // child, so map/settings/autohide choices are restored correctly after login.
+        if (mGameplayHud && mGameplayHud->getVisible() != loginFinished)
+            mGameplayHud->setVisible(loginFinished);
+
         LocalMapBase::onFrame(dt);
 
         updateHorizontalCompass();
