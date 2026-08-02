@@ -102,6 +102,21 @@ namespace MWGui
             leftOffsetWidth = MyGUI::utility::parseInt(mLeftPane->getUserString("LeftOffsetWidth"));
 
         float rightPaneRatio = 1.f - leftPaneRatio;
+
+        // The compact ArenaMP statistics layout intentionally uses a single pane.
+        // Keep it single-column even when the window is widened, instead of exposing
+        // the empty compatibility pane from the classic layout.
+        if (leftPaneRatio >= 0.999f)
+        {
+            mRightPane->setVisible(false);
+            mLeftPane->setCoord(MyGUI::IntCoord(0, 0,
+                std::max(1, windowWidth - leftOffsetWidth), windowHeight));
+            mSkillView->setVisibleVScroll(false);
+            mSkillView->setCanvasSize(mSkillView->getWidth(), mSkillView->getCanvasSize().height);
+            mSkillView->setVisibleVScroll(true);
+            return;
+        }
+
         int minLeftWidth = static_cast<int>(mMinFullWidth * leftPaneRatio);
         int minLeftOffsetWidth = minLeftWidth + leftOffsetWidth;
 

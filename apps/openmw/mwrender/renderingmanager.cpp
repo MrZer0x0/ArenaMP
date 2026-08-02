@@ -144,6 +144,7 @@ namespace MWRender
             , mFogEnd(0.f)
             , mWireframe(false)
             , mIsInterior(false)
+            , mUnderwaterBlend(0.f)
         {
         }
 
@@ -167,6 +168,7 @@ namespace MWRender
             stateset->addUniform(new osg::Uniform("isInventoryPreview", false));
             stateset->addUniform(new osg::Uniform("waterCausticsIntensity", 1.0f));
             stateset->addUniform(new osg::Uniform("waterUnderwaterTint", 1.0f));
+            stateset->addUniform(new osg::Uniform("waterUnderwaterBlend", 0.0f));
             stateset->addUniform(new osg::Uniform("waterWaveStrength", 1.0f));
             stateset->addUniform(new osg::Uniform("waterSurfaceRoughness", 0.22f));
         }
@@ -185,6 +187,8 @@ namespace MWRender
                 uniform->set(std::clamp(Settings::Manager::getFloat("caustics intensity", "Water"), 0.0f, 3.0f));
             if (osg::Uniform* uniform = stateset->getUniform("waterUnderwaterTint"))
                 uniform->set(std::clamp(Settings::Manager::getFloat("underwater tint", "Water"), 0.0f, 2.0f));
+            if (osg::Uniform* uniform = stateset->getUniform("waterUnderwaterBlend"))
+                uniform->set(mUnderwaterBlend);
             if (osg::Uniform* uniform = stateset->getUniform("waterWaveStrength"))
                 uniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 2.5f));
             if (osg::Uniform* uniform = stateset->getUniform("waterSurfaceRoughness"))
@@ -216,6 +220,11 @@ namespace MWRender
             mIsInterior = interior;
         }
 
+        void setUnderwaterBlend(float blend)
+        {
+            mUnderwaterBlend = std::clamp(blend, 0.f, 1.f);
+        }
+
         void setWireframe(bool wireframe)
         {
             if (mWireframe != wireframe)
@@ -237,6 +246,7 @@ namespace MWRender
         float mFogEnd;
         bool mWireframe;
         bool mIsInterior;
+        float mUnderwaterBlend;
     };
 
     class BloomProcessor
@@ -627,6 +637,10 @@ namespace MWRender
         , mLandOptimizationFrameCount(0)
         , mLandOptimizationEnabled(false)
         , mLandOptimizationWasExterior(false)
+        , mUnderwaterFogActive(false)
+        , mUnderwaterFogCandidate(false)
+        , mUnderwaterFogCandidateTime(0.f)
+        , mUnderwaterFogBlend(0.f)
         , mFieldOfViewOverridden(false)
         , mFieldOfViewOverride(0.f)
     {
@@ -1276,10 +1290,72 @@ namespace MWRender
         mCurrentCameraPos = cameraPos;
 
 
-        bool isUnderwater = mWater->isUnderwater(cameraPos);
-        mStateUpdater->setFogStart(mFog->getFogStart(isUnderwater));
-        mStateUpdater->setFogEnd(mFog->getFogEnd(isUnderwater));
-        setFogColor(mFog->getFogColor(isUnderwater));
+        // Keep the underwater state stable around the water plane. Head bob, camera
+        // interpolation and animated water can otherwise move the eye across the exact
+        // plane on alternating frames and make the tint flash on/off.
+        bool underwaterCandidate = false;
+        if (mWater->isActive())
+        {
+            constexpr float underwaterEnterDepth = 10.f;
+            constexpr float underwaterLeaveHeight = 6.f;
+            const float depth = mWater->getHeight() - static_cast<float>(cameraPos.z());
+            underwaterCandidate = mUnderwaterFogActive
+                ? depth > -underwaterLeaveHeight
+                : depth > underwaterEnterDepth;
+        }
+
+        if (underwaterCandidate != mUnderwaterFogCandidate)
+        {
+            mUnderwaterFogCandidate = underwaterCandidate;
+            mUnderwaterFogCandidateTime = 0.f;
+        }
+        else if (mUnderwaterFogCandidate != mUnderwaterFogActive)
+        {
+            mUnderwaterFogCandidateTime += std::max(0.f, dt);
+            constexpr float underwaterTransitionDebounce = 0.12f;
+            if (mUnderwaterFogCandidateTime >= underwaterTransitionDebounce)
+            {
+                mUnderwaterFogActive = mUnderwaterFogCandidate;
+                mUnderwaterFogCandidateTime = 0.f;
+            }
+        }
+        else
+            mUnderwaterFogCandidateTime = 0.f;
+
+        // Fade between land and underwater fog instead of replacing it in one frame.
+        // This removes the remaining visible pop when the stable state finally changes.
+        const float blendTarget = mUnderwaterFogActive ? 1.f : 0.f;
+        const float blendDt = std::min(std::max(0.f, dt), 0.1f);
+        const float blendStep = 1.f - std::exp(-10.f * blendDt);
+        mUnderwaterFogBlend += (blendTarget - mUnderwaterFogBlend) * blendStep;
+        if (std::abs(mUnderwaterFogBlend - blendTarget) < 0.001f)
+            mUnderwaterFogBlend = blendTarget;
+
+        const float landFogStart = mFog->getFogStart(false);
+        const float landFogEnd = mFog->getFogEnd(false);
+        const float waterFogStart = mFog->getFogStart(true);
+        const float waterFogEnd = mFog->getFogEnd(true);
+        const auto blendFogDistance = [this](float landValue, float waterValue)
+        {
+            // Treat disabled fog as a distant finite envelope while blending.
+            // Switching between FLT_MAX and a real distance at 50% was another
+            // source of visible underwater on/off flashes.
+            constexpr float noFogThreshold = 1e20f;
+            const float distantFog = std::max(16384.f, mViewDistance * 4.f);
+            if (landValue >= noFogThreshold)
+                landValue = distantFog;
+            if (waterValue >= noFogThreshold)
+                waterValue = distantFog;
+            return landValue + (waterValue - landValue) * mUnderwaterFogBlend;
+        };
+
+        mStateUpdater->setFogStart(blendFogDistance(landFogStart, waterFogStart));
+        mStateUpdater->setFogEnd(blendFogDistance(landFogEnd, waterFogEnd));
+        const osg::Vec4f landFogColor = mFog->getFogColor(false);
+        const osg::Vec4f waterFogColor = mFog->getFogColor(true);
+        setFogColor(landFogColor * (1.f - mUnderwaterFogBlend)
+            + waterFogColor * mUnderwaterFogBlend);
+        mStateUpdater->setUnderwaterBlend(mUnderwaterFogBlend);
     }
 
     void RenderingManager::updatePlayerPtr(const MWWorld::Ptr &ptr)

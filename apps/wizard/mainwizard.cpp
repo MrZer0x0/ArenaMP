@@ -271,22 +271,7 @@ Wizard::MainWizard::MainWizard(QWidget *parent) :
         addInstallation(toQString(dataPath), false);
     }
 
-    // When the Wizard is started again for an existing portable build, load its
-    // manifest immediately instead of waiting for a page-change signal. This
-    // keeps every build.ini value authoritative throughout the whole run.
-    QStringList manifestInstallations;
-    for (auto it = mInstallations.constBegin(); it != mInstallations.constEnd(); ++it)
-    {
-        if (!Config::BuildManifest::findForDataDir(it.key()).isEmpty())
-            manifestInstallations.append(it.key());
-    }
-    if (manifestInstallations.size() == 1)
-    {
-        const QString path = manifestInstallations.constFirst();
-        setField(QStringLiteral("installation.path"), path);
-        configureDataFiles(path);
-        addLogText(tr("Automatically applied build.ini for the detected build: %1").arg(path));
-    }
+
 }
 
 Wizard::MainWizard::~MainWizard()
@@ -423,18 +408,17 @@ void Wizard::MainWizard::setupLauncherSettings()
     mLauncherSettings.clear();
     mLauncherSettings.setMultiValueEnabled(true);
 
-    QDir userDir(toQString(mCfgMgr.getUserConfigPath()));
     QDir localDir(toQString(mCfgMgr.getLocalPath()));
 
     QString message(tr("<html><head/><body><p><b>Could not open %1 for reading</b></p> \
                     <p>Please make sure you have the right permissions \
                     and try again.</p></body></html>"));
 
-    // Local launcher.cfg provides defaults; userdata/launcher.cfg is loaded
-    // last and has priority for real user choices.
+    // A Wizard run is an explicit reset. Start from packaged Launcher defaults
+    // and deliberately ignore userdata/launcher.cfg; writeSettings() replaces it
+    // with the choices made during this Wizard run.
     QStringList paths;
     paths.append(localDir.filePath(QLatin1String(Config::LauncherSettings::sLauncherConfigFileName)));
-    paths.append(userDir.filePath(QLatin1String(Config::LauncherSettings::sLauncherConfigFileName)));
 
     for (const QString& path : paths)
     {
@@ -709,8 +693,7 @@ bool Wizard::MainWizard::loadBuildManifest(const QString& dataFilesPath)
         return false;
     }
 
-    const QStringList orderedContent
-        = Config::applyCanonicalContentOrder(manifest.contentFiles, QDir(resolvedDataPath));
+    const QStringList orderedContent = manifest.contentFiles;
     mGameSettings.setContentList(orderedContent);
     mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
     mGameSettings.remove(QStringLiteral("fallback-archive"));
@@ -739,33 +722,9 @@ bool Wizard::MainWizard::writeBuildManifest(const QString& dataFilesPath)
     if (manifestPath.isEmpty())
         manifestPath = Config::BuildManifest::canonicalPathForDataDir(dataPath);
 
+    // Always build a fresh manifest. An existing build.ini belongs to the
+    // previous Wizard/Launcher configuration and is intentionally replaced.
     Config::BuildManifest manifest;
-    if (QFileInfo::exists(manifestPath))
-    {
-        manifest.read(manifestPath);
-        if (manifest.complete)
-        {
-            addLogText(tr("The existing build.ini is complete and was left unchanged: %1").arg(manifestPath));
-            mBuildManifestLoaded = true;
-            mBuildManifestPath = manifestPath;
-            mBuildDataPath = manifest.resolvedDataPath(manifestPath);
-            mBuildName = manifest.buildName.trimmed().isEmpty()
-                ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
-            mBuildServerAddress = manifest.serverAddress.trimmed().isEmpty()
-                ? QStringLiteral("127.0.0.1") : manifest.serverAddress.trimmed();
-            mBuildServerPort = manifest.serverPort.trimmed().isEmpty()
-                ? QStringLiteral("25565") : manifest.serverPort.trimmed();
-            if (manifest.languageSpecified)
-            {
-                mBuildLanguage = Config::BuildManifest::canonicalLanguage(manifest.language);
-                mBuildLanguageLocked = true;
-                setField(QStringLiteral("installation.language"), mBuildLanguage);
-                mLauncherSettings.setValue(QStringLiteral("Settings/language"), mBuildLanguage);
-                mGameSettings.setValue(QStringLiteral("encoding"), encodingForLanguage(mBuildLanguage));
-            }
-            return true;
-        }
-    }
 
     QString address = mBuildServerAddress;
     QString port = mBuildServerPort;
@@ -824,8 +783,14 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     if (!dir.exists())
         return;
 
-    if (loadBuildManifest(resolvedPath))
-        return;
+    // Running the Wizard again is an explicit rebuild of Launcher state. Ignore
+    // any old build.ini here and create a new manifest from the choices/detection
+    // performed by this run.
+    mBuildManifestLoaded = false;
+    mBuildManifestPath.clear();
+    mBuildDataPath = resolvedPath;
+    mBuildName = QStringLiteral("ArenaMP");
+    mBuildLanguageLocked = false;
 
     // Canonical build content is enabled automatically in the requested load
     // order when present. Other selected plugins are preserved afterwards.
@@ -840,25 +805,9 @@ void Wizard::MainWizard::configureDataFiles(const QString& path)
     }
 
     QStringList groundcover;
-    const QStringList previousContent = mGameSettings.getContentList();
-    const QStringList previousGroundcover = mGameSettings.getGroundcoverList();
-    for (const QString& previous : previousContent)
-    {
-        if (!isPriorityContent(previous) && !containsCaseInsensitive(content, previous))
-        {
-            if (isGroundcoverCandidate(previous))
-                groundcover.append(previous);
-            else
-                content.append(previous);
-        }
-    }
-    for (const QString& previous : previousGroundcover)
-    {
-        if (!containsCaseInsensitive(groundcover, previous))
-            groundcover.append(previous);
-    }
 
-    // Without build.ini there is no saved load order. Use a deterministic order:
+    // A fresh Wizard run intentionally starts a fresh order.
+    // Use a deterministic order:
     // base masters first, then all other plugins alphabetically. Grass and
     // groundcover plugins are stored separately as groundcover entries.
     QStringList discoveredPlugins;
@@ -962,24 +911,20 @@ void Wizard::MainWizard::importerFinished(int exitCode, QProcess::ExitStatus exi
     const QString manifestPath = Config::BuildManifest::findForDataDir(path);
     const bool importerSucceeded = exitCode == 0 && exitStatus != QProcess::CrashExit;
 
-    // Even a failed importer can leave a partially rewritten openmw.cfg. When
-    // this is a portable build, always restore every authoritative build.ini
-    // value and its exact plugin/groundcover/archive order before continuing.
+    // The importer can leave a partially rewritten openmw.cfg. Reapply the
+    // fresh Wizard-selected content/archive order before saving the new build.ini.
     if (!importerSucceeded && manifestPath.isEmpty())
         return;
 
-    // The legacy importer may reorder content and fallback archives. Re-read
-    // whatever it wrote, then make build.ini authoritative again and persist
-    // the exact settings stored by the build author.
     setupGameSettings();
     if (!path.isEmpty())
         configureDataFiles(path);
     writeSettings();
 
     if (importerSucceeded)
-        addLogText(tr("Reapplied every build.ini setting after Morrowind.ini import, including exact content, groundcover and archive order."));
+        addLogText(tr("Reapplied the new Wizard content, groundcover and archive order after Morrowind.ini import."));
     else
-        addLogText(tr("The Morrowind.ini importer failed, but build.ini was reapplied to restore every setting and the exact file order."));
+        addLogText(tr("The Morrowind.ini importer failed, but the new Wizard file order was restored before saving."));
 }
 
 void Wizard::MainWizard::accept()

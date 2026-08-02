@@ -68,6 +68,33 @@ namespace
         return Settings::Manager::getBool("persistent weapon spell boxes", "GUI")
             ? "transparent" : "hidden";
     }
+
+    std::string getResourceBarMode()
+    {
+        const std::string mode = Settings::Manager::getString("resource bars mode", "HUD");
+        if (mode == "always" || mode == "automatic" || mode == "hidden")
+            return mode;
+        return Settings::Manager::getBool("auto hide resource bars", "GUI")
+            ? "automatic" : "always";
+    }
+
+    std::string getNpcBarMode()
+    {
+        const std::string mode = Settings::Manager::getString("npc bar mode", "HUD");
+        if (mode == "off" || mode == "combat" || mode == "hover" || mode == "both")
+            return mode;
+        return Settings::Manager::getBool("target info panel", "GUI") ? "both" : "combat";
+    }
+
+    bool npcBarShowsHover(const std::string& mode)
+    {
+        return mode == "hover" || mode == "both";
+    }
+
+    bool npcBarShowsCombat(const std::string& mode)
+    {
+        return mode == "combat" || mode == "both";
+    }
 }
 
 namespace MWGui
@@ -171,6 +198,9 @@ namespace MWGui
         , mWeaponSpellTimer(0.f)
         , mGameTimeUpdateTimer(0.f)
         , mMapVisible(true)
+        , mMinimapBaseVisible(true)
+        , mEffectBaseVisible(true)
+        , mCrosshairBaseVisible(true)
         , mWeaponVisible(true)
         , mSpellVisible(true)
         , mWorldMouseOver(false)
@@ -495,7 +525,7 @@ namespace MWGui
             mCellName = cellName;
 
             mCellNameBox->setCaptionWithReplacing("#{sCell=" + mCellName + "}");
-            mCellNameBox->setVisible(mMapVisible);
+            mCellNameBox->setVisible(mMapVisible && Settings::Manager::getBool("show cell name", "HUD"));
         }
     }
 
@@ -514,10 +544,28 @@ namespace MWGui
 
         LocalMapBase::onFrame(dt);
 
+        // Apply HUD preferences live so changes made in the dedicated HUD tab do
+        // not require reopening the game or rebuilding the HUD layout.
+        const bool showMinimap = mMinimapBaseVisible && Settings::Manager::getBool("show minimap", "HUD");
+        if (mMinimapBox->getVisible() != showMinimap)
+        {
+            mMinimapBox->setVisible(showMinimap);
+            updatePositions();
+        }
+        if (mCompass)
+            mCompass->setVisible(showMinimap && Settings::Manager::getBool("show minimap compass", "HUD"));
+        if (mGameTimeBox)
+            mGameTimeBox->setVisible(Settings::Manager::getBool("show game time", "HUD"));
+        if (mEffectBox)
+            mEffectBox->setVisible(mEffectBaseVisible && Settings::Manager::getBool("show status effects", "HUD"));
+        if (mFpsBox)
+            mFpsBox->setVisible(Settings::Manager::getBool("show fps", "HUD"));
+        if (mCrosshair)
+            mCrosshair->setVisible(mCrosshairBaseVisible && Settings::Manager::getBool("crosshair", "HUD"));
+
         updateHorizontalCompass();
 
-
-        if (mGameTimeBox)
+        if (mGameTimeBox && mGameTimeBox->getVisible())
         {
             mGameTimeUpdateTimer -= dt;
             if (mGameTimeUpdateTimer <= 0.f)
@@ -542,7 +590,7 @@ namespace MWGui
 
         mCellNameTimer -= dt;
         mWeaponSpellTimer -= dt;
-        if (mCellNameTimer < 0)
+        if (mCellNameTimer < 0 || !Settings::Manager::getBool("show cell name", "HUD"))
             mCellNameBox->setVisible(false);
         if (mWeaponSpellTimer < 0)
             mWeaponSpellBox->setVisible(false);
@@ -560,12 +608,15 @@ namespace MWGui
             mFpsFrameCount = 0;
         }
 
-        const bool targetInfoPanel = Settings::Manager::getBool("target info panel", "GUI");
+        const std::string npcBarMode = getNpcBarMode();
+        const bool showHoverNpcBar = npcBarShowsHover(npcBarMode);
+        const bool showCombatNpcBar = npcBarShowsCombat(npcBarMode);
         const bool focusedTargetAlive = !mFocusActor.isEmpty()
             && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead();
         const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
-        const bool focusedTargetPanel = targetInfoPanel && focusedTargetAlive && !dialogueOpen
+        const bool focusedTargetPanel = showHoverNpcBar && focusedTargetAlive && !dialogueOpen
             && !isFocusedTargetTooClose();
+        const bool combatTargetPanel = showCombatNpcBar && mEnemyActorId != -1;
 
         mEnemyHealthTimer -= dt;
         if (mEnemyHealth->getVisible() && mEnemyHealthTimer < 0 && !focusedTargetPanel)
@@ -577,8 +628,12 @@ namespace MWGui
             mDrowningFlashTheta += dt * osg::PI*2;
 
         mSpellIcons->updateWidgets(mEffectBox, true);
+        if (mEffectBox)
+            mEffectBox->setVisible(mEffectBaseVisible
+                && Settings::Manager::getBool("show status effects", "HUD")
+                && mEffectBox->getChildCount() > 0);
 
-        if ((focusedTargetPanel || mEnemyActorId != -1) && mEnemyHealth->getVisible())
+        if ((focusedTargetPanel || combatTargetPanel) && mEnemyHealth->getVisible())
         {
             updateEnemyHealthBar();
         }
@@ -605,7 +660,7 @@ namespace MWGui
         if (!player.isEmpty())
             drawState = player.getClass().getCreatureStats(player).getDrawState();
 
-        if (dialogueOpen && mEnemyActorId == -1)
+        if ((!showHoverNpcBar && !showCombatNpcBar) || (dialogueOpen && mEnemyActorId == -1))
             mEnemyHealth->setVisible(false);
 
         const bool showFocusedTargetInfo = focusedTargetPanel && mEnemyHealth->getVisible();
@@ -712,6 +767,12 @@ namespace MWGui
         if (!frame || !state.initialized)
             return;
 
+        const bool barEnabled = frame == mHealthFrame
+            ? Settings::Manager::getBool("show health bar", "HUD")
+            : (frame == mMagickaFrame
+                ? Settings::Manager::getBool("show magicka bar", "HUD")
+                : Settings::Manager::getBool("show stamina bar", "HUD"));
+
         if (!mHmsBaseVisible)
         {
             frame->setVisible(false);
@@ -761,19 +822,26 @@ namespace MWGui
             applyBarAlpha(persistentIcon, std::max(persistentAlpha, alpha));
         };
 
+        const std::string resourceMode = getResourceBarMode();
+        if (!barEnabled || resourceMode == "hidden")
+        {
+            applyResourceState(0.f);
+            return;
+        }
+
+        if (resourceMode == "always")
+        {
+            state.alpha = 1.f;
+            applyResourceState(1.f);
+            return;
+        }
+
         // Keep the relevant resource bar visible for as long as the player is
         // actively holding a weapon or has magic readied. Start the normal
         // auto-hide delay only after the weapon/spell is put away.
         if (forceVisible)
         {
             state.idleTimer = 0.f;
-            state.alpha = 1.f;
-            applyResourceState(1.f);
-            return;
-        }
-
-        if (!Settings::Manager::getBool("auto hide resource bars", "GUI"))
-        {
             state.alpha = 1.f;
             applyResourceState(1.f);
             return;
@@ -913,7 +981,8 @@ namespace MWGui
 
     void HUD::setCrosshairVisible(bool visible)
     {
-        mCrosshair->setVisible (visible);
+        mCrosshairBaseVisible = visible;
+        mCrosshair->setVisible(visible && Settings::Manager::getBool("crosshair", "HUD"));
     }
     
     void HUD::setCrosshairOwned(bool owned)
@@ -980,13 +1049,15 @@ namespace MWGui
 
     void HUD::setEffectVisible(bool visible)
     {
-        mEffectBox->setVisible (visible);
+        mEffectBaseVisible = visible;
+        mEffectBox->setVisible(visible && Settings::Manager::getBool("show status effects", "HUD"));
         updatePositions();
     }
 
     void HUD::setMinimapVisible(bool visible)
     {
-        mMinimapBox->setVisible (visible);
+        mMinimapBaseVisible = visible;
+        mMinimapBox->setVisible(visible && Settings::Manager::getBool("show minimap", "HUD"));
         updatePositions();
     }
 
@@ -1031,7 +1102,7 @@ namespace MWGui
         else
             mFocusActor = MWWorld::Ptr();
 
-        const bool focusedTargetPanel = Settings::Manager::getBool("target info panel", "GUI")
+        const bool focusedTargetPanel = npcBarShowsHover(getNpcBarMode())
             && !mFocusActor.isEmpty()
             && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
             && !isFocusedTargetTooClose();
@@ -1063,7 +1134,8 @@ namespace MWGui
 
     void HUD::updateEnemyHealthBar()
     {
-        const bool usingFocusActor = Settings::Manager::getBool("target info panel", "GUI")
+        const std::string npcBarMode = getNpcBarMode();
+        const bool usingFocusActor = npcBarShowsHover(npcBarMode)
             && !mFocusActor.isEmpty()
             && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead()
             && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
@@ -1072,11 +1144,18 @@ namespace MWGui
         MWWorld::Ptr enemy;
         if (usingFocusActor)
             enemy = mFocusActor;
-        else if (mEnemyActorId != -1)
+        else if (npcBarShowsCombat(npcBarMode) && mEnemyActorId != -1)
             enemy = MWBase::Environment::get().getWorld()->searchPtrViaActorId(mEnemyActorId);
 
         if (enemy.isEmpty())
+        {
+            mEnemyHealth->setVisible(false);
+            if (mEnemyName)
+                mEnemyName->setVisible(false);
+            if (mEnemySummary)
+                mEnemySummary->setVisible(false);
             return;
+        }
 
         MWMechanics::CreatureStats& stats = enemy.getClass().getCreatureStats(enemy);
         if (stats.isDead() || stats.getHealth().getCurrent() <= 0.f)
@@ -1203,8 +1282,10 @@ namespace MWGui
         if (mEnemySummary)
             mEnemySummary->setVisible(false);
         mEnemyHealthTimer = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>().find("fNPCHealthBarTime")->mValue.getFloat();
-        mEnemyHealth->setVisible(true);
-        updateEnemyHealthBar();
+        const bool showCombatBar = npcBarShowsCombat(getNpcBarMode());
+        mEnemyHealth->setVisible(showCombatBar);
+        if (showCombatBar)
+            updateEnemyHealthBar();
     }
 
     void HUD::resetEnemy()

@@ -40,6 +40,7 @@ uniform bool isInterior;
 uniform bool isInventoryPreview;
 uniform float waterCausticsIntensity;
 uniform float waterUnderwaterTint;
+uniform float waterUnderwaterBlend;
 
 #include "helpsettings.glsl"
 #include "vertexcolors.glsl"
@@ -157,8 +158,9 @@ void main()
     
     // Проверяем позицию КАМЕРЫ
     vec3 cameraPos = (osg_ViewMatrixInverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-    float cameraWaterH = zDoWaveSimple(cameraPos.xy, osg_SimulationTime);
-    bool cameraUnderwater = cameraPos.z < cameraWaterH;
+    // CPU-side hysteresis/debounce supplies a stable camera underwater blend.
+    // Do not compare the camera against animated waves per fragment: that made
+    // the tint alternate on/off near the surface.
     
     // isInterior is supplied from the authoritative active-cell state.
     
@@ -193,9 +195,11 @@ void main()
 #endif
 
     // Применяем attenuation ТОЛЬКО если камера под водой
-    if (cameraUnderwater && !isInterior && !isInventoryPreview && waterDepth > 0.0) {
+    if (waterUnderwaterBlend > 0.001 && !isInterior && !isInventoryPreview && waterDepth > 0.0) {
 #if (ATTENUATION == 1)
-        gl_FragData[0].xyz = mix(gl_FragData[0].xyz, applyUnderwaterMedium(gl_FragData[0].xyz, waterDepth, isInterior), waterUnderwaterTint);
+        float stableTint = clamp(waterUnderwaterTint * waterUnderwaterBlend, 0.0, 2.0);
+        gl_FragData[0].xyz = mix(gl_FragData[0].xyz,
+            applyUnderwaterMedium(gl_FragData[0].xyz, waterDepth, isInterior), stableTint);
 #endif
     }
 

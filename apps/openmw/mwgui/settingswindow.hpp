@@ -25,6 +25,7 @@ namespace MWGui
             MyGUI::TabControl* mSettingsTab;
             MyGUI::ListBox* mSectionList;
             MyGUI::ScrollView* mInterfaceScroll;
+            MyGUI::ScrollView* mHudScroll;
             MyGUI::ScrollView* mDisplayScroll;
             MyGUI::ScrollView* mHdrScroll;
             MyGUI::Button* mOkButton;
@@ -47,6 +48,9 @@ namespace MWGui
             MyGUI::Button* mHdrResetButton;
 
             MyGUI::ComboBox* mWeaponSpellBoxMode;
+            MyGUI::ComboBox* mResourceBarMode;
+            MyGUI::ComboBox* mNpcBarMode;
+            MyGUI::ComboBox* mChatMode;
             MyGUI::ComboBox* mQuickLootMode;
             MyGUI::ComboBox* mTerrainPreset;
             MyGUI::ComboBox* mMaterialQuality;
@@ -84,6 +88,9 @@ namespace MWGui
             void onHdrResetButtonClicked(MyGUI::Widget* _sender);
             void onMaxLightsChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onWeaponSpellBoxModeChanged(MyGUI::ComboBox* _sender, size_t pos);
+            void onResourceBarModeChanged(MyGUI::ComboBox* _sender, size_t pos);
+            void onNpcBarModeChanged(MyGUI::ComboBox* _sender, size_t pos);
+            void onChatModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onQuickLootModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onTerrainPresetChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onMaterialQualityChanged(MyGUI::ComboBox* _sender, size_t pos);
@@ -91,6 +98,9 @@ namespace MWGui
             void onShadowPresetChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onShadowMapQualityChanged(MyGUI::ComboBox* _sender, size_t pos);
             void updateWeaponSpellBoxModeCombo();
+            void updateResourceBarModeCombo();
+            void updateNpcBarModeCombo();
+            void updateChatModeCombo();
             void updateQuickLootModeCombo();
             void updateTerrainPresetCombo();
             void updateMaterialQualityCombo();

@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <MyGUI type="Layout" version="3.2.0">
   <Widget type="Window" skin="" position="0 0 640 500" name="_Main" layer="Windows">
     <Widget type="Widget" skin="BlackBG" position="0 0 640 500" align="Stretch" name="SettingsBackdrop" />
@@ -14,100 +14,60 @@
           <Property key="Caption" value="#{arenamp=settings.section.interface}" />
           <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="InterfaceScroll">
             <Property key="CanvasAlign" value="Left Top" />
-            <Property key="CanvasSize" value="458 478" />
-            <Widget type="ImageBox" skin="MW_HLine" position="8 28 442 2" />
-            <Widget type="HBox" skin="" position="8 8 200 24">
-              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 24 24">
+            <Property key="CanvasSize" value="458 360" />
+            <Widget type="HBox" skin="" position="8 8 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="GUI" />
                 <UserString key="SettingName" value="subtitles" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="30 4 180 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{sSubtitles}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="8 36 200 24">
-              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 24 24">
-                <UserString key="SettingCategory" value="HUD" />
-                <UserString key="SettingName" value="crosshair" />
-                <UserString key="SettingType" value="CheckButton" />
-              </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="30 4 180 18">
-                <Property key="Caption" value="#{sCursorOff}" />
-              </Widget>
-            </Widget>
-			<Widget type="HBox" skin="" position="8 64 442 24">
+            <Widget type="HBox" skin="" position="8 36 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="GUI" />
                 <UserString key="SettingName" value="idle shoulder camera" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.idle_shoulder}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="8 86 442 36">
-              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
-                <Property key="ExpandDirection" value="Right" />
-                <UserString key="SettingCategory" value="GUI" />
-                <UserString key="SettingName" value="auto hide resource bars" />
-                <UserString key="SettingType" value="CheckButton" />
-              </Widget>
-              <Widget type="TextBox" skin="SandText" position="60 2 378 32">
-                <Property key="Caption" value="#{arenamp=settings.auto_hide_bars}" />
-                <Property key="MultiLine" value="true" />
-                <Property key="TextAlign" value="Left Top" />
-              </Widget>
-            </Widget>
-             <Widget type="ImageBox" skin="MW_HLine" position="8 468 442 2" />
-            <Widget type="HBox" skin="" position="200 8 442 24">
+            <Widget type="HBox" skin="" position="8 64 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="Camera" />
                 <UserString key="SettingName" value="view over shoulder" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.shoulder_view}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="200 36 442 24">
+            <Widget type="HBox" skin="" position="8 92 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="GUI" />
                 <UserString key="SettingName" value="cinematic dialogue camera" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.dialogue_camera}" />
               </Widget>
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 144 442 18">
-              <Property key="Caption" value="#{arenamp=settings.weapon_magic_boxes}" />
-            </Widget>
-            <Widget type="ComboBox" skin="MW_ComboBox" position="8 166 260 24" name="WeaponSpellBoxMode" />
-            <Widget type="HBox" skin="" position="8 200 442 36">
-              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
-                <Property key="ExpandDirection" value="Right" />
-                <UserString key="SettingCategory" value="GUI" />
-                <UserString key="SettingName" value="target info panel" />
-                <UserString key="SettingType" value="CheckButton" />
-              </Widget>
-              <Widget type="TextBox" skin="SandText" position="60 2 378 32">
-                <Property key="Caption" value="#{arenamp=settings.target_panel}" />
-                <Property key="MultiLine" value="true" />
-                <Property key="TextAlign" value="Left Top" />
-              </Widget>
-            </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 246 442 18">
+            <Widget type="ImageBox" skin="MW_HLine" position="8 124 442 2" />
+            <Widget type="TextBox" skin="NormalText" position="8 138 442 18">
               <Property key="Caption" value="#{arenamp=settings.quickloot_mode}" />
             </Widget>
-            <Widget type="ComboBox" skin="MW_ComboBox" position="8 268 260 24" name="QuickLootMode" />
-            <Widget type="TextBox" skin="NormalText" position="8 304 442 18" name="QuickLootDelayLabel">
+            <Widget type="ComboBox" skin="MW_ComboBox" position="8 160 300 24" name="QuickLootMode" />
+            <Widget type="TextBox" skin="NormalText" position="8 198 442 18" name="QuickLootDelayLabel">
               <Property key="Caption" value="#{arenamp=settings.quickloot_delay}" />
             </Widget>
-            <Widget type="ScrollBar" skin="MW_HScroll" position="8 326 442 16" name="QuickLootDelay">
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 220 442 16" name="QuickLootDelay">
               <Property key="Range" value="20" />
               <Property key="Page" value="1" />
               <UserString key="SettingType" value="Slider" />
@@ -119,45 +79,223 @@
               <UserString key="SettingLabelWidget" value="QuickLootDelayLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.quickloot_delay}" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="8 344 80 16">
+            <Widget type="TextBox" skin="SandText" position="8 238 80 16">
               <Property key="Caption" value="0.1 s" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="370 344 80 16">
+            <Widget type="TextBox" skin="SandText" position="370 238 80 16">
               <Property key="Caption" value="2.0 s" />
               <Property key="TextAlign" value="Right" />
             </Widget>
-            <Widget type="HBox" skin="" position="8 374 442 24">
+            <Widget type="HBox" skin="" position="8 270 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="Camera" />
                 <UserString key="SettingName" value="dynamic camera" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.dynamic_camera}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="8 402 442 24">
+            <Widget type="HBox" skin="" position="8 298 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="Camera" />
                 <UserString key="SettingName" value="immersive first person" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.immersive_fpv}" />
               </Widget>
             </Widget>
-            <Widget type="HBox" skin="" position="8 430 442 24">
+          </Widget>
+        </Widget>
+        <Widget type="TabItem" skin="" position="4 32 486 412">
+          <Property key="Caption" value="#{arenamp=settings.section.hud}" />
+          <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="HUDScroll">
+            <Property key="CanvasAlign" value="Left Top" />
+            <Property key="CanvasSize" value="458 790" />
+            <Widget type="TextBox" skin="NormalText" position="8 8 442 18">
+              <Property key="Caption" value="#{arenamp=hud.resources}" />
+            </Widget>
+            <Widget type="HBox" skin="" position="8 32 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show health bar" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_health}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 60 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show magicka bar" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_magicka}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 88 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show stamina bar" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_stamina}" />
+              </Widget>
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 122 442 18">
+              <Property key="Caption" value="#{arenamp=hud.resource_mode}" />
+            </Widget>
+            <Widget type="ComboBox" skin="MW_ComboBox" position="8 144 300 24" name="ResourceBarMode" />
+            <Widget type="TextBox" skin="NormalText" position="8 178 442 18">
+              <Property key="Caption" value="#{arenamp=settings.weapon_magic_boxes}" />
+            </Widget>
+            <Widget type="ComboBox" skin="MW_ComboBox" position="8 200 300 24" name="WeaponSpellBoxMode" />
+            <Widget type="ImageBox" skin="MW_HLine" position="8 236 442 2" />
+            <Widget type="TextBox" skin="NormalText" position="8 250 442 18">
+              <Property key="Caption" value="#{arenamp=hud.elements}" />
+            </Widget>
+            <Widget type="HBox" skin="" position="8 274 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show game time" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_clock}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 302 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="HUD" />
                 <UserString key="SettingName" value="horizontal compass" />
                 <UserString key="SettingType" value="CheckButton" />
               </Widget>
-              <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 370 18">
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
                 <Property key="Caption" value="#{arenamp=settings.horizontal_compass}" />
               </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 330 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show minimap" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_minimap}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 358 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show minimap compass" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_minimap_compass}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 386 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show status effects" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_effects}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 414 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show fps" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_fps}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 442 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="crosshair" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_crosshair}" />
+              </Widget>
+            </Widget>
+            <Widget type="HBox" skin="" position="8 470 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="HUD" />
+                <UserString key="SettingName" value="show cell name" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.show_cell_name}" />
+              </Widget>
+            </Widget>
+            <Widget type="ImageBox" skin="MW_HLine" position="8 504 442 2" />
+            <Widget type="TextBox" skin="NormalText" position="8 518 442 18">
+              <Property key="Caption" value="#{arenamp=hud.npc_bar}" />
+            </Widget>
+            <Widget type="ComboBox" skin="MW_ComboBox" position="8 540 300 24" name="NpcBarMode" />
+            <Widget type="ImageBox" skin="MW_HLine" position="8 576 442 2" />
+            <Widget type="TextBox" skin="NormalText" position="8 590 442 18">
+              <Property key="Caption" value="#{arenamp=hud.chat}" />
+            </Widget>
+            <Widget type="HBox" skin="" position="8 614 442 24">
+              <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+                <Property key="ExpandDirection" value="Right" />
+                <UserString key="SettingCategory" value="Chat" />
+                <UserString key="SettingName" value="enabled" />
+                <UserString key="SettingType" value="CheckButton" />
+              </Widget>
+              <Widget type="TextBox" skin="SandText" position="60 2 378 22">
+                <Property key="Caption" value="#{arenamp=hud.chat_enabled}" />
+              </Widget>
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 648 442 18">
+              <Property key="Caption" value="#{arenamp=hud.chat_mode}" />
+            </Widget>
+            <Widget type="ComboBox" skin="MW_ComboBox" position="8 670 300 24" name="ChatMode" />
+            <Widget type="TextBox" skin="NormalText" position="8 704 442 18" name="ChatDelayLabel">
+              <Property key="Caption" value="#{arenamp=hud.chat_delay}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 726 442 16" name="ChatDelay">
+              <Property key="Range" value="101" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Chat" />
+              <UserString key="SettingName" value="delay" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.0" />
+              <UserString key="SettingMax" value="10.0" />
+              <UserString key="SettingLabelWidget" value="ChatDelayLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=hud.chat_delay}" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="8 744 80 16">
+              <Property key="Caption" value="0 s" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="370 744 80 16">
+              <Property key="Caption" value="10 s" />
+              <Property key="TextAlign" value="Right" />
             </Widget>
           </Widget>
         </Widget>
@@ -423,8 +561,13 @@
               <UserString key="SettingLabelWidget" value="RenderDistanceLabel" />
               <UserString key="SettingLabelCaption" value="#{sRender_Distance} (x%s)" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="0 46 80 16"><Property key="Caption" value="#{sNear}" /></Widget>
-            <Widget type="TextBox" skin="SandText" position="382 46 80 16"><Property key="Caption" value="#{sFar}" /><Property key="TextAlign" value="Right" /></Widget>
+            <Widget type="TextBox" skin="SandText" position="0 46 80 16">
+              <Property key="Caption" value="#{sNear}" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="382 46 80 16">
+              <Property key="Caption" value="#{sFar}" />
+              <Property key="TextAlign" value="Right" />
+            </Widget>
           </Widget>
           <Widget type="Widget" skin="" position="8 242 462 70" name="OptimizedRenderDistanceBox">
             <Widget type="TextBox" skin="NormalText" position="0 6 462 18" name="OptimizedRenderDistanceLabel">
@@ -445,8 +588,13 @@
               <UserString key="SettingLabelWidget" value="OptimizedRenderDistanceLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.optimized_distance_value}" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="0 46 100 16"><Property key="Caption" value="4 000" /></Widget>
-            <Widget type="TextBox" skin="SandText" position="362 46 100 16"><Property key="Caption" value="40 000" /><Property key="TextAlign" value="Right" /></Widget>
+            <Widget type="TextBox" skin="SandText" position="0 46 100 16">
+              <Property key="Caption" value="4 000" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="362 46 100 16">
+              <Property key="Caption" value="40 000" />
+              <Property key="TextAlign" value="Right" />
+            </Widget>
           </Widget>
         </Widget>
         <Widget type="TabItem" skin="" position="4 32 486 412">
@@ -670,61 +818,169 @@
               <Property key="Caption" value="#{arenamp=settings.hdr_exposure}" />
             </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 126 442 16">
-              <Property key="Range" value="276" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" />
-              <UserString key="SettingName" value="hdr exposure" /><UserString key="SettingValueType" value="Float" />
-              <UserString key="SettingMin" value="0.25" /><UserString key="SettingMax" value="3.0" />
-              <UserString key="SettingLabelWidget" value="HdrExposureLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_exposure}" />
+              <Property key="Range" value="276" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr exposure" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.25" />
+              <UserString key="SettingMax" value="3.0" />
+              <UserString key="SettingLabelWidget" value="HdrExposureLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_exposure}" />
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 156 442 18" name="HdrInteriorExposureLabel"><Property key="Caption" value="#{arenamp=settings.hdr_interior_exposure}" /></Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 156 442 18" name="HdrInteriorExposureLabel">
+              <Property key="Caption" value="#{arenamp=settings.hdr_interior_exposure}" />
+            </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 178 442 16">
-              <Property key="Range" value="301" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="hdr interior exposure" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="-1.0" /><UserString key="SettingMax" value="2.0" /><UserString key="SettingLabelWidget" value="HdrInteriorExposureLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_interior_exposure}" />
+              <Property key="Range" value="301" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr interior exposure" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="-1.0" />
+              <UserString key="SettingMax" value="2.0" />
+              <UserString key="SettingLabelWidget" value="HdrInteriorExposureLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_interior_exposure}" />
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 208 442 18" name="HdrNightExposureLabel"><Property key="Caption" value="#{arenamp=settings.hdr_night_exposure}" /></Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 208 442 18" name="HdrNightExposureLabel">
+              <Property key="Caption" value="#{arenamp=settings.hdr_night_exposure}" />
+            </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 230 442 16">
-              <Property key="Range" value="301" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="hdr night exposure" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="-1.0" /><UserString key="SettingMax" value="2.0" /><UserString key="SettingLabelWidget" value="HdrNightExposureLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_night_exposure}" />
+              <Property key="Range" value="301" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr night exposure" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="-1.0" />
+              <UserString key="SettingMax" value="2.0" />
+              <UserString key="SettingLabelWidget" value="HdrNightExposureLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_night_exposure}" />
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 260 442 18" name="HdrGammaLabel"><Property key="Caption" value="#{arenamp=settings.hdr_gamma}" /></Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 260 442 18" name="HdrGammaLabel">
+              <Property key="Caption" value="#{arenamp=settings.hdr_gamma}" />
+            </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 282 442 16">
-              <Property key="Range" value="201" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="hdr gamma" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="1.0" /><UserString key="SettingMax" value="3.0" /><UserString key="SettingLabelWidget" value="HdrGammaLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_gamma}" />
+              <Property key="Range" value="201" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr gamma" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="1.0" />
+              <UserString key="SettingMax" value="3.0" />
+              <UserString key="SettingLabelWidget" value="HdrGammaLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_gamma}" />
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 312 442 18" name="HdrBrightnessLabel"><Property key="Caption" value="#{arenamp=settings.hdr_brightness}" /></Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 312 442 18" name="HdrBrightnessLabel">
+              <Property key="Caption" value="#{arenamp=settings.hdr_brightness}" />
+            </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 334 442 16">
-              <Property key="Range" value="151" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="hdr brightness" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.5" /><UserString key="SettingMax" value="2.0" /><UserString key="SettingLabelWidget" value="HdrBrightnessLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_brightness}" />
+              <Property key="Range" value="151" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr brightness" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.5" />
+              <UserString key="SettingMax" value="2.0" />
+              <UserString key="SettingLabelWidget" value="HdrBrightnessLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_brightness}" />
             </Widget>
-            <Widget type="TextBox" skin="NormalText" position="8 364 442 18" name="HdrSaturationLabel"><Property key="Caption" value="#{arenamp=settings.hdr_saturation}" /></Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 364 442 18" name="HdrSaturationLabel">
+              <Property key="Caption" value="#{arenamp=settings.hdr_saturation}" />
+            </Widget>
             <Widget type="ScrollBar" skin="MW_HScroll" position="8 386 442 16">
-              <Property key="Range" value="251" /><Property key="Page" value="1" />
-              <UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="hdr saturation" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.0" /><UserString key="SettingMax" value="2.5" /><UserString key="SettingLabelWidget" value="HdrSaturationLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_saturation}" />
+              <Property key="Range" value="251" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="hdr saturation" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.0" />
+              <UserString key="SettingMax" value="2.5" />
+              <UserString key="SettingLabelWidget" value="HdrSaturationLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.hdr_saturation}" />
             </Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" position="8 430 180 24" name="HdrResetButton"><Property key="Caption" value="#{arenamp=settings.reset_hdr}" /></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="8 430 180 24" name="HdrResetButton">
+              <Property key="Caption" value="#{arenamp=settings.reset_hdr}" />
+            </Widget>
           </Widget>
         </Widget>
         <Widget type="TabItem" skin="" position="4 32 486 412">
           <Property key="Caption" value="#{arenamp=settings.subsection.bloom}" />
           <Widget type="HBox" skin="" position="8 8 462 24">
-            <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24"><Property key="ExpandDirection" value="Right" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="bloom enabled" /><UserString key="SettingType" value="CheckButton" /></Widget>
-            <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 390 18"><Property key="Caption" value="#{arenamp=settings.bloom_enabled}" /></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
+              <Property key="ExpandDirection" value="Right" />
+              <UserString key="SettingCategory" value="Shaders" />
+              <UserString key="SettingName" value="bloom enabled" />
+              <UserString key="SettingType" value="CheckButton" />
+            </Widget>
+            <Widget type="AutoSizedTextBox" skin="SandText" position="60 4 390 18">
+              <Property key="Caption" value="#{arenamp=settings.bloom_enabled}" />
+            </Widget>
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 48 462 18" name="BloomIntensityLabel"><Property key="Caption" value="#{arenamp=settings.bloom_intensity}" /></Widget>
+          <Widget type="TextBox" skin="NormalText" position="8 48 462 18" name="BloomIntensityLabel">
+            <Property key="Caption" value="#{arenamp=settings.bloom_intensity}" />
+          </Widget>
           <Widget type="ScrollBar" skin="MW_HScroll" position="8 70 462 16">
-            <Property key="Range" value="301" /><Property key="Page" value="1" /><UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="bloom intensity" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.0" /><UserString key="SettingMax" value="3.0" /><UserString key="SettingLabelWidget" value="BloomIntensityLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_intensity}" />
+            <Property key="Range" value="301" />
+            <Property key="Page" value="1" />
+            <UserString key="SettingType" value="Slider" />
+            <UserString key="SettingCategory" value="Shaders" />
+            <UserString key="SettingName" value="bloom intensity" />
+            <UserString key="SettingValueType" value="Float" />
+            <UserString key="SettingMin" value="0.0" />
+            <UserString key="SettingMax" value="3.0" />
+            <UserString key="SettingLabelWidget" value="BloomIntensityLabel" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_intensity}" />
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 108 462 18" name="BloomThresholdLabel"><Property key="Caption" value="#{arenamp=settings.bloom_threshold}" /></Widget>
+          <Widget type="TextBox" skin="NormalText" position="8 108 462 18" name="BloomThresholdLabel">
+            <Property key="Caption" value="#{arenamp=settings.bloom_threshold}" />
+          </Widget>
           <Widget type="ScrollBar" skin="MW_HScroll" position="8 130 462 16">
-            <Property key="Range" value="201" /><Property key="Page" value="1" /><UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="bloom threshold" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.0" /><UserString key="SettingMax" value="2.0" /><UserString key="SettingLabelWidget" value="BloomThresholdLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_threshold}" />
+            <Property key="Range" value="201" />
+            <Property key="Page" value="1" />
+            <UserString key="SettingType" value="Slider" />
+            <UserString key="SettingCategory" value="Shaders" />
+            <UserString key="SettingName" value="bloom threshold" />
+            <UserString key="SettingValueType" value="Float" />
+            <UserString key="SettingMin" value="0.0" />
+            <UserString key="SettingMax" value="2.0" />
+            <UserString key="SettingLabelWidget" value="BloomThresholdLabel" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_threshold}" />
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 168 462 18" name="BloomSoftKneeLabel"><Property key="Caption" value="#{arenamp=settings.bloom_soft_knee}" /></Widget>
+          <Widget type="TextBox" skin="NormalText" position="8 168 462 18" name="BloomSoftKneeLabel">
+            <Property key="Caption" value="#{arenamp=settings.bloom_soft_knee}" />
+          </Widget>
           <Widget type="ScrollBar" skin="MW_HScroll" position="8 190 462 16">
-            <Property key="Range" value="101" /><Property key="Page" value="1" /><UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="bloom soft knee" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.0" /><UserString key="SettingMax" value="1.0" /><UserString key="SettingLabelWidget" value="BloomSoftKneeLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_soft_knee}" />
+            <Property key="Range" value="101" />
+            <Property key="Page" value="1" />
+            <UserString key="SettingType" value="Slider" />
+            <UserString key="SettingCategory" value="Shaders" />
+            <UserString key="SettingName" value="bloom soft knee" />
+            <UserString key="SettingValueType" value="Float" />
+            <UserString key="SettingMin" value="0.0" />
+            <UserString key="SettingMax" value="1.0" />
+            <UserString key="SettingLabelWidget" value="BloomSoftKneeLabel" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_soft_knee}" />
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 228 462 18" name="BloomRadiusLabel"><Property key="Caption" value="#{arenamp=settings.bloom_radius}" /></Widget>
+          <Widget type="TextBox" skin="NormalText" position="8 228 462 18" name="BloomRadiusLabel">
+            <Property key="Caption" value="#{arenamp=settings.bloom_radius}" />
+          </Widget>
           <Widget type="ScrollBar" skin="MW_HScroll" position="8 250 462 16">
-            <Property key="Range" value="156" /><Property key="Page" value="1" /><UserString key="SettingType" value="Slider" /><UserString key="SettingCategory" value="Shaders" /><UserString key="SettingName" value="bloom radius" /><UserString key="SettingValueType" value="Float" /><UserString key="SettingMin" value="0.5" /><UserString key="SettingMax" value="8.0" /><UserString key="SettingLabelWidget" value="BloomRadiusLabel" /><UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_radius}" />
+            <Property key="Range" value="156" />
+            <Property key="Page" value="1" />
+            <UserString key="SettingType" value="Slider" />
+            <UserString key="SettingCategory" value="Shaders" />
+            <UserString key="SettingName" value="bloom radius" />
+            <UserString key="SettingValueType" value="Float" />
+            <UserString key="SettingMin" value="0.5" />
+            <UserString key="SettingMax" value="8.0" />
+            <UserString key="SettingLabelWidget" value="BloomRadiusLabel" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.bloom_radius}" />
           </Widget>
         </Widget>
         <Widget type="TabItem" skin="" position="4 32 486 412">

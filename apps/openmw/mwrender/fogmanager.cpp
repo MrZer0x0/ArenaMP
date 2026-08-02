@@ -61,13 +61,10 @@ namespace MWRender
             mLandFogStart = mLandFogEnd * (1.f - fogDepth);
         }
 
-        if (mUnderwaterFogEnd != noFog && mUnderwaterFogEnd > 0.f)
-        {
-            const float underwaterFog = std::clamp(
-                1.f - mUnderwaterFogStart / mUnderwaterFogEnd, 0.f, 1.f);
-            mUnderwaterFogEnd = std::min(viewDistance, 7168.f);
-            mUnderwaterFogStart = mUnderwaterFogEnd * (1.f - underwaterFog);
-        }
+        // Keep underwater fog independent from adaptive land distance. Updating it
+        // every frame made the underwater colour/fog envelope pulse whenever the
+        // terrain optimiser adjusted the exterior far plane. Underwater values are
+        // recalculated only when the cell, weather or water configuration changes.
     }
 
     float FogManager::getFogStart(bool isUnderwater) const

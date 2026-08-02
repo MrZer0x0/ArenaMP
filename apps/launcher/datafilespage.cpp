@@ -195,8 +195,6 @@ void Launcher::DataFilesPage::saveSettings(const QString &profile)
             contentFileNames.append(item->fileName());
     }
 
-    contentFileNames = Config::applyCanonicalContentOrder(contentFileNames);
-
     QStringList allFileNames = contentFileNames;
     allFileNames.append(groundcoverFileNames);
     mLauncherSettings.setContentList(profileName, allFileNames, groundcoverFileNames, groundcoverEnabled);

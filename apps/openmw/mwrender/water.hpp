@@ -101,6 +101,8 @@ namespace MWRender
         bool toggle();
 
         bool isUnderwater(const osg::Vec3f& pos) const;
+        bool isActive() const { return mEnabled && mToggled; }
+        float getHeight() const { return mTop; }
 
         /// adds an emitter, position will be tracked automatically using its scene node
         void addEmitter (const MWWorld::Ptr& ptr, float scale = 1.f, float force = 1.f);

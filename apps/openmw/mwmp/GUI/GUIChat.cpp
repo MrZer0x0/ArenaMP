@@ -1,6 +1,7 @@
 #include "GUIChat.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <MyGUI_EditBox.h>
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_ScrollBar.h>
@@ -9,6 +10,7 @@
 #include "apps/openmw/mwinput/inputmanagerimp.hpp"
 #include <MyGUI_InputManager.h>
 #include <components/openmw-mp/TimedLog.hpp>
+#include <components/settings/settings.hpp>
 
 #include "../Networking.hpp"
 #include "../Main.hpp"
@@ -47,6 +49,7 @@ namespace mwmp
             , historyReviewState(false)
             , mainMenuOpen(false)
             , historyDisplayEnabled(true)
+            , externalHistoryDisplayEnabled(true)
             , hideAfterFade(false)
             , delay(3.f)
             , revealTime(0.f)
@@ -89,6 +92,7 @@ namespace mwmp
         mHistory->setNeedKeyFocus(false);
 
         mCommandLine->setVisible(false);
+        syncSettings();
         applyAlpha(currentAlpha);
     }
 
@@ -212,6 +216,8 @@ namespace mwmp
         }
 
         windowState = static_cast<ChatWindowState>((static_cast<int>(windowState) + 1) % CHAT_STATE_COUNT);
+        Settings::Manager::setString("mode", "Chat", getModeSetting());
+        Settings::Manager::saveUser();
         revealTime = windowState == CHAT_AUTOHIDE ? delay : 0.f;
 
         const std::string chatMode = getModeMessage();
@@ -373,6 +379,8 @@ namespace mwmp
 
     void GUIChat::update(float dt)
     {
+        syncSettings();
+
         if (mainMenuOpen)
             return;
 
@@ -504,24 +512,84 @@ namespace mwmp
     }
 
 
-    void GUIChat::setHistoryDisplayEnabled(bool enabled)
+    std::string GUIChat::getModeSetting() const
     {
-        historyDisplayEnabled = enabled;
-        mHistory->setVisible(enabled);
-
-        if (!enabled)
+        switch (windowState)
         {
-            // Keep received messages in memory for logging/history, but never draw them.
-            // Chat input remains available through the normal Say key.
-            setHistoryReviewState(false);
+            case CHAT_VISIBLE: return "visible";
+            case CHAT_TRANSPARENT_30: return "transparent30";
+            case CHAT_TRANSPARENT_60: return "transparent60";
+            case CHAT_AUTOHIDE: return "autohide";
+            case CHAT_HIDDEN: return "hidden";
+            default: return "transparent30";
+        }
+    }
+
+    void GUIChat::setModeFromSetting(const std::string& mode)
+    {
+        if (mode == "visible")
+            windowState = CHAT_VISIBLE;
+        else if (mode == "transparent60")
+            windowState = CHAT_TRANSPARENT_60;
+        else if (mode == "autohide")
+            windowState = CHAT_AUTOHIDE;
+        else if (mode == "hidden")
+            windowState = CHAT_HIDDEN;
+        else
+            windowState = CHAT_TRANSPARENT_30;
+    }
+
+    void GUIChat::syncSettings()
+    {
+        const bool enabled = externalHistoryDisplayEnabled
+            && Settings::Manager::getBool("enabled", "Chat");
+        const float configuredDelay = std::max(0.f, Settings::Manager::getFloat("delay", "Chat"));
+        const std::string configuredMode = Settings::Manager::getString("mode", "Chat");
+
+        bool changed = false;
+        if (historyDisplayEnabled != enabled)
+        {
+            historyDisplayEnabled = enabled;
+            mHistory->setVisible(enabled);
+            if (!enabled && historyReviewState)
+                setHistoryReviewState(false);
+            changed = true;
+        }
+        if (std::abs(delay - configuredDelay) > 0.001f)
+        {
+            delay = configuredDelay;
+            revealTime = std::min(revealTime, delay);
+            changed = true;
         }
 
-        refreshPresentation();
+        const ChatWindowState previousState = windowState;
+        setModeFromSetting(configuredMode);
+        if (windowState != previousState)
+        {
+            if (windowState == CHAT_HIDDEN)
+            {
+                if (historyReviewState)
+                    setHistoryReviewState(false);
+                if (editState)
+                    setEditState(false);
+            }
+            revealTime = windowState == CHAT_AUTOHIDE ? delay : 0.f;
+            changed = true;
+        }
+
+        if (changed)
+            refreshPresentation();
+    }
+
+    void GUIChat::setHistoryDisplayEnabled(bool enabled)
+    {
+        externalHistoryDisplayEnabled = enabled;
+        syncSettings();
     }
 
     void GUIChat::setDelay(float newDelay)
     {
-        this->delay = std::max(0.f, newDelay);
+        delay = std::max(0.f, newDelay);
         if (revealTime > delay)
             revealTime = delay;
     }

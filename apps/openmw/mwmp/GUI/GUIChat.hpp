@@ -98,12 +98,16 @@ namespace mwmp
         void applyAlpha(float alpha);
         float getRestingAlpha() const;
         std::string getModeMessage() const;
+        std::string getModeSetting() const;
+        void setModeFromSetting(const std::string& mode);
+        void syncSettings();
 
         ChatWindowState windowState;
         bool editState;
         bool historyReviewState;
         bool mainMenuOpen;
         bool historyDisplayEnabled;
+        bool externalHistoryDisplayEnabled;
         bool hideAfterFade;
         float delay;
         float revealTime;

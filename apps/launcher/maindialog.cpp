@@ -662,7 +662,27 @@ bool Launcher::MainDialog::loadBuildManifest()
 
     const QString manifestPath = Config::BuildManifest::findForDataDir(mBuildDataPath);
     if (manifestPath.isEmpty())
+    {
+        // No saved build order exists yet. Apply the recommended order once,
+        // then the first Launcher save creates build.ini and all later starts
+        // preserve the user's exact order from that file.
+        const QStringList orderedContent = Config::applyCanonicalContentOrder(
+            mGameSettings.getContentList(), QDir(mBuildDataPath));
+        if (!orderedContent.isEmpty())
+        {
+            mGameSettings.setContentList(orderedContent);
+            QString profileName = mLauncherSettings.getCurrentContentListName();
+            if (profileName.isEmpty())
+                profileName = QStringLiteral("Default");
+            QStringList profileFiles = orderedContent;
+            const QStringList groundcover = mGameSettings.getGroundcoverList();
+            profileFiles.append(groundcover);
+            mLauncherSettings.setContentList(profileName, profileFiles, groundcover,
+                !groundcover.isEmpty());
+            mLauncherSettings.setCurrentContentListName(profileName);
+        }
         return false;
+    }
 
     Config::BuildManifest manifest;
     QString error;
@@ -687,8 +707,7 @@ bool Launcher::MainDialog::loadBuildManifest()
         ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
     if (!manifest.contentFiles.isEmpty() || !manifest.groundcoverFiles.isEmpty())
     {
-        const QStringList orderedContent
-            = Config::applyCanonicalContentOrder(manifest.contentFiles, QDir(mBuildDataPath));
+        const QStringList orderedContent = manifest.contentFiles;
         mGameSettings.setContentList(orderedContent);
         mGameSettings.setGroundcoverList(manifest.groundcoverFiles);
 
@@ -779,35 +798,7 @@ bool Launcher::MainDialog::writeBuildManifest()
             storedServerPortSpecified = manifest.serverPortSpecified;
             storedVanillaCompatibility = manifest.vanillaServerCompatibility;
         }
-        if (manifest.complete)
-        {
-            // A complete build.ini is authoritative and must not be rewritten by
-            // the launcher. This preserves its name, endpoint, plugin order,
-            // groundcover order and archive order exactly as distributed.
-            mBuildManifestLoaded = true;
-            mBuildManifestPath = manifestPath;
-            mBuildName = manifest.buildName.trimmed().isEmpty()
-                ? QStringLiteral("ArenaMP") : manifest.buildName.trimmed();
-            mBuildDataPath = manifest.resolvedDataPath(manifestPath);
-            mBuildServerAddress = manifest.serverAddress.trimmed().isEmpty()
-                ? QStringLiteral("127.0.0.1") : manifest.serverAddress.trimmed();
-            mBuildServerPort = manifest.serverPort.trimmed().isEmpty()
-                ? QStringLiteral("25565") : manifest.serverPort.trimmed();
-            mBuildVanillaServerCompatibility = manifest.vanillaServerCompatibility;
-            mBuildServerAddressSpecified = manifest.serverAddressSpecified;
-            mBuildServerPortSpecified = manifest.serverPortSpecified;
-            mBuildComplete = true;
-            const QString manifestLanguage = manifest.language.trimmed().isEmpty()
-                ? QStringLiteral("English") : manifest.language.trimmed();
-            mLauncherSettings.setValue(QStringLiteral("Settings/language"), manifestLanguage);
-            if (manifestLanguage == QLatin1String("Polish"))
-                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1250"));
-            else if (manifestLanguage == QLatin1String("Russian"))
-                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1251"));
-            else
-                mGameSettings.setValue(QStringLiteral("encoding"), QStringLiteral("win1252"));
-            return true;
-        }
+
     }
 
     manifest.formatVersion = 1;
@@ -882,15 +873,14 @@ void Launcher::MainDialog::applyBuildManifestRestrictions()
         mPlayPage->setBuildManifestComplete(mBuildComplete);
     }
 
-    // Keep row numbers intact so they continue to match pagesWidget indexes.
+    // build.ini stores the current user order; keep Data Files available so
+    // deliberate Launcher changes can be written back to the manifest.
     if (iconWidget != nullptr && iconWidget->count() > 1)
-        iconWidget->item(1)->setHidden(mBuildComplete);
+        iconWidget->item(1)->setHidden(false);
 
     if (mAdvancedPage != nullptr)
         mAdvancedPage->setGameMechanicsVisible(!mBuildComplete);
 
-    if (mBuildComplete && iconWidget != nullptr && iconWidget->currentRow() == 1)
-        iconWidget->setCurrentRow(0);
 }
 
 bool Launcher::MainDialog::isLocalServerAddress(const QString& address) const
@@ -1103,8 +1093,7 @@ bool Launcher::MainDialog::writeSettings()
 {
     // Now write all config files
     saveSettings();
-    if (!mBuildComplete)
-        mDataFilesPage->saveSettings();
+    mDataFilesPage->saveSettings();
 
     // Do not copy the Launcher's in-memory graphics/advanced controls back to
     // settings.cfg here. The game may have changed that file while the

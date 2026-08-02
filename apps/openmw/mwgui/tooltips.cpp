@@ -25,6 +25,19 @@
 
 #include "itemmodel.hpp"
 
+namespace
+{
+    bool npcBarShowsHover()
+    {
+        const std::string mode = Settings::Manager::getString("npc bar mode", "HUD");
+        if (mode == "hover" || mode == "both")
+            return true;
+        if (mode == "off" || mode == "combat")
+            return false;
+        return Settings::Manager::getBool("target info panel", "GUI");
+    }
+}
+
 namespace MWGui
 {
     std::string ToolTips::sSchoolNames[] = {"#{sSchoolAlteration}", "#{sSchoolConjuration}", "#{sSchoolDestruction}", "#{sSchoolIllusion}", "#{sSchoolMysticism}", "#{sSchoolRestoration}"};
@@ -306,7 +319,7 @@ namespace MWGui
         {
             if (!mFocusObject.isEmpty())
             {
-                if (Settings::Manager::getBool("target info panel", "GUI")
+                if (npcBarShowsHover()
                     && mFocusObject.getClass().isActor()
                     && mFocusObject != MWMechanics::getPlayer()
                     && !mFocusObject.getClass().getCreatureStats(mFocusObject).isDead())

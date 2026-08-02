@@ -106,6 +106,9 @@ namespace MWGui
         float mGameTimeUpdateTimer;
 
         bool mMapVisible;
+        bool mMinimapBaseVisible;
+        bool mEffectBaseVisible;
+        bool mCrosshairBaseVisible;
         bool mWeaponVisible;
         bool mSpellVisible;
 
