@@ -149,7 +149,7 @@ namespace MWGui
             {
                 MyGUI::Widget* section;
                 getWidget(section, sectionName);
-                section->setWidth(sectionWidth);
+                section->setSize(sectionWidth, section->getHeight());
             }
 
             const int skillContentHeight = std::max(1, mSkillView->getCanvasSize().height);
