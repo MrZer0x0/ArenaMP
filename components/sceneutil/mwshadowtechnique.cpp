@@ -24,6 +24,9 @@
 #include <osg/io_utils>
 #include <osg/Depth>
 
+#include <components/settings/settings.hpp>
+
+#include <algorithm>
 #include <sstream>
 #include "shadowsbin.hpp"
 
@@ -33,6 +36,57 @@ using namespace osgShadow;
 using namespace SceneUtil;
 
 #define dbl_max std::numeric_limits<double>::max()
+
+constexpr unsigned int sLocalPointShadowFaceCount = 2u;
+
+bool isArenaLocalPointShadow(const MWShadowTechnique::LightData& lightData)
+{
+    return Settings::Manager::getBool("local light shadows", "Shadows")
+        && !lightData.directionalLight && lightData.light.valid()
+        && lightData.light->getLightNum() == 1;
+}
+
+bool computeLocalPointShadowFaceSettings(const MWShadowTechnique::LightData& lightData,
+    unsigned int face, osg::Matrixd& projectionMatrix, osg::Matrixd& viewMatrix)
+{
+    if (!lightData.light.valid() || face >= sLocalPointShadowFaceCount)
+        return false;
+
+    osg::Vec3d direction(lightData.lightDir);
+    if (direction.length2() < 1e-8)
+        direction.set(1.0, 0.0, 0.0);
+    direction.normalize();
+    if (face == 1u)
+        direction = -direction;
+
+    // Build a deterministic basis in world space. It never references the main
+    // camera, so rotating the camera cannot rotate or refit the shadow map.
+    osg::Vec3d referenceUp(0.0, 0.0, 1.0);
+    if (std::abs(direction * referenceUp) > 0.95)
+        referenceUp.set(0.0, 1.0, 0.0);
+    osg::Vec3d side = direction ^ referenceUp;
+    side.normalize();
+    osg::Vec3d up = side ^ direction;
+    up.normalize();
+
+    const double nearClip = std::clamp(
+        static_cast<double>(Settings::Manager::getFloat("local light shadow near clip", "Shadows")),
+        1.0, 128.0);
+    const double farClip = std::max(nearClip + 1.0,
+        static_cast<double>(Settings::Manager::getFloat("local light shadow distance", "Shadows")));
+    const double fieldOfView = std::clamp(
+        static_cast<double>(Settings::Manager::getFloat("local light shadow field of view", "Shadows")),
+        140.0, 179.0);
+
+    // Two opposite, fixed world-space hemispheres provide near-omnidirectional
+    // point-light shadows while retaining the two texture units already reserved
+    // by OpenMW. This avoids camera-dependent frustum fitting and texture clashes
+    // with PBR material maps.
+    projectionMatrix.makePerspective(fieldOfView, 1.0, nearClip, farClip);
+    viewMatrix.makeLookAt(lightData.lightPos3, lightData.lightPos3 + direction, up);
+    return true;
+}
+
 
 //////////////////////////////////////////////////////////////////
 // fragment shader
@@ -1102,7 +1156,7 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
     ShadowDataList previous_sdl;
     previous_sdl.swap(sdl);
 
-    unsigned int numShadowMapsPerLight = settings->getNumShadowMapsPerLight();
+    const unsigned int allocatedShadowMapCount = settings->getNumShadowMapsPerLight();
 
     LightDataList& pll = vdd->getLightDataList();
     for(LightDataList::iterator itr = pll.begin();
@@ -1114,22 +1168,35 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
 
         LightData& pl = **itr;
 
-        // 3.1 compute light space polytope
-        //
-        osg::Polytope polytope = computeLightViewFrustumPolytope(frustum, pl);
+        const bool localPointShadow = isArenaLocalPointShadow(pl);
+        const unsigned int configuredDirectionalMapCount = static_cast<unsigned int>(std::clamp(
+            Settings::Manager::getInt("number of shadow maps", "Shadows"), 1, 8));
+        const unsigned int numShadowMapsPerLight = localPointShadow
+            ? std::min(sLocalPointShadowFaceCount, allocatedShadowMapCount)
+            : std::min(configuredDirectionalMapCount, allocatedShadowMapCount);
 
-        // if polytope is empty then no rendering.
-        if (polytope.empty())
+        // Directional shadows remain view fitted. Local point-light shadows use
+        // two fixed world-space hemispheres and therefore must not be cropped or
+        // oriented from the main camera frustum.
+        osg::Polytope polytope;
+        if (!localPointShadow)
         {
-            OSG_NOTICE<<"Polytope empty no shadow to render"<<std::endl;
-            continue;
+            polytope = computeLightViewFrustumPolytope(frustum, pl);
+            if (polytope.empty())
+            {
+                OSG_NOTICE<<"Polytope empty no shadow to render"<<std::endl;
+                continue;
+            }
         }
 
         // 3.2 compute RTT camera view+projection matrix settings
         //
         osg::Matrixd projectionMatrix;
         osg::Matrixd viewMatrix;
-        if (!computeShadowCameraSettings(frustum, pl, projectionMatrix, viewMatrix))
+        const bool validCamera = localPointShadow
+            ? computeLocalPointShadowFaceSettings(pl, 0u, projectionMatrix, viewMatrix)
+            : computeShadowCameraSettings(frustum, pl, projectionMatrix, viewMatrix);
+        if (!validCamera)
         {
             OSG_NOTICE<<"No valid Camera settings, no shadow to render"<<std::endl;
             continue;
@@ -1137,7 +1204,7 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
 
         // if we are using multiple shadow maps and CastShadowTraversalMask is being used
         // traverse the scene to compute the extents of the objects
-        if (/*numShadowMapsPerLight>1 &&*/ _shadowedScene->getCastsShadowTraversalMask()!=0xffffffff)
+        if (!localPointShadow && _shadowedScene->getCastsShadowTraversalMask()!=0xffffffff)
         {
             // osg::ElapsedTime timer;
 
@@ -1255,6 +1322,13 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
 
             osg::ref_ptr<osg::Camera> camera = sd->_camera;
 
+            if (localPointShadow)
+            {
+                if (sm_i >= sLocalPointShadowFaceCount
+                    || !computeLocalPointShadowFaceSettings(pl, sm_i, projectionMatrix, viewMatrix))
+                    continue;
+            }
+
             camera->setProjectionMatrix(projectionMatrix);
             camera->setViewMatrix(viewMatrix);
 
@@ -1273,7 +1347,7 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
 
             double cascaseNear = reducedNear;
             double cascadeFar = reducedFar;
-            if (numShadowMapsPerLight>1)
+            if (numShadowMapsPerLight>1 && !localPointShadow)
             {
                 // compute the start and end range in non-dimensional coords
 #if 0
@@ -1381,15 +1455,18 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
             }
 
             std::vector<osg::Plane> extraPlanes;
-            if (settings->getMultipleShadowMapHint() == ShadowSettings::CASCADED)
+            if (!localPointShadow)
             {
-                cropShadowCameraToMainFrustum(frustum, camera, cascaseNear, cascadeFar, extraPlanes);
-                for (const auto& plane : extraPlanes)
-                    local_polytope.getPlaneList().push_back(plane);
-                local_polytope.setupMask();
+                if (settings->getMultipleShadowMapHint() == ShadowSettings::CASCADED)
+                {
+                    cropShadowCameraToMainFrustum(frustum, camera, cascaseNear, cascadeFar, extraPlanes);
+                    for (const auto& plane : extraPlanes)
+                        local_polytope.getPlaneList().push_back(plane);
+                    local_polytope.setupMask();
+                }
+                else
+                    cropShadowCameraToMainFrustum(frustum, camera, reducedNear, reducedFar, extraPlanes);
             }
-            else
-                cropShadowCameraToMainFrustum(frustum, camera, reducedNear, reducedFar, extraPlanes);
 
             osg::ref_ptr<VDSMCameraCullCallback> vdsmCallback = new VDSMCameraCullCallback(this, local_polytope);
             camera->setCullCallback(vdsmCallback.get());
@@ -1403,7 +1480,7 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
 
             cv.popStateSet();
 
-            if (!orthographicViewFrustum && settings->getShadowMapProjectionHint()==ShadowSettings::PERSPECTIVE_SHADOW_MAP)
+            if (!localPointShadow && !orthographicViewFrustum && settings->getShadowMapProjectionHint()==ShadowSettings::PERSPECTIVE_SHADOW_MAP)
             {
                 {
                     osg::Matrix validRegionMatrix = cv.getCurrentCamera()->getInverseViewMatrix() *  camera->getViewMatrix() * camera->getProjectionMatrix();
@@ -1462,6 +1539,12 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
             if (_debugHud)
                 _debugHud->draw(sd->_texture, sm_i, camera->getViewMatrix() * camera->getProjectionMatrix(), cv);
         }
+    }
+
+    for (const osg::ref_ptr<osg::Uniform>& uniform : _uniforms[cv.getTraversalNumber() % 2])
+    {
+        if (uniform.valid() && uniform->getName() == "activeShadowMapCount")
+            uniform->set(static_cast<int>(numValidShadows));
     }
 
     if (numValidShadows>0)
@@ -1578,6 +1661,7 @@ void MWShadowTechnique::createShaders()
         perFrameUniformList.emplace_back(baseTextureUnit.get());
         perFrameUniformList.push_back(maxDistance);
         perFrameUniformList.push_back(fadeStart);
+        perFrameUniformList.push_back(new osg::Uniform("activeShadowMapCount", 0));
     }
 
     for(unsigned int sm_i=0; sm_i<settings->getNumShadowMapsPerLight(); ++sm_i)
@@ -3054,6 +3138,16 @@ osg::StateSet* MWShadowTechnique::prepareStateSetForRenderingShadow(ViewDependen
     stateset->clear();
 
     stateset->setTextureAttributeAndModes(0, _fallbackBaseTexture.get(), osg::StateAttribute::ON);
+
+    const ShadowSettings* shadowSettings = getShadowedScene()->getShadowSettings();
+    const unsigned int fallbackMode = shadowSettings->getUseOverrideForShadowMapTexture()
+        ? osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE
+        : osg::StateAttribute::ON;
+    for (unsigned int i = 0; i < shadowSettings->getNumShadowMapsPerLight(); ++i)
+    {
+        stateset->setTextureAttributeAndModes(shadowSettings->getBaseShadowTextureUnit() + i,
+            _fallbackShadowMapTexture.get(), fallbackMode);
+    }
 
     for(const auto& uniform : _uniforms[traversalNumber % 2])
     {

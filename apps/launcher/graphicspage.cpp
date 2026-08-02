@@ -911,6 +911,8 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const float pointLightFalloff[] = { 0.00f, 0.20f, 0.45f, 0.65f, 0.80f, 1.00f };
     static const int localShadowDistance[] = { 0, 0, 768, 1024, 1536, 2048 };
     static const int localShadowMinRadius[] = { 384, 320, 256, 192, 160, 128 };
+    static const int localShadowNearClip[] = { 16, 12, 10, 8, 6, 4 };
+    static const int localShadowFieldOfView[] = { 170, 172, 174, 176, 178, 179 };
 
     int effectiveAa = antialiasing[level];
     int effectiveShadowResolution = shadowResolution[level];
@@ -1018,6 +1020,8 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setBool("local light shadows", "Shadows", level >= 2);
     Settings::Manager::setInt("local light shadow distance", "Shadows", localShadowDistance[level]);
     Settings::Manager::setInt("local light shadow minimum radius", "Shadows", localShadowMinRadius[level]);
+    Settings::Manager::setInt("local light shadow near clip", "Shadows", localShadowNearClip[level]);
+    Settings::Manager::setInt("local light shadow field of view", "Shadows", localShadowFieldOfView[level]);
     Settings::Manager::setBool("local light shadows outdoors", "Shadows", level >= 5);
     Settings::Manager::setInt("maximum shadow map distance", "Shadows", effectiveShadowDistance);
     Settings::Manager::setInt("shadow map resolution", "Shadows", effectiveShadowResolution);

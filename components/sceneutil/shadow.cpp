@@ -33,6 +33,11 @@ namespace SceneUtil
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
         numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
 
+        // Local point lights use two opposite world-space hemispheres. Keep two
+        // shadow textures allocated even when the directional-light preset uses one.
+        if (Settings::Manager::getBool("local light shadows", "Shadows"))
+            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, 2);
+
         mShadowSettings->setNumShadowMapsPerLight(numberOfShadowMapsPerLight);
         mShadowSettings->setBaseShadowTextureUnit(8 - numberOfShadowMapsPerLight);
 
@@ -110,6 +115,8 @@ namespace SceneUtil
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
         numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
+        if (Settings::Manager::getBool("local light shadows", "Shadows"))
+            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, 2);
 
         int baseShadowTextureUnit = 8 - numberOfShadowMapsPerLight;
         
@@ -173,6 +180,10 @@ namespace SceneUtil
 
         definesWithShadows["limitShadowMapDistance"] = Settings::Manager::getFloat("maximum shadow map distance", "Shadows") > 0 ? "1" : "0";
 
+        int effectiveResolution = std::max(1,
+            Settings::Manager::getInt("shadow map resolution", "Shadows"));
+        definesWithShadows["shadowMapTexelSize"] = std::to_string(1.f / static_cast<float>(effectiveResolution));
+
         return definesWithShadows;
     }
 
@@ -195,6 +206,8 @@ namespace SceneUtil
         definesWithoutShadows["shadowNormalOffset"] = "0.0";
 
         definesWithoutShadows["limitShadowMapDistance"] = "0";
+
+        definesWithoutShadows["shadowMapTexelSize"] = "0.001";
 
         return definesWithoutShadows;
     }

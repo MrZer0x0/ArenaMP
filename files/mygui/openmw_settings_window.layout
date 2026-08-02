@@ -1136,7 +1136,7 @@
           <Property key="Caption" value="#{arenamp=settings.subsection.shadows}" />
           <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="ShadowScroll">
             <Property key="CanvasAlign" value="Left Top" />
-            <Property key="CanvasSize" value="458 548" />
+            <Property key="CanvasSize" value="458 676" />
             <Widget type="TextBox" skin="NormalText" position="8 8 442 18">
               <Property key="Caption" value="#{arenamp=settings.shadow_casters}" />
             </Widget>
@@ -1221,7 +1221,37 @@
               <UserString key="SettingLabelWidget" value="LocalLightShadowMinimumRadiusLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_min_radius}" />
             </Widget>
-            <Widget type="HBox" skin="" position="8 440 442 24">
+            <Widget type="TextBox" skin="NormalText" position="8 438 442 18" name="LocalLightShadowNearClipLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_near_clip}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 460 442 16">
+              <Property key="Range" value="127" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local light shadow near clip" />
+              <UserString key="SettingValueType" value="Integer" />
+              <UserString key="SettingMin" value="2" />
+              <UserString key="SettingMax" value="128" />
+              <UserString key="SettingLabelWidget" value="LocalLightShadowNearClipLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_near_clip}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 490 442 18" name="LocalLightShadowFieldOfViewLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_field_of_view}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 512 442 16">
+              <Property key="Range" value="40" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local light shadow field of view" />
+              <UserString key="SettingValueType" value="Integer" />
+              <UserString key="SettingMin" value="140" />
+              <UserString key="SettingMax" value="179" />
+              <UserString key="SettingLabelWidget" value="LocalLightShadowFieldOfViewLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_field_of_view}" />
+            </Widget>
+            <Widget type="HBox" skin="" position="8 548 442 24">
               <Widget type="AutoSizedButton" skin="MW_Button" position="0 0 52 24">
                 <Property key="ExpandDirection" value="Right" />
                 <UserString key="SettingCategory" value="Shadows" />
@@ -1232,7 +1262,7 @@
                 <Property key="Caption" value="#{arenamp=settings.local_light_shadows_outdoors}" />
               </Widget>
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="8 478 442 54">
+            <Widget type="TextBox" skin="SandText" position="8 586 442 72">
               <Property key="Caption" value="#{arenamp=settings.local_shadow_note}" />
               <Property key="MultiLine" value="true" />
               <Property key="TextAlign" value="Left Top" />

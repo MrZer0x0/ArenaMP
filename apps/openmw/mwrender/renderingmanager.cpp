@@ -1404,23 +1404,75 @@ namespace MWRender
             && sunLuminance < 0.18f;
         const bool useLocal = enabled && (!exterior || allowExterior);
 
+        const osg::Vec4f previousShadowPosition = mLocalShadowLight->getPosition();
+        const osg::Vec3f previousShadowDirection = mLocalShadowLight->getDirection();
+        const bool hadLocalShadow = mLocalShadowLightSource->getNodeMask() != 0u;
+
         bool found = false;
         if (useLocal)
         {
             auto* lightManager = static_cast<SceneUtil::LightManager*>(getLightRoot());
             const size_t frameNum = mViewer->getFrameStamp()
                 ? mViewer->getFrameStamp()->getFrameNumber() : 0u;
-            found = lightManager->getNearestShadowLight(cameraPosition,
+            // Select from the player's world position rather than the orbiting
+            // third-person camera. Camera rotation must never cause a different
+            // lamp to become the active shadow source.
+            osg::Vec3f shadowAnchor = cameraPosition;
+            const MWWorld::Ptr& player = MWMechanics::getPlayer();
+            if (player.isInCell())
+                shadowAnchor = player.getRefData().getPosition().asVec3();
+
+            found = lightManager->getNearestShadowLight(shadowAnchor,
                 Settings::Manager::getFloat("local light shadow distance", "Shadows"),
                 Settings::Manager::getFloat("local light shadow minimum radius", "Shadows"),
                 frameNum, *mLocalShadowLight);
             if (found)
             {
+                const osg::Vec4f selectedPosition4 = mLocalShadowLight->getPosition();
+                const osg::Vec3f selectedPosition(
+                    selectedPosition4.x(), selectedPosition4.y(), selectedPosition4.z());
+                osg::Vec3f toPlayer = shadowAnchor - selectedPosition;
+                if (toPlayer.length2() < 1e-4f)
+                    toPlayer.set(1.f, 0.f, 0.f);
+                toPlayer.normalize();
+
+                // Quantize the hemisphere axis to a world cardinal direction and
+                // keep the previous axis until the new one is clearly better. This
+                // avoids rapid 90-degree flips near direction boundaries.
+                osg::Vec3f candidateDirection;
+                const osg::Vec3f absDirection(
+                    std::abs(toPlayer.x()), std::abs(toPlayer.y()), std::abs(toPlayer.z()));
+                if (absDirection.x() >= absDirection.y() && absDirection.x() >= absDirection.z())
+                    candidateDirection.set(toPlayer.x() >= 0.f ? 1.f : -1.f, 0.f, 0.f);
+                else if (absDirection.y() >= absDirection.z())
+                    candidateDirection.set(0.f, toPlayer.y() >= 0.f ? 1.f : -1.f, 0.f);
+                else
+                    candidateDirection.set(0.f, 0.f, toPlayer.z() >= 0.f ? 1.f : -1.f);
+
+                osg::Vec3f stableDirection = candidateDirection;
+                const osg::Vec3f previousPosition(
+                    previousShadowPosition.x(), previousShadowPosition.y(), previousShadowPosition.z());
+                const bool sameLight = hadLocalShadow
+                    && (previousPosition - selectedPosition).length2() < 4.f;
+                if (sameLight && previousShadowDirection.length2() > 0.5f)
+                {
+                    osg::Vec3f normalizedPrevious = previousShadowDirection;
+                    normalizedPrevious.normalize();
+                    const float previousScore = toPlayer * normalizedPrevious;
+                    const float candidateScore = toPlayer * candidateDirection;
+                    if (candidateScore < previousScore + 0.15f)
+                        stableDirection = normalizedPrevious;
+                }
+                mLocalShadowLight->setDirection(stableDirection);
+
                 // The proxy must not add a second copy of the light to the scene.
-                // Only its position is consumed by the shadow-map technique.
+                // Only its position and stable hemisphere axis are consumed by
+                // the shadow-map technique.
                 mLocalShadowLight->setAmbient(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
                 mLocalShadowLight->setDiffuse(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
                 mLocalShadowLight->setSpecular(osg::Vec4f(0.f, 0.f, 0.f, 1.f));
+                mLocalShadowLight->setSpotCutoff(180.f);
+                mLocalShadowLight->setSpotExponent(0.f);
             }
         }
 

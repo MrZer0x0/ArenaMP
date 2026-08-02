@@ -3,6 +3,7 @@
 #if SHADOWS
     uniform float maximumShadowMapDistance;
     uniform float shadowFadeStart;
+    uniform int activeShadowMapCount;
     @foreach shadow_texture_unit_index @shadow_texture_unit_list
         uniform sampler2DShadow shadowTexture@shadow_texture_unit_index;
         varying vec4 shadowSpaceCoords@shadow_texture_unit_index;
@@ -44,16 +45,21 @@ float unshadowedLightRatio(float distance)
     #if @shadowMapsOverlap
         bool doneShadows = false;
         @foreach shadow_texture_unit_index @shadow_texture_unit_list
-            if (!doneShadows)
+            if (@shadow_texture_unit_index < activeShadowMapCount && !doneShadows)
             {
                 vec3 shadowXYZ = shadowSpaceCoords@shadow_texture_unit_index.xyz / shadowSpaceCoords@shadow_texture_unit_index.w;
 #if @perspectiveShadowMaps
                 vec3 shadowRegionXYZ = shadowRegionCoords@shadow_texture_unit_index.xyz / shadowRegionCoords@shadow_texture_unit_index.w;
 #endif
-                if (all(lessThan(shadowXYZ.xy, vec2(1.0, 1.0))) && all(greaterThan(shadowXYZ.xy, vec2(0.0, 0.0))))
+                // Reject projections behind a shadow hemisphere or outside its depth range.
+                // The old XY-only test allowed the opposite projection to pass through the
+                // camera plane, producing large triangles that moved with the view.
+                if (shadowSpaceCoords@shadow_texture_unit_index.w > 0.0
+                    && all(lessThan(shadowXYZ, vec3(1.0, 1.0, 1.0)))
+                    && all(greaterThan(shadowXYZ, vec3(0.0, 0.0, 0.0))))
                 {
                     // Используем PCF для сглаженных теней
-                    float texelSize = 0.0008;
+                    float texelSize = @shadowMapTexelSize;
                     shadowing = min(sampleShadowPCF(shadowTexture@shadow_texture_unit_index, shadowSpaceCoords@shadow_texture_unit_index, texelSize), shadowing);
 
                     
@@ -66,8 +72,16 @@ float unshadowedLightRatio(float distance)
         @endforeach
     #else
         @foreach shadow_texture_unit_index @shadow_texture_unit_list
-            float texelSize = 0.0008;
-            shadowing = min(sampleShadowPCF(shadowTexture@shadow_texture_unit_index, shadowSpaceCoords@shadow_texture_unit_index, texelSize), shadowing);
+            vec3 shadowXYZ = shadowSpaceCoords@shadow_texture_unit_index.xyz / shadowSpaceCoords@shadow_texture_unit_index.w;
+            if (@shadow_texture_unit_index < activeShadowMapCount
+                && shadowSpaceCoords@shadow_texture_unit_index.w > 0.0
+                && all(lessThan(shadowXYZ, vec3(1.0, 1.0, 1.0)))
+                && all(greaterThan(shadowXYZ, vec3(0.0, 0.0, 0.0))))
+            {
+                float texelSize = @shadowMapTexelSize;
+                shadowing = min(sampleShadowPCF(shadowTexture@shadow_texture_unit_index,
+                    shadowSpaceCoords@shadow_texture_unit_index, texelSize), shadowing);
+            }
         @endforeach
     #endif
 #if @limitShadowMapDistance
@@ -83,13 +97,15 @@ void applyShadowDebugOverlay()
     bool doneOverlay = false;
     float colourIndex = 0.0;
     @foreach shadow_texture_unit_index @shadow_texture_unit_list
-        if (!doneOverlay)
+        if (@shadow_texture_unit_index < activeShadowMapCount && !doneOverlay)
         {
             vec3 shadowXYZ = shadowSpaceCoords@shadow_texture_unit_index.xyz / shadowSpaceCoords@shadow_texture_unit_index.w;
 #if @perspectiveShadowMaps
             vec3 shadowRegionXYZ = shadowRegionCoords@shadow_texture_unit_index.xyz / shadowRegionCoords@shadow_texture_unit_index.w;
 #endif
-            if (all(lessThan(shadowXYZ.xy, vec2(1.0, 1.0))) && all(greaterThan(shadowXYZ.xy, vec2(0.0, 0.0))))
+            if (shadowSpaceCoords@shadow_texture_unit_index.w > 0.0
+                && all(lessThan(shadowXYZ, vec3(1.0, 1.0, 1.0)))
+                && all(greaterThan(shadowXYZ, vec3(0.0, 0.0, 0.0))))
             {
                 colourIndex = mod(@shadow_texture_unit_index.0, 3.0);
 		        if (colourIndex < 1.0)
