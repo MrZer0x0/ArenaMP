@@ -62,16 +62,20 @@ namespace MWGui
         /// tracks a row in the spell view
         struct LineInfo
         {
+            /// optional icon displayed before the spell name
+            MyGUI::Widget* mIconWidget;
+
             /// the widget on the left side of the row
             MyGUI::Widget* mLeftWidget;
 
-            /// the widget on the left side of the row (if there is one)
+            /// the widget on the right side of the row (if there is one)
             MyGUI::Widget* mRightWidget;
 
             /// index to item in mModel that row is showing information for
             SpellModel::ModelIndex mSpellIndex;
 
-            LineInfo(MyGUI::Widget* leftWidget, MyGUI::Widget* rightWidget, SpellModel::ModelIndex spellIndex);
+            LineInfo(MyGUI::Widget* iconWidget, MyGUI::Widget* leftWidget,
+                MyGUI::Widget* rightWidget, SpellModel::ModelIndex spellIndex);
         };
 
         /// magic number indicating LineInfo does not correspond to an item in mModel

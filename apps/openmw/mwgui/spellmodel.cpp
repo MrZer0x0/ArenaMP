@@ -106,6 +106,13 @@ namespace MWGui
 
             Spell newSpell;
             newSpell.mName = spell->mName;
+            if (!spell->mEffects.mList.empty())
+            {
+                const ESM::MagicEffect* firstEffect = esmStore.get<ESM::MagicEffect>().search(
+                    spell->mEffects.mList.front().mEffectID);
+                if (firstEffect)
+                    newSpell.mIcon = firstEffect->mIcon;
+            }
             if (spell->mData.mType == ESM::Spell::ST_Spell)
             {
                 newSpell.mType = Spell::Type_Spell;
@@ -150,6 +157,7 @@ namespace MWGui
             newSpell.mItem = item;
             newSpell.mId = item.getCellRef().getRefId();
             newSpell.mName = item.getClass().getName(item);
+            newSpell.mIcon = item.getClass().getInventoryIcon(item);
             newSpell.mCount = item.getRefData().getCount();
             newSpell.mType = Spell::Type_EnchantedItem;
             newSpell.mSelected = invStore.getSelectedEnchantItem() == it;

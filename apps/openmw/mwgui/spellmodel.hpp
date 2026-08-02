@@ -18,6 +18,7 @@ namespace MWGui
 
         Type mType;
         std::string mName;
+        std::string mIcon; // First effect icon, or the enchanted item's inventory icon
         std::string mCostColumn; // Cost/chance or Cost/charge
         std::string mId; // Item ID or spell ID
         MWWorld::Ptr mItem; // Only for Type_EnchantedItem

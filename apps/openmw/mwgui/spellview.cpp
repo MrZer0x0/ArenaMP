@@ -8,6 +8,9 @@
 #include <components/widgets/sharedstatebutton.hpp>
 #include <components/widgets/box.hpp>
 
+#include "../mwbase/environment.hpp"
+#include "../mwbase/windowmanager.hpp"
+
 #include "tooltips.hpp"
 
 namespace MWGui
@@ -15,8 +18,10 @@ namespace MWGui
 
     const char* SpellView::sSpellModelIndex = "SpellModelIndex";
 
-    SpellView::LineInfo::LineInfo(MyGUI::Widget* leftWidget, MyGUI::Widget* rightWidget, SpellModel::ModelIndex spellIndex)
-        : mLeftWidget(leftWidget)
+    SpellView::LineInfo::LineInfo(MyGUI::Widget* iconWidget, MyGUI::Widget* leftWidget,
+        MyGUI::Widget* rightWidget, SpellModel::ModelIndex spellIndex)
+        : mIconWidget(iconWidget)
+        , mLeftWidget(leftWidget)
         , mRightWidget(rightWidget)
         , mSpellIndex(spellIndex)
     {
@@ -84,7 +89,8 @@ namespace MWGui
 
         int curType = -1;
 
-        const int spellHeight = 18;
+        const int spellHeight = 22;
+        const int spellIconSize = 18;
 
         mLines.clear();
 
@@ -108,6 +114,16 @@ namespace MWGui
             const std::string skin = spell.mActive ? "SandTextButton" : "SpellTextUnequipped";
             const std::string captionSuffix = MWGui::ToolTips::getCountString(spell.mCount);
 
+            MyGUI::ImageBox* icon = nullptr;
+            if (!spell.mIcon.empty())
+            {
+                icon = mScrollView->createWidget<MyGUI::ImageBox>("ImageBox",
+                    MyGUI::IntCoord(0, 0, spellIconSize, spellIconSize),
+                    MyGUI::Align::Left | MyGUI::Align::Top);
+                icon->setImageTexture(MWBase::Environment::get().getWindowManager()->correctIconPath(spell.mIcon));
+                adjustSpellWidget(spell, i, icon);
+            }
+
             Gui::SharedStateButton* t = mScrollView->createWidget<Gui::SharedStateButton>(skin,
                 MyGUI::IntCoord(0, 0, 0, spellHeight), MyGUI::Align::Left | MyGUI::Align::Top);
             t->setNeedKeyFocus(true);
@@ -128,10 +144,10 @@ namespace MWGui
                 group.push_back(costChance);
                 Gui::SharedStateButton::createButtonGroup(group);
 
-                mLines.emplace_back(t, costChance, i);
+                mLines.emplace_back(icon, t, costChance, i);
             }
             else
-                mLines.emplace_back(t, (MyGUI::Widget*)nullptr, i);
+                mLines.emplace_back(icon, t, (MyGUI::Widget*)nullptr, i);
 
             t->setStateSelected(spell.mSelected);
         }
@@ -209,14 +225,27 @@ namespace MWGui
         height = 0;
         for (LineInfo& line : mLines)
         {
-            int lineHeight = line.mLeftWidget->getHeight();
-            line.mLeftWidget->setCoord(4, height, width - 8, lineHeight);
+            const int lineHeight = line.mLeftWidget->getHeight();
+            int contentLeft = 4;
+
+            if (line.mIconWidget)
+            {
+                constexpr int iconSize = 18;
+                constexpr int iconGap = 4;
+                line.mIconWidget->setCoord(contentLeft,
+                    height + std::max(0, (lineHeight - iconSize) / 2), iconSize, iconSize);
+                contentLeft += iconSize + iconGap;
+            }
+
+            const int contentWidth = std::max(1, width - contentLeft - 4);
+            line.mLeftWidget->setCoord(contentLeft, height, contentWidth, lineHeight);
             if (line.mRightWidget)
             {
-                line.mRightWidget->setCoord(4, height, width - 8, lineHeight);
+                line.mRightWidget->setCoord(contentLeft, height, contentWidth, lineHeight);
                 MyGUI::TextBox* second = line.mRightWidget->castType<MyGUI::TextBox>(false);
                 if (second)
-                    line.mLeftWidget->setSize(width - 8 - second->getTextSize().width, lineHeight);
+                    line.mLeftWidget->setSize(
+                        std::max(1, contentWidth - second->getTextSize().width - 6), lineHeight);
             }
 
             height += lineHeight;
@@ -236,7 +265,8 @@ namespace MWGui
                 MyGUI::IntCoord(0, 0, mScrollView->getWidth(), 18),
                 MyGUI::Align::Left | MyGUI::Align::Top);
             separator->setNeedMouseFocus(false);
-            mLines.emplace_back(separator, (MyGUI::Widget*)nullptr, NoSpellIndex);
+            mLines.emplace_back((MyGUI::Widget*)nullptr, separator,
+                (MyGUI::Widget*)nullptr, NoSpellIndex);
         }
 
         MyGUI::TextBox* groupWidget = mScrollView->createWidget<Gui::TextBox>("SandBrightText",
@@ -255,10 +285,11 @@ namespace MWGui
             groupWidget2->setTextAlign(MyGUI::Align::Right);
             groupWidget2->setNeedMouseFocus(false);
 
-            mLines.emplace_back(groupWidget, groupWidget2, NoSpellIndex);
+            mLines.emplace_back((MyGUI::Widget*)nullptr, groupWidget, groupWidget2, NoSpellIndex);
         }
         else
-            mLines.emplace_back(groupWidget, (MyGUI::Widget*)nullptr, NoSpellIndex);
+            mLines.emplace_back((MyGUI::Widget*)nullptr, groupWidget,
+                (MyGUI::Widget*)nullptr, NoSpellIndex);
     }
 
 
