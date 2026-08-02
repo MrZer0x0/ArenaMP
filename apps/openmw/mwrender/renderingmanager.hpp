@@ -14,6 +14,7 @@
 #include "renderinginterface.hpp"
 #include "rendermode.hpp"
 
+#include <array>
 #include <deque>
 #include <memory>
 
@@ -286,8 +287,9 @@ namespace MWRender
         osg::ref_ptr<SceneUtil::UnrefQueue> mUnrefQueue;
 
         osg::ref_ptr<osg::Light> mSunLight;
-        osg::ref_ptr<osg::Light> mLocalShadowLight;
-        osg::ref_ptr<osg::LightSource> mLocalShadowLightSource;
+        static constexpr std::size_t sLocalShadowAtlasMaxLights = 2;
+        std::array<osg::ref_ptr<osg::Light>, sLocalShadowAtlasMaxLights> mLocalShadowLights;
+        std::array<osg::ref_ptr<osg::LightSource>, sLocalShadowAtlasMaxLights> mLocalShadowLightSources;
 
         DetourNavigator::Navigator& mNavigator;
         std::unique_ptr<NavMesh> mNavMesh;
@@ -327,8 +329,8 @@ namespace MWRender
         osg::ref_ptr<osg::Uniform> mHdrIsInteriorUniform;
         osg::ref_ptr<osg::Uniform> mHdrNightFactorUniform;
         osg::ref_ptr<osg::Uniform> mLocalShadowActiveUniform;
-        osg::ref_ptr<osg::Uniform> mLocalShadowPositionUniform;
-        osg::ref_ptr<osg::Uniform> mLocalShadowStrengthUniform;
+        std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowPositionUniforms;
+        std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowStrengthUniforms;
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;

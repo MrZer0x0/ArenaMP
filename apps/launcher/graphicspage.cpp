@@ -1024,6 +1024,9 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setInt("local light shadow field of view", "Shadows", localShadowFieldOfView[level]);
     Settings::Manager::setFloat("local light shadow switch hysteresis", "Shadows", level <= 2 ? 0.50f : 0.45f);
     Settings::Manager::setFloat("local light shadow retention multiplier", "Shadows", level <= 2 ? 1.30f : 1.25f);
+    Settings::Manager::setInt("local shadow atlas lights", "Shadows", level <= 1 ? 1 : 2);
+    Settings::Manager::setInt("local shadow atlas update budget", "Shadows", level <= 2 ? 1 : 2);
+    Settings::Manager::setInt("local shadow atlas cache frames", "Shadows", level <= 1 ? 6 : (level <= 3 ? 4 : 2));
     Settings::Manager::setBool("local light shadows outdoors", "Shadows", level >= 5);
     Settings::Manager::setInt("maximum shadow map distance", "Shadows", effectiveShadowDistance);
     Settings::Manager::setInt("shadow map resolution", "Shadows", effectiveShadowResolution);

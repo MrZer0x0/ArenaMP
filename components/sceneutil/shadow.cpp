@@ -31,12 +31,17 @@ namespace SceneUtil
         mShadowSettings->setReceivesShadowTraversalMask(~0u);
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
-        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
+        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 4));
 
-        // Local point lights use two opposite world-space hemispheres. Keep two
-        // shadow textures allocated even when the directional-light preset uses one.
+        // The local atlas allocates two fixed world-space hemispheres per source.
+        // The OpenMW 0.47 compatibility shader has four safe shadow texture units,
+        // giving two complete point-light entries without stealing material maps.
         if (Settings::Manager::getBool("local light shadows", "Shadows"))
-            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, 2);
+        {
+            const int atlasLights = std::clamp(
+                Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2);
+            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, atlasLights * 2);
+        }
 
         mShadowSettings->setNumShadowMapsPerLight(numberOfShadowMapsPerLight);
         mShadowSettings->setBaseShadowTextureUnit(8 - numberOfShadowMapsPerLight);
@@ -108,15 +113,31 @@ namespace SceneUtil
         mShadowSettings->setLightNum(std::max(0, lightNum));
     }
 
+    void ShadowManager::setActiveLocalLightCount(unsigned int count)
+    {
+        if (!mShadowSettings.valid() || !mShadowTechnique.valid())
+            return;
+        count = std::min(count, 2u);
+        mShadowTechnique->setActiveLocalLightCount(count);
+        if (count == 0u)
+            mShadowSettings->setLightNum(0);
+        else
+            mShadowSettings->setLightNum(-1);
+    }
+
     void ShadowManager::disableShadowsForStateSet(osg::ref_ptr<osg::StateSet> stateset)
     {
         if (!Settings::Manager::getBool("enable shadows", "Shadows"))
             return;
 
         int numberOfShadowMapsPerLight = Settings::Manager::getInt("number of shadow maps", "Shadows");
-        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 8));
+        numberOfShadowMapsPerLight = std::max(1, std::min(numberOfShadowMapsPerLight, 4));
         if (Settings::Manager::getBool("local light shadows", "Shadows"))
-            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, 2);
+        {
+            const int atlasLights = std::clamp(
+                Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2);
+            numberOfShadowMapsPerLight = std::max(numberOfShadowMapsPerLight, atlasLights * 2);
+        }
 
         int baseShadowTextureUnit = 8 - numberOfShadowMapsPerLight;
         
@@ -183,6 +204,11 @@ namespace SceneUtil
         int effectiveResolution = std::max(1,
             Settings::Manager::getInt("shadow map resolution", "Shadows"));
         definesWithShadows["shadowMapTexelSize"] = std::to_string(1.f / static_cast<float>(effectiveResolution));
+        definesWithShadows["localShadowAtlasLights"] = Settings::Manager::getBool(
+            "local light shadows", "Shadows")
+            ? std::to_string(std::clamp(Settings::Manager::getInt(
+                "local shadow atlas lights", "Shadows"), 1, 2))
+            : "0";
 
         return definesWithShadows;
     }
@@ -208,6 +234,7 @@ namespace SceneUtil
         definesWithoutShadows["limitShadowMapDistance"] = "0";
 
         definesWithoutShadows["shadowMapTexelSize"] = "0.001";
+        definesWithoutShadows["localShadowAtlasLights"] = "0";
 
         return definesWithoutShadows;
     }

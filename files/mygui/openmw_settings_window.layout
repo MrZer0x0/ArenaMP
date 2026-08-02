@@ -1136,7 +1136,7 @@
           <Property key="Caption" value="#{arenamp=settings.subsection.shadows}" />
           <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="ShadowScroll">
             <Property key="CanvasAlign" value="Left Top" />
-            <Property key="CanvasSize" value="458 676" />
+            <Property key="CanvasSize" value="458 970" />
             <Widget type="TextBox" skin="NormalText" position="8 8 442 18">
               <Property key="Caption" value="#{arenamp=settings.shadow_casters}" />
             </Widget>
@@ -1292,7 +1292,52 @@
               <UserString key="SettingLabelWidget" value="LocalLightShadowRetentionLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_retention}" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="8 696 442 90">
+            <Widget type="TextBox" skin="NormalText" position="8 696 442 18" name="LocalShadowAtlasLightsLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_atlas_lights}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 718 442 16">
+              <Property key="Range" value="2" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow atlas lights" />
+              <UserString key="SettingValueType" value="Integer" />
+              <UserString key="SettingMin" value="1" />
+              <UserString key="SettingMax" value="2" />
+              <UserString key="SettingLabelWidget" value="LocalShadowAtlasLightsLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_atlas_lights}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 748 442 18" name="LocalShadowAtlasBudgetLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_atlas_budget}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 770 442 16">
+              <Property key="Range" value="2" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow atlas update budget" />
+              <UserString key="SettingValueType" value="Integer" />
+              <UserString key="SettingMin" value="1" />
+              <UserString key="SettingMax" value="2" />
+              <UserString key="SettingLabelWidget" value="LocalShadowAtlasBudgetLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_atlas_budget}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 800 442 18" name="LocalShadowAtlasCacheLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_atlas_cache}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 822 442 16">
+              <Property key="Range" value="12" />
+              <Property key="Page" value="1" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow atlas cache frames" />
+              <UserString key="SettingValueType" value="Integer" />
+              <UserString key="SettingMin" value="1" />
+              <UserString key="SettingMax" value="12" />
+              <UserString key="SettingLabelWidget" value="LocalShadowAtlasCacheLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_atlas_cache}" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="8 856 442 100">
               <Property key="Caption" value="#{arenamp=settings.local_shadow_note}" />
               <Property key="MultiLine" value="true" />
               <Property key="TextAlign" value="Left Top" />

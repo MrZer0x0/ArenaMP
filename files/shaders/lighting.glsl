@@ -4,8 +4,10 @@
 #include "lighting_util.glsl"
 
 uniform int arenaLocalShadowActive;
-uniform vec3 arenaLocalShadowPosition;
-uniform float arenaLocalShadowStrength;
+uniform vec3 arenaLocalShadowPosition0;
+uniform vec3 arenaLocalShadowPosition1;
+uniform float arenaLocalShadowStrength0;
+uniform float arenaLocalShadowStrength1;
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -30,8 +32,14 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
 #if !@lightingMethodFFP
         tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
 #endif
-        if (distance(lcalcPosition(lightIndex), arenaLocalShadowPosition) <= tolerance)
-            return mix(1.0, shadowing, clamp(arenaLocalShadowStrength, 0.0, 1.0));
+        vec3 lightPosition = lcalcPosition(lightIndex);
+        if (distance(lightPosition, arenaLocalShadowPosition0) <= tolerance)
+            return mix(1.0, arenaLocalShadowRatio(0), clamp(arenaLocalShadowStrength0, 0.0, 1.0));
+#if @localShadowAtlasLights > 1
+        if (arenaLocalShadowActive > 1
+            && distance(lightPosition, arenaLocalShadowPosition1) <= tolerance)
+            return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
+#endif
     }
 #endif
     return 1.0;
@@ -266,8 +274,10 @@ vec3 getSpecular(vec3 viewNormal, vec3 viewPos, float shininess, vec3 matSpec, f
 #include "lighting_util.glsl"
 
 uniform int arenaLocalShadowActive;
-uniform vec3 arenaLocalShadowPosition;
-uniform float arenaLocalShadowStrength;
+uniform vec3 arenaLocalShadowPosition0;
+uniform vec3 arenaLocalShadowPosition1;
+uniform float arenaLocalShadowStrength0;
+uniform float arenaLocalShadowStrength1;
 
 float arenaPointIllumination(int lightIndex, float lightDistance)
 {
@@ -292,8 +302,14 @@ float arenaPointShadowFactor(int lightIndex, float shadowing)
 #if !@lightingMethodFFP
         tolerance = max(tolerance, lcalcRadius(lightIndex) * 0.08);
 #endif
-        if (distance(lcalcPosition(lightIndex), arenaLocalShadowPosition) <= tolerance)
-            return mix(1.0, shadowing, clamp(arenaLocalShadowStrength, 0.0, 1.0));
+        vec3 lightPosition = lcalcPosition(lightIndex);
+        if (distance(lightPosition, arenaLocalShadowPosition0) <= tolerance)
+            return mix(1.0, arenaLocalShadowRatio(0), clamp(arenaLocalShadowStrength0, 0.0, 1.0));
+#if @localShadowAtlasLights > 1
+        if (arenaLocalShadowActive > 1
+            && distance(lightPosition, arenaLocalShadowPosition1) <= tolerance)
+            return mix(1.0, arenaLocalShadowRatio(1), clamp(arenaLocalShadowStrength1, 0.0, 1.0));
+#endif
     }
 #endif
     return 1.0;

@@ -33,6 +33,31 @@ float sampleShadowPCF(sampler2DShadow shadowMap, vec4 shadowCoords, float texelS
     return shadow / 9.0;
 }
 
+float arenaSampleLocalShadowMap(sampler2DShadow shadowMap, vec4 shadowCoords)
+{
+    if (shadowCoords.w <= 0.0)
+        return 1.0;
+    vec3 coords = shadowCoords.xyz / shadowCoords.w;
+    if (any(lessThanEqual(coords, vec3(0.0))) || any(greaterThanEqual(coords, vec3(1.0))))
+        return 1.0;
+    return sampleShadowPCF(shadowMap, shadowCoords, @shadowMapTexelSize);
+}
+
+float arenaLocalShadowRatio(int atlasSlot)
+{
+#if SHADOWS && @localShadowAtlasLights > 0
+    if (atlasSlot == 0)
+        return min(arenaSampleLocalShadowMap(shadowTexture0, shadowSpaceCoords0),
+            arenaSampleLocalShadowMap(shadowTexture1, shadowSpaceCoords1));
+#if @localShadowAtlasLights > 1
+    if (atlasSlot == 1)
+        return min(arenaSampleLocalShadowMap(shadowTexture2, shadowSpaceCoords2),
+            arenaSampleLocalShadowMap(shadowTexture3, shadowSpaceCoords3));
+#endif
+#endif
+    return 1.0;
+}
+
 float unshadowedLightRatio(float distance)
 {
     float shadowing = 1.0;

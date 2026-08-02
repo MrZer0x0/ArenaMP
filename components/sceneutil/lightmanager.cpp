@@ -1174,7 +1174,7 @@ namespace SceneUtil
     bool LightManager::getNearestShadowLight(const osg::Vec3f& worldPosition, float maximumDistance,
         float minimumRadius, size_t frameNum, osg::Light& result, const osg::Vec3f* preferredPosition,
         float switchHysteresis, float retentionMultiplier, float* selectedDistance,
-        float* selectedRadius) const
+        float* selectedRadius, const std::vector<osg::Vec3f>* excludedPositions) const
     {
         maximumDistance = std::max(0.f, maximumDistance);
         minimumRadius = std::max(0.f, minimumRadius);
@@ -1212,6 +1212,20 @@ namespace SceneUtil
                 continue;
 
             const osg::Vec3f position = candidate.mWorldMatrix.getTrans();
+            if (excludedPositions)
+            {
+                bool excluded = false;
+                for (const osg::Vec3f& excludedPosition : *excludedPositions)
+                {
+                    if ((position - excludedPosition).length2() <= 16.f)
+                    {
+                        excluded = true;
+                        break;
+                    }
+                }
+                if (excluded)
+                    continue;
+            }
             const float distance = (position - worldPosition).length();
             const float radius = std::max(minimumRadius, candidate.mLightSource->getRadius());
 

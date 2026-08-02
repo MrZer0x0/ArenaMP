@@ -43,7 +43,8 @@ bool isArenaLocalPointShadow(const MWShadowTechnique::LightData& lightData)
 {
     return Settings::Manager::getBool("local light shadows", "Shadows")
         && !lightData.directionalLight && lightData.light.valid()
-        && lightData.light->getLightNum() == 1;
+        && lightData.light->getLightNum() >= 1
+        && lightData.light->getLightNum() <= 4;
 }
 
 bool computeLocalPointShadowFaceSettings(const MWShadowTechnique::LightData& lightData,
@@ -943,6 +944,13 @@ void SceneUtil::MWShadowTechnique::setMaximumShadowMapDistance(float maximumShad
     }
 }
 
+void SceneUtil::MWShadowTechnique::setActiveLocalLightCount(unsigned int count)
+{
+    _activeLocalLightCount = std::min(count, 4u);
+    if (_activeLocalLightCount == 0u)
+        _localAtlasPageValid = {{false, false, false, false}};
+}
+
 void SceneUtil::MWShadowTechnique::enableFrontFaceCulling()
 {
     _useFrontFaceCulling = true;
@@ -1303,6 +1311,36 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
         }
 #endif
 
+        bool renderLocalAtlasPage = true;
+        if (localPointShadow)
+        {
+            const int slot = pl.light.valid() ? pl.light->getLightNum() - 1 : -1;
+            if (slot >= 0 && slot < 4)
+            {
+                const unsigned int frameNumber = cv.getTraversalNumber();
+                const unsigned int cacheFrames = static_cast<unsigned int>(std::clamp(
+                    Settings::Manager::getInt("local shadow atlas cache frames", "Shadows"), 1, 12));
+                const unsigned int updateBudget = static_cast<unsigned int>(std::clamp(
+                    Settings::Manager::getInt("local shadow atlas update budget", "Shadows"), 1, 4));
+                const osg::Vec3d lightPosition = pl.lightPos3;
+                const bool moved = !_localAtlasPageValid[slot]
+                    || (_localAtlasCachedPositions[slot] - lightPosition).length2() > 1.0;
+                const unsigned int rankCadence = slot == 0 ? 1u : std::max(2u,
+                    std::min(cacheFrames, static_cast<unsigned int>(slot + 1)));
+                const bool budgetTurn = slot < static_cast<int>(updateBudget)
+                    || ((frameNumber + static_cast<unsigned int>(slot)) % rankCadence) == 0u;
+                const bool expired = frameNumber - _localAtlasLastUpdateFrame[slot] >= cacheFrames;
+                renderLocalAtlasPage = moved || budgetTurn || expired;
+
+                if (renderLocalAtlasPage)
+                {
+                    _localAtlasCachedPositions[slot] = lightPosition;
+                    _localAtlasLastUpdateFrame[slot] = frameNumber;
+                    _localAtlasPageValid[slot] = true;
+                }
+            }
+        }
+
         // 4. For each light/shadow map
         for (unsigned int sm_i=0; sm_i<numShadowMapsPerLight; ++sm_i)
         {
@@ -1474,11 +1512,12 @@ void MWShadowTechnique::cull(osgUtil::CullVisitor& cv)
             // 4.3 traverse RTT camera
             //
 
-            cv.pushStateSet(_shadowCastingStateSet.get());
-
-            cullShadowCastingScene(&cv, camera.get());
-
-            cv.popStateSet();
+            if (!localPointShadow || renderLocalAtlasPage)
+            {
+                cv.pushStateSet(_shadowCastingStateSet.get());
+                cullShadowCastingScene(&cv, camera.get());
+                cv.popStateSet();
+            }
 
             if (!localPointShadow && !orthographicViewFrustum && settings->getShadowMapProjectionHint()==ShadowSettings::PERSPECTIVE_SHADOW_MAP)
             {
@@ -1584,8 +1623,17 @@ bool MWShadowTechnique::selectActiveLights(osgUtil::CullVisitor* cv, ViewDepende
         const osg::Light* light = dynamic_cast<const osg::Light*>(itr->first.get());
         if (light && light->getLightNum() >= 0)
         {
-            // is LightNum matched to that defined in settings
-            if (settings && settings->getLightNum()>=0 && light->getLightNum()!=settings->getLightNum()) continue;
+            // Local atlas mode accepts a stable range of proxy lights. Otherwise
+            // retain OpenMW's normal single-light selection (usually sun light 0).
+            if (_activeLocalLightCount > 0u)
+            {
+                if (light->getLightNum() < 1
+                    || light->getLightNum() > static_cast<int>(_activeLocalLightCount))
+                    continue;
+            }
+            else if (settings && settings->getLightNum() >= 0
+                && light->getLightNum() != settings->getLightNum())
+                continue;
 
             LightDataList::iterator pll_itr = pll.begin();
             for(; pll_itr != pll.end(); ++pll_itr)
@@ -1606,6 +1654,13 @@ bool MWShadowTechnique::selectActiveLights(osgUtil::CullVisitor* cv, ViewDepende
             }
         }
     }
+
+    pll.sort([](const osg::ref_ptr<LightData>& left, const osg::ref_ptr<LightData>& right)
+    {
+        const int leftNum = left.valid() && left->light.valid() ? left->light->getLightNum() : 0;
+        const int rightNum = right.valid() && right->light.valid() ? right->light->getLightNum() : 0;
+        return leftNum < rightNum;
+    });
 
     return !pll.empty();
 }

@@ -174,7 +174,8 @@ namespace SceneUtil
             float minimumRadius, size_t frameNum, osg::Light& result,
             const osg::Vec3f* preferredPosition = nullptr, float switchHysteresis = 0.35f,
             float retentionMultiplier = 1.15f, float* selectedDistance = nullptr,
-            float* selectedRadius = nullptr) const;
+            float* selectedRadius = nullptr,
+            const std::vector<osg::Vec3f>* excludedPositions = nullptr) const;
 
         bool usingFFP() const;
 
