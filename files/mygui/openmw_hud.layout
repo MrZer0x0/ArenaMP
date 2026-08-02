@@ -13,9 +13,14 @@
         </Widget>
 
         <!-- Engine-native horizontal compass; tick labels are populated by HUD.cpp. -->
-        <Widget type="Widget" skin="MW_Box" position="0 8 420 34" name="HorizontalCompass" align="HCenter Top">
+        <Widget type="Widget" skin="MW_Box" position="0 8 420 26" name="HorizontalCompass" align="HCenter Top">
             <Property key="Visible" value="false"/>
             <Property key="NeedMouse" value="false"/>
+            <!-- Soft inner shade keeps compass marks readable without making the bar visually heavy. -->
+            <Widget type="Widget" skin="HUD_Box_Transparent" position="2 2 416 22" name="HorizontalCompassShade" align="Stretch">
+                <Property key="Alpha" value="0.55"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
         </Widget>
 
         <!-- Energy bars -->

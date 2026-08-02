@@ -1542,10 +1542,10 @@ namespace MWGui
         playDynamicDialogueAnimation(true);
     }
 
-    void DialogueWindow::addMessageBox(const std::string& text)
+    void DialogueWindow::addMessageBox(const std::string&)
     {
-        mHistoryContents.push_back(new Message(text));
-        updateHistory();
+        // Normal script message boxes are routed here while dialogue mode is active.
+        // Suppress them completely so they do not cover or clutter the dialogue UI.
     }
 
     void DialogueWindow::updateActorStatus()

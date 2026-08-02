@@ -250,7 +250,7 @@ namespace MWGui
         for (int i = 0; i < horizontalCompassTickCount; ++i)
         {
             MyGUI::TextBox* tick = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
-                MyGUI::IntCoord(0, 4, 48, 22), MyGUI::Align::Default);
+                MyGUI::IntCoord(0, 1, 48, 20), MyGUI::Align::Default);
             tick->setTextAlign(MyGUI::Align::Center);
             tick->setTextShadow(true);
             tick->setTextShadowColour(MyGUI::Colour::Black);
@@ -258,7 +258,7 @@ namespace MWGui
             mHorizontalCompassTicks.push_back(tick);
         }
         mHorizontalCompassCenter = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
-            MyGUI::IntCoord(mHorizontalCompass->getWidth() / 2 - 12, 18, 24, 14), MyGUI::Align::Default);
+            MyGUI::IntCoord(mHorizontalCompass->getWidth() / 2 - 12, 14, 24, 10), MyGUI::Align::Default);
         mHorizontalCompassCenter->setCaption("^");
         mHorizontalCompassCenter->setTextAlign(MyGUI::Align::Center);
         mHorizontalCompassCenter->setTextShadow(true);
@@ -645,7 +645,7 @@ namespace MWGui
             const int left = static_cast<int>(std::lround(
                 mHorizontalCompass->getWidth() * 0.5f + delta * pixelsPerDegree - labelWidth * 0.5f));
             MyGUI::TextBox* tick = mHorizontalCompassTicks[i];
-            tick->setPosition(left, 4);
+            tick->setPosition(left, 1);
 
             int wrappedStep = markerStep % 24;
             if (wrappedStep < 0)
@@ -1137,11 +1137,23 @@ namespace MWGui
             const int panelLeft = std::max(horizontalMargin,
                 std::min(constrainedCenterX - totalWidth / 2, maximumLeft));
 
+            // Reserve the compass area, including a small visual gap, so the target
+            // name/level/health panel can never cover the horizontal compass.
+            int targetPanelMinimumTop = verticalMargin;
+            if (mHorizontalCompass && mHorizontalCompass->getVisible())
+            {
+                const MyGUI::IntCoord compassCoord = mHorizontalCompass->getAbsoluteCoord();
+                constexpr int targetPanelCompassGap = 6;
+                targetPanelMinimumTop = std::min(maximumTop,
+                    std::max(targetPanelMinimumTop,
+                        compassCoord.top + compassCoord.height + targetPanelCompassGap));
+            }
+
             // Keep the top of the complete panel within the upper 30% of the view.
             // It still reacts to the actor's projected height inside this band.
-            const int upperBandBottom = std::max(verticalMargin,
+            const int upperBandBottom = std::max(targetPanelMinimumTop,
                 std::min(maximumTop, static_cast<int>(viewSize.height * 0.30f)));
-            const int baseY = std::max(verticalMargin,
+            const int baseY = std::max(targetPanelMinimumTop,
                 std::min(anchorTop - totalHeight, upperBandBottom));
 
             if (mEnemyName)
