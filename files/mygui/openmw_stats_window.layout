@@ -2,7 +2,8 @@
 <MyGUI type="Layout">
     <Widget type="Window" skin="MW_Window_Pinnable" layer="Windows" position="0 0 244 420" name="_Main">
         <Property key="MinSize" value="244 114" />
-        <Widget type="Widget" skin="" name="LeftPane" position="0 0 220 397">
+        <Widget type="ScrollView" skin="MW_ScrollView" name="LeftPane" position="0 0 220 397">
+            <Property key="CanvasAlign" value="Left Top" />
             <UserString key="LeftOffsetWidth" value="24" />
             <UserString key="LeftPaneRatio" value="1" />
             <Widget type="Widget" skin="MW_Box" position="8 8 212 62" align="Left Top HStretch">
@@ -204,8 +205,8 @@
                     </Widget>
                 </Widget>
             </Widget>
-            <Widget type="Widget" skin="MW_Box" name="Skills" position="8 309 212 80" align="Left Top HStretch VStretch">
-                <Widget type="ScrollView" skin="MW_ScrollView" position="4 2 210 4" align="Stretch" name="SkillView">
+            <Widget type="Widget" skin="MW_Box" name="Skills" position="8 309 212 80" align="Left Top HStretch">
+                <Widget type="ScrollView" skin="MW_ScrollView" position="4 2 204 76" align="Left Top HStretch" name="SkillView">
                     <Property key="CanvasAlign" value="Left Top" />
                 </Widget>
             </Widget>

@@ -67,6 +67,20 @@ namespace MWGui
         getWidget(mLeftPane, "LeftPane");
         getWidget(mRightPane, "RightPane");
 
+        // The compact statistics window uses one continuous scroll area. Relay the
+        // mouse wheel from every static child (attributes, status bars, race/class)
+        // to that outer scroll view, so scrolling works wherever the cursor is.
+        std::vector<MyGUI::Widget*> wheelWidgets;
+        wheelWidgets.push_back(mLeftPane);
+        while (!wheelWidgets.empty())
+        {
+            MyGUI::Widget* widget = wheelWidgets.back();
+            wheelWidgets.pop_back();
+            widget->eventMouseWheel += MyGUI::newDelegate(this, &StatsWindow::onMouseWheel);
+            for (size_t i = 0; i < widget->getChildCount(); ++i)
+                wheelWidgets.push_back(widget->getChildAt(i));
+        }
+
         for (int i = 0; i < ESM::Skill::Length; ++i)
         {
             mSkillValues.insert(std::make_pair(i, MWMechanics::SkillValue()));
@@ -79,12 +93,16 @@ namespace MWGui
         onWindowResize(t);
     }
 
-    void StatsWindow::onMouseWheel(MyGUI::Widget* _sender, int _rel)
+    void StatsWindow::onMouseWheel(MyGUI::Widget* /*sender*/, int rel)
     {
-        if (mSkillView->getViewOffset().top + _rel*0.3 > 0)
-            mSkillView->setViewOffset(MyGUI::IntPoint(0, 0));
-        else
-            mSkillView->setViewOffset(MyGUI::IntPoint(0, static_cast<int>(mSkillView->getViewOffset().top + _rel*0.3)));
+        if (rel == 0)
+            return;
+
+        MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
+        constexpr int wheelStep = 36;
+        const int delta = rel > 0 ? wheelStep : -wheelStep;
+        const int nextTop = std::min(0, statsView->getViewOffset().top + delta);
+        statsView->setViewOffset(MyGUI::IntPoint(0, nextTop));
     }
 
     void StatsWindow::onWindowResize(MyGUI::Window* window)
@@ -111,9 +129,22 @@ namespace MWGui
             mRightPane->setVisible(false);
             mLeftPane->setCoord(MyGUI::IntCoord(0, 0,
                 std::max(1, windowWidth - leftOffsetWidth), windowHeight));
+
+            // Skills are expanded to their full content height. The outer LeftPane
+            // ScrollView then scrolls attributes, skills, factions and reputation as
+            // one continuous document instead of keeping attributes permanently fixed.
+            MyGUI::Widget* skillsBox = mSkillView->getParent();
+            const int skillContentHeight = std::max(1, mSkillView->getCanvasSize().height);
             mSkillView->setVisibleVScroll(false);
-            mSkillView->setCanvasSize(mSkillView->getWidth(), mSkillView->getCanvasSize().height);
-            mSkillView->setVisibleVScroll(true);
+            mSkillView->setSize(std::max(1, skillsBox->getWidth() - 8), skillContentHeight);
+            mSkillView->setCanvasSize(mSkillView->getWidth(), skillContentHeight);
+            skillsBox->setSize(skillsBox->getWidth(), skillContentHeight + 4);
+
+            MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
+            statsView->setVisibleVScroll(false);
+            statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+                skillsBox->getTop() + skillsBox->getHeight() + 8);
+            statsView->setVisibleVScroll(true);
             return;
         }
 
@@ -139,10 +170,18 @@ namespace MWGui
             mRightPane->setCoord(MyGUI::IntCoord(static_cast<int>(leftPaneRatio*windowWidth), 0, static_cast<int>(rightPaneRatio*windowWidth), windowHeight));
         }
 
-        // Canvas size must be expressed with VScroll disabled, otherwise MyGUI would expand the scroll area when the scrollbar is hidden
+        MyGUI::Widget* skillsBox = mSkillView->getParent();
+        const int skillContentHeight = std::max(1, mSkillView->getCanvasSize().height);
         mSkillView->setVisibleVScroll(false);
-        mSkillView->setCanvasSize (mSkillView->getWidth(), mSkillView->getCanvasSize().height);
-        mSkillView->setVisibleVScroll(true);
+        mSkillView->setSize(std::max(1, skillsBox->getWidth() - 8), skillContentHeight);
+        mSkillView->setCanvasSize(mSkillView->getWidth(), skillContentHeight);
+        skillsBox->setSize(skillsBox->getWidth(), skillContentHeight + 4);
+
+        MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
+        statsView->setVisibleVScroll(false);
+        statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+            skillsBox->getTop() + skillsBox->getHeight() + 8);
+        statsView->setVisibleVScroll(true);
     }
 
     void StatsWindow::setBar(const std::string& name, const std::string& tname, int val, int max)
@@ -699,10 +738,20 @@ namespace MWGui
             mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("Caption_Text", "#{sCrimeHelp}");
         }
 
-        // Canvas size must be expressed with VScroll disabled, otherwise MyGUI would expand the scroll area when the scrollbar is hidden
+        // Expand the skills section to its full content height and let the outer
+        // statistics view perform the only vertical scrolling operation.
+        const int skillContentHeight = std::max(1, coord1.top + 4);
+        MyGUI::Widget* skillsBox = mSkillView->getParent();
         mSkillView->setVisibleVScroll(false);
-        mSkillView->setCanvasSize (mSkillView->getWidth(), std::max(mSkillView->getHeight(), coord1.top));
-        mSkillView->setVisibleVScroll(true);
+        mSkillView->setSize(std::max(1, skillsBox->getWidth() - 8), skillContentHeight);
+        mSkillView->setCanvasSize(mSkillView->getWidth(), skillContentHeight);
+        skillsBox->setSize(skillsBox->getWidth(), skillContentHeight + 4);
+
+        MyGUI::ScrollView* statsView = mLeftPane->castType<MyGUI::ScrollView>();
+        statsView->setVisibleVScroll(false);
+        statsView->setCanvasSize(std::max(1, statsView->getWidth()),
+            skillsBox->getTop() + skillsBox->getHeight() + 8);
+        statsView->setVisibleVScroll(true);
     }
 
     void StatsWindow::onPinToggled()
