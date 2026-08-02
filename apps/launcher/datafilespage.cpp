@@ -153,7 +153,14 @@ void Launcher::DataFilesPage::populateFileViews(const QString& contentModelName)
     PathIterator pathIterator(paths);
 
     mSelector->setProfileContent(filesInProfile(contentModelName, pathIterator));
-    ui.groundcoverCheckBox->setChecked(mLauncherSettings.isGroundcoverEnabled(contentModelName));
+
+    // ArenaMP default: keep the launcher checkbox enabled unless the profile has
+    // already stored a dedicated groundcover selection that explicitly disables it.
+    // This matches the shipped defaults where grass/groundcover support is on.
+    const bool storedGroundcoverEnabled = mLauncherSettings.isGroundcoverEnabled(contentModelName);
+    const bool hasGroundcoverSelection = !mLauncherSettings.getGroundcoverFiles(contentModelName).isEmpty()
+        || !mGameSettings.getGroundcoverList().isEmpty();
+    ui.groundcoverCheckBox->setChecked(storedGroundcoverEnabled || !hasGroundcoverSelection ? true : storedGroundcoverEnabled);
 }
 
 QStringList Launcher::DataFilesPage::filesInProfile(const QString& profileName, PathIterator& pathIterator)
