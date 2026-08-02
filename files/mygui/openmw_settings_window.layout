@@ -1136,7 +1136,7 @@
           <Property key="Caption" value="#{arenamp=settings.subsection.shadows}" />
           <Widget type="ScrollView" skin="MW_ScrollView" position="4 4 478 400" align="Left Top" name="ShadowScroll">
             <Property key="CanvasAlign" value="Left Top" />
-            <Property key="CanvasSize" value="458 970" />
+            <Property key="CanvasSize" value="458 1165" />
             <Widget type="TextBox" skin="NormalText" position="8 8 442 18">
               <Property key="Caption" value="#{arenamp=settings.shadow_casters}" />
             </Widget>
@@ -1337,7 +1337,52 @@
               <UserString key="SettingLabelWidget" value="LocalShadowAtlasCacheLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_atlas_cache}" />
             </Widget>
-            <Widget type="TextBox" skin="SandText" position="8 856 442 100">
+            <Widget type="TextBox" skin="NormalText" position="8 852 442 18" name="LocalShadowSoftnessLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_softness}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 874 442 16">
+              <Property key="Range" value="56" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow softness" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.25" />
+              <UserString key="SettingMax" value="3.0" />
+              <UserString key="SettingLabelWidget" value="LocalShadowSoftnessLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_softness}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 904 442 18" name="LocalShadowSurfaceBiasLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_surface_bias}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 926 442 16">
+              <Property key="Range" value="61" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow surface bias" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="0.0" />
+              <UserString key="SettingMax" value="3.0" />
+              <UserString key="SettingLabelWidget" value="LocalShadowSurfaceBiasLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_surface_bias}" />
+            </Widget>
+            <Widget type="TextBox" skin="NormalText" position="8 956 442 18" name="LocalShadowTemporalResponseLabel">
+              <Property key="Caption" value="#{arenamp=settings.local_shadow_temporal_response}" />
+            </Widget>
+            <Widget type="ScrollBar" skin="MW_HScroll" position="8 978 442 16">
+              <Property key="Range" value="57" />
+              <Property key="Page" value="2" />
+              <UserString key="SettingType" value="Slider" />
+              <UserString key="SettingCategory" value="Shadows" />
+              <UserString key="SettingName" value="local shadow temporal response" />
+              <UserString key="SettingValueType" value="Float" />
+              <UserString key="SettingMin" value="2.0" />
+              <UserString key="SettingMax" value="30.0" />
+              <UserString key="SettingLabelWidget" value="LocalShadowTemporalResponseLabel" />
+              <UserString key="SettingLabelCaption" value="#{arenamp=settings.local_shadow_temporal_response}" />
+            </Widget>
+            <Widget type="TextBox" skin="SandText" position="8 1016 442 125">
               <Property key="Caption" value="#{arenamp=settings.local_shadow_note}" />
               <Property key="MultiLine" value="true" />
               <Property key="TextAlign" value="Left Top" />

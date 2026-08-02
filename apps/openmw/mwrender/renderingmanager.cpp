@@ -1332,7 +1332,7 @@ namespace MWRender
         mCurrentCameraPos = cameraPosition;
 
         updateWeatherParticleOcclusion(dt, cameraPosition);
-        updateLocalLightShadows(cameraPosition);
+        updateLocalLightShadows(dt, cameraPosition);
         mWater->setRainIntensity(mSky->getPrecipitationAlpha() * mWeatherParticleExposure);
 
         // Switch underwater colouring immediately. A very small hysteresis band
@@ -1402,7 +1402,7 @@ namespace MWRender
         mSky->setWeatherParticleExposure(mWeatherParticleExposure);
     }
 
-    void RenderingManager::updateLocalLightShadows(const osg::Vec3f& cameraPosition)
+    void RenderingManager::updateLocalLightShadows(float dt, const osg::Vec3f& cameraPosition)
     {
         if (!mShadowManager)
             return;
@@ -1438,6 +1438,9 @@ namespace MWRender
                 "local light shadow retention multiplier", "Shadows");
             const unsigned int requestedCount = static_cast<unsigned int>(std::clamp(
                 Settings::Manager::getInt("local shadow atlas lights", "Shadows"), 1, 2));
+            const float temporalResponse = std::clamp(Settings::Manager::getFloat(
+                "local shadow temporal response", "Shadows"), 2.f, 30.f);
+            const float temporalAlpha = 1.f - std::exp(-temporalResponse * std::max(0.f, dt));
 
             std::vector<osg::Vec3f> selectedPositions;
             selectedPositions.reserve(requestedCount);
@@ -1487,7 +1490,23 @@ namespace MWRender
                 proxy.setSpotCutoff(180.f);
                 proxy.setSpotExponent(0.f);
                 mLocalShadowLightSources[slot]->setNodeMask(Mask_Lighting);
-                mLocalShadowStrengthUniforms[slot]->set(std::clamp(shadowStrength, 0.f, 1.f));
+
+                // Fade a newly selected atlas light in instead of replacing the old
+                // shadow abruptly. Small movements of the same torch do not reset the
+                // filter, while an actual source change starts from a low opacity.
+                const float sourceChangeDistance = std::max(96.f, selectedRadius * 0.35f);
+                const bool sourceChanged = !mLocalShadowPreviousPositionValid[slot]
+                    || (mLocalShadowPreviousPositions[slot] - selected).length2()
+                        > sourceChangeDistance * sourceChangeDistance;
+                if (sourceChanged)
+                    mLocalShadowSmoothedStrengths[slot]
+                        = std::min(mLocalShadowSmoothedStrengths[slot], 0.12f);
+                mLocalShadowSmoothedStrengths[slot] += (std::clamp(shadowStrength, 0.f, 1.f)
+                    - mLocalShadowSmoothedStrengths[slot]) * temporalAlpha;
+                mLocalShadowPreviousPositions[slot] = selected;
+                mLocalShadowPreviousPositionValid[slot] = true;
+                mLocalShadowStrengthUniforms[slot]->set(
+                    std::clamp(mLocalShadowSmoothedStrengths[slot], 0.f, 1.f));
 
                 const osg::Vec3d viewPosition = osg::Vec3d(
                     selected.x(), selected.y(), selected.z())
@@ -1500,18 +1519,45 @@ namespace MWRender
             }
         }
 
+        unsigned int visibleCount = foundCount;
+        const float temporalResponse = std::clamp(Settings::Manager::getFloat(
+            "local shadow temporal response", "Shadows"), 2.f, 30.f);
+        const float temporalAlpha = 1.f - std::exp(-temporalResponse * std::max(0.f, dt));
         for (std::size_t slot = foundCount; slot < sLocalShadowAtlasMaxLights; ++slot)
         {
-            mLocalShadowLightSources[slot]->setNodeMask(0u);
-            mLocalShadowStrengthUniforms[slot]->set(0.f);
+            mLocalShadowSmoothedStrengths[slot] += (0.f - mLocalShadowSmoothedStrengths[slot])
+                * temporalAlpha;
+            if (mLocalShadowSmoothedStrengths[slot] > 0.01f
+                && mLocalShadowPreviousPositionValid[slot])
+            {
+                // Retain the previous atlas light for a few frames while fading it out.
+                // This removes the last visible pop when leaving a light's range.
+                mLocalShadowLightSources[slot]->setNodeMask(Mask_Lighting);
+                mLocalShadowStrengthUniforms[slot]->set(mLocalShadowSmoothedStrengths[slot]);
+                const osg::Vec3f selected = mLocalShadowPreviousPositions[slot];
+                const osg::Vec3d viewPosition = osg::Vec3d(selected.x(), selected.y(), selected.z())
+                    * mViewer->getCamera()->getViewMatrix();
+                mLocalShadowPositionUniforms[slot]->set(osg::Vec3f(
+                    static_cast<float>(viewPosition.x()),
+                    static_cast<float>(viewPosition.y()),
+                    static_cast<float>(viewPosition.z())));
+                visibleCount = static_cast<unsigned int>(slot + 1);
+            }
+            else
+            {
+                mLocalShadowSmoothedStrengths[slot] = 0.f;
+                mLocalShadowPreviousPositionValid[slot] = false;
+                mLocalShadowLightSources[slot]->setNodeMask(0u);
+                mLocalShadowStrengthUniforms[slot]->set(0.f);
+            }
         }
-        mLocalShadowActiveUniform->set(static_cast<int>(foundCount));
+        mLocalShadowActiveUniform->set(static_cast<int>(visibleCount));
 
-        if (static_cast<int>(foundCount) != mActiveShadowLightNum)
+        if (static_cast<int>(visibleCount) != mActiveShadowLightNum)
         {
-            mActiveShadowLightNum = static_cast<int>(foundCount);
-            if (foundCount > 0u)
-                mShadowManager->setActiveLocalLightCount(foundCount);
+            mActiveShadowLightNum = static_cast<int>(visibleCount);
+            if (visibleCount > 0u)
+                mShadowManager->setActiveLocalLightCount(visibleCount);
             else
             {
                 mShadowManager->setActiveLocalLightCount(0u);

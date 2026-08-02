@@ -40,7 +40,29 @@ float arenaSampleLocalShadowMap(sampler2DShadow shadowMap, vec4 shadowCoords)
     vec3 coords = shadowCoords.xyz / shadowCoords.w;
     if (any(lessThanEqual(coords, vec3(0.0))) || any(greaterThanEqual(coords, vec3(1.0))))
         return 1.0;
-    return sampleShadowPCF(shadowMap, shadowCoords, @shadowMapTexelSize);
+
+    // Receiver-gradient bias removes acne on walls viewed at a shallow angle while
+    // keeping contact shadows tighter than a large global polygon offset would.
+    float receiverGradient = max(abs(dFdx(coords.z)), abs(dFdy(coords.z)));
+    float comparisonDepth = clamp(coords.z - @localShadowReceiverBias
+        - receiverGradient * @localShadowSlopeBias, 0.0, 1.0);
+
+    // A fixed-cost, rotated-looking 9-tap kernel. Its radius grows slightly with
+    // receiver depth, approximating the softer penumbra of area lights without
+    // introducing per-frame noise or temporal shimmer.
+    float depthRadius = mix(0.70, 1.85, smoothstep(0.08, 0.95, coords.z));
+    float radius = @shadowMapTexelSize * @localShadowSoftness * depthRadius;
+    vec2 diagonal = vec2(radius * 0.70710678);
+    float shadow = shadow2D(shadowMap, vec3(coords.xy, comparisonDepth)).r * 2.0;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(radius, 0.0), comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(-radius, 0.0), comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(0.0, radius), comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(0.0, -radius), comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + diagonal, comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy - diagonal, comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(diagonal.x, -diagonal.y), comparisonDepth)).r;
+    shadow += shadow2D(shadowMap, vec3(coords.xy + vec2(-diagonal.x, diagonal.y), comparisonDepth)).r;
+    return shadow / 10.0;
 }
 
 float arenaLocalShadowRatio(int atlasSlot)

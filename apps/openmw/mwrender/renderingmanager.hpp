@@ -262,7 +262,7 @@ namespace MWRender
         void updateThirdPersonViewMode();
         void updateHdrSettings();
         void updateHdrEnvironment();
-        void updateLocalLightShadows(const osg::Vec3f& cameraPosition);
+        void updateLocalLightShadows(float dt, const osg::Vec3f& cameraPosition);
         void updateWeatherParticleOcclusion(float dt, const osg::Vec3f& cameraPosition);
 
         void reportStats() const;
@@ -331,6 +331,9 @@ namespace MWRender
         osg::ref_ptr<osg::Uniform> mLocalShadowActiveUniform;
         std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowPositionUniforms;
         std::array<osg::ref_ptr<osg::Uniform>, sLocalShadowAtlasMaxLights> mLocalShadowStrengthUniforms;
+        std::array<float, sLocalShadowAtlasMaxLights> mLocalShadowSmoothedStrengths{{0.f, 0.f}};
+        std::array<osg::Vec3f, sLocalShadowAtlasMaxLights> mLocalShadowPreviousPositions{};
+        std::array<bool, sLocalShadowAtlasMaxLights> mLocalShadowPreviousPositionValid{{false, false}};
 
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;

@@ -209,6 +209,14 @@ namespace SceneUtil
             ? std::to_string(std::clamp(Settings::Manager::getInt(
                 "local shadow atlas lights", "Shadows"), 1, 2))
             : "0";
+        definesWithShadows["localShadowSoftness"] = std::to_string(std::clamp(
+            Settings::Manager::getFloat("local shadow softness", "Shadows"), 0.25f, 3.f));
+        const float localSurfaceBias = std::clamp(Settings::Manager::getFloat(
+            "local shadow surface bias", "Shadows"), 0.f, 3.f);
+        definesWithShadows["localShadowReceiverBias"] = std::to_string(
+            0.00015f + localSurfaceBias * 0.00025f);
+        definesWithShadows["localShadowSlopeBias"] = std::to_string(
+            0.75f + localSurfaceBias * 0.75f);
 
         return definesWithShadows;
     }
@@ -235,6 +243,9 @@ namespace SceneUtil
 
         definesWithoutShadows["shadowMapTexelSize"] = "0.001";
         definesWithoutShadows["localShadowAtlasLights"] = "0";
+        definesWithoutShadows["localShadowSoftness"] = "1.0";
+        definesWithoutShadows["localShadowReceiverBias"] = "0.0005";
+        definesWithoutShadows["localShadowSlopeBias"] = "1.5";
 
         return definesWithoutShadows;
     }
