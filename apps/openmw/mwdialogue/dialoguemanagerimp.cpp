@@ -19,7 +19,6 @@
 
 #include <components/interpreter/interpreter.hpp>
 #include <components/interpreter/defines.hpp>
-#include <components/misc/rng.hpp>
 #include <components/settings/settings.hpp>
 
 /*
@@ -65,6 +64,7 @@ namespace MWDialogue
       , mCompilerContext (MWScript::CompilerContext::Type_Dialogue)
       , mErrorHandler()
       , mTalkedTo(false)
+      , mUnvoicedDialogueClickCount(0)
       , mTemporaryDispositionChange(0.f)
       , mPermanentDispositionChange(0.f)
     {
@@ -78,6 +78,7 @@ namespace MWDialogue
     {
         mKnownTopics.clear();
         mTalkedTo = false;
+        mUnvoicedDialogueClickCount = 0;
         mTemporaryDispositionChange = 0;
         mPermanentDispositionChange = 0;
     }
@@ -151,6 +152,7 @@ namespace MWDialogue
         mChoice = -1;
         mIsInChoice = false;
         mGoodbye = false;
+        mUnvoicedDialogueClickCount = 0;
         mChoices.clear();
 
         mActor = actor;
@@ -397,6 +399,26 @@ namespace MWDialogue
         return false;
     }
 
+    void DialogueManager::reactToUnvoicedDialogueClick(bool voicePlayed, const std::string& fallbackTopic)
+    {
+        if (voicePlayed || mActor.isEmpty())
+            return;
+
+        MWBase::SoundManager* soundManager = MWBase::Environment::get().getSoundManager();
+        if (soundManager->sayActive(mActor))
+            return;
+
+        // Generic dialogue reactions should not fire after every topic or answer.
+        // Count only eligible, unvoiced dialogue clicks and react on every seventh one.
+        constexpr unsigned int clicksPerReaction = 7;
+        ++mUnvoicedDialogueClickCount;
+        if (mUnvoicedDialogueClickCount < clicksPerReaction)
+            return;
+
+        mUnvoicedDialogueClickCount = 0;
+        say(mActor, fallbackTopic);
+    }
+
     const ESM::Dialogue *DialogueManager::searchDialogue(const std::string& id)
     {
         return MWBase::Environment::get().getWorld()->getStore().get<ESM::Dialogue>().search(id);
@@ -475,14 +497,7 @@ namespace MWDialogue
             if (dialogue && dialogue->mType == ESM::Dialogue::Topic)
             {
                 const bool voicePlayed = executeTopic (keyword, callback);
-                // Unvoiced dialogue topics used to trigger an idle voice line after
-                // every click. Keep the cinematic reaction, but make it occasional
-                // so browsing several topics does not make the NPC talk constantly.
-                constexpr int unvoicedTopicReactionChance = 35;
-                if (!voicePlayed
-                    && !MWBase::Environment::get().getSoundManager()->sayActive(mActor)
-                    && Misc::Rng::roll0to99() < unvoicedTopicReactionChance)
-                    say(mActor, "idle");
+                reactToUnvoicedDialogueClick(voicePlayed);
             }
         }
     }
@@ -549,9 +564,7 @@ namespace MWDialogue
                     }
 
                     executeScript (info->mResultScript, mActor);
-                    if (!voicePlayed
-                        && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
-                        say(mActor, "idle");
+                    reactToUnvoicedDialogueClick(voicePlayed);
                 }
                 else
                 {
@@ -640,8 +653,7 @@ namespace MWDialogue
         }
 
         const bool voicePlayed = executeTopic (text + (success ? " Success" : " Fail"), callback);
-        if (!voicePlayed
-            && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
+        if (!voicePlayed)
         {
             // Positive disposition changes use the filtered greeting bank;
             // negative changes use the actor's lower-disposition idle bank.
@@ -649,7 +661,7 @@ namespace MWDialogue
             const bool positiveReaction
                 = appliedDispositionChange > 0.f
                 || (appliedDispositionChange == 0.f && success);
-            say(mActor, positiveReaction ? "hello" : "idle");
+            reactToUnvoicedDialogueClick(false, positiveReaction ? "hello" : "idle");
         }
     }
 
@@ -690,9 +702,7 @@ namespace MWDialogue
             const bool voicePlayed = playVoice(*info);
 
             executeScript (info->mResultScript, mActor);
-            if (!voicePlayed
-                && !MWBase::Environment::get().getSoundManager()->sayActive(mActor))
-                say(mActor, "idle");
+            reactToUnvoicedDialogueClick(voicePlayed);
             return true;
         }
         return false;

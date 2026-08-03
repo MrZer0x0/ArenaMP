@@ -45,6 +45,7 @@ namespace MWDialogue
             std::string mLastTopic; // last topic ID, lowercase
             bool mIsInChoice;
             bool mGoodbye;
+            unsigned int mUnvoicedDialogueClickCount;
 
             std::vector<std::pair<std::string, int> > mChoices;
 
@@ -61,6 +62,7 @@ namespace MWDialogue
 
             bool playVoice(const ESM::DialInfo& info);
             bool executeTopic (const std::string& topic, ResponseCallback* callback);
+            void reactToUnvoicedDialogueClick(bool voicePlayed, const std::string& fallbackTopic = "idle");
 
             const ESM::Dialogue* searchDialogue(const std::string& id);
 
