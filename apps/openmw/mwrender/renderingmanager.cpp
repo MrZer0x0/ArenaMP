@@ -1,6 +1,7 @@
 #include "renderingmanager.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <limits>
 #include <cstdlib>
 #include <cmath>
@@ -346,7 +347,14 @@ namespace MWRender
             mRootNode->addChild(mExtractCamera);
             mRootNode->addChild(mVerticalCamera);
             mRootNode->addChild(mCompositeCamera);
+
+            // Install the callback once. Replacing a Camera DrawCallback while
+            // CullDrawThreadPerContext is active can leave a RenderStage holding
+            // the previous callback and race its osg::Referenced ref-count.
             mFramebufferCopyCallback = new FramebufferCopyCallback(this);
+            if (mMainCamera.valid())
+                mMainCamera->setPostDrawCallback(mFramebufferCopyCallback.get());
+
             setPassesVisible(false);
             mReady = true;
             reloadSettings();
@@ -355,6 +363,16 @@ namespace MWRender
         ~BloomProcessor()
         {
             setEnabled(false);
+
+            if (mFramebufferCopyCallback)
+                mFramebufferCopyCallback->detach();
+
+            if (mMainCamera.valid()
+                && mMainCamera->getPostDrawCallback() == mFramebufferCopyCallback.get())
+            {
+                mMainCamera->setPostDrawCallback(mOriginalPostDrawCallback.get());
+            }
+
             if (mRootNode.valid())
             {
                 if (mExtractCamera)
@@ -425,17 +443,24 @@ namespace MWRender
             {
             }
 
+            void detach()
+            {
+                mOwner.store(nullptr, std::memory_order_release);
+            }
+
             void operator()(osg::RenderInfo& renderInfo) const override
             {
-                if (!mOwner)
+                BloomProcessor* owner = mOwner.load(std::memory_order_acquire);
+                if (!owner)
                     return;
-                mOwner->copyFramebuffer(renderInfo);
-                if (mOwner->mOriginalPostDrawCallback)
-                    (*mOwner->mOriginalPostDrawCallback)(renderInfo);
+
+                owner->copyFramebuffer(renderInfo);
+                if (owner->mOriginalPostDrawCallback)
+                    (*owner->mOriginalPostDrawCallback)(renderInfo);
             }
 
         private:
-            BloomProcessor* mOwner;
+            std::atomic<BloomProcessor*> mOwner;
         };
 
         void copyFramebuffer(osg::RenderInfo& renderInfo)
@@ -539,13 +564,11 @@ namespace MWRender
             if (enabled)
             {
                 update();
-                mMainCamera->setPostDrawCallback(mFramebufferCopyCallback.get());
                 setPassesVisible(true);
             }
             else
             {
                 setPassesVisible(false);
-                mMainCamera->setPostDrawCallback(mOriginalPostDrawCallback.get());
                 mWidth = 0;
                 mHeight = 0;
             }
@@ -1894,6 +1917,7 @@ namespace MWRender
         bool rebuildGroundcoverViews = false;
         bool refreshHdrSettings = false;
         bool refreshBloomSettings = false;
+        bool refreshHdrLighting = false;
 
         for (const auto& setting : changed)
         {
@@ -2035,6 +2059,7 @@ namespace MWRender
             else if (setting.first == "Shaders" && setting.second == "hdr lighting")
             {
                 refreshShaderDefines = true;
+                refreshHdrLighting = true;
             }
             else if (setting.first == "Shaders" && (setting.second == "hdr tonemapper"
                 || setting.second == "hdr exposure"
@@ -2108,20 +2133,25 @@ namespace MWRender
             }
         }
 
+        // HDR uniforms, Bloom cameras/callback state and HDR shader defines
+        // must be changed as one render-thread transaction. Multiple stop/start
+        // cycles in the same settings update can let an OSG render stage retain
+        // references created by the previous cycle.
+        const bool postProcessTransaction
+            = refreshHdrSettings || refreshBloomSettings || refreshHdrLighting;
+        if (postProcessTransaction)
+            mViewer->stopThreading();
+
         if (refreshHdrSettings)
             updateHdrSettings();
 
-
         if (refreshBloomSettings && mBloomProcessor)
-        {
-            mViewer->stopThreading();
             mBloomProcessor->reloadSettings();
-            mViewer->startThreading();
-        }
 
         if (refreshTerrainLodSettings && mTerrain)
         {
-            mViewer->stopThreading();
+            if (!postProcessTransaction)
+                mViewer->stopThreading();
 
             auto* terrain = dynamic_cast<Terrain::QuadTreeWorld*>(mTerrain.get());
             if (terrain)
@@ -2152,12 +2182,14 @@ namespace MWRender
             }
 
             updateProjectionMatrix();
-            mViewer->startThreading();
+            if (!postProcessTransaction)
+                mViewer->startThreading();
         }
 
         if (refreshShadowSettings || refreshShaderDefines)
         {
-            mViewer->stopThreading();
+            if (!postProcessTransaction)
+                mViewer->stopThreading();
 
             if (refreshShadowSettings && mShadowManager)
             {
@@ -2208,8 +2240,12 @@ namespace MWRender
             if (refreshMaterialQuality && mObjects)
                 mObjects->recreateShaders();
 
-            mViewer->startThreading();
+            if (!postProcessTransaction)
+                mViewer->startThreading();
         }
+
+        if (postProcessTransaction)
+            mViewer->startThreading();
 
         if (rebuildTerrainViews && mTerrain)
             mTerrain->rebuildViews();
