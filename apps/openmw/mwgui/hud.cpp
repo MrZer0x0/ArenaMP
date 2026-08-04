@@ -348,7 +348,7 @@ namespace MWGui
         for (int i = 0; i < horizontalCompassMarkerCount; ++i)
         {
             MyGUI::ImageBox* marker = mHorizontalCompass->createWidget<MyGUI::ImageBox>("ImageBox",
-                MyGUI::IntCoord(0, 10, 10, 10), MyGUI::Align::Default);
+                MyGUI::IntCoord(0, 9, 12, 12), MyGUI::Align::Default);
             marker->setImageTexture("textures\\hud_compass_marker.png");
             marker->setNeedMouseFocus(false);
             marker->setAlpha(0.f);
@@ -1055,7 +1055,7 @@ namespace MWGui
             state.mWidget->setVisible(visible);
             if (visible)
             {
-                state.mWidget->setPosition(static_cast<int>(std::lround(state.mCurrentLeft)), 10);
+                state.mWidget->setPosition(static_cast<int>(std::lround(state.mCurrentLeft)), 9);
                 state.mWidget->setAlpha(state.mAlpha);
             }
             else
