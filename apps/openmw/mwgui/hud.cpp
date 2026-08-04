@@ -1018,7 +1018,7 @@ namespace MWGui
                         selectedState->mSeen = true;
                         selectedState->mTargetLeft = static_cast<float>(candidate.mLeft);
                         selectedState->mTargetAlpha = 1.f;
-                        selectedState->mWidget->setColour(getHorizontalCompassMarkerColour(candidate.mKind));
+                        selectedState->mWidget->setTextColour(getHorizontalCompassMarkerColour(candidate.mKind));
 
                         if (newActor)
                         {
