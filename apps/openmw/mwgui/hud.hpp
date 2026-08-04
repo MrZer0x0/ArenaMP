@@ -94,7 +94,7 @@ namespace MWGui
 
         struct HorizontalCompassMarkerState
         {
-            MyGUI::ImageBox* mWidget = nullptr;
+            MyGUI::TextBox* mWidget = nullptr;
             MWWorld::Ptr mActor;
             float mCurrentLeft = 0.f;
             float mTargetLeft = 0.f;

@@ -120,11 +120,11 @@ namespace
         switch (kind)
         {
             case HorizontalCompassMarkerKind::Enemy:
-                return MyGUI::Colour(0.95f, 0.10f, 0.08f);
+                return MyGUI::Colour(1.00f, 0.18f, 0.16f);
             case HorizontalCompassMarkerKind::Player:
-                return MyGUI::Colour(0.08f, 0.22f, 0.70f);
+                return MyGUI::Colour(0.18f, 0.42f, 0.95f);
             case HorizontalCompassMarkerKind::Ally:
-                return MyGUI::Colour(0.05f, 0.46f, 0.13f);
+                return MyGUI::Colour(0.14f, 0.74f, 0.22f);
         }
         return MyGUI::Colour(1.f, 1.f, 1.f);
     }
@@ -347,9 +347,14 @@ namespace MWGui
         constexpr int horizontalCompassMarkerCount = 48;
         for (int i = 0; i < horizontalCompassMarkerCount; ++i)
         {
-            MyGUI::ImageBox* marker = mHorizontalCompass->createWidget<MyGUI::ImageBox>("ImageBox",
-                MyGUI::IntCoord(0, 9, 12, 12), MyGUI::Align::Default);
-            marker->setImageTexture("textures\\hud_compass_marker.png");
+            MyGUI::TextBox* marker = mHorizontalCompass->createWidget<MyGUI::TextBox>("NormalText",
+                MyGUI::IntCoord(0, 4, 22, 22), MyGUI::Align::Default);
+            marker->setCaption("●");
+            marker->setFontName("CompassMarkerFont");
+            marker->setFontHeight(21);
+            marker->setTextAlign(MyGUI::Align::Center);
+            marker->setTextShadow(true);
+            marker->setTextShadowColour(MyGUI::Colour::Black);
             marker->setNeedMouseFocus(false);
             marker->setAlpha(0.f);
             marker->setVisible(false);
@@ -1055,7 +1060,7 @@ namespace MWGui
             state.mWidget->setVisible(visible);
             if (visible)
             {
-                state.mWidget->setPosition(static_cast<int>(std::lround(state.mCurrentLeft)), 9);
+                state.mWidget->setPosition(static_cast<int>(std::lround(state.mCurrentLeft)), 4);
                 state.mWidget->setAlpha(state.mAlpha);
             }
             else
