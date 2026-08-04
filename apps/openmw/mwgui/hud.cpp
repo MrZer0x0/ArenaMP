@@ -917,13 +917,15 @@ namespace MWGui
                     constexpr float markerRange = 8192.f;
                     constexpr float markerRangeSquared = markerRange * markerRange;
                     constexpr float pixelsPerDegree = 4.f;
-                    constexpr int markerWidth = 10;
-                    constexpr int compassPadding = 4;
+                    constexpr int compassInnerPadding = 10;
+                    const int markerWidth = mHorizontalCompassMarkers.empty()
+                        ? 22
+                        : mHorizontalCompassMarkers.front().mWidget->getWidth();
                     const osg::Vec3f playerPosition = player.getRefData().getPosition().asVec3();
                     const int compassWidth = mHorizontalCompass->getWidth();
                     const float compassCenter = compassWidth * 0.5f;
-                    const float maximumMarkerOffset
-                        = std::max(1.f, compassCenter - compassPadding - markerWidth * 0.5f);
+                    const float maximumMarkerOffset = std::max(1.f,
+                        compassCenter - compassInnerPadding - markerWidth * 0.5f);
                     const float maximumVisibleDegrees = maximumMarkerOffset / pixelsPerDegree;
 
                     std::vector<HorizontalCompassMarkerCandidate> candidates;
@@ -1060,6 +1062,12 @@ namespace MWGui
             state.mWidget->setVisible(visible);
             if (visible)
             {
+                constexpr int compassInnerPadding = 10;
+                const int markerWidth = state.mWidget->getWidth();
+                const float minimumLeft = static_cast<float>(compassInnerPadding);
+                const float maximumLeft = static_cast<float>(std::max(
+                    compassInnerPadding, mHorizontalCompass->getWidth() - compassInnerPadding - markerWidth));
+                state.mCurrentLeft = std::max(minimumLeft, std::min(maximumLeft, state.mCurrentLeft));
                 state.mWidget->setPosition(static_cast<int>(std::lround(state.mCurrentLeft)), 4);
                 state.mWidget->setAlpha(state.mAlpha);
             }
