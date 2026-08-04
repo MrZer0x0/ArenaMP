@@ -4,6 +4,8 @@
 #include "mapwindow.hpp"
 #include "statswatcher.hpp"
 
+#include "../mwworld/ptr.hpp"
+
 #include <vector>
 
 namespace MWWorld
@@ -89,7 +91,19 @@ namespace MWGui
         MyGUI::Widget* mHorizontalCompass;
         MyGUI::TextBox* mHorizontalCompassCenter;
         std::vector<MyGUI::TextBox*> mHorizontalCompassTicks;
-        std::vector<MyGUI::TextBox*> mHorizontalCompassMarkers;
+
+        struct HorizontalCompassMarkerState
+        {
+            MyGUI::ImageBox* mWidget = nullptr;
+            MWWorld::Ptr mActor;
+            float mCurrentLeft = 0.f;
+            float mTargetLeft = 0.f;
+            float mAlpha = 0.f;
+            float mTargetAlpha = 0.f;
+            bool mSeen = false;
+        };
+
+        std::vector<HorizontalCompassMarkerState> mHorizontalCompassMarkers;
         MyGUI::Widget *mDrowningFrame, *mDrowningFlash;
 
         // bottom left elements
