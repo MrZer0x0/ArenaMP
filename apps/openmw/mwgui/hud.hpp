@@ -89,6 +89,7 @@ namespace MWGui
         MyGUI::Widget* mHorizontalCompass;
         MyGUI::TextBox* mHorizontalCompassCenter;
         std::vector<MyGUI::TextBox*> mHorizontalCompassTicks;
+        std::vector<MyGUI::TextBox*> mHorizontalCompassMarkers;
         MyGUI::Widget *mDrowningFrame, *mDrowningFlash;
 
         // bottom left elements
@@ -120,6 +121,7 @@ namespace MWGui
         bool mWorldMouseOver;
         float mHorizontalCompassAngle;
         bool mHorizontalCompassDirty;
+        float mHorizontalCompassMarkerTimer;
 
         SpellIcons* mSpellIcons;
 
@@ -173,6 +175,7 @@ namespace MWGui
 
         void updatePositions();
         void updateHorizontalCompass();
+        void updateHorizontalCompassMarkers(float dt);
     };
 }
 

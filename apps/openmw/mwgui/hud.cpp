@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <map>
+#include <set>
 #include <sstream>
 #include <utility>
 
@@ -23,6 +25,7 @@
 #include "../mwmp/LocalPlayer.hpp"
 #include "../mwmp/Networking.hpp"
 #include "../mwmp/ObjectList.hpp"
+#include "../mwmp/PlayerList.hpp"
 #include "../mwworld/cellstore.hpp"
 /*
     End of tes3mp addition
@@ -34,6 +37,7 @@
 #include "../mwbase/environment.hpp"
 #include "../mwbase/windowmanager.hpp"
 #include "../mwbase/world.hpp"
+#include "../mwbase/mechanicsmanager.hpp"
 
 #include "../mwworld/class.hpp"
 #include "../mwworld/esmstore.hpp"
@@ -94,6 +98,34 @@ namespace
     bool npcBarShowsCombat(const std::string& mode)
     {
         return mode == "combat" || mode == "both";
+    }
+
+    enum class HorizontalCompassMarkerKind
+    {
+        Enemy = 0,
+        Player = 1,
+        Ally = 2
+    };
+
+    struct HorizontalCompassMarkerCandidate
+    {
+        int mLeft = 0;
+        float mDistanceSquared = 0.f;
+        HorizontalCompassMarkerKind mKind = HorizontalCompassMarkerKind::Ally;
+    };
+
+    MyGUI::Colour getHorizontalCompassMarkerColour(HorizontalCompassMarkerKind kind)
+    {
+        switch (kind)
+        {
+            case HorizontalCompassMarkerKind::Enemy:
+                return MyGUI::Colour(0.95f, 0.10f, 0.08f);
+            case HorizontalCompassMarkerKind::Player:
+                return MyGUI::Colour(0.08f, 0.22f, 0.70f);
+            case HorizontalCompassMarkerKind::Ally:
+                return MyGUI::Colour(0.05f, 0.46f, 0.13f);
+        }
+        return MyGUI::Colour(1.f, 1.f, 1.f);
     }
 }
 
@@ -211,6 +243,7 @@ namespace MWGui
         , mWorldMouseOver(false)
         , mHorizontalCompassAngle(0.f)
         , mHorizontalCompassDirty(true)
+        , mHorizontalCompassMarkerTimer(0.f)
         , mEnemyActorId(-1)
         , mEnemyHealthTimer(-1)
         , mFocusActorScreenX(0.5f)
@@ -308,6 +341,21 @@ namespace MWGui
         mHorizontalCompassCenter->setTextShadow(true);
         mHorizontalCompassCenter->setTextShadowColour(MyGUI::Colour::Black);
         mHorizontalCompassCenter->setNeedMouseFocus(false);
+
+        // Fixed widget pool avoids allocating GUI objects while actors move in and out of range.
+        constexpr int horizontalCompassMarkerCount = 48;
+        for (int i = 0; i < horizontalCompassMarkerCount; ++i)
+        {
+            MyGUI::TextBox* marker = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
+                MyGUI::IntCoord(0, 9, 14, 14), MyGUI::Align::Default);
+            marker->setCaption("●");
+            marker->setTextAlign(MyGUI::Align::Center);
+            marker->setTextShadow(true);
+            marker->setTextShadowColour(MyGUI::Colour::Black);
+            marker->setNeedMouseFocus(false);
+            marker->setVisible(false);
+            mHorizontalCompassMarkers.push_back(marker);
+        }
 
         getWidget(mCrosshair, "Crosshair");
 
@@ -590,6 +638,7 @@ namespace MWGui
             mCrosshair->setVisible(mCrosshairBaseVisible && Settings::Manager::getBool("crosshair", "HUD"));
 
         updateHorizontalCompass();
+        updateHorizontalCompassMarkers(dt);
 
         if (mGameTimeBox && mGameTimeBox->getVisible())
         {
@@ -783,6 +832,133 @@ namespace MWGui
         }
 
         mHorizontalCompassDirty = false;
+    }
+
+    void HUD::updateHorizontalCompassMarkers(float dt)
+    {
+        if (!mHorizontalCompass)
+            return;
+
+        const bool enabled = Settings::Manager::getBool("horizontal compass", "HUD")
+            && mGameplayHud && mGameplayHud->getVisible();
+        if (!enabled)
+        {
+            for (MyGUI::TextBox* marker : mHorizontalCompassMarkers)
+                marker->setVisible(false);
+            mHorizontalCompassMarkerTimer = 0.f;
+            return;
+        }
+
+        mHorizontalCompassMarkerTimer -= std::max(0.f, dt);
+        if (mHorizontalCompassMarkerTimer > 0.f)
+            return;
+        mHorizontalCompassMarkerTimer = 0.075f;
+
+        for (MyGUI::TextBox* marker : mHorizontalCompassMarkers)
+            marker->setVisible(false);
+
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        MWBase::MechanicsManager* mechanics = MWBase::Environment::get().getMechanicsManager();
+        if (!world || !mechanics)
+            return;
+
+        const MWWorld::Ptr player = world->getPlayerPtr();
+        if (player.isEmpty() || !player.isInCell())
+            return;
+
+        // Lower enum value has visual priority when one actor belongs to several groups.
+        std::map<MWWorld::Ptr, HorizontalCompassMarkerKind> actors;
+        const auto addActor = [&actors](const MWWorld::Ptr& actor, HorizontalCompassMarkerKind kind)
+        {
+            if (actor.isEmpty())
+                return;
+            const auto [it, inserted] = actors.emplace(actor, kind);
+            if (!inserted && static_cast<int>(kind) < static_cast<int>(it->second))
+                it->second = kind;
+        };
+
+        for (const MWWorld::Ptr& enemy : mechanics->getActorsFighting(player))
+            addActor(enemy, HorizontalCompassMarkerKind::Enemy);
+
+        std::set<MWWorld::Ptr> allies;
+        mechanics->getActorsSidingWith(player, allies);
+        for (const MWWorld::Ptr& ally : allies)
+        {
+            // Network players have their own blue marker; followers and summons stay green.
+            if (!mwmp::PlayerList::isDedicatedPlayer(ally))
+                addActor(ally, HorizontalCompassMarkerKind::Ally);
+        }
+
+        if (mwmp::Main::isInitialized() && mwmp::Main::get().getLocalPlayer())
+        {
+            const std::vector<RakNet::RakNetGUID> playerGuids
+                = mwmp::PlayerList::getPlayersInCell(*player.getCell()->getCell());
+            for (const RakNet::RakNetGUID& guid : playerGuids)
+            {
+                mwmp::DedicatedPlayer* remotePlayer = mwmp::PlayerList::getPlayer(guid);
+                if (remotePlayer)
+                    addActor(remotePlayer->getPtr(), HorizontalCompassMarkerKind::Player);
+            }
+        }
+
+        constexpr float markerRange = 8192.f;
+        constexpr float markerRangeSquared = markerRange * markerRange;
+        constexpr float pixelsPerDegree = 4.f;
+        constexpr int markerWidth = 14;
+        constexpr int compassPadding = 4;
+        const osg::Vec3f playerPosition = player.getRefData().getPosition().asVec3();
+        const int compassWidth = mHorizontalCompass->getWidth();
+        const float compassCenter = compassWidth * 0.5f;
+
+        std::vector<HorizontalCompassMarkerCandidate> candidates;
+        candidates.reserve(actors.size());
+        for (const auto& [actor, kind] : actors)
+        {
+            if (actor == player || !actor.isInCell() || actor.getCell() != player.getCell())
+                continue;
+            if (actor.getRefData().getCount() <= 0 || !actor.getRefData().isEnabled()
+                || actor.getRefData().isDeleted())
+                continue;
+            if (!actor.getClass().isActor() || actor.getClass().getCreatureStats(actor).isDead())
+                continue;
+
+            const osg::Vec3f offset = actor.getRefData().getPosition().asVec3() - playerPosition;
+            const float distanceSquared = offset.x() * offset.x() + offset.y() * offset.y();
+            if (distanceSquared > markerRangeSquared || distanceSquared < 1.f)
+                continue;
+
+            const float bearing = std::atan2(offset.x(), offset.y());
+            float relativeAngle = bearing - mHorizontalCompassAngle;
+            while (relativeAngle > osg::PI)
+                relativeAngle -= osg::PI * 2.f;
+            while (relativeAngle < -osg::PI)
+                relativeAngle += osg::PI * 2.f;
+
+            const float relativeDegrees = osg::RadiansToDegrees(relativeAngle);
+            const int left = static_cast<int>(std::lround(
+                compassCenter + relativeDegrees * pixelsPerDegree - markerWidth * 0.5f));
+            if (left + markerWidth < compassPadding || left > compassWidth - compassPadding)
+                continue;
+
+            candidates.push_back({ left, distanceSquared, kind });
+        }
+
+        std::sort(candidates.begin(), candidates.end(),
+            [](const HorizontalCompassMarkerCandidate& left, const HorizontalCompassMarkerCandidate& right)
+            {
+                if (left.mDistanceSquared != right.mDistanceSquared)
+                    return left.mDistanceSquared < right.mDistanceSquared;
+                return static_cast<int>(left.mKind) < static_cast<int>(right.mKind);
+            });
+
+        const size_t markerCount = std::min(candidates.size(), mHorizontalCompassMarkers.size());
+        for (size_t i = 0; i < markerCount; ++i)
+        {
+            MyGUI::TextBox* marker = mHorizontalCompassMarkers[i];
+            marker->setPosition(candidates[i].mLeft, 9);
+            marker->setTextColour(getHorizontalCompassMarkerColour(candidates[i].mKind));
+            marker->setVisible(true);
+        }
     }
 
 

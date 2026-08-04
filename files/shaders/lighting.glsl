@@ -5,24 +5,24 @@
 
 // Bloom и glow параметры (можно настроить через uniforms или defines)
 #ifndef BLOOM_STRENGTH
-#define BLOOM_STRENGTH 0.15  // Снижено для интерьеров
+#define BLOOM_STRENGTH 0.22  // Усиленное, но контролируемое свечение ярких источников
 #endif
 
 #ifndef GLOW_INTENSITY
-#define GLOW_INTENSITY 0.4  // Снижено для интерьеров
+#define GLOW_INTENSITY 0.68  // Более заметный ореол вокруг локальных источников
 #endif
 
 #ifndef GLOW_RADIUS
-#define GLOW_RADIUS 1.8  // Уменьшен радиус
+#define GLOW_RADIUS 2.25  // Расширенный визуальный радиус ореола
 #endif
 
 // Отдельные настройки для точечных источников
 #ifndef POINT_BLOOM_MULTIPLIER
-#define POINT_BLOOM_MULTIPLIER 0.3  // Дополнительное снижение bloom для факелов/свечей
+#define POINT_BLOOM_MULTIPLIER 0.42  // Ярче факелы, лампы и свечи
 #endif
 
 #ifndef POINT_GLOW_MULTIPLIER
-#define POINT_GLOW_MULTIPLIER 0.5  // Дополнительное снижение glow для факелов/свечей
+#define POINT_GLOW_MULTIPLIER 0.75  // Сильнее локальное свечение источников
 #endif
 
 // Переменная для накопления bloom эффекта
@@ -41,7 +41,7 @@ vec3 calculateGlow(vec3 lightColor, float distance, float radius, float multipli
 {
     float glowFactor = smoothstep(radius * GLOW_RADIUS, 0.0, distance);
     glowFactor = pow(glowFactor, 2.0);  // Более мягкое затухание
-    return lightColor * glowFactor * GLOW_INTENSITY * 0.2 * multiplier;
+    return lightColor * glowFactor * GLOW_INTENSITY * 0.30 * multiplier;
 }
 
 void perLightSun(out vec3 diffuseOut, vec3 viewPos, vec3 viewNormal)
@@ -108,7 +108,7 @@ void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec
 #endif
 
     // Основное освещение
-    diffuseOut = lightDiffuse * lambert * 0.6;
+    diffuseOut = lightDiffuse * lambert * 0.78;
     
 #if !@lightingMethodFFP
     // Добавляем glow эффект (мягкое свечение вокруг источника) - снижено для интерьеров
@@ -208,7 +208,7 @@ void perLightPoint(out vec3 ambientOut, out vec3 diffuseOut, int lightIndex, vec
 #if !@lightingMethodFFP
     float radius = lcalcRadius(lightIndex);
 
-    if (lightDistance > radius * 2.0)
+    if (lightDistance > radius * POINT_LIGHT_COVERAGE_MULTIPLIER * 2.0)
     {
         ambientOut = vec3(0.0);
         diffuseOut = vec3(0.0);
