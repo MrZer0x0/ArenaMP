@@ -144,6 +144,11 @@ namespace MWGui
         MWWorld::Ptr mFocusActor;
         float mFocusActorScreenX;
         float mFocusActorScreenY;
+        float mFocusActorDistance;
+        float mFocusActorPanelAlpha;
+        float mTargetPanelCenterX;
+        bool mFocusActorCurrentlyFaced;
+        bool mTargetPanelPositionInitialized;
 
         float mFpsUpdateTimer;
         float mFpsAccumulatedTime;
@@ -185,7 +190,7 @@ namespace MWGui
         void doorMarkerCreated(MyGUI::Widget* marker) override;
 
         void updateEnemyHealthBar();
-        bool isFocusedTargetTooClose() const;
+        void updateFocusedTargetPanel(float dt);
 
         void updatePositions();
         void updateHorizontalCompass();

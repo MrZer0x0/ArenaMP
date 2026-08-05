@@ -249,6 +249,11 @@ namespace MWGui
         , mEnemyHealthTimer(-1)
         , mFocusActorScreenX(0.5f)
         , mFocusActorScreenY(0.f)
+        , mFocusActorDistance(-1.f)
+        , mFocusActorPanelAlpha(0.f)
+        , mTargetPanelCenterX(0.f)
+        , mFocusActorCurrentlyFaced(false)
+        , mTargetPanelPositionInitialized(false)
         , mFpsUpdateTimer(0.f)
         , mFpsAccumulatedTime(0.f)
         , mFpsFrameCount(0)
@@ -716,6 +721,8 @@ namespace MWGui
             mFpsFrameCount = 0;
         }
 
+        updateFocusedTargetPanel(dt);
+
         const std::string npcBarMode = getNpcBarMode();
         const bool showHoverNpcBar = npcBarShowsHover(npcBarMode);
         const bool showCombatNpcBar = npcBarShowsCombat(npcBarMode);
@@ -723,7 +730,7 @@ namespace MWGui
             && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead();
         const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
         const bool focusedTargetPanel = showHoverNpcBar && focusedTargetAlive && !dialogueOpen
-            && !isFocusedTargetTooClose();
+            && mFocusActorPanelAlpha > 0.01f;
         const bool combatTargetPanel = showCombatNpcBar && mEnemyActorId != -1;
 
         mEnemyHealthTimer -= dt;
@@ -1443,23 +1450,28 @@ namespace MWGui
 
     void HUD::setFocusObject(const MWWorld::Ptr& focus)
     {
-        if (!focus.isEmpty() && focus.getClass().isActor() && focus != MWMechanics::getPlayer()
-            && !focus.getClass().getCreatureStats(focus).isDead())
-            mFocusActor = focus;
-        else
-            mFocusActor = MWWorld::Ptr();
+        const bool validActor = !focus.isEmpty() && focus.getClass().isActor()
+            && focus != MWMechanics::getPlayer()
+            && !focus.getClass().getCreatureStats(focus).isDead();
 
-        const bool focusedTargetPanel = npcBarShowsHover(getNpcBarMode())
-            && !mFocusActor.isEmpty()
-            && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
-            && !isFocusedTargetTooClose();
-        if (!focusedTargetPanel && mEnemyHealthTimer < 0.f)
+        if (validActor)
         {
-            mEnemyHealth->setVisible(false);
-            if (mEnemyName)
-                mEnemyName->setVisible(false);
-            if (mEnemySummary)
-                mEnemySummary->setVisible(false);
+            if (mFocusActor.isEmpty() || mFocusActor != focus)
+            {
+                mFocusActor = focus;
+                mFocusActorPanelAlpha = 0.f;
+                mTargetPanelPositionInitialized = false;
+            }
+            mFocusActorCurrentlyFaced = true;
+            mFocusActorDistance = MWBase::Environment::get().getWorld()->getDistanceToFacedObject();
+        }
+        else
+        {
+            // Keep the previous actor while the panel fades out. Clearing it immediately
+            // caused name, level and health to blink whenever the activation ray briefly
+            // left an animated actor for one frame.
+            mFocusActorCurrentlyFaced = false;
+            mFocusActorDistance = -1.f;
         }
     }
 
@@ -1469,14 +1481,83 @@ namespace MWGui
         mFocusActorScreenY = min_y;
     }
 
-    bool HUD::isFocusedTargetTooClose() const
+    void HUD::updateFocusedTargetPanel(float dt)
     {
-        if (mFocusActor.isEmpty())
-            return false;
+        dt = std::max(0.f, dt);
 
-        const float distance = MWBase::Environment::get().getWorld()->getDistanceToFacedObject();
-        const float faceToFaceDistance = MWBase::Environment::get().getWorld()->getMaxActivationDistance() * 0.45f;
-        return distance >= 0.f && distance <= faceToFaceDistance;
+        bool actorAlive = !mFocusActor.isEmpty();
+        if (actorAlive)
+        {
+            actorAlive = mFocusActor.isInCell()
+                && mFocusActor.getRefData().getCount() > 0
+                && mFocusActor.getRefData().isEnabled()
+                && !mFocusActor.getRefData().isDeleted()
+                && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead();
+        }
+
+        const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
+        const bool hoverEnabled = npcBarShowsHover(getNpcBarMode());
+        float desiredAlpha = 0.f;
+
+        const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+        if (actorAlive && mFocusActorCurrentlyFaced && hoverEnabled && !dialogueOpen)
+        {
+            // Keep full opacity near the crosshair, then fade toward the screen edges.
+            // The broad inner band avoids flicker on large creatures and animated bounds.
+            const float horizontalOffset = std::abs(mFocusActorScreenX - 0.5f);
+            constexpr float centreFadeStart = 0.18f;
+            constexpr float centreFadeEnd = 0.46f;
+            float centreAlpha = 1.f;
+            if (horizontalOffset > centreFadeStart)
+                centreAlpha = 1.f - std::min(1.f,
+                    (horizontalOffset - centreFadeStart) / (centreFadeEnd - centreFadeStart));
+
+            // Fade near the activation-distance limit instead of disappearing abruptly.
+            float distanceAlpha = 1.f;
+            if (mFocusActorDistance >= 0.f)
+            {
+                const float maximumDistance = std::max(1.f,
+                    MWBase::Environment::get().getWorld()->getMaxActivationDistance());
+                const float fadeStart = maximumDistance * 0.70f;
+                const float fadeEnd = maximumDistance * 1.05f;
+                if (mFocusActorDistance > fadeStart)
+                    distanceAlpha = 1.f - std::min(1.f,
+                        (mFocusActorDistance - fadeStart) / std::max(1.f, fadeEnd - fadeStart));
+            }
+
+            desiredAlpha = std::max(0.f, std::min(centreAlpha, distanceAlpha));
+
+            // Keep the panel stable under the compass. It follows the actor slightly
+            // from side to side, but ignores vertical animation of the bounding box.
+            const float screenCentre = viewSize.width * 0.5f;
+            const float maximumTravel = viewSize.width * 0.12f;
+            const float actorOffset = (mFocusActorScreenX - 0.5f) * viewSize.width * 0.35f;
+            const float desiredCentre = screenCentre
+                + std::max(-maximumTravel, std::min(maximumTravel, actorOffset));
+
+            if (!mTargetPanelPositionInitialized)
+            {
+                mTargetPanelCenterX = desiredCentre;
+                mTargetPanelPositionInitialized = true;
+            }
+            else
+            {
+                const float positionBlend = 1.f - std::exp(-7.f * dt);
+                mTargetPanelCenterX += (desiredCentre - mTargetPanelCenterX) * positionBlend;
+            }
+        }
+
+        const float fadeSpeed = desiredAlpha > mFocusActorPanelAlpha ? 7.f : 2.4f;
+        const float alphaBlend = 1.f - std::exp(-fadeSpeed * dt);
+        mFocusActorPanelAlpha += (desiredAlpha - mFocusActorPanelAlpha) * alphaBlend;
+        mFocusActorPanelAlpha = std::max(0.f, std::min(1.f, mFocusActorPanelAlpha));
+
+        if ((!actorAlive || !mFocusActorCurrentlyFaced) && mFocusActorPanelAlpha < 0.01f)
+        {
+            mFocusActor = MWWorld::Ptr();
+            mFocusActorPanelAlpha = 0.f;
+            mTargetPanelPositionInitialized = false;
+        }
     }
 
     void HUD::updateEnemyHealthBar()
@@ -1486,7 +1567,7 @@ namespace MWGui
             && !mFocusActor.isEmpty()
             && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead()
             && !MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue)
-            && !isFocusedTargetTooClose();
+            && mFocusActorPanelAlpha > 0.01f;
 
         MWWorld::Ptr enemy;
         if (usingFocusActor)
@@ -1526,7 +1607,7 @@ namespace MWGui
 
         static const float fNPCHealthBarFade = MWBase::Environment::get().getWorld()->getStore()
             .get<ESM::GameSetting>().find("fNPCHealthBarFade")->mValue.getFloat();
-        const float alpha = usingFocusActor ? 1.f
+        const float alpha = usingFocusActor ? mFocusActorPanelAlpha
             : (fNPCHealthBarFade > 0.f
                 ? std::max(0.f, std::min(1.f, mEnemyHealthTimer / fNPCHealthBarFade))
                 : 1.f);
@@ -1534,7 +1615,7 @@ namespace MWGui
 
         if (usingFocusActor)
         {
-            // Hovered actor: compact nameplate above the actor.
+            // Faced actor: stable name, level and health panel below the compass.
             mEnemyHealth->setSize(190, 16);
             if (mEnemyName)
             {
@@ -1552,16 +1633,12 @@ namespace MWGui
             }
 
             const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
-            const int centerX = static_cast<int>(mFocusActorScreenX * viewSize.width);
-            const int anchorTop = static_cast<int>(mFocusActorScreenY * viewSize.height);
             const int nameWidth = mEnemyName ? mEnemyName->getWidth() : 0;
             const int nameHeight = mEnemyName ? mEnemyName->getHeight() : 0;
             const int barWidth = mEnemyHealth->getWidth();
             const int totalWidth = std::max(nameWidth, barWidth);
             const int totalHeight = nameHeight + 2 + mEnemyHealth->getHeight();
 
-            // Keep the complete target panel inside a small screen-safe area. These are logical
-            // GUI pixels, so the visible gap grows together with the configured GUI scaling factor.
             constexpr int targetPanelSafeMargin = 14;
             const int horizontalMargin = std::min(targetPanelSafeMargin,
                 std::max(0, (viewSize.width - totalWidth) / 2));
@@ -1572,34 +1649,31 @@ namespace MWGui
             const int maximumTop = std::max(verticalMargin,
                 viewSize.height - verticalMargin - totalHeight);
 
-            // Follow the hovered actor, but keep the panel in a stable upper-centre
-            // HUD band. Its centre can travel only 20% of the screen width to either
-            // side, so an actor near an edge cannot drag the nameplate far away.
-            const int screenCenterX = viewSize.width / 2;
-            const int horizontalTravel = std::max(0, viewSize.width / 5);
-            const int constrainedCenterX = std::max(screenCenterX - horizontalTravel,
-                std::min(centerX, screenCenterX + horizontalTravel));
+            const int stableCentreX = mTargetPanelPositionInitialized
+                ? static_cast<int>(std::lround(mTargetPanelCenterX))
+                : viewSize.width / 2;
             const int panelLeft = std::max(horizontalMargin,
-                std::min(constrainedCenterX - totalWidth / 2, maximumLeft));
+                std::min(stableCentreX - totalWidth / 2, maximumLeft));
 
-            // Reserve the compass area, including a small visual gap, so the target
-            // name/level/health panel can never cover the horizontal compass.
-            int targetPanelMinimumTop = verticalMargin;
+            // Keep the target panel below both the compass and the fixed location-name
+            // region. Reserving the location region even while its text is hidden avoids
+            // a vertical jump whenever the city/cell name appears or fades out.
+            int baseY = verticalMargin;
             if (mHorizontalCompass && mHorizontalCompass->getVisible())
             {
                 const MyGUI::IntCoord compassCoord = mHorizontalCompass->getAbsoluteCoord();
-                constexpr int targetPanelCompassGap = 6;
-                targetPanelMinimumTop = std::min(maximumTop,
-                    std::max(targetPanelMinimumTop,
-                        compassCoord.top + compassCoord.height + targetPanelCompassGap));
+                constexpr int targetPanelCompassGap = 7;
+                baseY = std::max(baseY,
+                    compassCoord.top + compassCoord.height + targetPanelCompassGap);
             }
-
-            // Keep the top of the complete panel within the upper 30% of the view.
-            // It still reacts to the actor's projected height inside this band.
-            const int upperBandBottom = std::max(targetPanelMinimumTop,
-                std::min(maximumTop, static_cast<int>(viewSize.height * 0.30f)));
-            const int baseY = std::max(targetPanelMinimumTop,
-                std::min(anchorTop - totalHeight, upperBandBottom));
+            if (mCellNameClip)
+            {
+                const MyGUI::IntCoord cellNameCoord = mCellNameClip->getAbsoluteCoord();
+                constexpr int targetPanelCellNameGap = 5;
+                baseY = std::max(baseY,
+                    cellNameCoord.top + cellNameCoord.height + targetPanelCellNameGap);
+            }
+            baseY = std::min(baseY, maximumTop);
 
             if (mEnemyName)
                 mEnemyName->setPosition(panelLeft + (totalWidth - nameWidth) / 2, baseY);
@@ -1648,6 +1722,15 @@ namespace MWGui
         unsetSelectedSpell();
         unsetSelectedWeapon();
         resetEnemy();
+        mFocusActor = MWWorld::Ptr();
+        mFocusActorCurrentlyFaced = false;
+        mFocusActorDistance = -1.f;
+        mFocusActorPanelAlpha = 0.f;
+        mTargetPanelPositionInitialized = false;
+        if (mEnemyName)
+            mEnemyName->setVisible(false);
+        if (mEnemySummary)
+            mEnemySummary->setVisible(false);
     }
 
     void HUD::customMarkerCreated(MyGUI::Widget *marker)

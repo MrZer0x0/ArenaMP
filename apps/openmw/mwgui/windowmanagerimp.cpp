@@ -795,11 +795,26 @@ namespace MWGui
 
     void WindowManager::messageBox (const std::string& message, enum MWGui::ShowInDialogueMode showInDialogueMode)
     {
-        if (getMode() == GM_Dialogue && showInDialogueMode != MWGui::ShowInDialogueMode_Never) {
-            mDialogueWindow->addMessageBox(MyGUI::LanguageManager::getInstance().replaceTags(message));
-        } else if (showInDialogueMode != MWGui::ShowInDialogueMode_Only) {
-            mMessageBoxManager->createMessageBox(message);
+        // INFO result scripts can temporarily put another GUI mode above the
+        // dialogue. Checking only getMode() loses quest, item and gold messages.
+        // An assigned actor means the conversation is still active even during
+        // a same-frame mode transition or an overlaid trade/persuasion window.
+        const bool dialogueHasActor = mDialogueWindow && !mDialogueWindow->getPtr().isEmpty();
+        const bool dialogueAvailable = mDialogueWindow
+            && (dialogueHasActor || containsMode(GM_Dialogue) || mDialogueWindow->isVisible());
+
+        if (dialogueAvailable && showInDialogueMode != MWGui::ShowInDialogueMode_Never)
+        {
+            const std::string text = MyGUI::LanguageManager::getInstance().replaceTags(message);
+            if (!text.empty())
+                mDialogueWindow->addMessageBox(text);
+            return;
         }
+
+        // Do not silently discard ShowInDialogueMode_Only notifications if a
+        // script closes the dialogue immediately before creating the message.
+        if (showInDialogueMode != MWGui::ShowInDialogueMode_Only || !message.empty())
+            mMessageBoxManager->createMessageBox(message);
     }
 
     void WindowManager::staticMessageBox(const std::string& message)
