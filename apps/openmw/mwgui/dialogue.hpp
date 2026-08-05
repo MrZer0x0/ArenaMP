@@ -12,6 +12,8 @@
 #include <MyGUI_KeyCode.h>
 #include <MyGUI_Types.h>
 
+#include <deque>
+
 namespace Gui
 {
     class MWList;
@@ -100,6 +102,11 @@ namespace MWGui
             Make it possible to activate any dialogue choice from elsewhere in the code
         */
         void activateDialogueChoice(unsigned char dialogueChoiceType, std::string topic = "");
+
+        /// Consume the server acknowledgement for a topic that was already executed
+        /// locally. This prevents result scripts from running twice and also prevents
+        /// a late acknowledgement from reopening a dialogue closed by that script.
+        bool consumeLocallyExecutedTopic(const MWWorld::Ptr& actor, const std::string& topic);
         /*
             End of tes3mp addition
         */
@@ -196,6 +203,13 @@ namespace MWGui
         std::vector<int> mPersuasionChoices;
         bool mGoodbye;
         bool mPersuasionMode;
+
+        struct PendingLocalTopic
+        {
+            MWWorld::Ptr mActor;
+            std::string mTopic;
+        };
+        std::deque<PendingLocalTopic> mPendingLocalTopics;
 
         std::vector<Link*> mLinks;
         std::map<std::string, Link*> mTopicLinks;
