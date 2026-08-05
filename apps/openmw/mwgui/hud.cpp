@@ -1498,6 +1498,7 @@ namespace MWGui
         const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
         const bool hoverEnabled = npcBarShowsHover(getNpcBarMode());
         float desiredAlpha = 0.f;
+        bool fastCloseHide = false;
 
         const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
         if (actorAlive && mFocusActorCurrentlyFaced && hoverEnabled && !dialogueOpen)
@@ -1540,10 +1541,16 @@ namespace MWGui
                     const float closeFadeEnd = std::max(closeHiddenEnd + 1.f,
                         std::min(190.f, maximumDistance * 0.85f));
                     if (mFocusActorDistance <= closeHiddenEnd)
+                    {
                         proximityAlpha = 0.f;
+                        fastCloseHide = true;
+                    }
                     else if (mFocusActorDistance < closeFadeEnd)
+                    {
                         proximityAlpha = (mFocusActorDistance - closeHiddenEnd)
                             / (closeFadeEnd - closeHiddenEnd);
+                        fastCloseHide = true;
+                    }
                 }
             }
 
@@ -1570,7 +1577,11 @@ namespace MWGui
             }
         }
 
-        const float fadeSpeed = desiredAlpha > mFocusActorPanelAlpha ? 7.f : 2.4f;
+        // Peaceful actors at point-blank range should clear the view almost immediately.
+        // Keep the softer fade-out for ordinary aim loss and distant targets.
+        const float fadeSpeed = desiredAlpha > mFocusActorPanelAlpha
+            ? 7.f
+            : (fastCloseHide ? 18.f : 2.4f);
         const float alphaBlend = 1.f - std::exp(-fadeSpeed * dt);
         mFocusActorPanelAlpha += (desiredAlpha - mFocusActorPanelAlpha) * alphaBlend;
         mFocusActorPanelAlpha = std::max(0.f, std::min(1.f, mFocusActorPanelAlpha));
