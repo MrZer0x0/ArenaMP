@@ -1495,36 +1495,25 @@ namespace MWGui
                 && !mFocusActor.getClass().getCreatureStats(mFocusActor).isDead();
         }
 
+        MWBase::World* world = MWBase::Environment::get().getWorld();
         const bool dialogueOpen = MWBase::Environment::get().getWindowManager()->containsMode(GM_Dialogue);
         const bool hoverEnabled = npcBarShowsHover(getNpcBarMode());
-        float desiredAlpha = 0.f;
-        bool fastCloseHide = false;
+        bool panelShouldBeVisible = false;
 
         const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
-        if (actorAlive && mFocusActorCurrentlyFaced && hoverEnabled && !dialogueOpen)
+        if (actorAlive && mFocusActorCurrentlyFaced && hoverEnabled && !dialogueOpen && world)
         {
-            // Keep full opacity near the crosshair, then fade toward the screen edges.
-            // The broad inner band avoids flicker on large creatures and animated bounds.
+            // The target panel is intentionally binary: fully visible or fully hidden.
+            // Do not leave semi-transparent text or health bars over the actor's face.
             const float horizontalOffset = std::abs(mFocusActorScreenX - 0.5f);
-            constexpr float centreFadeStart = 0.18f;
-            constexpr float centreFadeEnd = 0.46f;
-            float centreAlpha = 1.f;
-            if (horizontalOffset > centreFadeStart)
-                centreAlpha = 1.f - std::min(1.f,
-                    (horizontalOffset - centreFadeStart) / (centreFadeEnd - centreFadeStart));
+            constexpr float centreVisibleLimit = 0.46f;
+            bool withinVisibleDistance = true;
+            bool hidePeacefulActorAtPointBlank = false;
 
-            // Fade near the activation-distance limit instead of disappearing abruptly.
-            float distanceAlpha = 1.f;
-            float proximityAlpha = 1.f;
             if (mFocusActorDistance >= 0.f)
             {
-                const float maximumDistance = std::max(1.f,
-                    MWBase::Environment::get().getWorld()->getMaxActivationDistance());
-                const float fadeStart = maximumDistance * 0.70f;
-                const float fadeEnd = maximumDistance * 1.05f;
-                if (mFocusActorDistance > fadeStart)
-                    distanceAlpha = 1.f - std::min(1.f,
-                        (mFocusActorDistance - fadeStart) / std::max(1.f, fadeEnd - fadeStart));
+                const float maximumDistance = std::max(1.f, world->getMaxActivationDistance());
+                withinVisibleDistance = mFocusActorDistance <= maximumDistance * 1.05f;
 
                 const MWWorld::Ptr player = MWMechanics::getPlayer();
                 const MWMechanics::CreatureStats& targetStats
@@ -1532,30 +1521,24 @@ namespace MWGui
                 const bool aggressiveTarget = targetStats.getAiSequence().isInCombat(player)
                     || MWBase::Environment::get().getMechanicsManager()->isAggressive(mFocusActor, player);
 
-                // A peaceful actor standing directly in front of the camera does not need
-                // a large name/health panel obscuring the face. Fade it away at very close
-                // range, but keep hostile targets fully readable even at point-blank range.
-                if (!aggressiveTarget)
+                // Only first-person needs the close-range face protection. In third-person,
+                // preview and vanity modes the panel remains visible even at point-blank range.
+                if (world->isFirstPerson() && !aggressiveTarget)
                 {
-                    const float closeHiddenEnd = std::min(120.f, maximumDistance * 0.55f);
-                    const float closeFadeEnd = std::max(closeHiddenEnd + 1.f,
-                        std::min(190.f, maximumDistance * 0.85f));
-                    if (mFocusActorDistance <= closeHiddenEnd)
-                    {
-                        proximityAlpha = 0.f;
-                        fastCloseHide = true;
-                    }
-                    else if (mFocusActorDistance < closeFadeEnd)
-                    {
-                        proximityAlpha = (mFocusActorDistance - closeHiddenEnd)
-                            / (closeFadeEnd - closeHiddenEnd);
-                        fastCloseHide = true;
-                    }
+                    // Hide only when the peaceful actor is directly in the player's face.
+                    // Hysteresis prevents rapid toggling when standing on the boundary.
+                    const float closeHideDistance = std::min(52.f, maximumDistance * 0.27f);
+                    const float closeShowDistance = std::max(closeHideDistance + 14.f,
+                        std::min(68.f, maximumDistance * 0.35f));
+                    hidePeacefulActorAtPointBlank = mFocusActorPanelAlpha > 0.5f
+                        ? mFocusActorDistance <= closeHideDistance
+                        : mFocusActorDistance < closeShowDistance;
                 }
             }
 
-            desiredAlpha = std::max(0.f,
-                std::min(centreAlpha, std::min(distanceAlpha, proximityAlpha)));
+            panelShouldBeVisible = horizontalOffset <= centreVisibleLimit
+                && withinVisibleDistance
+                && !hidePeacefulActorAtPointBlank;
 
             // Keep the panel stable under the compass. It follows the actor slightly
             // from side to side, but ignores vertical animation of the bounding box.
@@ -1577,14 +1560,9 @@ namespace MWGui
             }
         }
 
-        // Peaceful actors at point-blank range should clear the view almost immediately.
-        // Keep the softer fade-out for ordinary aim loss and distant targets.
-        const float fadeSpeed = desiredAlpha > mFocusActorPanelAlpha
-            ? 7.f
-            : (fastCloseHide ? 18.f : 2.4f);
-        const float alphaBlend = 1.f - std::exp(-fadeSpeed * dt);
-        mFocusActorPanelAlpha += (desiredAlpha - mFocusActorPanelAlpha) * alphaBlend;
-        mFocusActorPanelAlpha = std::max(0.f, std::min(1.f, mFocusActorPanelAlpha));
+        // No intermediate opacity. Appearance is now immediate (more than three times
+        // faster than the previous fade), and close-range hiding is immediate as well.
+        mFocusActorPanelAlpha = panelShouldBeVisible ? 1.f : 0.f;
 
         if ((!actorAlive || !mFocusActorCurrentlyFaced) && mFocusActorPanelAlpha < 0.01f)
         {
