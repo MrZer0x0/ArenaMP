@@ -1550,10 +1550,16 @@ namespace MWGui
         playDynamicDialogueAnimation(true);
     }
 
-    void DialogueWindow::addMessageBox(const std::string&)
+    void DialogueWindow::addMessageBox(const std::string& text)
     {
-        // Normal script message boxes are routed here while dialogue mode is active.
-        // Suppress them completely so they do not cover or clutter the dialogue UI.
+        if (text.empty())
+            return;
+
+        // AddItem/RemoveItem, including gold changes, use ShowInDialogueMode_Only.
+        // Keep these notifications inside the dialogue history instead of creating
+        // a modal message box over the conversation.
+        mHistoryContents.push_back(new Message(text));
+        updateHistory();
     }
 
     void DialogueWindow::updateActorStatus()

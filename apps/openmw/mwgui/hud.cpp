@@ -1514,6 +1514,7 @@ namespace MWGui
 
             // Fade near the activation-distance limit instead of disappearing abruptly.
             float distanceAlpha = 1.f;
+            float proximityAlpha = 1.f;
             if (mFocusActorDistance >= 0.f)
             {
                 const float maximumDistance = std::max(1.f,
@@ -1523,9 +1524,31 @@ namespace MWGui
                 if (mFocusActorDistance > fadeStart)
                     distanceAlpha = 1.f - std::min(1.f,
                         (mFocusActorDistance - fadeStart) / std::max(1.f, fadeEnd - fadeStart));
+
+                const MWWorld::Ptr player = MWMechanics::getPlayer();
+                const MWMechanics::CreatureStats& targetStats
+                    = mFocusActor.getClass().getCreatureStats(mFocusActor);
+                const bool aggressiveTarget = targetStats.getAiSequence().isInCombat(player)
+                    || MWBase::Environment::get().getMechanicsManager()->isAggressive(mFocusActor, player);
+
+                // A peaceful actor standing directly in front of the camera does not need
+                // a large name/health panel obscuring the face. Fade it away at very close
+                // range, but keep hostile targets fully readable even at point-blank range.
+                if (!aggressiveTarget)
+                {
+                    const float closeHiddenEnd = std::min(120.f, maximumDistance * 0.55f);
+                    const float closeFadeEnd = std::max(closeHiddenEnd + 1.f,
+                        std::min(190.f, maximumDistance * 0.85f));
+                    if (mFocusActorDistance <= closeHiddenEnd)
+                        proximityAlpha = 0.f;
+                    else if (mFocusActorDistance < closeFadeEnd)
+                        proximityAlpha = (mFocusActorDistance - closeHiddenEnd)
+                            / (closeFadeEnd - closeHiddenEnd);
+                }
             }
 
-            desiredAlpha = std::max(0.f, std::min(centreAlpha, distanceAlpha));
+            desiredAlpha = std::max(0.f,
+                std::min(centreAlpha, std::min(distanceAlpha, proximityAlpha)));
 
             // Keep the panel stable under the compass. It follows the actor slightly
             // from side to side, but ignores vertical animation of the bounding box.
