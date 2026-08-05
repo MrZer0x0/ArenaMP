@@ -1114,7 +1114,17 @@ namespace MWGui
 
     void DialogueWindow::onSelectListItem(const std::string& topic, int id)
     {
-        (void)id;
+        /*
+            Start of tes3mp change (major)
+
+            Instead of activating a list item here, send an ObjectDialogueChoice packet to the server
+            and let it decide whether the list item gets activated
+        */
+        sendDialogueChoicePacket(topic);
+        return;
+        /*
+            End of tes3mp change (major)
+        */
 
         MWBase::DialogueManager* dialogueManager = MWBase::Environment::get().getDialogueManager();
 
@@ -1131,33 +1141,37 @@ namespace MWGui
         const std::string sServiceTrainingTitle = gameSettingString("sServiceTrainingTitle", "Training");
         const std::string sRepair = gameSettingString("sRepair", "Repair");
 
-        const bool regularTopic = topic != sPersuasion && topic != sCompanionShare
-            && topic != sBarter && topic != sSpells && topic != sTravel
-            && topic != sSpellMakingMenuTitle && topic != sEnchanting
-            && topic != sServiceTrainingTitle && topic != sRepair;
-
-        if (regularTopic)
+        if (topic != sPersuasion && topic != sCompanionShare && topic != sBarter 
+         && topic != sSpells && topic != sTravel && topic != sSpellMakingMenuTitle 
+         && topic != sEnchanting && topic != sServiceTrainingTitle && topic != sRepair)
         {
-            // Regular dialogue topics must behave like single-player OpenMW: run
-            // the response and its result script immediately. The server still
-            // receives the choice, but its echoed packet is consumed as an ACK.
-            // This avoids losing quest AddItem/Journal commands during a delayed
-            // GUI/actor state transition and prevents double execution.
-            mPendingLocalTopics.push_back({ mPtr, topic });
-            while (mPendingLocalTopics.size() > 32)
-                mPendingLocalTopics.pop_front();
-
-            sendDialogueChoicePacket(topic);
             onTopicActivated(topic);
-
             if (mGoodbyeButton->getEnabled())
                 MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mGoodbyeButton);
         }
-        else
+        else if (topic == sPersuasion)
+            openPersuasionPane();
+        else if (topic == sCompanionShare)
+            MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Companion, mPtr);
+        else if (!dialogueManager->checkServiceRefused(mCallback.get()))
         {
-            // Services and persuasion remain server-approved before activation.
-            sendDialogueChoicePacket(topic);
+            if (topic == sBarter && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Barter))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Barter, mPtr);
+            else if (topic == sSpells && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Spells))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_SpellBuying, mPtr);
+            else if (topic == sTravel && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Travel))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Travel, mPtr);
+            else if (topic == sSpellMakingMenuTitle && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Spellmaking))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_SpellCreation, mPtr);
+            else if (topic == sEnchanting && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Enchanting))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Enchanting, mPtr);
+            else if (topic == sServiceTrainingTitle && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Training))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_Training, mPtr);
+            else if (topic == sRepair && !dialogueManager->checkServiceRefused(mCallback.get(), MWBase::DialogueManager::Repair))
+                MWBase::Environment::get().getWindowManager()->pushGuiMode(GM_MerchantRepair, mPtr);
         }
+        else
+            updateTopics();
     }
 
     /*
@@ -1174,20 +1188,6 @@ namespace MWGui
         objectList->packetOrigin = mwmp::CLIENT_GAMEPLAY;
         objectList->addObjectDialogueChoice(mPtr, topic);
         objectList->sendObjectDialogueChoice();
-    }
-
-
-    bool DialogueWindow::consumeLocallyExecutedTopic(const MWWorld::Ptr& actor, const std::string& topic)
-    {
-        for (auto it = mPendingLocalTopics.begin(); it != mPendingLocalTopics.end(); ++it)
-        {
-            if (it->mActor == actor && it->mTopic == topic)
-            {
-                mPendingLocalTopics.erase(it);
-                return true;
-            }
-        }
-        return false;
     }
     /*
         End of tes3mp addition

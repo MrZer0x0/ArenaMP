@@ -1008,67 +1008,70 @@ void ObjectList::makeDialogueChoices(MWWorld::CellStore* cellStore)
     for (const auto& baseObject : baseObjects)
     {
         LOG_APPEND(TimedLog::LOG_VERBOSE, "- cellRef: %s %i-%i", baseObject.refId.c_str(), baseObject.refNum, baseObject.mpNum);
-
+        
         MWWorld::Ptr ptrFound = cellStore->searchExact(baseObject.refNum, baseObject.mpNum, baseObject.refId);
 
-        if (!ptrFound)
-            continue;
-
-        LOG_APPEND(TimedLog::LOG_VERBOSE, "-- Found %s %i-%i", ptrFound.getCellRef().getRefId().c_str(),
-            ptrFound.getCellRef().getRefNum(), ptrFound.getCellRef().getMpNum());
-
-        if (!ptrFound.getClass().isActor())
+        if (ptrFound)
         {
-            LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN, "Failed to make dialogue choice for %s %i-%i because it is not an actor!",
-                ptrFound.getCellRef().getRefId().c_str(), ptrFound.getCellRef().getRefNum(), ptrFound.getCellRef().getMpNum());
-            continue;
-        }
+            LOG_APPEND(TimedLog::LOG_VERBOSE, "-- Found %s %i-%i", ptrFound.getCellRef().getRefId().c_str(),
+                ptrFound.getCellRef().getRefNum(), ptrFound.getCellRef().getMpNum());
 
-        LOG_APPEND(TimedLog::LOG_VERBOSE, "-- Making dialogue choice of type %i", baseObject.dialogueChoiceType);
-
-        std::string topic = baseObject.topicId;
-        if (baseObject.dialogueChoiceType == DialogueChoiceType::TOPIC)
-        {
-            LOG_APPEND(TimedLog::LOG_VERBOSE, "-- topic was %s", baseObject.topicId.c_str());
-
-            if (MWBase::Environment::get().getWindowManager()->getTranslationDataStorage().hasTranslation())
+            if (ptrFound.getClass().isActor())
             {
-                const char delimiter = '|';
-                if (topic.find(delimiter) != std::string::npos)
-                    topic = topic.substr(0, topic.find(delimiter));
+                // Ensure the dialogue window has the correct Ptr set for it
+                if (MWBase::Environment::get().getWindowManager()->containsMode(MWGui::GM_Dialogue))
+                {
+                    if (MWBase::Environment::get().getWindowManager()->getDialogueWindow()->getPtr() != ptrFound)
+                    {
+                        MWBase::Environment::get().getWindowManager()->getDialogueWindow()->setPtr(ptrFound);
+                    }
+                }
                 else
                 {
-                    const std::string translatedTopic = MWBase::Environment::get().getWindowManager()
-                        ->getTranslationDataStorage().getLocalizedTopicId(topic);
-                    if (!translatedTopic.empty())
-                        topic = translatedTopic;
+                    MWBase::Environment::get().getWindowManager()->pushGuiMode(MWGui::GM_Dialogue, ptrFound);
                 }
-            }
+                
+                LOG_APPEND(TimedLog::LOG_VERBOSE, "-- Making dialogue choice of type %i", baseObject.dialogueChoiceType);
 
-            // Ordinary topics are executed immediately on the originating client.
-            // The packet returned by the server is only an acknowledgement. Consume
-            // it before changing GUI state, otherwise a late ACK can reopen a closed
-            // dialogue and execute the result script a second time.
-            if (MWBase::Environment::get().getWindowManager()->getDialogueWindow()
-                ->consumeLocallyExecutedTopic(ptrFound, topic))
+                if (baseObject.dialogueChoiceType == DialogueChoiceType::TOPIC)
+                {
+                    LOG_APPEND(TimedLog::LOG_VERBOSE, "-- topic was %s", baseObject.topicId.c_str());
+                }
+
+                std::string topic = baseObject.topicId;
+
+                if (MWBase::Environment::get().getWindowManager()->getTranslationDataStorage().hasTranslation())
+                {
+                    char delimiter = '|';
+
+                    // If we're using a translated version of Morrowind, we may have received a string that had the original
+                    // topic delimited from its possible English translation by a | character, in which case we need to use
+                    // the original topic here
+                    if (topic.find(delimiter) != std::string::npos)
+                    {
+                        topic = topic.substr(0, topic.find(delimiter));
+                    }
+                    // Alternatively, we may have received a topic that needs to be translated into the current language's
+                    // version of it
+                    else
+                    {
+                        std::string translatedTopic = MWBase::Environment::get().getWindowManager()->getTranslationDataStorage().getLocalizedTopicId(topic);
+
+                        if (!translatedTopic.empty())
+                        {
+                            topic = translatedTopic;
+                        }
+                    }
+                }
+
+                MWBase::Environment::get().getWindowManager()->getDialogueWindow()->activateDialogueChoice(baseObject.dialogueChoiceType, topic);
+            }
+            else
             {
-                LOG_APPEND(TimedLog::LOG_VERBOSE, "-- Consumed local topic acknowledgement for %s", topic.c_str());
-                continue;
+                LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN, "Failed to make dialogue choice for %s %i-%i because it is not an actor!",
+                    ptrFound.getCellRef().getRefId().c_str(), ptrFound.getCellRef().getRefNum(), ptrFound.getCellRef().getMpNum());
             }
         }
-
-        // Ensure the dialogue window has the correct Ptr set for server-approved
-        // service choices and for topics originating from server scripts.
-        if (MWBase::Environment::get().getWindowManager()->containsMode(MWGui::GM_Dialogue))
-        {
-            if (MWBase::Environment::get().getWindowManager()->getDialogueWindow()->getPtr() != ptrFound)
-                MWBase::Environment::get().getWindowManager()->getDialogueWindow()->setPtr(ptrFound);
-        }
-        else
-            MWBase::Environment::get().getWindowManager()->pushGuiMode(MWGui::GM_Dialogue, ptrFound);
-
-        MWBase::Environment::get().getWindowManager()->getDialogueWindow()
-            ->activateDialogueChoice(baseObject.dialogueChoiceType, topic);
     }
 }
 
