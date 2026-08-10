@@ -191,13 +191,18 @@ namespace MWGui
         mViewModeIcon->setNeedMouseFocus(false);
         mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
 
+        // Barter gold uses the same visual language as an inventory stack:
+        // the amount is drawn directly over the coin icon instead of taking a
+        // separate text column to its right.
         mGoldIcon = mBottomBar->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(0, 6, 18, 18), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldIcon");
+            MyGUI::IntCoord(0, 1, 30, 30), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldIcon");
         mGoldIcon->setNeedMouseFocus(false);
-        mGoldLabel = mBottomBar->createWidget<MyGUI::TextBox>("SandText",
-            MyGUI::IntCoord(0, 2, 40, 24), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldLabel");
+        mGoldLabel = mBottomBar->createWidget<MyGUI::TextBox>("CountText",
+            MyGUI::IntCoord(0, 1, 30, 30), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldLabel");
         mGoldLabel->setNeedMouseFocus(false);
-        mGoldLabel->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+        mGoldLabel->setTextAlign(MyGUI::Align::Right | MyGUI::Align::Bottom);
+        mGoldLabel->setTextShadow(true);
+        mGoldLabel->setTextShadowColour(MyGUI::Colour::Black);
 
         mAvatarImage->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onAvatarClicked);
         mAvatarImage->setRenderItemTexture(mPreviewTexture.get());
@@ -1113,9 +1118,9 @@ namespace MWGui
         }
 
         const bool showGold = (mGuiMode == GM_Barter);
-        const int goldIconWidth = showGold ? 18 : 0;
-        const int goldTextWidth = showGold ? 42 : 0;
-        const int goldBlockWidth = showGold ? (goldIconWidth + 2 + goldTextWidth) : 0;
+        // One compact stack-style block: icon and count overlap, just like an
+        // item icon in the inventory/grid view.
+        const int goldBlockWidth = showGold ? 30 : 0;
 
         const int weightWidth = std::max(72, std::min(110, width / 4));
         if (mEncumbranceBar)
@@ -1141,8 +1146,8 @@ namespace MWGui
             if (showGold)
             {
                 const int goldLeft = width - goldBlockWidth;
-                mGoldIcon->setCoord(goldLeft, 6, goldIconWidth, 18);
-                mGoldLabel->setCoord(goldLeft + goldIconWidth + 2, 2, goldTextWidth, 24);
+                mGoldIcon->setCoord(goldLeft, 1, goldBlockWidth, 30);
+                mGoldLabel->setCoord(goldLeft, 1, goldBlockWidth, 30);
                 const std::string goldIcon = resolveGoldIcon();
                 if (!goldIcon.empty())
                 {
@@ -1521,6 +1526,12 @@ namespace MWGui
     {
         const ESM::Miscellaneous* gold = MWBase::Environment::get().getWorld()->getStore()
             .get<ESM::Miscellaneous>().search(MWWorld::ContainerStore::sGoldId);
-        return gold ? gold->mIcon : std::string();
+        if (!gold || gold->mIcon.empty())
+            return std::string();
+
+        // ESM icon names are not guaranteed to already be VFS-normalized.
+        // ItemWidget corrects them before rendering; do the same for the
+        // compact barter-gold icon to avoid the magenta missing-texture tile.
+        return MWBase::Environment::get().getWindowManager()->correctIconPath(gold->mIcon);
     }
 }

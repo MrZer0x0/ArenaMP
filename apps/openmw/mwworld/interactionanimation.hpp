@@ -30,6 +30,7 @@ namespace MWWorld
         bool playQuickLoot(const Ptr& container, bool takeAll);
         bool playReading(const Ptr& item);
         void stopReading();
+        bool isActive();
 
         void update(float dt);
         void cancel();

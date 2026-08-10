@@ -409,6 +409,13 @@ namespace MWWorld
                 localPlayer->cancelInteractionAnimation(true);
         }
 
+        bool isActive()
+        {
+            mwmp::LocalPlayer* localPlayer = mwmp::Main::get().getLocalPlayer();
+            return sPending.mType != PendingType::None
+                || (localPlayer && localPlayer->isInteractionAnimationPlaying());
+        }
+
         void update(float dt)
         {
             if (dt <= 0.f)

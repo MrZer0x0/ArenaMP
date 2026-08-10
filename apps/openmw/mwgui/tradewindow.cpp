@@ -90,6 +90,11 @@ namespace MWGui
         getWidget(mOfferButton, "OfferButton");
         getWidget(mMerchantGoldIcon, "MerchantGoldIcon");
         getWidget(mMerchantGold, "MerchantGold");
+        mMerchantGoldIcon->setNeedMouseFocus(false);
+        mMerchantGold->setNeedMouseFocus(false);
+        mMerchantGold->setTextAlign(MyGUI::Align::Right | MyGUI::Align::Bottom);
+        mMerchantGold->setTextShadow(true);
+        mMerchantGold->setTextShadowColour(MyGUI::Colour::Black);
         getWidget(mIncreaseButton, "IncreaseButton");
         getWidget(mDecreaseButton, "DecreaseButton");
         getWidget(mTotalBalance, "TotalBalance");
@@ -137,7 +142,10 @@ namespace MWGui
         mTotalBalance->eventEditSelectAccept += MyGUI::newDelegate(this, &TradeWindow::onAccept);
         mTotalBalance->setMinValue(std::numeric_limits<int>::min()+1); // disallow INT_MIN since abs(INT_MIN) is undefined
 
-        setCoord(320, 20, 680, 440);
+        // Keep the merchant panel a little roomier than the old layout so the
+        // ItemView scrollbar and both bottom action rows remain fully inside
+        // the outer frame at UI scaling factors above 1.0.
+        setCoord(320, 20, 700, 460);
     }
 
     void TradeWindow::setPtr(const MWWorld::Ptr& actor)
@@ -747,7 +755,12 @@ namespace MWGui
     {
         const ESM::Miscellaneous* gold = MWBase::Environment::get().getWorld()->getStore()
             .get<ESM::Miscellaneous>().search(MWWorld::ContainerStore::sGoldId);
-        return gold ? gold->mIcon : std::string();
+        if (!gold || gold->mIcon.empty())
+            return std::string();
+
+        // Match ItemWidget's icon-path normalization so the merchant's coin
+        // icon is the real inventory icon rather than a missing-texture tile.
+        return MWBase::Environment::get().getWindowManager()->correctIconPath(gold->mIcon);
     }
 
     int TradeWindow::getMerchantGold()
