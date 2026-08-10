@@ -1065,8 +1065,6 @@ void Launcher::MainDialog::loadSettings()
         mPlayPage->setBuildName(mBuildName);
 
         mServerDialog->setAutoRestartEnabled(autoRestart);
-        if (autoStart || autoRestart)
-            mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), mServerDialog->configuredPort());
     }
 }
 
@@ -1118,7 +1116,8 @@ bool Launcher::MainDialog::writeSettings()
     // Launcher remained open. Graphics quality is written only by the
     // explicit Apply preset button; the Wizard performs its one initial pass.
     mSettingsPage->saveSettings();
-    mPlayPage->saveServerSettings();
+    if (!mPlayPage->saveServerSettings())
+        return false;
 
     QString userPath = QString::fromUtf8(mCfgMgr.getUserConfigPath().string().c_str());
     QDir dir(userPath);
@@ -1252,7 +1251,6 @@ void Launcher::MainDialog::play()
         // Host mode overrides the remote endpoint and vanilla compatibility for
         // this launch only. The build.ini endpoint remains unchanged.
         mPendingVanillaServerCompatibility = false;
-        mPlayPage->saveServerSettings();
         mServerDialog->setAutoRestartEnabled(mPlayPage->autoRestartServer());
 
         if (!mServerDialog->isRunning())
@@ -1272,7 +1270,6 @@ void Launcher::MainDialog::play()
         // stale localhost value that was present before Auto-Start.
         mPendingClientAddress = mServerDialog->displayAddress();
         mPendingClientPort = mServerDialog->configuredPort();
-        mPlayPage->setLocalServerEndpoint(mPendingClientAddress, mPendingClientPort);
         writeClientEndpoint(mPendingClientAddress, mPendingClientPort);
 
         if (!mServerDialog->isRunning())
@@ -1335,7 +1332,6 @@ void Launcher::MainDialog::runServer()
     if (!writeSettings())
         return;
 
-    mPlayPage->saveServerSettings();
     mServerDialog->setAutoRestartEnabled(mPlayPage->autoRestartServer());
 
     if (!mServerDialog->isRunning())
@@ -1360,9 +1356,6 @@ void Launcher::MainDialog::stopServer()
 
 void Launcher::MainDialog::autoStartServerChanged(bool enabled)
 {
-    if (enabled && mPlayPage != nullptr && mServerDialog != nullptr)
-        mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), QString());
-
     mLauncherSettings.remove(QStringLiteral("General/Server/autoStart"));
     mLauncherSettings.setValue(QStringLiteral("General/Server/autoStart"),
         enabled ? QStringLiteral("true") : QStringLiteral("false"));
@@ -1374,9 +1367,6 @@ void Launcher::MainDialog::autoRestartServerChanged(bool enabled)
         mPlayPage->setAutoRestartServer(enabled);
     if (mServerDialog != nullptr && mServerDialog->autoRestartEnabled() != enabled)
         mServerDialog->setAutoRestartEnabled(enabled);
-
-    if (enabled && mPlayPage != nullptr && mServerDialog != nullptr)
-        mPlayPage->setLocalServerEndpoint(mServerDialog->displayAddress(), QString());
 
     mLauncherSettings.remove(QStringLiteral("General/Server/autoRestart"));
     mLauncherSettings.setValue(QStringLiteral("General/Server/autoRestart"),

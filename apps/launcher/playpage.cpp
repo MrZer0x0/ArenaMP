@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QSpinBox>
 #include <QTextStream>
 #include <QVBoxLayout>
@@ -110,6 +111,7 @@ namespace
 Launcher::PlayPage::PlayPage(QWidget *parent)
     : QWidget(parent)
     , mEmbeddedServerConsole(nullptr)
+    , mSyncingServerSettingsTabs(false)
 {
     setObjectName("PlayPage");
     setupUi(this);
@@ -126,6 +128,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
     connect(saveServerSettingsButton, SIGNAL(clicked()), this, SLOT(slotSaveServerSettings()));
     connect(applyServerSettingsFormButton, SIGNAL(clicked()), this, SLOT(slotApplyFormToRawConfig()));
     connect(syncServerSettingsFormButton, SIGNAL(clicked()), this, SLOT(slotSyncFormFromRawConfig()));
+    connect(serverSettingsModeTabs, SIGNAL(currentChanged(int)), this, SLOT(slotServerSettingsModeChanged(int)));
 
     pageTabs->setCurrentIndex(0);
     serverSettingsModeTabs->setCurrentIndex(0);
@@ -192,20 +195,15 @@ void Launcher::PlayPage::setHideChatHistory(bool enabled)
     hideChatHistoryCheckBox->setChecked(enabled);
 }
 
-void Launcher::PlayPage::setLocalServerEndpoint(const QString& address, const QString& port)
-{
-    if (!address.trimmed().isEmpty())
-        serverAddressEdit->setText(address.trimmed());
-    if (!port.trimmed().isEmpty())
-        serverPortEdit->setText(port.trimmed());
-}
-
-void Launcher::PlayPage::setServerRunning(bool running, const QString& address, const QString& port, bool managed)
+void Launcher::PlayPage::setServerRunning(bool running, const QString&, const QString&, bool managed)
 {
     stopServerButton->setEnabled(running && managed);
     serverButton->setEnabled(!running);
-    if (running && (autoStartServer() || autoRestartServer()))
-        setLocalServerEndpoint(address, port);
+
+    // The running server endpoint is status information only. Do not write it
+    // back into the editable fields: doing so used to replace the user's
+    // address/port with the launcher's LAN/default endpoint as soon as a
+    // local server was started.
 }
 
 void Launcher::PlayPage::setServerConsoleWidget(QWidget* widget)
@@ -275,6 +273,45 @@ QString Launcher::PlayPage::serverConfigPath() const
     return QDir::cleanPath(
         baseDir.filePath(QStringLiteral("server/scripts/config.lua")));
 #endif
+}
+
+QString Launcher::PlayPage::persistentServerConfigPath() const
+{
+#ifdef Q_OS_MAC
+    QString basePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (basePath.isEmpty())
+        basePath = QApplication::applicationDirPath();
+    const QDir baseDir(basePath);
+#else
+    const QDir baseDir(QApplication::applicationDirPath());
+#endif
+    return QDir::cleanPath(baseDir.filePath(QStringLiteral("userdata/server-config.lua")));
+}
+
+bool Launcher::PlayPage::writeServerConfigFile(const QString& path, const QString& text, QString* errorMessage) const
+{
+    const QFileInfo info(path);
+    QDir dir = info.absoluteDir();
+    if (!dir.exists() && !dir.mkpath(QStringLiteral(".")))
+    {
+        if (errorMessage != nullptr)
+            *errorMessage = tr("Could not create directory: %1").arg(QDir::toNativeSeparators(dir.absolutePath()));
+        return false;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    {
+        if (errorMessage != nullptr)
+            *errorMessage = tr("Could not write: %1").arg(QDir::toNativeSeparators(path));
+        return false;
+    }
+
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+    stream << text;
+    file.close();
+    return file.error() == QFile::NoError;
 }
 
 QString Launcher::PlayPage::replaceRawValue(const QString& text, const QString& key, const QString& value) const
@@ -483,10 +520,17 @@ QString Launcher::PlayPage::updatedConfigFromForm(const QString& input) const
 
 void Launcher::PlayPage::loadServerSettings()
 {
-    const QString path = serverConfigPath();
-    serverSettingsPathLabel->setText(QDir::toNativeSeparators(path));
+    const QString runtimePath = serverConfigPath();
+    const QString persistentPath = persistentServerConfigPath();
+    serverSettingsPathLabel->setText(tr("Persistent: %1  ->  Runtime: %2")
+        .arg(QDir::toNativeSeparators(persistentPath), QDir::toNativeSeparators(runtimePath)));
 
-    QFile file(path);
+    // The userdata copy is authoritative once it exists. The packaged
+    // server/scripts/config.lua can be replaced by an update or deployment,
+    // so using it as the only settings store caused user changes to appear to
+    // reset to defaults on the next launch.
+    QString sourcePath = QFileInfo::exists(persistentPath) ? persistentPath : runtimePath;
+    QFile file(sourcePath);
     if (!file.exists())
     {
         serverSettingsEditor->setPlainText(QString());
@@ -501,40 +545,52 @@ void Launcher::PlayPage::loadServerSettings()
     }
 
     QTextStream stream(&file);
+    stream.setCodec("UTF-8");
     const QString text = stream.readAll();
+    file.close();
+
     serverSettingsEditor->setPlainText(text);
     populateFormFromConfig(text);
-    setServerSettingsStatus(tr("Loaded config.lua"));
+
+    QString syncError;
+    const bool persistentOk = sourcePath == persistentPath
+        || writeServerConfigFile(persistentPath, text, &syncError);
+    const bool runtimeOk = sourcePath == runtimePath
+        || writeServerConfigFile(runtimePath, text, &syncError);
+
+    if (!persistentOk || !runtimeOk)
+        setServerSettingsStatus(tr("Loaded settings, but could not synchronize the persistent/runtime copy: %1").arg(syncError), true);
+    else
+        setServerSettingsStatus(tr("Loaded persistent server settings"));
 }
 
 bool Launcher::PlayPage::saveServerSettings()
 {
-    const QString path = serverConfigPath();
-    QFileInfo info(path);
-    QDir dir = info.absoluteDir();
-    if (!dir.exists() && !dir.mkpath(QStringLiteral(".")))
-    {
-        QMessageBox::warning(this, tr("Save error"), tr("Could not create directory for config.lua"));
-        setServerSettingsStatus(tr("Could not create directory"), true);
-        return false;
-    }
-
+    // When the form is visible it is the authoritative editor. If the user
+    // switched to Raw, slotServerSettingsModeChanged() has already applied the
+    // form values before the switch, so neither mode can silently restore the
+    // old/default text on Play/Start Server.
     if (serverSettingsModeTabs->currentWidget() == formServerSettingsTab)
         serverSettingsEditor->setPlainText(updatedConfigFromForm(serverSettingsEditor->toPlainText()));
 
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    const QString text = serverSettingsEditor->toPlainText();
+    QString error;
+
+    if (!writeServerConfigFile(persistentServerConfigPath(), text, &error))
     {
-        QMessageBox::warning(this, tr("Save error"), tr("Could not write config.lua"));
-        setServerSettingsStatus(tr("Could not write config.lua"), true);
+        QMessageBox::warning(this, tr("Save error"), error);
+        setServerSettingsStatus(error, true);
         return false;
     }
 
-    QTextStream stream(&file);
-    stream << serverSettingsEditor->toPlainText();
-    file.close();
+    if (!writeServerConfigFile(serverConfigPath(), text, &error))
+    {
+        QMessageBox::warning(this, tr("Save error"), error);
+        setServerSettingsStatus(error, true);
+        return false;
+    }
 
-    setServerSettingsStatus(tr("Saved config.lua"));
+    setServerSettingsStatus(tr("Saved persistent server settings"));
     return true;
 }
 
@@ -567,6 +623,29 @@ void Launcher::PlayPage::slotReloadServerSettings()
 void Launcher::PlayPage::slotSaveServerSettings()
 {
     saveServerSettings();
+}
+
+
+void Launcher::PlayPage::slotServerSettingsModeChanged(int index)
+{
+    if (mSyncingServerSettingsTabs)
+        return;
+
+    mSyncingServerSettingsTabs = true;
+    QWidget* target = serverSettingsModeTabs->widget(index);
+    if (target == rawServerSettingsTab)
+    {
+        // Never discard unsaved form edits merely because the user opens Raw.
+        serverSettingsEditor->setPlainText(updatedConfigFromForm(serverSettingsEditor->toPlainText()));
+        setServerSettingsStatus(tr("Form synchronized to raw config"));
+    }
+    else if (target == formServerSettingsTab)
+    {
+        // Likewise, manual Raw edits become the values shown by the form.
+        populateFormFromConfig(serverSettingsEditor->toPlainText());
+        setServerSettingsStatus(tr("Raw config synchronized to form"));
+    }
+    mSyncingServerSettingsTabs = false;
 }
 
 void Launcher::PlayPage::slotApplyFormToRawConfig()

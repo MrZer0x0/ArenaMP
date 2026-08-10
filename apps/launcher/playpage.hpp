@@ -24,7 +24,6 @@ namespace Launcher
         void setAutoRestartServer(bool enabled);
         void setVanillaServerCompatibility(bool enabled);
         void setHideChatHistory(bool enabled);
-        void setLocalServerEndpoint(const QString& address, const QString& port);
         void setServerRunning(bool running, const QString& address = QString(), const QString& port = QString(), bool managed = true);
         void setBuildManifestComplete(bool complete);
 
@@ -58,14 +57,18 @@ namespace Launcher
         void slotSaveServerSettings();
         void slotApplyFormToRawConfig();
         void slotSyncFormFromRawConfig();
+        void slotServerSettingsModeChanged(int index);
 
     private:
         QString serverConfigPath() const;
+        QString persistentServerConfigPath() const;
+        bool writeServerConfigFile(const QString& path, const QString& text, QString* errorMessage) const;
         QString replaceRawValue(const QString& text, const QString& key, const QString& value) const;
         QString updatedConfigFromForm(const QString& input) const;
         void populateFormFromConfig(const QString& text);
         void setServerSettingsStatus(const QString& text, bool isError = false);
         QWidget* mEmbeddedServerConsole;
+        bool mSyncingServerSettingsTabs;
     };
 }
 #endif
