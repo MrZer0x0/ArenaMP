@@ -49,6 +49,7 @@ set(MYGUI_FILES
     openmw_map_window.layout
     openmw_map_window.skin.xml
     openmw_messagebox.layout
+    openmw_messagebox_barter.layout
     openmw_pointer.xml
     openmw_progress.skin.xml
     openmw_resources.xml

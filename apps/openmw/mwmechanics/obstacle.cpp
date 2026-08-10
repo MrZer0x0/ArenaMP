@@ -1,10 +1,8 @@
 #include "obstacle.hpp"
 
-#include <algorithm>
+#include <cmath>
 
 #include <osg/Math>
-
-#include <components/misc/rng.hpp>
 
 #include <components/sceneutil/positionattitudetransform.hpp>
 
@@ -20,6 +18,7 @@ namespace MWMechanics
     static const float DIST_SAME_SPOT = 0.35f;
     static const float DURATION_SAME_SPOT = 0.65f;
     static const float DURATION_TO_TURN_AWAY = 0.55f;
+    static const float DURATION_RETREAT = 0.8f;
 
     bool proximityToDoor(const MWWorld::Ptr& actor, float minDist)
     {
@@ -88,7 +87,7 @@ namespace MWMechanics
 
     bool ObstacleCheck::isEvading() const
     {
-        return mWalkState == WalkState::TurnAway;
+        return mWalkState == WalkState::TurnAway || mWalkState == WalkState::Retreat;
     }
 
     /*
@@ -97,10 +96,10 @@ namespace MWMechanics
      *
      * Walking state transitions (player greeting check not shown):
      *
-     * Initial -> Norm <-> CheckStuck -> TurnAway -> Norm
+     * Initial -> Norm <-> CheckStuck -> TurnAway -> Retreat -> Norm
      *
-     * The actor first stops, turns in place toward one stable random
-     * direction, and only after the turn requests a path rebuild.
+     * The actor first stops, turns exactly away from the obstacle, walks a
+     * short distance in that opposite direction, and only then rebuilds path.
      *
      */
     void ObstacleCheck::update(const MWWorld::Ptr& actor, const osg::Vec3f& destination, float duration)
@@ -120,6 +119,18 @@ namespace MWMechanics
         {
             mStateDuration += duration;
             if (mStateDuration >= DURATION_TO_TURN_AWAY)
+            {
+                mWalkState = WalkState::Retreat;
+                mStateDuration = 0.f;
+                mPrev = position;
+            }
+            return;
+        }
+
+        if (mWalkState == WalkState::Retreat)
+        {
+            mStateDuration += duration;
+            if (mStateDuration >= DURATION_RETREAT)
             {
                 mWalkState = WalkState::Norm;
                 mStateDuration = 0.f;
@@ -157,9 +168,9 @@ namespace MWMechanics
         if (mStateDuration < DURATION_SAME_SPOT)
             return;
 
-        // Stop, choose one stable random turn and rebuild the path once. This
-        // replaces the old per-frame side/back impulses that caused animation
-        // groups to flicker when an NPC touched a wall or another collider.
+        // Stop first, then use one stable 180-degree turn. No random left/right
+        // oscillation is allowed here: it was the main source of visible NPC
+        // twitching when several colliders met in a narrow space.
         mWalkState = WalkState::TurnAway;
         mStateDuration = 0.f;
         mPrev = position;
@@ -170,7 +181,7 @@ namespace MWMechanics
     void ObstacleCheck::takeEvasiveAction(MWMechanics::Movement& actorMovement) const
     {
         actorMovement.mPosition[0] = 0.f;
-        actorMovement.mPosition[1] = 0.f;
+        actorMovement.mPosition[1] = mWalkState == WalkState::Retreat ? 1.f : 0.f;
     }
 
     float ObstacleCheck::getEvasionAngle() const
@@ -187,9 +198,7 @@ namespace MWMechanics
 
     void ObstacleCheck::chooseEvasionAngle(const MWWorld::Ptr& actor)
     {
-        const float direction = Misc::Rng::rollProbability() < 0.5f ? -1.f : 1.f;
-        const float degrees = 55.f + 70.f * Misc::Rng::rollClosedProbability();
-        mEvasionAngle = actor.getRefData().getPosition().rot[2] + direction * osg::DegreesToRadians(degrees);
+        mEvasionAngle = actor.getRefData().getPosition().rot[2] + osg::PI;
     }
 
 }

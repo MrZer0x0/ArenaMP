@@ -105,6 +105,7 @@ namespace MWGui
 
         getWidget(mItemView, "ItemView");
         mItemView->setExtendedMode(true);
+        mItemView->setSingleClickActivation(true);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &TradeWindow::onItemSelected);
         mItemView->eventItemDragStarted += MyGUI::newDelegate(this, &TradeWindow::onItemDragStarted);
         mItemView->eventItemDoubleClicked += MyGUI::newDelegate(this, &TradeWindow::onItemDoubleClicked);

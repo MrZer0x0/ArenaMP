@@ -365,6 +365,8 @@ namespace MWGui
     void InventoryWindow::setGuiMode(GuiMode mode)
     {
         mGuiMode = mode;
+        if (mItemView)
+            mItemView->setSingleClickActivation(mode == GM_Barter || mode == GM_Container);
         std::string setting = getModeSetting();
         setPinButtonVisible(mode == GM_Inventory);
 
@@ -381,6 +383,19 @@ namespace MWGui
 
         mMainWidget->setPosition(pos);
         mMainWidget->setSize(size);
+
+        // Barter is a true two-pane workspace: keep the player and merchant
+        // windows identical in outer size even when an older settings.cfg still
+        // contains the pre-alignment player width.
+        if (mode == GM_Barter)
+        {
+            TradeWindow* tradeWindow = MWBase::Environment::get().getWindowManager()->getTradeWindow();
+            if (tradeWindow && tradeWindow->mMainWidget
+                && mMainWidget->getSize() != tradeWindow->mMainWidget->getSize())
+            {
+                mMainWidget->setSize(tradeWindow->mMainWidget->getSize());
+            }
+        }
 
         adjustPanes();
 
@@ -621,6 +636,19 @@ namespace MWGui
             return;
         }
 
+        // Two-pane container mode uses the same click-vs-drag split as barter:
+        // a clean click transfers immediately, while moving the mouse past the
+        // drag threshold keeps the regular drag-and-drop path available.
+        if (mGuiMode == GM_Container && mDragAndDrop->getTransferTargetView())
+        {
+            mSelectedItem = index;
+            ensureSelectedItemUnequipped(count);
+            mDragAndDrop->startDrag(mSelectedItem, mSortModel, mTradeModel, mItemView, count);
+            mDragAndDrop->getTransferTargetView()->eventBackgroundClicked();
+            notifyContentChanged();
+            return;
+        }
+
         // If we unequip weapon during attack, it can lead to unexpected behaviour
         if (MWBase::Environment::get().getMechanicsManager()->isAttackingOrSpell(mPtr))
         {
@@ -814,6 +842,18 @@ namespace MWGui
         bool maximized = Settings::Manager::getBool(setting + " maximized", "Windows");
         if (maximized)
             Settings::Manager::setBool(setting + " maximized", "Windows", false);
+
+        // Resizing either barter half resizes the other half as well. This keeps
+        // their item rows, scroll areas and bottom strips visually aligned.
+        if (mGuiMode == GM_Barter)
+        {
+            TradeWindow* tradeWindow = MWBase::Environment::get().getWindowManager()->getTradeWindow();
+            if (tradeWindow && tradeWindow->mMainWidget
+                && tradeWindow->mMainWidget->getSize() != _sender->getSize())
+            {
+                tradeWindow->mMainWidget->setSize(_sender->getSize());
+            }
+        }
 
         if (mMainWidget->getSize().width != mLastXSize || mMainWidget->getSize().height != mLastYSize)
         {
@@ -1120,7 +1160,10 @@ namespace MWGui
         const bool showGold = (mGuiMode == GM_Barter);
         // One compact stack-style block: icon and count overlap, just like an
         // item icon in the inventory/grid view.
-        const int goldBlockWidth = showGold ? 30 : 0;
+        // Reserve a little more room than the 30px coin itself so 5-7 digit
+        // player balances are not clipped by the search field. The count still
+        // overlays the coin, but its text box may extend left into this reserve.
+        const int goldBlockWidth = showGold ? 58 : 0;
 
         const int weightWidth = std::max(72, std::min(110, width / 4));
         if (mEncumbranceBar)
@@ -1146,7 +1189,7 @@ namespace MWGui
             if (showGold)
             {
                 const int goldLeft = width - goldBlockWidth;
-                mGoldIcon->setCoord(goldLeft, 1, goldBlockWidth, 30);
+                mGoldIcon->setCoord(goldLeft + goldBlockWidth - 30, 1, 30, 30);
                 mGoldLabel->setCoord(goldLeft, 1, goldBlockWidth, 30);
                 const std::string goldIcon = resolveGoldIcon();
                 if (!goldIcon.empty())

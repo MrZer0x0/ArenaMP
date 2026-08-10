@@ -516,13 +516,15 @@ namespace MWMechanics
         {
             storage.mStuckDuration = 0.f;
             storage.mTacticalState = AiCombatStorage::Tactical_Unstuck;
-            storage.mTacticalTimer = 0.45f;
+            storage.mTacticalTimer = 0.8f;
             storage.mTacticalCooldown = 1.2f;
             storage.stopAttack();
-            storage.mMovement.mPosition[0] = Misc::Rng::rollProbability() < 0.5 ? -1.f : 1.f;
-            storage.mMovement.mPosition[1] = 0.65f;
-            stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, true);
-            storage.mJumpTimer = 0.32f;
+            // A blocked fighter should not jitter sideways or spam jump. Stop
+            // lateral movement and back away in one stable opposite direction.
+            storage.mMovement.mPosition[0] = 0.f;
+            storage.mMovement.mPosition[1] = -1.f;
+            stats.setMovementFlag(CreatureStats::Flag_ForceMoveJump, false);
+            storage.mJumpTimer = 0.f;
             characterController.setAttackingOrSpell(false);
             mPathFinder.clearPath();
         }
@@ -613,10 +615,15 @@ namespace MWMechanics
                 characterController.setAttackingOrSpell(false);
                 break;
             case AiCombatStorage::Tactical_JumpDodge:
-            case AiCombatStorage::Tactical_Unstuck:
                 if (storage.mMovement.mPosition[0] == 0.f)
                     storage.mMovement.mPosition[0] = Misc::Rng::rollProbability() < 0.5 ? -1.f : 1.f;
-                storage.mMovement.mPosition[1] = storage.mTacticalState == AiCombatStorage::Tactical_Unstuck ? 0.65f : -0.2f;
+                storage.mMovement.mPosition[1] = -0.2f;
+                break;
+            case AiCombatStorage::Tactical_Unstuck:
+                storage.stopAttack();
+                storage.mMovement.mPosition[0] = 0.f;
+                storage.mMovement.mPosition[1] = -1.f;
+                characterController.setAttackingOrSpell(false);
                 break;
             case AiCombatStorage::Tactical_SneakApproach:
             case AiCombatStorage::Tactical_None:

@@ -125,6 +125,7 @@ ItemView::ItemView()
     , mValueSortIcon(nullptr)
     , mExtendedMode(false)
     , mInternalViewModeButtonVisible(true)
+    , mSingleClickActivation(false)
     , mViewMode(View_List)
     , mListPressedIndex(-1)
     , mListDragStartX(0)
@@ -248,6 +249,17 @@ void ItemView::setExtendedMode(bool enabled)
         mViewMode = View_List;
     updateExtendedGeometry();
     updateHeaderCaptions();
+    update();
+}
+
+void ItemView::setSingleClickActivation(bool enabled)
+{
+    if (mSingleClickActivation == enabled)
+        return;
+
+    mSingleClickActivation = enabled;
+    // Input delegates are attached when rows/icons are created, so rebuild the
+    // visible widgets once when the interaction mode changes.
     update();
 }
 
@@ -598,7 +610,14 @@ void ItemView::update()
             itemWidget->setUserData(std::make_pair(i, mModel));
             itemWidget->setItem(item.mBase, state);
             itemWidget->setCount(item.mCount);
-            itemWidget->eventMouseButtonClick += MyGUI::newDelegate(this, &ItemView::onSelectedItem);
+            if (mSingleClickActivation)
+            {
+                itemWidget->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
+                itemWidget->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
+                itemWidget->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
+            }
+            else
+                itemWidget->eventMouseButtonClick += MyGUI::newDelegate(this, &ItemView::onSelectedItem);
             itemWidget->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
             continue;
         }
@@ -615,7 +634,8 @@ void ItemView::update()
         row->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
         row->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
         row->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
-        row->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
+        if (!mSingleClickActivation)
+            row->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
         row->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
 
         ItemWidget* icon = row->createWidget<ItemWidget>("MW_ItemIcon", MyGUI::IntCoord(2, 2, 32, 32), MyGUI::Align::Left);
@@ -626,7 +646,8 @@ void ItemView::update()
         icon->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
         icon->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
         icon->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
-        icon->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
+        if (!mSingleClickActivation)
+            icon->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
         icon->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
 
         MyGUI::TextBox* name = row->createWidget<MyGUI::TextBox>("SandText", MyGUI::IntCoord(), MyGUI::Align::Default);
@@ -801,11 +822,21 @@ ItemView* ItemView::findVisibleItemViewAt(const MyGUI::IntPoint& point)
 
 void ItemView::onListItemReleased(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
 {
-    (void)sender;
     (void)left;
     (void)top;
-    if (id != MyGUI::MouseButton::Left || !mListDragStarted)
+    if (id != MyGUI::MouseButton::Left)
         return;
+
+    const ItemModel::ModelIndex index
+        = (*sender->getUserData<std::pair<ItemModel::ModelIndex, ItemModel*> >()).first;
+
+    if (!mListDragStarted)
+    {
+        mListPressedIndex = -1;
+        if (mSingleClickActivation)
+            eventItemClicked(index);
+        return;
+    }
 
     mListDragStarted = false;
     mListPressedIndex = -1;

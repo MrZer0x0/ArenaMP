@@ -33,6 +33,14 @@
 
 namespace MWGui
 {
+    namespace
+    {
+        bool useFramedBarterNotification()
+        {
+            MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+            return windowManager && windowManager->containsMode(GM_Barter);
+        }
+    }
 
     MessageBoxManager::MessageBoxManager (float timePerChar)
     {
@@ -223,11 +231,12 @@ namespace MWGui
 
 
     MessageBox::MessageBox(MessageBoxManager& parMessageBoxManager, const std::string& message)
-      : Layout("openmw_messagebox.layout")
+      : Layout(useFramedBarterNotification() ? "openmw_messagebox_barter.layout" : "openmw_messagebox.layout")
       , mCurrentTime(0)
       , mMaxTime(0)
       , mMessageBoxManager(parMessageBoxManager)
       , mMessage(message)
+      , mFramed(useFramedBarterNotification())
     {
         // defines
         mBottomPadding = 48;
@@ -236,6 +245,16 @@ namespace MWGui
         getWidget(mMessageWidget, "message");
 
         mMessageWidget->setCaptionWithReplacing(mMessage);
+
+        if (mFramed)
+        {
+            // Barter notifications must remain legible over two dense item
+            // tables. Keep the normal transient timing/fade, but give only
+            // this context a compact opaque dialog frame and dark background.
+            const int textHeight = std::max(20, mMessageWidget->getTextSize().height);
+            mMessageWidget->setCoord(16, 10, 520, textHeight);
+            mMainWidget->setSize(552, std::max(54, textHeight + 20));
+        }
     }
 
     void MessageBox::update (int height)

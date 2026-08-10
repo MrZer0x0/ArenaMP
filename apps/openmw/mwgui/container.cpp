@@ -38,7 +38,6 @@
 
 #include "../mwscript/interpretercontext.hpp"
 
-#include "countdialog.hpp"
 #include "inventorywindow.hpp"
 
 #include "itemview.hpp"
@@ -47,7 +46,6 @@
 #include "sortfilteritemmodel.hpp"
 #include "pickpocketitemmodel.hpp"
 #include "draganddrop.hpp"
-#include "tooltips.hpp"
 #include "widgets.hpp"
 
 namespace MWGui
@@ -74,6 +72,7 @@ namespace MWGui
 
         getWidget(mItemView, "ItemView");
         mItemView->setExtendedMode(true);
+        mItemView->setSingleClickActivation(true);
         mItemView->setInternalViewModeButtonVisible(false);
         mItemView->eventBackgroundClicked += MyGUI::newDelegate(this, &ContainerWindow::onBackgroundSelected);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &ContainerWindow::onItemSelected);
@@ -109,6 +108,9 @@ namespace MWGui
 
     void ContainerWindow::onItemSelected(int index)
     {
+        if (!mSortModel || !mModel || index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
+            return;
+
         if (mDragAndDrop->mIsOnDragAndDrop)
         {
             dropItem();
@@ -124,24 +126,13 @@ namespace MWGui
             return;
         }
 
-        MWWorld::Ptr object = item.mBase;
-        int count = item.mCount;
-        bool shift = MyGUI::InputManager::getInstance().isShiftPressed();
-        if (MyGUI::InputManager::getInstance().isControlPressed())
-            count = 1;
-
         mSelectedItem = mSortModel->mapToSource(index);
+        const int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
 
-        if (count > 1 && !shift)
-        {
-            CountDialog* dialog = MWBase::Environment::get().getWindowManager()->getCountDialog();
-            std::string name = object.getClass().getName(object) + MWGui::ToolTips::getSoulString(object.getCellRef());
-            dialog->openCountDialog(name, "#{sTake}", count);
-            dialog->eventOkClicked.clear();
-            dialog->eventOkClicked += MyGUI::newDelegate(this, &ContainerWindow::dragItem);
-        }
-        else
-            dragItem (nullptr, count);
+        // A clean click is a quick transfer to the player. The multiplayer
+        // container remains server-authoritative: request the same DRAG packet
+        // as normal drag-and-drop and auto-release only after the server echo.
+        requestDrag(count, MWBase::Environment::get().getWindowManager()->getInventoryWindow()->getItemView());
     }
 
     void ContainerWindow::onItemDragStarted(int index)

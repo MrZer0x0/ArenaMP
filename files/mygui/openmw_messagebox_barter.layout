@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<MyGUI type="Layout">
+    <!-- Barter-only transient notification: opaque dark panel with a visible
+         Morrowind frame, rendered on Notification above the barter windows. -->
+    <Widget type="Widget" skin="MW_DialogNoTransp" layer="Notification" position="0 0 552 54" name="_Main">
+        <Property key="NeedMouse" value="false"/>
+
+        <Widget type="AutoSizedEditBox" skin="MW_TextEditClient" position="16 10 520 0" name="message" align="Left Top">
+            <Property key="FontName" value="Default"/>
+            <Property key="TextAlign" value="Center"/>
+            <Property key="Static" value="true"/>
+            <Property key="WordWrap" value="true"/>
+            <Property key="MultiLine" value="1"/>
+            <Property key="VisibleVScroll" value="0"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="TextShadow" value="true"/>
+            <Property key="TextShadowColour" value="0 0 0"/>
+        </Widget>
+    </Widget>
+</MyGUI>

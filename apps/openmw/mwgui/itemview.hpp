@@ -45,6 +45,10 @@ namespace MWGui
         /// Disabled by default so alchemy and small item pickers keep vanilla layout.
         void setExtendedMode(bool enabled);
         bool getExtendedMode() const { return mExtendedMode; }
+        /// In transfer-oriented two-pane windows, a clean click activates the
+        /// item while a real mouse drag still starts drag-and-drop.
+        void setSingleClickActivation(bool enabled);
+        bool getSingleClickActivation() const { return mSingleClickActivation; }
         void setViewMode(ViewMode mode);
         ViewMode getViewMode() const { return mViewMode; }
 
@@ -127,6 +131,7 @@ namespace MWGui
         MyGUI::ImageBox* mValueSortIcon;
         bool mExtendedMode;
         bool mInternalViewModeButtonVisible;
+        bool mSingleClickActivation;
         ViewMode mViewMode;
         ItemModel::ModelIndex mListPressedIndex;
         int mListDragStartX;

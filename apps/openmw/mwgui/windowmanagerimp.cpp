@@ -1964,6 +1964,15 @@ namespace MWGui
         bool maximized = Settings::Manager::getBool(setting + " maximized", "Windows");
         if (maximized)
             Settings::Manager::setBool(setting + " maximized", "Windows", false);
+
+        // Merchant and player barter panes intentionally share one size. The
+        // inventory window has its own settings handler, so mirror merchant
+        // resize events here; InventoryWindow mirrors the opposite direction.
+        if (setting == "barter" && getMode() == GM_Barter && mInventoryWindow
+            && mInventoryWindow->mMainWidget->getSize() != _sender->getSize())
+        {
+            mInventoryWindow->mMainWidget->setSize(_sender->getSize());
+        }
     }
 
     void WindowManager::clear()
