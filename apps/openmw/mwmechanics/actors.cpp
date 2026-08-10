@@ -56,6 +56,9 @@
 #include "../mwmechanics/aibreathe.hpp"
 
 #include "../mwrender/vismask.hpp"
+#include "../mwrender/animation.hpp"
+
+#include "../mwphysics/ragdoll.hpp"
 
 #include "spellcasting.hpp"
 #include "steering.hpp"
@@ -75,6 +78,8 @@
 
 namespace
 {
+
+constexpr float sDynamicIdleTransitionSeconds = 0.18f;
 
 struct DynamicIdleAnimation
 {
@@ -101,6 +106,14 @@ bool dynamicActorLeftArmOccupied(const MWWorld::Ptr& ptr)
 
     const std::string& type = carried->getTypeName();
     return type == typeid(ESM::Armor).name() || type == typeid(ESM::Light).name();
+}
+
+int dynamicIdleBlendMask(bool leftArmProtected)
+{
+    int blendMask = MWRender::Animation::BlendMask_UpperBody;
+    if (leftArmProtected)
+        blendMask &= ~MWRender::Animation::BlendMask_LeftArm;
+    return blendMask;
 }
 
 bool isActiveDialogueTarget(const MWWorld::Ptr& ptr)
@@ -541,6 +554,8 @@ namespace MWMechanics
 
         if (immediate)
         {
+            animation->beginBoneTransition(
+                dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
             animation->disable(state.mAnimation);
             state.mAnimation.clear();
             state.mEnding = false;
@@ -610,7 +625,11 @@ namespace MWMechanics
             if (!animation->isPlaying(state.mAnimation) || state.mTransitionTimeout <= 0.f)
             {
                 if (animation->isPlaying(state.mAnimation))
+                {
+                    animation->beginBoneTransition(
+                        dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
                     animation->disable(state.mAnimation);
+                }
                 state.mAnimation.clear();
                 state.mEnding = false;
                 state.mTransitionTimeout = 0.f;
@@ -637,6 +656,8 @@ namespace MWMechanics
                 // the same system on the next frame with a blend mask that leaves
                 // the occupied left arm to the shield/torch controller while the
                 // torso and free right arm remain animated.
+                animation->beginBoneTransition(
+                    dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
                 animation->disable(state.mAnimation);
                 state.mAnimation.clear();
                 state.mEnding = false;
@@ -698,9 +719,7 @@ namespace MWMechanics
             = *available[Misc::Rng::rollDice(static_cast<int>(available.size()))];
 
         const bool leftArmProtected = dynamicActorLeftArmOccupied(ptr);
-        int blendMask = MWRender::Animation::BlendMask_UpperBody;
-        if (leftArmProtected)
-            blendMask &= ~MWRender::Animation::BlendMask_LeftArm;
+        const int blendMask = dynamicIdleBlendMask(leftArmProtected);
 
         MWRender::Animation::AnimPriority priority(Priority_Default);
         priority[MWRender::Animation::BoneGroup_Torso] = Priority_Movement;
@@ -710,6 +729,7 @@ namespace MWMechanics
 
         if (animation->isPlaying(selected.mGroup))
             animation->disable(selected.mGroup);
+        animation->beginBoneTransition(blendMask, sDynamicIdleTransitionSeconds);
         animation->play(selected.mGroup, priority, blendMask, true,
             selected.mSpeed, "start", "stop", 0.f, selected.mLoops, true);
 
@@ -2067,6 +2087,7 @@ namespace MWMechanics
 
     void Actors::removeActor (const MWWorld::Ptr& ptr)
     {
+        stopRagdoll(ptr);
         PtrActorMap::iterator iter = mActors.find(ptr);
         if(iter != mActors.end())
         {
@@ -2116,6 +2137,10 @@ namespace MWMechanics
 
     void Actors::updateActor(const MWWorld::Ptr &old, const MWWorld::Ptr &ptr)
     {
+        // A Ptr replacement can happen on cell changes. Stop the prototype pose
+        // before the old scene node becomes invalid; a newly dying actor can
+        // create a fresh ragdoll in the new cell.
+        stopRagdoll(old);
         PtrActorMap::iterator iter = mActors.find(old);
         if(iter != mActors.end())
         {
@@ -2134,6 +2159,7 @@ namespace MWMechanics
         {
             if((iter->first.isInCell() && iter->first.getCell()==cellStore) && iter->first != ignore)
             {
+                stopRagdoll(iter->first);
                 delete iter->second;
                 mActors.erase(iter++);
             }
@@ -2768,6 +2794,7 @@ namespace MWMechanics
             }
 
             killDeadActors();
+            updateRagdolls(duration);
             updateSneaking(playerCharacter, duration);
         }
 
@@ -2794,6 +2821,7 @@ namespace MWMechanics
 
     void Actors::resurrect(const MWWorld::Ptr &ptr)
     {
+        stopRagdoll(ptr);
         PtrActorMap::iterator iter = mActors.find(ptr);
         if(iter != mActors.end())
         {
@@ -2803,6 +2831,58 @@ namespace MWMechanics
                 MWBase::Environment::get().getWorld()->enableActorCollision(iter->first, true);
                 iter->second->getCharacterController()->resurrect();
             }
+        }
+    }
+
+    void Actors::startRagdoll(const MWWorld::Ptr& ptr)
+    {
+        // The ArenaMW ragdoll is still experimental. Keep the implementation
+        // available for testing, but default to the normal OpenMW/Morrowind
+        // death animation path unless it is explicitly enabled in settings.cfg.
+        if (!Settings::Manager::getBool("ragdoll physics", "Game"))
+            return;
+
+        if (ptr.isEmpty() || ptr == getPlayer())
+            return;
+        if (!ptr.getClass().isNpc() || !ptr.getClass().isBipedal(ptr))
+            return;
+        if (mRagdolls.find(ptr) != mRagdolls.end())
+            return;
+
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        MWRender::Animation* animation = world->getAnimation(ptr);
+        if (!animation)
+            return;
+
+        auto ragdoll = std::make_unique<MWPhysics::Ragdoll>(ptr, animation, world->getRayCasting());
+        if (!ragdoll->initialize())
+            return;
+
+        mRagdolls.emplace(ptr, std::move(ragdoll));
+    }
+
+    void Actors::stopRagdoll(const MWWorld::Ptr& ptr)
+    {
+        const auto found = mRagdolls.find(ptr);
+        if (found == mRagdolls.end())
+            return;
+        found->second->stop();
+        mRagdolls.erase(found);
+    }
+
+    void Actors::updateRagdolls(float duration)
+    {
+        for (auto it = mRagdolls.begin(); it != mRagdolls.end();)
+        {
+            const MWWorld::Ptr& ptr = it->first;
+            if (ptr.isEmpty() || !ptr.isInCell() || !ptr.getRefData().getBaseNode())
+            {
+                it = mRagdolls.erase(it);
+                continue;
+            }
+
+            it->second->update(duration);
+            ++it;
         }
     }
 
@@ -2820,6 +2900,11 @@ namespace MWMechanics
             CharacterController::KillResult killResult = iter->second->getCharacterController()->kill();
             if (killResult == CharacterController::Result_DeathAnimStarted)
             {
+                // ArenaMW prototype: biped NPCs immediately hand their visual
+                // skeleton to the lightweight ragdoll while the normal death
+                // state continues in the CharacterController for scripts/quests.
+                startRagdoll(iter->first);
+
                 // Play dying words
                 // Note: It's not known whether the soundgen tags scream, roar, and moan are reliable
                 // for NPCs since some of the npc death animation files are missing them.
@@ -3410,6 +3495,8 @@ namespace MWMechanics
 
     void Actors::clear()
     {
+        // Stop ragdoll mode while render animations are still alive.
+        mRagdolls.clear();
         PtrActorMap::iterator it(mActors.begin());
         for (; it != mActors.end(); ++it)
         {

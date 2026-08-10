@@ -1,12 +1,15 @@
 #include "tradewindow.hpp"
 
+#include <algorithm>
 #include <MyGUI_Button.h>
 #include <MyGUI_InputManager.h>
 #include <MyGUI_ControllerManager.h>
 #include <MyGUI_ControllerRepeatClick.h>
+#include <MyGUI_ImageBox.h>
 
 #include <components/widgets/numericeditbox.hpp>
 #include <components/settings/settings.hpp>
+#include <components/esm/loadmisc.hpp>
 
 /*
     Start of tes3mp addition
@@ -37,6 +40,7 @@
 #include "../mwmechanics/creaturestats.hpp"
 
 #include "inventorywindow.hpp"
+#include "draganddrop.hpp"
 #include "itemview.hpp"
 #include "sortfilteritemmodel.hpp"
 #include "containeritemmodel.hpp"
@@ -61,24 +65,30 @@ namespace
 
 namespace MWGui
 {
-    TradeWindow::TradeWindow()
+    TradeWindow::TradeWindow(DragAndDrop* dragAndDrop)
         : WindowBase("openmw_trade_window.layout")
         , mSortModel(nullptr)
         , mTradeModel(nullptr)
+        , mDragAndDrop(dragAndDrop)
         , mItemToSell(-1)
         , mCurrentBalance(0)
         , mCurrentMerchantOffer(0)
+        , mViewModeButton(nullptr)
+        , mViewModeIcon(nullptr)
+        , mFilterKeys(nullptr)
+        , mMerchantGoldIcon(nullptr)
     {
         getWidget(mFilterAll, "AllButton");
         getWidget(mFilterWeapon, "WeaponButton");
         getWidget(mFilterApparel, "ApparelButton");
         getWidget(mFilterMagic, "MagicButton");
         getWidget(mFilterMisc, "MiscButton");
+        getWidget(mFilterKeys, "KeysButton");
 
         getWidget(mMaxSaleButton, "MaxSaleButton");
         getWidget(mCancelButton, "CancelButton");
         getWidget(mOfferButton, "OfferButton");
-        getWidget(mPlayerGold, "PlayerGold");
+        getWidget(mMerchantGoldIcon, "MerchantGoldIcon");
         getWidget(mMerchantGold, "MerchantGold");
         getWidget(mIncreaseButton, "IncreaseButton");
         getWidget(mDecreaseButton, "DecreaseButton");
@@ -86,18 +96,34 @@ namespace MWGui
         getWidget(mTotalBalanceLabel, "TotalBalanceLabel");
         getWidget(mBottomPane, "BottomPane");
         getWidget(mFilterEdit, "FilterEdit");
+        getWidget(mViewModeButton, "ViewModeButton");
 
         getWidget(mItemView, "ItemView");
+        mItemView->setExtendedMode(true);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &TradeWindow::onItemSelected);
+        mItemView->eventItemDragStarted += MyGUI::newDelegate(this, &TradeWindow::onItemDragStarted);
+        mItemView->eventItemDoubleClicked += MyGUI::newDelegate(this, &TradeWindow::onItemDoubleClicked);
+        mItemView->eventBackgroundClicked += MyGUI::newDelegate(this, &TradeWindow::onBackgroundSelected);
+
+        mViewModeIcon = mViewModeButton->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(5, 4, 18, 18), MyGUI::Align::Center, "ArenaTradeViewToggleIcon");
+        mViewModeIcon->setNeedMouseFocus(false);
+        mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
 
         mFilterAll->setStateSelected(true);
+        mItemView->setInternalViewModeButtonVisible(false);
+        mItemView->setExtendedMode(true);
+        if (mViewModeIcon)
+            mViewModeIcon->setImageTexture("icons/inventoryextender/Base/view_grid.dds");
 
         mFilterAll->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterWeapon->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterApparel->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterMagic->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterMisc->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
+        mFilterKeys->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterEdit->eventEditTextChange += MyGUI::newDelegate(this, &TradeWindow::onNameFilterChanged);
+        mViewModeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onViewModeClicked);
 
         mCancelButton->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onCancelButtonClicked);
         mOfferButton->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onOfferButtonClicked);
@@ -111,7 +137,7 @@ namespace MWGui
         mTotalBalance->eventEditSelectAccept += MyGUI::newDelegate(this, &TradeWindow::onAccept);
         mTotalBalance->setMinValue(std::numeric_limits<int>::min()+1); // disallow INT_MIN since abs(INT_MIN) is undefined
 
-        setCoord(400, 0, 400, 300);
+        setCoord(320, 20, 680, 440);
     }
 
     void TradeWindow::setPtr(const MWWorld::Ptr& actor)
@@ -165,12 +191,15 @@ namespace MWGui
             mSortModel->setCategory(SortFilterItemModel::Category_Magic);
         else if (_sender == mFilterMisc)
             mSortModel->setCategory(SortFilterItemModel::Category_Misc);
+        else if (_sender == mFilterKeys)
+            mSortModel->setCategory(SortFilterItemModel::Category_Keys);
 
         mFilterAll->setStateSelected(false);
         mFilterWeapon->setStateSelected(false);
         mFilterApparel->setStateSelected(false);
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
+        mFilterKeys->setStateSelected(false);
 
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
 
@@ -191,29 +220,64 @@ namespace MWGui
 
     void TradeWindow::onItemSelected (int index)
     {
+        if (!mSortModel || !mTradeModel || index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
+            return;
+
         const ItemStack& item = mSortModel->getItem(index);
+        int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
 
-        MWWorld::Ptr object = item.mBase;
-        int count = item.mCount;
-        bool shift = MyGUI::InputManager::getInstance().isShiftPressed();
-        if (MyGUI::InputManager::getInstance().isControlPressed())
-            count = 1;
+        // ArenaMW barter uses modern one-click transfer. For stacked items use
+        // Ctrl+click to move one, or drag-and-drop if you want a custom amount.
+        mItemToSell = mSortModel->mapToSource(index);
+        sellItem(nullptr, count);
+    }
 
-        if (count > 1 && !shift)
+    void TradeWindow::onItemDragStarted(int index)
+    {
+        if (!mSortModel || !mTradeModel || mDragAndDrop->mIsOnDragAndDrop)
+            return;
+
+        const int sourceIndex = mSortModel->mapToSource(index);
+        const ItemStack& item = mTradeModel->getItem(sourceIndex);
+        const int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
+        mDragAndDrop->startBarterDrag(sourceIndex, mSortModel, mTradeModel, mItemView, count);
+    }
+
+    void TradeWindow::onItemDoubleClicked(int index)
+    {
+        if (!mSortModel || !mTradeModel || mDragAndDrop->mIsOnDragAndDrop)
+            return;
+
+        mItemToSell = mSortModel->mapToSource(index);
+        const ItemStack& item = mTradeModel->getItem(mItemToSell);
+        const int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
+        sellItem(nullptr, count);
+    }
+
+    void TradeWindow::onBackgroundSelected()
+    {
+        if (!mDragAndDrop->mIsOnDragAndDrop || !mDragAndDrop->isBarterDrag())
+            return;
+
+        if (mDragAndDrop->mSourceView == mItemView)
         {
-            CountDialog* dialog = MWBase::Environment::get().getWindowManager()->getCountDialog();
-            std::string message = "#{sQuanityMenuMessage02}";
-            std::string name = object.getClass().getName(object) + MWGui::ToolTips::getSoulString(object.getCellRef());
-            dialog->openCountDialog(name, message, count);
-            dialog->eventOkClicked.clear();
-            dialog->eventOkClicked += MyGUI::newDelegate(this, &TradeWindow::sellItem);
-            mItemToSell = mSortModel->mapToSource(index);
+            mDragAndDrop->finish();
+            return;
         }
-        else
-        {
-            mItemToSell = mSortModel->mapToSource(index);
-            sellItem (nullptr, count);
-        }
+
+        MWBase::Environment::get().getWindowManager()->getInventoryWindow()->completeBarterDragToMerchant(
+            mDragAndDrop->mSourceIndex, mDragAndDrop->mDraggedCount);
+        mDragAndDrop->finish();
+    }
+
+    void TradeWindow::completeBarterDragToPlayer(int sourceIndex, int count)
+    {
+        if (!mTradeModel || sourceIndex < 0 || sourceIndex >= static_cast<int>(mTradeModel->getItemCount()))
+            return;
+        mItemToSell = sourceIndex;
+        const ItemStack& item = mTradeModel->getItem(sourceIndex);
+        count = std::max(1, std::min(count, static_cast<int>(item.mCount)));
+        sellItem(nullptr, count);
     }
 
     void TradeWindow::sellItem(MyGUI::Widget* sender, int count)
@@ -583,23 +647,23 @@ namespace MWGui
 
     void TradeWindow::updateLabels()
     {
-        MWWorld::Ptr player = MWMechanics::getPlayer();
-        int playerGold = player.getClass().getContainerStore(player).count(MWWorld::ContainerStore::sGoldId);
-
-        mPlayerGold->setCaptionWithReplacing("#{sYourGold} " + MyGUI::utility::toString(playerGold));
-
-        if (mCurrentBalance < 0)
-        {
-            mTotalBalanceLabel->setCaptionWithReplacing("#{sTotalCost}");
-        }
-        else
-        {
-            mTotalBalanceLabel->setCaptionWithReplacing("#{sTotalSold}");
-        }
+        mTotalBalanceLabel->setCaption("");
+        mTotalBalanceLabel->setVisible(false);
 
         mTotalBalance->setValue(std::abs(mCurrentBalance));
 
-        mMerchantGold->setCaptionWithReplacing("#{sSellerGold} " + MyGUI::utility::toString(getMerchantGold()));
+        mMerchantGold->setCaption(MyGUI::utility::toString(getMerchantGold()));
+        if (mMerchantGoldIcon)
+        {
+            const std::string icon = resolveGoldIcon(mPtr);
+            if (!icon.empty())
+            {
+                mMerchantGoldIcon->setVisible(true);
+                mMerchantGoldIcon->setImageTexture(icon);
+            }
+            else
+                mMerchantGoldIcon->setVisible(false);
+        }
     }
 
     void TradeWindow::updateOffer()
@@ -659,11 +723,31 @@ namespace MWGui
         updateOffer();
     }
 
+    void TradeWindow::onViewModeClicked(MyGUI::Widget*)
+    {
+        if (!mItemView)
+            return;
+
+        ItemView::ViewMode mode = mItemView->getViewMode();
+        mItemView->setViewMode(mode == ItemView::View_List ? ItemView::View_Grid : ItemView::View_List);
+        if (mViewModeIcon)
+            mViewModeIcon->setImageTexture(std::string("icons/inventoryextender/Base/")
+                + (mItemView->getViewMode() == ItemView::View_List ? "view_grid.dds" : "view_table.dds"));
+        mViewModeButton->setStateSelected(mItemView->getViewMode() == ItemView::View_List);
+    }
+
     void TradeWindow::onReferenceUnavailable()
     {
         // remove both Trade and Dialogue (since you always trade with the NPC/creature that you have previously talked to)
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Barter);
         MWBase::Environment::get().getWindowManager()->exitCurrentGuiMode();
+    }
+
+    std::string TradeWindow::resolveGoldIcon(const MWWorld::Ptr&) const
+    {
+        const ESM::Miscellaneous* gold = MWBase::Environment::get().getWorld()->getStore()
+            .get<ESM::Miscellaneous>().search(MWWorld::ContainerStore::sGoldId);
+        return gold ? gold->mIcon : std::string();
     }
 
     int TradeWindow::getMerchantGold()

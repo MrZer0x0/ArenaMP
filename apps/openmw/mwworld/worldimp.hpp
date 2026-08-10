@@ -115,6 +115,30 @@ namespace MWWorld
 
             float mDistanceToFacedObject;
 
+            struct PhysicsObjectState
+            {
+                MWWorld::Ptr mPtr;
+                osg::Vec3f mVelocity;
+                osg::Vec3f mAngularVelocity;
+                osg::Vec3f mHalfExtents = osg::Vec3f(4.f, 4.f, 4.f);
+                osg::Vec3f mLocalCenter;
+                osg::Vec3f mLocalGrabOffset;
+                osg::Vec3f mLastHoldTarget;
+                float mRadius = 4.f;
+                float mMass = 1.f;
+                float mSleepTimer = 0.f;
+                float mHoldDistance = 120.f;
+                float mImpactSoundCooldown = 0.f;
+                float mFractureDamage = 0.f;
+                float mNetworkSyncTimer = 0.f;
+                std::string mPhysicsMaterial;
+                bool mBreakableGlass = false;
+                bool mLiquidContainer = false;
+                bool mGrabbed = false;
+                bool mHadSurfaceContact = false;
+            };
+            std::vector<PhysicsObjectState> mPhysicsObjects;
+
             bool mTeleportEnabled;
             bool mLevitationEnabled;
             bool mGoToJail;
@@ -139,6 +163,8 @@ namespace MWWorld
 
             void updateSoundListener();
             void updatePlayer();
+            void updatePhysicsObjects(float duration);
+            void syncPhysicsObjectTransform(const Ptr& ptr);
 
             void preloadSpells();
 
@@ -458,6 +484,12 @@ namespace MWWorld
             ///< Return pointer to the object the player is looking at, if it is within activation range
 
             float getDistanceToFacedObject() override;
+
+            bool canPhysicsGrab(const MWWorld::ConstPtr& object) const override;
+            bool beginPhysicsGrab(const MWWorld::Ptr& object) override;
+            void releasePhysicsGrab() override;
+            bool isPhysicsGrabActive() const override;
+            void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) override;
 
             /// Returns a pointer to the object the provided object would hit (if within the
             /// specified distance), and the point where the hit occurs. This will attempt to

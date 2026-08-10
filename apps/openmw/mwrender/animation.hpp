@@ -7,6 +7,10 @@
 #include <components/sceneutil/textkeymap.hpp>
 #include <components/sceneutil/util.hpp>
 
+#include <osg/Matrix>
+
+#include <map>
+#include <memory>
 #include <vector>
 
 namespace ESM
@@ -79,6 +83,14 @@ struct EffectParams
     int mEffectId;
     bool mLoop;
     std::string mBoneName;
+};
+
+struct AnimationPoseTransitionState
+{
+    osg::Matrixf mFrom;
+    float mDuration = 0.f;
+    double mStartTime = -1.0;
+    bool mFinished = false;
 };
 
 class Animation : public osg::Referenced
@@ -254,6 +266,9 @@ protected:
     mutable NodeMap mNodeMap;
     mutable bool mNodeMapCreated;
 
+    typedef std::map<std::string, std::shared_ptr<AnimationPoseTransitionState> > PoseTransitionMap;
+    PoseTransitionMap mPoseTransitions;
+
     MWWorld::Ptr mPtr;
 
     Resource::ResourceSystem* mResourceSystem;
@@ -274,6 +289,7 @@ protected:
     RotateController* addRotateController(std::string bone);
 
     bool mHasMagicEffects;
+    bool mRagdollMode;
 
     osg::ref_ptr<SceneUtil::LightSource> mGlowLight;
     osg::ref_ptr<SceneUtil::GlowUpdater> mGlowUpdater;
@@ -291,6 +307,8 @@ protected:
     /* Sets the appropriate animations on the bone groups based on priority.
      */
     void resetActiveGroups();
+
+    void addPoseTransitions();
 
     size_t detectBlendMask(const osg::Node* node) const;
 
@@ -361,6 +379,15 @@ public:
 
     osg::Group* getObjectRoot();
 
+    /** Attach an ordinary scene object to the first available actor bone.
+     *
+     * Unlike addEffect(), this uses the same SceneUtil attachment path as
+     * weapons/armour. It is intended for visible hand-held props (books,
+     * food, bottles, pipes) and therefore does not mark the model as VFX.
+     */
+    PartHolderPtr attachObjectToBone(const std::string& model,
+        const std::vector<std::string>& boneCandidates);
+
     /**
      * @brief Add an effect mesh attached to a bone or the insert scene node
      * @param model
@@ -413,6 +440,15 @@ public:
               float speedmult, const std::string &start, const std::string &stop,
               float startpoint, size_t loops, bool loopfallback=false);
 
+    /** Smoothly carries the currently rendered bone pose into the next animation state.
+     *
+     * Only the requested bone groups are captured. The next controller rebuild will
+     * blend from the captured transforms to the newly selected animation instead of
+     * snapping in one frame. When replacing a group, disable the old group first, then
+     * capture the still-visible pose immediately before playing the new group.
+     */
+    void beginBoneTransition(int blendMask, float duration);
+
     /** Adjust the speed multiplier of an already playing animation.
      */
     void adjustSpeedMult (const std::string& groupname, float speedmult);
@@ -460,6 +496,15 @@ public:
     /// Return a node with the specified name, or nullptr if not existing.
     /// @note The matching is case-insensitive.
     const osg::Node* getNode(const std::string& name) const;
+
+    /// Mutable bone access used by the ArenaMW ragdoll prototype.
+    /// The lookup is case-insensitive, like getNode().
+    osg::MatrixTransform* getNodeTransform(const std::string& name);
+
+    /// Suspend animation controllers while an external physics pose owns the skeleton.
+    void setRagdollMode(bool enabled);
+    bool isRagdollMode() const { return mRagdollMode; }
+    void markSkeletonDirty();
 
     virtual bool useShieldAnimations() const { return false; }
     virtual void showWeapons(bool showWeapon) {}

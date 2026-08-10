@@ -113,6 +113,7 @@ namespace mwmp
         void sendMarkLocation(const ESM::Cell& newMarkCell, const ESM::Position& newMarkPosition);
         void sendSelectedSpell(const std::string& newSelectedSpellId);
         void sendItemUse(const MWWorld::Ptr& itemPtr, bool usingItemMagic = false, char currentDrawState = 0);
+        void sendConsumableAnimation(const std::string& refId);
         void sendCellStates();
 
         void clearCellStates();

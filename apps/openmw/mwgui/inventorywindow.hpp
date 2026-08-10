@@ -7,6 +7,11 @@
 #include "../mwworld/ptr.hpp"
 #include "../mwrender/characterpreview.hpp"
 
+namespace MyGUI
+{
+    class ScrollView;
+}
+
 namespace osg
 {
     class Group;
@@ -45,14 +50,20 @@ namespace MWGui
             void pickUpObject (MWWorld::Ptr object);
 
             MWWorld::Ptr getAvatarSelectedItem(int x, int y);
+            int getPlayerGold() const;
+            std::string resolveGoldIcon() const;
 
             void rebuildAvatar();
 
             SortFilterItemModel* getSortFilterModel();
             TradeItemModel* getTradeModel();
             ItemModel* getModel();
+            ItemView* getItemView() const { return mItemView; }
 
             void updateItemView();
+
+            /// Barter drop target used by TradeWindow for visual drag-and-drop.
+            void completeBarterDragToMerchant(int sourceIndex, int count);
 
             void updatePlayer();
 
@@ -86,14 +97,39 @@ namespace MWGui
 
             MyGUI::Widget* mLeftPane;
             MyGUI::Widget* mRightPane;
+            MyGUI::Widget* mCategories;
+            MyGUI::Widget* mBottomBar;
+
+            // Native Inventory Extender layout toggle. Unlike the OpenMW 0.51
+            // Lua version we can keep the vanilla paper doll available, but
+            // hide it to give the table the full inventory width.
+            MyGUI::Button* mPaperDollButton;
+            MyGUI::ImageBox* mPaperDollIcon;
+            MyGUI::Button* mViewModeButton;
+            MyGUI::ImageBox* mViewModeIcon;
+            MyGUI::ImageBox* mGoldIcon;
+            MyGUI::TextBox* mGoldLabel;
+            bool mPaperDollVisible;
 
             MyGUI::Button* mFilterAll;
             MyGUI::Button* mFilterWeapon;
             MyGUI::Button* mFilterApparel;
             MyGUI::Button* mFilterMagic;
             MyGUI::Button* mFilterMisc;
-            
+            MyGUI::Button* mFilterKeys;
+
             MyGUI::EditBox* mFilterEdit;
+
+            // The key ring itself is rendered as a virtual item inside ItemView.
+            // This panel is only the popup that shows the contained real keys.
+            MyGUI::Widget* mKeyRingPanel;
+            MyGUI::TextBox* mKeyRingTitle;
+            MyGUI::TextBox* mKeyRingWeight;
+            MyGUI::ScrollView* mKeyRingList;
+            bool mKeyRingOpen;
+            float mKeyRingUpdateTimer;
+
+            void refreshKeyRingPopupRows();
 
             GuiMode mGuiMode;
 
@@ -109,6 +145,8 @@ namespace MWGui
             void toggleMaximized();
 
             void onItemSelected(int index);
+            void onItemDragStarted(int index);
+            void onItemDoubleClicked(int index);
             void onItemSelectedFromSourceModel(int index);
 
             void onBackgroundSelected();
@@ -122,6 +160,9 @@ namespace MWGui
             void onFilterChanged(MyGUI::Widget* _sender);
             void onNameFilterChanged(MyGUI::EditBox* _sender);
             void onAvatarClicked(MyGUI::Widget* _sender);
+            void onPaperDollClicked(MyGUI::Widget* _sender);
+            void onViewModeClicked(MyGUI::Widget* _sender);
+            void onKeyRingClicked(MyGUI::Widget* _sender);
             void onPinToggled() override;
 
             void updateEncumbranceBar();
@@ -129,6 +170,9 @@ namespace MWGui
             void dirtyPreview();
             void updatePreviewSize();
             void updateArmorRating();
+            void updateKeyRing();
+            void updateBottomControls();
+            void adjustKeyRingLayout();
 
             void adjustPanes();
 

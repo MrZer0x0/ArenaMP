@@ -1,5 +1,6 @@
 #include "animation.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <limits>
 
@@ -20,6 +21,7 @@
 #include <components/misc/constants.hpp>
 #include <components/misc/resourcehelpers.hpp>
 
+#include <components/sceneutil/attach.hpp>
 #include <components/sceneutil/keyframe.hpp>
 
 #include <components/vfs/manager.hpp>
@@ -49,6 +51,68 @@
 
 namespace
 {
+
+    class PoseTransitionCallback : public osg::NodeCallback
+    {
+    public:
+        PoseTransitionCallback(const std::shared_ptr<MWRender::AnimationPoseTransitionState>& state)
+            : mState(state)
+        {
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) override
+        {
+            if (!nv)
+                return;
+
+            osg::MatrixTransform* transform = dynamic_cast<osg::MatrixTransform*>(node);
+            if (!transform || !mState || !nv->getFrameStamp() || mState->mFinished)
+            {
+                traverse(node, nv);
+                return;
+            }
+
+            const double now = nv->getFrameStamp()->getSimulationTime();
+            if (mState->mStartTime < 0.0)
+                mState->mStartTime = now;
+
+            const float duration = std::max(0.001f, mState->mDuration);
+            float t = static_cast<float>((now - mState->mStartTime) / duration);
+            t = std::max(0.f, std::min(1.f, t));
+
+            // Smoothstep avoids a visible kick both at the start and at the end
+            // of the hand-off. The keyframe controller has already written the
+            // destination pose when this callback runs.
+            const float blend = t * t * (3.f - 2.f * t);
+            const osg::Matrixf target = transform->getMatrix();
+
+            const osg::Vec3f fromPos = mState->mFrom.getTrans();
+            const osg::Vec3f targetPos = target.getTrans();
+            const osg::Vec3f fromScale = mState->mFrom.getScale();
+            const osg::Vec3f targetScale = target.getScale();
+            const osg::Quat fromRot = mState->mFrom.getRotate();
+            const osg::Quat targetRot = target.getRotate();
+
+            osg::Quat rotation;
+            rotation.slerp(blend, fromRot, targetRot);
+
+            const osg::Vec3f position = fromPos * (1.f - blend) + targetPos * blend;
+            const osg::Vec3f scale = fromScale * (1.f - blend) + targetScale * blend;
+
+            osg::Matrixf result = osg::Matrixf::scale(scale)
+                * osg::Matrixf::rotate(rotation)
+                * osg::Matrixf::translate(position);
+            transform->setMatrix(result);
+
+            if (t >= 1.f)
+                mState->mFinished = true;
+
+            traverse(node, nv);
+        }
+
+    private:
+        std::shared_ptr<MWRender::AnimationPoseTransitionState> mState;
+    };
 
     /// Removes all particle systems and related nodes in a subgraph.
     class RemoveParticlesVisitor : public osg::NodeVisitor
@@ -624,6 +688,7 @@ namespace MWRender
         , mLegsYawRadians(0.f)
         , mBodyPitchRadians(0.f)
         , mHasMagicEffects(false)
+        , mRagdollMode(false)
         , mAlpha(1.f)
     {
         for(size_t i = 0;i < sNumBlendMasks;i++)
@@ -799,6 +864,7 @@ namespace MWRender
     void Animation::clearAnimSources()
     {
         mStates.clear();
+        mPoseTransitions.clear();
 
         for(size_t i = 0;i < sNumBlendMasks;i++)
             mAnimationTimePtr[i]->setTimePtr(std::shared_ptr<float>());
@@ -1093,6 +1159,9 @@ namespace MWRender
                 {
                     osg::ref_ptr<osg::Node> node = getNodeMap().at(it->first); // this should not throw, we already checked for the node existing in addAnimSource
 
+                    if (mRagdollMode)
+                        continue;
+
                     node->addUpdateCallback(it->second);
                     mActiveControllers.emplace_back(node, it->second);
 
@@ -1112,7 +1181,71 @@ namespace MWRender
                 }
             }
         }
-        addControllers();
+        if (!mRagdollMode)
+        {
+            addControllers();
+            addPoseTransitions();
+        }
+        else
+            mPoseTransitions.clear();
+    }
+
+    void Animation::beginBoneTransition(int blendMask, float duration)
+    {
+        if (mRagdollMode || blendMask == 0 || duration <= 0.f || !mObjectRoot)
+            return;
+
+        const NodeMap& nodes = getNodeMap();
+        for (NodeMap::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+        {
+            osg::MatrixTransform* node = it->second.get();
+            if (!node || node == mAccumRoot.get())
+                continue;
+
+            const size_t group = detectBlendMask(node);
+            if ((blendMask & (1 << group)) == 0)
+                continue;
+
+            std::shared_ptr<AnimationPoseTransitionState> transition(new AnimationPoseTransitionState);
+            transition->mFrom = node->getMatrix();
+            transition->mDuration = duration;
+            mPoseTransitions[it->first] = transition;
+        }
+    }
+
+    void Animation::addPoseTransitions()
+    {
+        if (mPoseTransitions.empty())
+            return;
+
+        // Add these after the normal animation/head/spine controllers. This
+        // makes the transition operate on the final target pose for the frame,
+        // then gently pull the visible bones from their previous pose toward it.
+        // The state stays alive across controller rebuilds so a disable/play/idle
+        // sequence in one mechanics tick cannot accidentally cancel the blend.
+        for (PoseTransitionMap::iterator it = mPoseTransitions.begin();
+             it != mPoseTransitions.end();)
+        {
+            if (!it->second || it->second->mFinished)
+            {
+                it = mPoseTransitions.erase(it);
+                continue;
+            }
+
+            NodeMap::const_iterator nodeIt = getNodeMap().find(it->first);
+            if (nodeIt == getNodeMap().end() || !nodeIt->second
+                || nodeIt->second.get() == mAccumRoot.get())
+            {
+                ++it;
+                continue;
+            }
+
+            osg::ref_ptr<PoseTransitionCallback> transition
+                = new PoseTransitionCallback(it->second);
+            nodeIt->second->addUpdateCallback(transition);
+            mActiveControllers.emplace_back(nodeIt->second, transition);
+            ++it;
+        }
     }
 
     void Animation::adjustSpeedMult(const std::string &groupname, float speedmult)
@@ -1595,6 +1728,34 @@ namespace MWRender
         return mObjectRoot.get();
     }
 
+    PartHolderPtr Animation::attachObjectToBone(const std::string& model,
+        const std::vector<std::string>& boneCandidates)
+    {
+        if (model.empty() || boneCandidates.empty() || !getOrCreateObjectRoot())
+            return PartHolderPtr();
+
+        const NodeMap& nodes = getNodeMap();
+        for (const std::string& boneName : boneCandidates)
+        {
+            const NodeMap::const_iterator found
+                = nodes.find(Misc::StringUtils::lowerCase(boneName));
+            if (found == nodes.end() || !found->second)
+                continue;
+
+            // Instantiate without a parent first, then use SceneUtil::attach.
+            // Besides attaching to the real skeleton node this honours the
+            // NIF BoneOffset convention used by hand-held Morrowind meshes.
+            osg::ref_ptr<osg::Node> instance
+                = mResourceSystem->getSceneManager()->getInstance(model);
+            osg::ref_ptr<osg::Node> attached = SceneUtil::attach(
+                instance, mObjectRoot.get(), boneName, found->second.get());
+            if (attached)
+                return PartHolderPtr(new PartHolder(attached));
+        }
+
+        return PartHolderPtr();
+    }
+
     void Animation::addSpellCastGlow(const ESM::MagicEffect *effect, float glowDuration)
     {
         osg::Vec4f glowColor(1,1,1,1);
@@ -1757,6 +1918,33 @@ namespace MWRender
             return nullptr;
         else
             return found->second;
+    }
+
+    osg::MatrixTransform* Animation::getNodeTransform(const std::string& name)
+    {
+        const std::string lowerName = Misc::StringUtils::lowerCase(name);
+        NodeMap::const_iterator found = getNodeMap().find(lowerName);
+        if (found == getNodeMap().end())
+            return nullptr;
+        return found->second.get();
+    }
+
+    void Animation::setRagdollMode(bool enabled)
+    {
+        if (mRagdollMode == enabled)
+            return;
+
+        mRagdollMode = enabled;
+        // Rebuild the controller chains. In ragdoll mode resetActiveGroups()
+        // deliberately leaves keyframe and rotate controllers detached.
+        resetActiveGroups();
+        markSkeletonDirty();
+    }
+
+    void Animation::markSkeletonDirty()
+    {
+        if (mSkeleton)
+            mSkeleton->markDirty();
     }
 
     void Animation::setAlpha(float alpha)

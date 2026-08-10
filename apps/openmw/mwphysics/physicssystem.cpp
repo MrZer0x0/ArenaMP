@@ -7,6 +7,7 @@
 #include <osg/Stats>
 #include <osg/Timer>
 
+#include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
@@ -60,6 +61,66 @@
 
 namespace
 {
+    class ClosestNotMeConvexResultCallback final : public btCollisionWorld::ClosestConvexResultCallback
+    {
+    public:
+        ClosestNotMeConvexResultCallback(const btVector3& from, const btVector3& to, const btCollisionObject* ignore)
+            : btCollisionWorld::ClosestConvexResultCallback(from, to)
+            , mIgnore(ignore)
+        {
+        }
+
+        btScalar addSingleResult(btCollisionWorld::LocalConvexResult& result, bool normalInWorldSpace) override
+        {
+            if (result.m_hitCollisionObject == mIgnore)
+                return btScalar(1.0);
+            return btCollisionWorld::ClosestConvexResultCallback::addSingleResult(result, normalInWorldSpace);
+        }
+
+    private:
+        const btCollisionObject* mIgnore;
+    };
+
+    class DeepestBoxPenetrationCallback final : public btCollisionWorld::ContactResultCallback
+    {
+    public:
+        explicit DeepestBoxPenetrationCallback(const btCollisionObject* ignore)
+            : mIgnore(ignore)
+        {
+            m_collisionFilterGroup = 0xff;
+            m_collisionFilterMask = MWPhysics::CollisionType_World | MWPhysics::CollisionType_HeightMap
+                | MWPhysics::CollisionType_Door;
+        }
+
+        btScalar addSingleResult(btManifoldPoint& cp,
+            const btCollisionObjectWrapper* col0Wrap, int, int,
+            const btCollisionObjectWrapper* col1Wrap, int, int) override
+        {
+            const btCollisionObject* a = col0Wrap->getCollisionObject();
+            const btCollisionObject* b = col1Wrap->getCollisionObject();
+            if (a == mIgnore || b == mIgnore || cp.getDistance() >= btScalar(0))
+                return btScalar(0);
+
+            const btScalar depth = -cp.getDistance();
+            if (depth <= mDepth)
+                return btScalar(0);
+
+            // contactTest() is called with our temporary box. Bullet's normalWorldOnB
+            // points from B to A. Flip only if the temporary object is B.
+            const bool temporaryIsA = (a == mTemporary);
+            mNormal = temporaryIsA ? cp.m_normalWorldOnB : -cp.m_normalWorldOnB;
+            mDepth = depth;
+            return btScalar(0);
+        }
+
+        void setTemporary(const btCollisionObject* object) { mTemporary = object; }
+
+        const btCollisionObject* mIgnore = nullptr;
+        const btCollisionObject* mTemporary = nullptr;
+        btVector3 mNormal = btVector3(0, 0, 0);
+        btScalar mDepth = btScalar(0);
+    };
+
     bool canMoveToWaterSurface(const MWPhysics::Actor* physicActor, const float waterlevel, btCollisionWorld* world)
     {
         if (!physicActor)
@@ -332,6 +393,7 @@ namespace MWPhysics
         result.mHit = resultCallback.hasHit();
         if (resultCallback.hasHit())
         {
+            result.mHitFraction = resultCallback.m_closestHitFraction;
             result.mHitPos = Misc::Convert::toOsg(resultCallback.m_hitPointWorld);
             result.mHitNormal = Misc::Convert::toOsg(resultCallback.m_hitNormalWorld);
             if (PtrHolder* ptrHolder = static_cast<PtrHolder*>(resultCallback.m_collisionObject->getUserPointer()))
@@ -340,9 +402,20 @@ namespace MWPhysics
         return result;
     }
 
-    RayCastingResult PhysicsSystem::castSphere(const osg::Vec3f &from, const osg::Vec3f &to, float radius) const
+    RayCastingResult PhysicsSystem::castSphere(const osg::Vec3f &from, const osg::Vec3f &to, float radius,
+                                                  const MWWorld::ConstPtr& ignore) const
     {
-        btCollisionWorld::ClosestConvexResultCallback callback(Misc::Convert::toBullet(from), Misc::Convert::toBullet(to));
+        const btCollisionObject* ignoredObject = nullptr;
+        if (!ignore.isEmpty())
+        {
+            if (const Actor* actor = getActor(ignore))
+                ignoredObject = actor->getCollisionObject();
+            else if (const Object* object = getObject(ignore))
+                ignoredObject = object->getCollisionObject();
+        }
+
+        ClosestNotMeConvexResultCallback callback(
+            Misc::Convert::toBullet(from), Misc::Convert::toBullet(to), ignoredObject);
         callback.m_collisionFilterGroup = 0xff;
         callback.m_collisionFilterMask = CollisionType_World|CollisionType_HeightMap|CollisionType_Door;
 
@@ -358,10 +431,113 @@ namespace MWPhysics
         result.mHit = callback.hasHit();
         if (result.mHit)
         {
+            result.mHitFraction = callback.m_closestHitFraction;
             result.mHitPos = Misc::Convert::toOsg(callback.m_hitPointWorld);
             result.mHitNormal = Misc::Convert::toOsg(callback.m_hitNormalWorld);
+            if (callback.m_hitCollisionObject)
+            {
+                if (PtrHolder* ptrHolder = static_cast<PtrHolder*>(callback.m_hitCollisionObject->getUserPointer()))
+                    result.mHitObject = ptrHolder->getPtr();
+            }
         }
         return result;
+    }
+
+    RayCastingResult PhysicsSystem::castBox(const osg::Vec3f& from, const osg::Quat& fromRotation,
+        const osg::Vec3f& to, const osg::Quat& toRotation, const osg::Vec3f& halfExtents,
+        const MWWorld::ConstPtr& ignore) const
+    {
+        const btCollisionObject* ignoredObject = nullptr;
+        if (!ignore.isEmpty())
+        {
+            if (const Actor* actor = getActor(ignore))
+                ignoredObject = actor->getCollisionObject();
+            else if (const Object* object = getObject(ignore))
+                ignoredObject = object->getCollisionObject();
+        }
+
+        const btVector3 safeHalfExtents(
+            std::max(0.5f, halfExtents.x()),
+            std::max(0.5f, halfExtents.y()),
+            std::max(0.5f, halfExtents.z()));
+        btBoxShape shape(safeHalfExtents);
+        shape.setMargin(0.15f);
+
+        const btTransform fromTransform(Misc::Convert::toBullet(fromRotation), Misc::Convert::toBullet(from));
+        const btTransform toTransform(Misc::Convert::toBullet(toRotation), Misc::Convert::toBullet(to));
+
+        ClosestNotMeConvexResultCallback callback(
+            Misc::Convert::toBullet(from), Misc::Convert::toBullet(to), ignoredObject);
+        callback.m_collisionFilterGroup = 0xff;
+        callback.m_collisionFilterMask = CollisionType_World | CollisionType_HeightMap | CollisionType_Door;
+        mTaskScheduler->convexSweepTest(&shape, fromTransform, toTransform, callback);
+
+        RayCastingResult result;
+        result.mHit = callback.hasHit();
+        if (result.mHit)
+        {
+            result.mHitFraction = callback.m_closestHitFraction;
+            result.mHitPos = Misc::Convert::toOsg(callback.m_hitPointWorld);
+            result.mHitNormal = Misc::Convert::toOsg(callback.m_hitNormalWorld);
+            if (callback.m_hitCollisionObject)
+            {
+                if (PtrHolder* ptrHolder = static_cast<PtrHolder*>(callback.m_hitCollisionObject->getUserPointer()))
+                    result.mHitObject = ptrHolder->getPtr();
+            }
+        }
+        return result;
+    }
+
+    bool PhysicsSystem::getObjectShapeBounds(const MWWorld::ConstPtr& object, osg::Vec3f& center,
+        osg::Vec3f& halfExtents) const
+    {
+        const Object* physObject = getObject(object);
+        if (!physObject || !physObject->getCollisionObject() || !physObject->getCollisionObject()->getCollisionShape())
+            return false;
+
+        btTransform identity;
+        identity.setIdentity();
+        btVector3 minimum;
+        btVector3 maximum;
+        physObject->getCollisionObject()->getCollisionShape()->getAabb(identity, minimum, maximum);
+        center = Misc::Convert::toOsg((minimum + maximum) * btScalar(0.5));
+        halfExtents = Misc::Convert::toOsg((maximum - minimum) * btScalar(0.5));
+        return halfExtents.x() > 0.f && halfExtents.y() > 0.f && halfExtents.z() > 0.f;
+    }
+
+    osg::Vec3f PhysicsSystem::getBoxPenetrationCorrection(const osg::Vec3f& position, const osg::Quat& rotation,
+        const osg::Vec3f& halfExtents, const MWWorld::ConstPtr& ignore, float maxCorrection) const
+    {
+        const btCollisionObject* ignoredObject = nullptr;
+        if (!ignore.isEmpty())
+        {
+            if (const Actor* actor = getActor(ignore))
+                ignoredObject = actor->getCollisionObject();
+            else if (const Object* object = getObject(ignore))
+                ignoredObject = object->getCollisionObject();
+        }
+
+        btBoxShape shape(btVector3(
+            std::max(0.5f, halfExtents.x()),
+            std::max(0.5f, halfExtents.y()),
+            std::max(0.5f, halfExtents.z())));
+        shape.setMargin(0.1f);
+
+        btCollisionObject probe;
+        probe.setCollisionShape(&shape);
+        probe.setWorldTransform(btTransform(Misc::Convert::toBullet(rotation), Misc::Convert::toBullet(position)));
+
+        DeepestBoxPenetrationCallback callback(ignoredObject);
+        callback.setTemporary(&probe);
+        mTaskScheduler->contactTest(&probe, callback);
+        if (callback.mDepth <= btScalar(0) || callback.mNormal.length2() <= btScalar(0.000001))
+            return osg::Vec3f();
+
+        btVector3 correction = callback.mNormal.normalized() * (callback.mDepth + btScalar(0.15));
+        const btScalar maxLen = std::max(0.f, maxCorrection);
+        if (maxLen > btScalar(0) && correction.length() > maxLen)
+            correction = correction.normalized() * maxLen;
+        return Misc::Convert::toOsg(correction);
     }
 
     bool PhysicsSystem::getLineOfSight(const MWWorld::ConstPtr &actor1, const MWWorld::ConstPtr &actor2) const

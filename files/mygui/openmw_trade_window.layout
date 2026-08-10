@@ -1,87 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <MyGUI type="Layout">
-    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 600 360" name="_Main">
+    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 650 440" name="_Main">
         <Property key="Visible" value="false"/>
-        <Property key="MinSize" value="428 245"/>
+        <Property key="MinSize" value="560 360"/>
 
-        <!-- Categories -->
-        <Widget type="HBox" position="8 8 566 24" align="Left Top HStretch" name="Categories">
-            <Widget type="AutoSizedButton" skin="MW_Button" name="AllButton">
-                <Property key="Caption" value="#{sAllTab}"/>
-                <Property key="NeedKey" value="false"/>
-            </Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" name="WeaponButton">
-                <Property key="Caption" value="#{sWeaponTab}"/>
-                <Property key="NeedKey" value="false"/>
-            </Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" name="ApparelButton">
-                <Property key="Caption" value="#{sApparelTab}"/>
-                <Property key="NeedKey" value="false"/>
-            </Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" name="MagicButton">
-                <Property key="Caption" value="#{sMagicTab}"/>
-                <Property key="NeedKey" value="false"/>
-            </Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" name="MiscButton">
-                <Property key="Caption" value="#{sMiscTab}"/>
-                <Property key="NeedKey" value="false"/>
-            </Widget>
-            <!-- Search box-->
-            <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="0 0 0 23" name="FilterEdit">
-                <UserString key="HStretch" value="true"/>
-                <UserString key="AcceptTab" value="true"/>
-            </Widget>
+        <!-- Same top category bar as the player inventory. -->
+        <Widget type="HBox" position="8 8 634 28" align="Left Top HStretch" name="Categories">
+            <Widget type="AutoSizedButton" skin="MW_Button" name="AllButton"><Property key="Caption" value="#{sAllTab}"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="WeaponButton"><Property key="Caption" value="#{sWeaponTab}"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="ApparelButton"><Property key="Caption" value="#{sApparelTab}"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="MagicButton"><Property key="Caption" value="#{sMagicTab}"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="MiscButton"><Property key="Caption" value="#{sMiscTab}"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="KeysButton"><Property key="Caption" value="Ключи"/><Property key="NeedKey" value="false"/></Widget>
         </Widget>
 
-        <!-- Items -->
-        <Widget type="ItemView" skin="MW_ItemView" position="8 38 566 185" name="ItemView" align="Left Top Stretch">
+        <Widget type="ItemView" skin="MW_ItemView" position="8 40 634 286" name="ItemView" align="Left Top Stretch"></Widget>
+
+        <!-- Row 1 mirrors the player bottom bar: view, transaction controls, search, own gold. -->
+        <Widget type="Widget" skin="" position="8 330 634 68" name="BottomPane" align="Left Bottom HStretch">
+            <Widget type="Button" skin="MW_Button" position="0 2 30 26" name="ViewModeButton" align="Left Top"><Property key="Caption" value=""/></Widget>
+            <Widget type="Button" skin="MW_Button" position="36 2 30 26" name="IncreaseButton" align="Left Top"><Property key="Caption" value="+"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="NumericEditBox" skin="MW_TextEdit" position="72 2 82 26" name="TotalBalance" align="Left Top"><Property key="TextAlign" value="Center"/></Widget>
+            <Widget type="Button" skin="MW_Button" position="160 2 30 26" name="DecreaseButton" align="Left Top"><Property key="Caption" value="-"/><Property key="NeedKey" value="false"/></Widget>
+            <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="196 2 342 26" name="FilterEdit" align="Left Top HStretch"><UserString key="AcceptTab" value="true"/></Widget>
+            <Widget type="ImageBox" skin="ImageBox" position="546 6 18 18" name="MerchantGoldIcon" align="Right Top"></Widget>
+            <Widget type="AutoSizedTextBox" skin="SandText" position="568 2 62 26" name="MerchantGold" align="Right Top"><Property key="TextAlign" value="Left VCenter"/></Widget>
+
+            <!-- Kept only for code compatibility; deliberately invisible. -->
+            <Widget type="TextBox" skin="SandText" position="0 34 1 1" name="TotalBalanceLabel" align="Left Bottom"><Property key="Visible" value="false"/></Widget>
+
+            <!-- Row 2: barter actions, lifted fully inside the window. -->
+            <Widget type="AutoSizedButton" skin="MW_Button" position="0 36 0 26" name="MaxSaleButton" align="Left Bottom"><Property key="Caption" value="#{sMaxSale}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="476 36 0 26" name="OfferButton" align="Right Bottom"><Property key="Caption" value="#{sBarterDialog8}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="566 36 0 26" name="CancelButton" align="Right Bottom"><Property key="Caption" value="#{sCancel}"/></Widget>
         </Widget>
-
-        <Widget type="Widget" skin="" position="8 231 566 92" name="BottomPane" align="Left Bottom HStretch">
-            <Widget type="HBox" position="0 0 566 24" align="Left Top HStretch">
-                <Widget type="Button" skin="MW_Button" position="0 0 40 24" name="IncreaseButton" align="Left Top">
-                    <Property key="Caption" value="+"/>
-                    <Property key="NeedKey" value="false"/>
-                </Widget>
-                <Widget type="AutoSizedTextBox" skin="SandText" position="48 0 140 24" name="TotalBalanceLabel" align="Left Top">
-                    <Property key="TextAlign" value="Left VCenter"/>
-                </Widget>
-                <Widget type="Spacer" />
-                <Widget type="AutoSizedTextBox" skin="SandText" position="0 0 374 24" name="PlayerGold" align="Right Top">
-                    <Property key="TextAlign" value="Right"/>
-                </Widget>
-            </Widget>
-
-            <Widget type="HBox" position="0 28 566 28" align="Left Top HStretch">
-                <Widget type="Button" skin="MW_Button" position="0 0 40 24" name="DecreaseButton" align="Left Top">
-                    <Property key="Caption" value="-"/>
-                    <Property key="NeedKey" value="false"/>
-                </Widget>
-                <Widget type="NumericEditBox" skin="MW_TextEdit" position="48 0 140 24" name="TotalBalance" align="Left Top">
-                    <Property key="TextAlign" value="Center"/>
-                </Widget>
-                <Widget type="Spacer" />
-                <Widget type="AutoSizedTextBox" skin="SandText" position="0 0 374 24" name="MerchantGold" align="Right Top">
-                    <Property key="TextAlign" value="Right"/>
-                </Widget>
-            </Widget>
-
-            <Widget type="HBox" position="0 60 566 28" align="Left Bottom HStretch">
-                <Widget type="AutoSizedButton" skin="MW_Button" name="MaxSaleButton">
-                    <Property key="Caption" value="#{sMaxSale}"/>
-                </Widget>
-                <Widget type="Spacer" />
-                <Widget type="AutoSizedButton" skin="MW_Button" name="OfferButton">
-                    <Property key="Caption" value="#{sBarterDialog8}"/>
-                </Widget>
-                <Widget type="AutoSizedButton" skin="MW_Button" name="CancelButton">
-                    <Property key="Caption" value="#{sCancel}"/>
-                </Widget>
-            </Widget>
-
-        </Widget>
-
     </Widget>
-
 </MyGUI>

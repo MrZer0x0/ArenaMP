@@ -102,6 +102,22 @@ namespace MWGui
         onWindowResize(t);
     }
 
+    void StatsWindow::onOpen()
+    {
+        MyGUI::Window* window = mMainWidget->castType<MyGUI::Window>();
+
+        // WindowManager restores persisted size immediately before opening. Build
+        // the document synchronously against that final size instead of waiting
+        // for a resize event / next frame. A second pass is intentional: enabling
+        // the outer scrollbar changes the client width in MyGUI 0.47.
+        onWindowResize(window);
+        mChanged = true;
+        updateSkillArea();
+        onWindowResize(window);
+        mChanged = true;
+        updateSkillArea();
+    }
+
     void StatsWindow::onMouseWheel(MyGUI::Widget* /*sender*/, int rel)
     {
         if (rel == 0)

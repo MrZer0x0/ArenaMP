@@ -19,6 +19,7 @@
 #include "../mwbase/windowmanager.hpp"
 
 #include "../mwgui/container.hpp"
+#include "../mwgui/companionwindow.hpp"
 #include "../mwgui/dialogue.hpp"
 #include "../mwgui/inventorywindow.hpp"
 #include "../mwgui/windowmanagerimp.hpp"
@@ -189,8 +190,12 @@ void ObjectList::editContainers(MWWorld::CellStore* cellStore)
             bool isCurrentContainer = false;
             bool hasActorEquipment = ptrFound.getClass().isActor() && ptrFound.getClass().hasInventoryStore(ptrFound);
 
-            // If we are in a container, and it happens to be this container, keep track of that
-            if (MWBase::Environment::get().getWindowManager()->containsMode(MWGui::GM_Container))
+            // ContainerWindow and CompanionWindow both use TES3MP container packets.
+            // Track whichever two-pane inventory target is currently open so a local
+            // DRAG echo can be resolved into the correct UI without duplicating items.
+            const bool isContainerMode = MWBase::Environment::get().getWindowManager()->containsMode(MWGui::GM_Container);
+            const bool isCompanionMode = MWBase::Environment::get().getWindowManager()->containsMode(MWGui::GM_Companion);
+            if (isContainerMode || isCompanionMode)
             {
                 CurrentContainer *currentContainer = &mwmp::Main::get().getLocalPlayer()->currentContainer;
 
@@ -274,11 +279,20 @@ void ObjectList::editContainers(MWWorld::CellStore* cellStore)
 
                                 if (isLocalDrag && isCurrentContainer)
                                 {
-                                    MWGui::ContainerWindow* containerWindow = MWBase::Environment::get().getWindowManager()->getContainerWindow();
+                                    MWGui::WindowManager* windowManager = static_cast<MWGui::WindowManager*>(
+                                        MWBase::Environment::get().getWindowManager());
 
-                                    if (!containerWindow->isOnDragAndDrop())
+                                    if (isCompanionMode)
                                     {
-                                        isDragResolved = containerWindow->dragItemByPtr(itemPtr, containerItem.actionCount);
+                                        MWGui::CompanionWindow* companionWindow = windowManager->getCompanionWindow();
+                                        if (companionWindow && !companionWindow->isOnDragAndDrop())
+                                            isDragResolved = companionWindow->dragItemByPtr(itemPtr, containerItem.actionCount);
+                                    }
+                                    else
+                                    {
+                                        MWGui::ContainerWindow* containerWindow = windowManager->getContainerWindow();
+                                        if (containerWindow && !containerWindow->isOnDragAndDrop())
+                                            isDragResolved = containerWindow->dragItemByPtr(itemPtr, containerItem.actionCount);
                                     }
                                 }
 
@@ -1311,6 +1325,18 @@ void ObjectList::addObjectSpawn(const MWWorld::Ptr& ptr, const MWWorld::Ptr& mas
     addBaseObject(baseObject);
 }
 
+void ObjectList::addObjectTransform(const MWWorld::Ptr& ptr)
+{
+    if (ptr.isEmpty() || !ptr.isInCell()
+        || ptr.getCellRef().getRefId().find("$dynamic") != std::string::npos)
+        return;
+
+    cell = *ptr.getCell()->getCell();
+    mwmp::BaseObject baseObject = getBaseObjectFromPtr(ptr);
+    baseObject.position = ptr.getRefData().getPosition();
+    addBaseObject(baseObject);
+}
+
 void ObjectList::addObjectLock(const MWWorld::Ptr& ptr, int lockLevel)
 {
     cell = *ptr.getCell()->getCell();
@@ -1581,6 +1607,22 @@ void ObjectList::sendObjectAnimPlay()
 {
     mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_ANIM_PLAY)->setObjectList(this);
     mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_ANIM_PLAY)->Send();
+}
+
+void ObjectList::sendObjectMove()
+{
+    if (baseObjects.empty())
+        return;
+    mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_MOVE)->setObjectList(this);
+    mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_MOVE)->Send();
+}
+
+void ObjectList::sendObjectRotate()
+{
+    if (baseObjects.empty())
+        return;
+    mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_ROTATE)->setObjectList(this);
+    mwmp::Main::get().getNetworking()->getObjectPacket(ID_OBJECT_ROTATE)->Send();
 }
 
 void ObjectList::sendDoorState()

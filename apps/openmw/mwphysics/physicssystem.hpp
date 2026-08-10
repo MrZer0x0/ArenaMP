@@ -178,7 +178,20 @@ namespace MWPhysics
                     std::vector<MWWorld::Ptr> targets = std::vector<MWWorld::Ptr>(),
                     int mask = CollisionType_World|CollisionType_HeightMap|CollisionType_Actor|CollisionType_Door, int group=0xff) const override;
 
-            RayCastingResult castSphere(const osg::Vec3f& from, const osg::Vec3f& to, float radius) const override;
+            RayCastingResult castSphere(const osg::Vec3f& from, const osg::Vec3f& to, float radius,
+                    const MWWorld::ConstPtr& ignore = MWWorld::ConstPtr()) const override;
+
+            RayCastingResult castBox(const osg::Vec3f& from, const osg::Quat& fromRotation,
+                    const osg::Vec3f& to, const osg::Quat& toRotation, const osg::Vec3f& halfExtents,
+                    const MWWorld::ConstPtr& ignore = MWWorld::ConstPtr()) const override;
+
+            /// Local-space bounds of the collision shape used by a world object.
+            bool getObjectShapeBounds(const MWWorld::ConstPtr& object, osg::Vec3f& center, osg::Vec3f& halfExtents) const;
+
+            /// Resolve an already-overlapping oriented prop box. Returns the smallest
+            /// outward correction for the deepest contact, capped by maxCorrection.
+            osg::Vec3f getBoxPenetrationCorrection(const osg::Vec3f& position, const osg::Quat& rotation,
+                    const osg::Vec3f& halfExtents, const MWWorld::ConstPtr& ignore, float maxCorrection) const override;
 
             /// Return true if actor1 can see actor2.
             bool getLineOfSight(const MWWorld::ConstPtr& actor1, const MWWorld::ConstPtr& actor2) const override;

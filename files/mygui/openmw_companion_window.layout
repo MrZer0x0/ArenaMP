@@ -1,30 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <MyGUI type="Layout">
-    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 600 300" name="_Main">
-        <Property key="MinSize" value="245 145"/>
+    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 680 380" name="_Main">
+        <Property key="MinSize" value="560 340"/>
 
-        <!-- Search box-->
-        <Widget type="HBox"  position="5 5 575 23" align="Left Top HStretch" name="_Filter">
+        <Widget type="HBox" position="8 7 646 26" align="Left Top HStretch" name="Categories">
+            <Widget type="AutoSizedButton" skin="MW_Button" name="AllButton">
+                <Property key="Caption" value="#{sAllTab}"/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="WeaponButton">
+                <Property key="Caption" value="#{sWeaponTab}"/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="ApparelButton">
+                <Property key="Caption" value="#{sApparelTab}"/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="MagicButton">
+                <Property key="Caption" value="#{sMagicTab}"/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="MiscButton">
+                <Property key="Caption" value="#{sMiscTab}"/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
             <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="0 0 0 23" name="FilterEdit">
                 <UserString key="HStretch" value="true"/>
                 <UserString key="AcceptTab" value="true"/>
             </Widget>
         </Widget>
-        <!-- Items -->
-        <Widget type="ItemView" skin="MW_ItemView" position="5 33 575 197" name="ItemView" align="Left Top Stretch">
-        </Widget>
 
-        <Widget type="HBox" position="5 235 575 24" align="Bottom HStretch">
-            <Widget type="MWDynamicStat" skin="MW_ChargeBar_Blue" position="8 8 212 24" name="EncumbranceBar" align="Left Top HStretch">
+        <Widget type="ItemView" skin="MW_ItemView" position="8 38 646 246" name="ItemView" align="Left Top Stretch"/>
+
+        <Widget type="HBox" position="8 292 646 28" align="Bottom HStretch">
+            <Widget type="MWDynamicStat" skin="MW_ChargeBar_Blue" position="0 0 220 24" name="EncumbranceBar" align="Left Top HStretch">
                 <UserString key="HStretch" value="true"/>
             </Widget>
-            <Widget type="AutoSizedTextBox" skin="SandText" name="ProfitLabel">
-            </Widget>
+            <Widget type="AutoSizedTextBox" skin="SandText" name="ProfitLabel"/>
+            <Widget type="Spacer"/>
             <Widget type="AutoSizedButton" skin="MW_Button" name="CloseButton">
                 <Property key="Caption" value="#{sClose}"/>
             </Widget>
         </Widget>
-
     </Widget>
 </MyGUI>

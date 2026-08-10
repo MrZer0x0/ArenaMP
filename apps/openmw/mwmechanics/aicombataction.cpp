@@ -14,6 +14,13 @@
 #include "../mwworld/cellstore.hpp"
 
 #include "npcstats.hpp"
+#include "animationenhancements.hpp"
+#include "../mwmp/Main.hpp"
+#include "../mwmp/CellController.hpp"
+#include "../mwmp/LocalActor.hpp"
+#include "../mwmp/Networking.hpp"
+#include "../mwmp/ActorList.hpp"
+#include "../mwmp/InteractionAnimationSync.hpp"
 #include "combat.hpp"
 #include "weaponpriority.hpp"
 #include "spellpriority.hpp"
@@ -85,6 +92,22 @@ namespace MWMechanics
 
     void ActionPotion::prepare(const MWWorld::Ptr &actor)
     {
+        ArenaMW::notifyConsumableUsed(actor, mPotion);
+        if (ArenaMW::isConsumingAnimationActive(actor))
+        {
+            mwmp::CellController* controller = mwmp::Main::get().getCellController();
+            if (controller && controller->isLocalActor(actor))
+            {
+                mwmp::LocalActor* localActor = controller->getLocalActor(actor);
+                localActor->animation.groupname
+                    = mwmp::encodeConsumableAnimation(mPotion.getCellRef().getRefId());
+                localActor->animation.mode = 0;
+                localActor->animation.count = 1;
+                localActor->animation.persist = false;
+                localActor->updateAnimPlay();
+                mwmp::Main::get().getNetworking()->getActorList()->sendAnimPlayActors();
+            }
+        }
         actor.getClass().apply(actor, mPotion.getCellRef().getRefId(), actor);
         actor.getClass().getContainerStore(actor).remove(mPotion, 1, actor);
     }

@@ -49,6 +49,7 @@
 
 namespace
 {
+    constexpr float sNetworkPoseTransitionSeconds = 0.18f;
     int getPlayerPoseBlendMask(const MWWorld::Ptr& ptr, int requestedMask)
     {
         int result = requestedMask;
@@ -102,6 +103,7 @@ namespace
 
         if (animation->isPlaying(group))
             animation->disable(group);
+        animation->beginBoneTransition(blendMask, sNetworkPoseTransitionSeconds);
         animation->play(group, priority, blendMask, false, speed, "start", "stop", 0.f, 1000000, true);
         return animation->isPlaying(group);
     }
@@ -113,7 +115,11 @@ namespace
         if (MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr))
         {
             if (animation->isPlaying(group))
+            {
+                animation->beginBoneTransition(MWRender::Animation::BlendMask_All,
+                    sNetworkPoseTransitionSeconds);
                 animation->disable(group);
+            }
         }
     }
 
@@ -579,6 +585,13 @@ void DedicatedPlayer::setCell()
 
 void DedicatedPlayer::playAnimation()
 {
+    std::string consumableRefId;
+    if (decodeConsumableAnimation(animation.groupname, consumableRefId))
+    {
+        mwmp::playConsumableAnimation(getPtr(), consumableRefId);
+        return;
+    }
+
     InteractionAnimationData interactionData;
     if (decodeInteractionAnimation(animation.groupname, interactionData))
     {
@@ -682,7 +695,12 @@ void DedicatedPlayer::updatePersistentAnimation(float)
     if (playerPoseIsBlocked(actor, isJumping))
     {
         if (mPersistentAnimationPlaying || renderer->isPlaying(mPersistentAnimationGroup))
+        {
+            const int previousMask = mPersistentAnimationAppliedMask != 0
+                ? mPersistentAnimationAppliedMask : mPersistentAnimationBlendMask;
+            renderer->beginBoneTransition(previousMask, sNetworkPoseTransitionSeconds);
             renderer->disable(mPersistentAnimationGroup);
+        }
         mPersistentAnimationPlaying = false;
         mPersistentAnimationAppliedMask = 0;
         return;
@@ -692,7 +710,12 @@ void DedicatedPlayer::updatePersistentAnimation(float)
     if (effectiveMask == 0)
     {
         if (renderer->isPlaying(mPersistentAnimationGroup))
+        {
+            const int previousMask = mPersistentAnimationAppliedMask != 0
+                ? mPersistentAnimationAppliedMask : mPersistentAnimationBlendMask;
+            renderer->beginBoneTransition(previousMask, sNetworkPoseTransitionSeconds);
             renderer->disable(mPersistentAnimationGroup);
+        }
         mPersistentAnimationPlaying = false;
         mPersistentAnimationAppliedMask = 0;
         return;
@@ -702,7 +725,12 @@ void DedicatedPlayer::updatePersistentAnimation(float)
         || !mPersistentAnimationPlaying || !renderer->isPlaying(mPersistentAnimationGroup))
     {
         if (renderer->isPlaying(mPersistentAnimationGroup))
+        {
+            const int previousMask = mPersistentAnimationAppliedMask != 0
+                ? mPersistentAnimationAppliedMask : mPersistentAnimationBlendMask;
+            renderer->beginBoneTransition(previousMask, sNetworkPoseTransitionSeconds);
             renderer->disable(mPersistentAnimationGroup);
+        }
         mPersistentAnimationPlaying = playPlayerPose(actor, mPersistentAnimationGroup,
             effectiveMask, mPersistentAnimationSpeed);
         mPersistentAnimationAppliedMask = mPersistentAnimationPlaying ? effectiveMask : 0;

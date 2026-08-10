@@ -1,5 +1,7 @@
 #include "sortfilteritemmodel.hpp"
 
+#include <MyGUI_LanguageManager.h>
+
 #include <components/misc/stringops.hpp>
 #include <components/debug/debuglog.hpp>
 #include <components/esm/loadalch.hpp>
@@ -53,17 +55,61 @@ namespace
     struct Compare
     {
         bool mSortByType;
-        Compare() : mSortByType(true) {}
+        MWGui::SortFilterItemModel::SortMode mSortMode;
+        bool mAscending;
+
+        Compare()
+            : mSortByType(true)
+            , mSortMode(MWGui::SortFilterItemModel::Sort_Default)
+            , mAscending(true)
+        {
+        }
+
+        template <class T>
+        bool ordered(const T& left, const T& right) const
+        {
+            return mAscending ? left < right : right < left;
+        }
+
         bool operator() (const MWGui::ItemStack& left, const MWGui::ItemStack& right)
         {
             if (mSortByType && left.mType != right.mType)
                 return left.mType < right.mType;
 
+            std::string leftName = Misc::StringUtils::lowerCaseUtf8(left.mBase.getClass().getName(left.mBase));
+            std::string rightName = Misc::StringUtils::lowerCaseUtf8(right.mBase.getClass().getName(right.mBase));
+
+            if (mSortMode == MWGui::SortFilterItemModel::Sort_Name && leftName != rightName)
+                return ordered(leftName, rightName);
+            if (mSortMode == MWGui::SortFilterItemModel::Sort_Count && left.mCount != right.mCount)
+                return ordered(left.mCount, right.mCount);
+            if (mSortMode == MWGui::SortFilterItemModel::Sort_Weight)
+            {
+                const float leftWeight = left.mBase.getClass().getWeight(left.mBase);
+                const float rightWeight = right.mBase.getClass().getWeight(right.mBase);
+                if (leftWeight != rightWeight)
+                    return ordered(leftWeight, rightWeight);
+            }
+            if (mSortMode == MWGui::SortFilterItemModel::Sort_Value)
+            {
+                const int leftValue = left.mBase.getClass().getValue(left.mBase);
+                const int rightValue = right.mBase.getClass().getValue(right.mBase);
+                if (leftValue != rightValue)
+                    return ordered(leftValue, rightValue);
+            }
+
+            if (mSortMode != MWGui::SortFilterItemModel::Sort_Default)
+            {
+                if (leftName != rightName)
+                    return leftName < rightName;
+                return left.mBase.getCellRef().getRefId() < right.mBase.getCellRef().getRefId();
+            }
+
             float result = 0;
 
             // compare items by type
-            std::string leftName = left.mBase.getTypeName();
-            std::string rightName = right.mBase.getTypeName();
+            leftName = left.mBase.getTypeName();
+            rightName = right.mBase.getTypeName();
 
             if (leftName != rightName)
                 return compareType(leftName, rightName);
@@ -153,6 +199,9 @@ namespace MWGui
         : mCategory(Category_All)
         , mFilter(0)
         , mSortByType(true)
+        , mHideKeys(false)
+        , mSortMode(Sort_Default)
+        , mSortAscending(true)
         , mNameFilter("")
         , mEffectFilter("")
     {
@@ -178,6 +227,9 @@ namespace MWGui
     {
         MWWorld::Ptr base = item.mBase;
 
+        if (mHideKeys && mCategory != Category_Keys && base.getClass().isKey(base))
+            return false;
+
         int category = 0;
         if (base.getTypeName() == typeid(ESM::Armor).name()
                 || base.getTypeName() == typeid(ESM::Clothing).name())
@@ -196,6 +248,9 @@ namespace MWGui
                  || base.getTypeName() == typeid(ESM::Book).name()
                  || base.getTypeName() == typeid(ESM::Probe).name())
             category = Category_Misc;
+
+        if (base.getClass().isKey(base))
+            category |= Category_Keys;
 
         if (item.mFlags & ItemStack::Flag_Enchanted)
             category |= Category_Magic;
@@ -330,10 +385,20 @@ namespace MWGui
     {
         mSourceModel->update();
 
-        size_t count = mSourceModel->getItemCount();
+        const size_t count = mSourceModel->getItemCount();
 
         mItems.clear();
-        for (size_t i=0; i<count; ++i)
+
+        // When ArenaMW hides raw keys from the ordinary player inventory, keep
+        // one synthetic row in their place. It uses the first key's actual NIF
+        // inventory icon, but represents every key in the InventoryStore. The
+        // null creator is an intentional sentinel used only by InventoryWindow
+        // and ItemView to recognise that this row must never be moved/sold.
+        ItemStack keyRing;
+        bool haveKeyRing = false;
+        size_t keyRingCount = 0;
+
+        for (size_t i = 0; i < count; ++i)
         {
             ItemStack item = mSourceModel->getItem(i);
 
@@ -347,13 +412,70 @@ namespace MWGui
                 }
             }
 
-            if (item.mCount > 0 && filterAccepts(item))
+            if (item.mCount == 0)
+                continue;
+
+            if (mHideKeys && mCategory != Category_Keys && item.mBase.getClass().isKey(item.mBase))
+            {
+                if (!haveKeyRing)
+                {
+                    keyRing = item;
+                    keyRing.mCreator = nullptr;
+                    keyRing.mType = ItemStack::Type_Normal;
+                    haveKeyRing = true;
+                }
+                keyRingCount += item.mCount;
+                continue;
+            }
+
+            if (filterAccepts(item))
                 mItems.push_back(item);
         }
 
         Compare cmp;
         cmp.mSortByType = mSortByType;
+        cmp.mSortMode = mSortMode;
+        cmp.mAscending = mSortAscending;
         std::sort(mItems.begin(), mItems.end(), cmp);
+
+        if (haveKeyRing && keyRingCount > 0)
+        {
+            // The key ring behaves as a miscellaneous inventory item. It is
+            // hidden by weapon/apparel/magic tabs and by specialised picker
+            // filters. Search also treats its display name as a normal item.
+            bool show = ((mCategory & Category_Misc) != 0 || (mCategory & Category_All) == Category_All) && mCategory != Category_Keys && mFilter == 0 && mEffectFilter.empty();
+            if (show && !mNameFilter.empty())
+            {
+                const std::string ringName = Misc::StringUtils::lowerCaseUtf8(
+                    MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=keyring.title}"));
+                show = ringName.find(mNameFilter) != std::string::npos;
+            }
+
+            if (show)
+            {
+                keyRing.mCount = keyRingCount;
+                // Keep this utility item easy to find regardless of the first
+                // key's record id: place it at the top of the filtered result.
+                mItems.insert(mItems.begin(), keyRing);
+            }
+        }
+    }
+
+    void SortFilterItemModel::setSortMode(SortMode mode, bool ascending)
+    {
+        mSortMode = mode;
+        mSortAscending = ascending;
+    }
+
+    void SortFilterItemModel::toggleSortMode(SortMode mode)
+    {
+        if (mSortMode == mode)
+            mSortAscending = !mSortAscending;
+        else
+        {
+            mSortMode = mode;
+            mSortAscending = (mode == Sort_Name);
+        }
     }
 
     void SortFilterItemModel::onClose()

@@ -70,6 +70,8 @@
 namespace
 {
 
+constexpr float sDynamicMovementTransitionSeconds = 0.12f;
+
 std::string getBestAttack (const ESM::Weapon* weapon)
 {
     int slash = (weapon->mData.mSlash[0] + weapon->mData.mSlash[1])/2;
@@ -504,8 +506,23 @@ void CharacterController::refreshMovementAnims(const std::string& weapShortGroup
     bool resetIdle = (movement != CharState_None && !isTurning());
 
     std::string movementAnimName;
+    bool usesDynamicMovement = false;
+    bool usedDynamicMovementBefore = false;
     MWRender::Animation::BlendMask movemask;
     const StateInfo *movestate;
+
+    if (!mCurrentMovement.empty())
+    {
+        const StateInfo* previousState
+            = std::find_if(sMovementList, sMovementListEnd, FindCharState(mMovementState));
+        if (previousState != sMovementListEnd)
+        {
+            const std::string previousDynamic
+                = mwmp::getDynamicMovementAnimation(mPtr, previousState->groupname);
+            usedDynamicMovementBefore = !previousDynamic.empty()
+                && previousDynamic == mCurrentMovement;
+        }
+    }
 
     movemask = MWRender::Animation::BlendMask_All;
     movestate = std::find_if(sMovementList, sMovementListEnd, FindCharState(movement));
@@ -517,6 +534,7 @@ void CharacterController::refreshMovementAnims(const std::string& weapShortGroup
         if (!dynamicMovement.empty() && mAnimation->hasAnimation(dynamicMovement))
         {
             movementAnimName = dynamicMovement;
+            usesDynamicMovement = true;
 
             // The supplied walk cycles are authored as general animation
             // groups. In a weapon or spell stance keep them on the legs so
@@ -608,6 +626,12 @@ void CharacterController::refreshMovementAnims(const std::string& weapShortGroup
         mMovementAnimationControlled = true;
 
         mAnimation->disable(mCurrentMovement);
+
+        if ((usesDynamicMovement || usedDynamicMovementBefore)
+            && movementAnimName != mCurrentMovement)
+        {
+            mAnimation->beginBoneTransition(movemask, sDynamicMovementTransitionSeconds);
+        }
 
         if (!mAnimation->hasAnimation(movementAnimName))
             movementAnimName.clear();

@@ -15,9 +15,11 @@
 #include "../mwbase/mechanicsmanager.hpp"
 #include "../mwbase/world.hpp"
 #include "../mwmechanics/character.hpp"
+#include "../mwmechanics/animationenhancements.hpp"
 #include "../mwmechanics/creaturestats.hpp"
 #include "../mwrender/animation.hpp"
 #include "../mwworld/class.hpp"
+#include "../mwworld/manualref.hpp"
 
 #include "PlayerList.hpp"
 
@@ -26,8 +28,10 @@ namespace
     const char* sPrefixV1 = "arenamp_interaction|";
     const char* sPrefixV2 = "arenamp_interaction2|";
     const char* sWalkPrefix = "arenamp_walk|";
-    constexpr int sCustomPropEffectId = 93010;
+    const char* sConsumePrefix = "arenamp_consume|";
+    constexpr float sDynamicInteractionTransitionSeconds = 0.16f;
     std::map<int, std::string> sWalkAnimationStyles;
+    std::map<int, MWRender::PartHolderPtr> sInteractionProps;
 
     std::string lowerCase(std::string value)
     {
@@ -43,9 +47,49 @@ namespace
         return ptr.getClass().getCreatureStats(ptr).getActorId();
     }
 
-    int effectIdForProp(int prop)
+    bool isPropAttached(const MWRender::PartHolderPtr& holder)
     {
-        return 93000 + prop;
+        return holder && holder->getNode() && holder->getNode()->getNumParents() > 0;
+    }
+
+    std::vector<std::string> propBoneCandidates(const std::string& preferred)
+    {
+        std::vector<std::string> bones;
+        auto appendUnique = [&bones](const std::string& name)
+        {
+            if (!name.empty() && std::find(bones.begin(), bones.end(), name) == bones.end())
+                bones.push_back(name);
+        };
+        appendUnique(preferred);
+        const std::string lower = lowerCase(preferred);
+        const bool left = lower.find("shield") != std::string::npos
+            || lower.find("left") != std::string::npos || lower.find(" l ") != std::string::npos;
+        if (left)
+        {
+            appendUnique("Shield Bone"); appendUnique("Left Hand");
+            appendUnique("Left Wrist"); appendUnique("Bip01 L Hand");
+        }
+        else
+        {
+            appendUnique("Right Hand"); appendUnique("Weapon Bone");
+            appendUnique("Right Wrist"); appendUnique("Bip01 R Hand");
+        }
+        return bones;
+    }
+
+    MWRender::PartHolderPtr attachHandProp(MWRender::Animation* animation,
+        const std::string& model, const std::string& preferredBone)
+    {
+        if (!animation || model.empty())
+            return MWRender::PartHolderPtr();
+        try
+        {
+            return animation->attachObjectToBone(model, propBoneCandidates(preferredBone));
+        }
+        catch (const std::exception&)
+        {
+            return MWRender::PartHolderPtr();
+        }
     }
 
     const char* modelForProp(int prop)
@@ -123,10 +167,6 @@ namespace
         return std::string();
     }
 
-    int effectIdForData(const mwmp::InteractionAnimationData& data)
-    {
-        return !data.propModel.empty() ? sCustomPropEffectId : effectIdForProp(data.prop);
-    }
 }
 
 namespace mwmp
@@ -217,14 +257,16 @@ namespace mwmp
 
             if (animation->isPlaying(data.group))
                 animation->disable(data.group);
+            animation->beginBoneTransition(data.blendMask, sDynamicInteractionTransitionSeconds);
             animation->play(data.group, priority, data.blendMask, true, data.speed,
                 "start", "stop", 0.f, static_cast<std::size_t>(std::max(0, data.loops - 1)), true);
             animationPlaying = animation->isPlaying(data.group);
         }
 
         const std::string model = modelForData(data);
-        if (!model.empty())
-            animation->removeEffect(effectIdForData(data));
+        const int id = actorId(ptr);
+        if (!model.empty() && id >= 0)
+            sInteractionProps.erase(id);
 
         const bool propAttached = ensureInteractionAnimationProp(ptr, data);
         return animationPlaying || propAttached;
@@ -234,48 +276,71 @@ namespace mwmp
     {
         MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
         const std::string model = modelForData(data);
-        if (!animation || data.stop || model.empty())
+        const int id = actorId(ptr);
+        if (!animation || data.stop || model.empty() || id < 0)
             return false;
 
-        // Dedicated players may receive the animation packet before their
-        // object root is created. addEffect() silently returns in that state,
-        // which previously left the animation visible but the book/scroll
-        // missing. Create the root explicitly and retry this lightweight check
-        // during the active interaction so renderer/equipment rebuilds cannot
-        // permanently drop the held prop.
-        animation->getOrCreateObjectRoot();
+        auto found = sInteractionProps.find(id);
+        if (found != sInteractionProps.end())
+        {
+            if (isPropAttached(found->second))
+                return true;
+            sInteractionProps.erase(found);
+        }
 
-        const int effectId = effectIdForData(data);
-        std::vector<int> effects;
-        animation->getLoopingEffects(effects);
-        if (std::find(effects.begin(), effects.end(), effectId) != effects.end())
-            return true;
+        MWRender::PartHolderPtr holder = attachHandProp(animation, model, "Right Hand");
+        if (!holder)
+            return false;
+        sInteractionProps[id] = holder;
+        return true;
+    }
 
+    void stopInteractionAnimation(const MWWorld::Ptr& ptr, const InteractionAnimationData& data)
+    {
+        const int id = actorId(ptr);
+        if (id >= 0)
+            sInteractionProps.erase(id);
+
+        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
+        if (!animation)
+            return;
+        if (!data.group.empty() && animation->isPlaying(data.group))
+        {
+            animation->beginBoneTransition(data.blendMask, sDynamicInteractionTransitionSeconds);
+            animation->disable(data.group);
+        }
+    }
+
+    std::string encodeConsumableAnimation(const std::string& refId)
+    {
+        if (refId.empty() || refId.size() > 128 || refId.find('|') != std::string::npos)
+            return std::string();
+        return std::string(sConsumePrefix) + refId;
+    }
+
+    bool decodeConsumableAnimation(const std::string& value, std::string& refId)
+    {
+        const std::string prefix(sConsumePrefix);
+        if (value.compare(0, prefix.size(), prefix) != 0)
+            return false;
+        refId = value.substr(prefix.size());
+        return !refId.empty() && refId.size() <= 128 && refId.find('|') == std::string::npos;
+    }
+
+    bool playConsumableAnimation(const MWWorld::Ptr& ptr, const std::string& refId)
+    {
+        if (ptr.isEmpty() || refId.empty())
+            return false;
         try
         {
-            animation->addEffect(model, effectId, true, "Bip01 R Hand");
+            MWWorld::ManualRef item(MWBase::Environment::get().getWorld()->getStore(), refId, 1);
+            ArenaMW::notifyConsumableUsed(ptr, item.getPtr());
+            return ArenaMW::isConsumingAnimationActive(ptr);
         }
         catch (const std::exception&)
         {
             return false;
         }
-
-        effects.clear();
-        animation->getLoopingEffects(effects);
-        return std::find(effects.begin(), effects.end(), effectId) != effects.end();
-    }
-
-    void stopInteractionAnimation(const MWWorld::Ptr& ptr, const InteractionAnimationData& data)
-    {
-        MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
-        if (!animation)
-            return;
-        if (!data.group.empty() && animation->isPlaying(data.group))
-            animation->disable(data.group);
-        if (!data.propModel.empty())
-            animation->removeEffect(sCustomPropEffectId);
-        if (data.prop > 0)
-            animation->removeEffect(effectIdForProp(data.prop));
     }
 
     bool isValidWalkAnimationStyle(const std::string& group)

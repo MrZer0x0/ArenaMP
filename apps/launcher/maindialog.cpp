@@ -43,7 +43,7 @@ void cfgError(const QString& title, const QString& msg) {
 namespace
 {
     constexpr int sLauncherWidth = 1024;
-    constexpr int sLauncherHeight = 720;
+    constexpr int sLauncherHeight = 650;
 
     bool containsGameContent(const QDir& dir)
     {

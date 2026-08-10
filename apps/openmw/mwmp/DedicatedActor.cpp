@@ -29,6 +29,7 @@
 #include "Main.hpp"
 #include "CellController.hpp"
 #include "MechanicsHelper.hpp"
+#include "InteractionAnimationSync.hpp"
 
 using namespace mwmp;
 
@@ -314,6 +315,13 @@ void DedicatedActor::playAnimation()
 {
     if (!animation.groupname.empty())
     {
+        std::string consumableRefId;
+        if (decodeConsumableAnimation(animation.groupname, consumableRefId))
+        {
+            mwmp::playConsumableAnimation(ptr, consumableRefId);
+            animation.groupname.clear();
+            return;
+        }
         MWBase::Environment::get().getMechanicsManager()->playAnimationGroup(ptr,
             animation.groupname, animation.mode, animation.count, animation.persist);
 

@@ -70,6 +70,7 @@ namespace mwmp
         void addObjectSound(const MWWorld::Ptr& ptr, std::string soundId, float volume, float pitch);
         void addObjectState(const MWWorld::Ptr& ptr, bool objectState);
         void addObjectAnimPlay(const MWWorld::Ptr& ptr, std::string group, int mode);
+        void addObjectTransform(const MWWorld::Ptr& ptr);
 
         void addDoorState(const MWWorld::Ptr& ptr, MWWorld::DoorState state);
         void addMusicPlay(std::string filename);
@@ -92,6 +93,8 @@ namespace mwmp
         void sendObjectSound();
         void sendObjectState();
         void sendObjectAnimPlay();
+        void sendObjectMove();
+        void sendObjectRotate();
         void sendDoorState();
         void sendMusicPlay();
         void sendVideoPlay();

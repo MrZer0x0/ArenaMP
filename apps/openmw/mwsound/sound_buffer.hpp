@@ -68,6 +68,11 @@ namespace MWSound
             /// minRange, and maxRange), and ensure it's ready for use.
             Sound_Buffer* load(const std::string& soundId);
 
+            /// Load an arbitrary audio resource directly from the VFS. This is used
+            /// by native engine features that ship their own sounds and therefore do
+            /// not have an ESM Sound record.
+            Sound_Buffer* loadFile(const std::string& resourceName);
+
             void use(Sound_Buffer& sfx)
             {
                 if (sfx.mUses++ == 0)

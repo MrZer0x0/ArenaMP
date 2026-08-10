@@ -77,6 +77,7 @@
 #include "mwdialogue/scripttest.hpp"
 
 #include "mwmechanics/mechanicsmanagerimp.hpp"
+#include "mwmechanics/animationenhancements.hpp"
 
 #include "mwstate/statemanagerimp.hpp"
 
@@ -570,6 +571,9 @@ bool OMW::Engine::frame(float frametime)
         /*
             End of tes3mp change (major)
         */
+
+        if (mEnvironment.getStateManager()->getState() != MWBase::StateManager::State_NoGame)
+            ArenaMW::updateConsumingAnimations(frametime);
 
         {
             ScopedProfile<UserStatsType::Script> profile(frameStart, frameNumber, *timer, *stats);

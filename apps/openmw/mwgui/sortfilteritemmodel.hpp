@@ -28,8 +28,28 @@ namespace MWGui
         void setNameFilter (const std::string& filter);
         void setEffectFilter (const std::string& filter);
 
+        /// Inventory-only presentation option used by ArenaMW's virtual key ring.
+        /// Raw keys stay in the real ContainerStore (doors/scripts still see them),
+        /// while this proxy replaces their individual rows with one synthetic
+        /// key-ring item using the first key icon and the total key count.
+        void setHideKeys(bool hide) { mHideKeys = hide; }
+
         /// Use ItemStack::Type for sorting?
         void setSortByType(bool sort) { mSortByType = sort; }
+
+        enum SortMode
+        {
+            Sort_Default,
+            Sort_Name,
+            Sort_Count,
+            Sort_Weight,
+            Sort_Value
+        };
+
+        void setSortMode(SortMode mode, bool ascending);
+        void toggleSortMode(SortMode mode);
+        SortMode getSortMode() const { return mSortMode; }
+        bool getSortAscending() const { return mSortAscending; }
 
         void onClose() override;
         bool onDropItem(const MWWorld::Ptr &item, int count) override;
@@ -39,6 +59,7 @@ namespace MWGui
         static constexpr int Category_Apparel = (1<<2);
         static constexpr int Category_Misc = (1<<3);
         static constexpr int Category_Magic = (1<<4);
+        static constexpr int Category_Keys = (1<<5);
         static constexpr int Category_All = 255;
         // QuickLoot displays every ordinary inventory category.
         static constexpr int Category_Simple = Category_All;
@@ -61,6 +82,9 @@ namespace MWGui
         int mCategory;
         int mFilter;
         bool mSortByType;
+        bool mHideKeys;
+        SortMode mSortMode;
+        bool mSortAscending;
 
         std::string mNameFilter; // filter by item name
         std::string mEffectFilter; // filter by magic effect

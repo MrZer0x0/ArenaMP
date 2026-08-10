@@ -27,7 +27,22 @@ file(GLOB_RECURSE BUILTIN_VFS_FILES
     animations/*.yaml
     animations/*.txt
     meshes/*.nif
+    sound/*.wav
+    sound/*.mp3
+    textures/vfx/*.dds
+    textures/vfx/*.tga
+    textures/exploot/food/*.tga
     l10n/arenamp/*.ini
+    icons/inventoryextender/*.dds
+)
+
+# Consuming Animated pipe/smoke models reference these texture names directly.
+# Keep them at the VFS texture root to preserve the paths embedded in the NIFs.
+list(APPEND BUILTIN_VFS_FILES
+    "textures/cigar logo.dds"
+    "textures/cigar wrap.dds"
+    "textures/metal_30w.dds"
+    "textures/pc_misc_pipe_cob.dds"
 )
 
 # Cached incremental builds may contain an older reduced set. Clear only the

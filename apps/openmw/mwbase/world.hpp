@@ -383,6 +383,15 @@ namespace MWBase
 
             virtual float getDistanceToFacedObject() = 0;
 
+            /// ArenaMW physics-grab prototype for movable inventory objects.
+            virtual bool canPhysicsGrab(const MWWorld::ConstPtr& object) const = 0;
+            virtual bool beginPhysicsGrab(const MWWorld::Ptr& object) = 0;
+            virtual void releasePhysicsGrab() = 0;
+            virtual bool isPhysicsGrabActive() const = 0;
+            /// Rotate the currently grabbed object relative to the camera.
+            /// rollInput rotates in the screen plane, pitchInput rotates around the camera-right axis.
+            virtual void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) = 0;
+
             virtual float getMaxActivationDistance() = 0;
 
             /// Returns a pointer to the object the provided object would hit (if within the

@@ -145,6 +145,11 @@ namespace MWBase
                                        PlayMode mode=PlayMode::Normal, float offset=0) = 0;
             ///< Play a 3D sound at \a initialPos. If the sound should be moving, it must be updated using Sound::setPosition.
 
+            virtual Sound *playSoundFile3D(const MWWorld::ConstPtr &reference, const std::string& filename,
+                                           float volume, float pitch, Type type=Type::Sfx,
+                                           PlayMode mode=PlayMode::Normal, float offset=0) = 0;
+            ///< Play an arbitrary VFS sound file attached to an object without requiring an ESM Sound record.
+
             virtual void stopSound(Sound *sound) = 0;
             ///< Stop the given sound from playing
 

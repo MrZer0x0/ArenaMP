@@ -6,6 +6,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <memory>
 
 #include "../mwmechanics/actorutil.hpp"
 
@@ -29,6 +30,11 @@ namespace MWWorld
 {
     class Ptr;
     class CellStore;
+}
+
+namespace MWPhysics
+{
+    class Ragdoll;
 }
 
 namespace MWMechanics
@@ -60,6 +66,9 @@ namespace MWMechanics
             void updateCrimePursuit (const MWWorld::Ptr& ptr, float duration);
 
             void killDeadActors ();
+            void startRagdoll(const MWWorld::Ptr& ptr);
+            void stopRagdoll(const MWWorld::Ptr& ptr);
+            void updateRagdolls(float duration);
 
             void purgeSpellEffects (int casterActorId);
 
@@ -245,6 +254,7 @@ namespace MWMechanics
             int mDrawState;
         };
         std::map<int, WeaponSheatheDelayState> mWeaponSheatheDelays;
+        std::map<MWWorld::Ptr, std::unique_ptr<MWPhysics::Ragdoll>> mRagdolls;
     };
 }
 

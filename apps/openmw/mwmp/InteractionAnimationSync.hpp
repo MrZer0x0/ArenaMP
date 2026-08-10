@@ -26,6 +26,13 @@ namespace mwmp
     bool ensureInteractionAnimationProp(const MWWorld::Ptr& ptr, const InteractionAnimationData& data);
     void stopInteractionAnimation(const MWWorld::Ptr& ptr, const InteractionAnimationData& data);
 
+    /// Consuming Animated events are encoded into the existing AnimPlay packet.
+    /// Only the record id is sent; every client resolves the same item record and
+    /// builds the temporary hand prop/sound locally.
+    std::string encodeConsumableAnimation(const std::string& refId);
+    bool decodeConsumableAnimation(const std::string& value, std::string& refId);
+    bool playConsumableAnimation(const MWWorld::Ptr& ptr, const std::string& refId);
+
     /// Dynamic Animations 1.14-compatible walking styles are sent through the
     /// existing PlayerAnimPlay channel so no TES3MP packet format changes are
     /// required.

@@ -1,18 +1,27 @@
 #include "inventorywindow.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 #include <MyGUI_Window.h>
 #include <MyGUI_ImageBox.h>
 #include <MyGUI_RenderManager.h>
 #include <MyGUI_InputManager.h>
+#include <MyGUI_ListBox.h>
+#include <MyGUI_ScrollView.h>
+#include <MyGUI_TextBox.h>
+#include <MyGUI_LanguageManager.h>
 #include <MyGUI_Button.h>
 #include <MyGUI_EditBox.h>
+#include <MyGUI_Gui.h>
 
 #include <osg/Texture2D>
 
 #include <components/misc/stringops.hpp>
+#include <components/esm/loadmisc.hpp>
 
 #include <components/myguiplatform/myguitexture.hpp>
 
@@ -42,6 +51,7 @@
 #include "../mwworld/actionequip.hpp"
 
 #include "../mwmechanics/actorutil.hpp"
+#include "../mwmechanics/animationenhancements.hpp"
 #include "../mwmechanics/creaturestats.hpp"
 
 #include "itemview.hpp"
@@ -57,12 +67,23 @@
 namespace
 {
 
+    std::string arenaText(const std::string& key)
+    {
+        return MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=" + key + "}");
+    }
+
     bool isRightHandWeapon(const MWWorld::Ptr& item)
     {
         if (item.getClass().getTypeName() != typeid(ESM::Weapon).name())
             return false;
         std::vector<int> equipmentSlots = item.getClass().getEquipmentSlots(item).first;
         return (!equipmentSlots.empty() && equipmentSlots.front() == MWWorld::InventoryStore::Slot_CarriedRight);
+    }
+
+    bool isVirtualKeyRing(const MWGui::ItemStack& item)
+    {
+        return item.mCreator == nullptr && !item.mBase.isEmpty()
+            && item.mBase.getClass().isKey(item.mBase);
     }
 
 }
@@ -76,6 +97,20 @@ namespace MWGui
         , mSelectedItem(-1)
         , mSortModel(nullptr)
         , mTradeModel(nullptr)
+        , mCategories(nullptr)
+        , mBottomBar(nullptr)
+        , mPaperDollButton(nullptr)
+        , mPaperDollIcon(nullptr)
+        , mViewModeButton(nullptr)
+        , mViewModeIcon(nullptr)
+        , mPaperDollVisible(false)
+        , mFilterKeys(nullptr)
+        , mKeyRingPanel(nullptr)
+        , mKeyRingTitle(nullptr)
+        , mKeyRingWeight(nullptr)
+        , mKeyRingList(nullptr)
+        , mKeyRingOpen(false)
+        , mKeyRingUpdateTimer(0.f)
         , mGuiMode(GM_Inventory)
         , mLastXSize(0)
         , mLastYSize(0)
@@ -96,17 +131,84 @@ namespace MWGui
         getWidget(mFilterApparel, "ApparelButton");
         getWidget(mFilterMagic, "MagicButton");
         getWidget(mFilterMisc, "MiscButton");
+        getWidget(mFilterKeys, "KeysButton");
         getWidget(mLeftPane, "LeftPane");
         getWidget(mRightPane, "RightPane");
+        getWidget(mCategories, "Categories");
+        getWidget(mBottomBar, "BottomBar");
         getWidget(mArmorRating, "ArmorRating");
         getWidget(mFilterEdit, "FilterEdit");
+
+        // The OpenMW 0.51 Inventory Extender has no vanilla character preview,
+        // so its table can use the complete window width.  ArenaMW can render
+        // the paper doll natively; expose it as an optional layout pane instead
+        // of permanently sacrificing half of the table.  Hidden is the default
+        // to match the original mod, and the choice persists in settings.
+        mPaperDollVisible = Settings::Manager::getBool("inventory paper doll", "GUI");
+        mPaperDollButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button",
+            MyGUI::IntCoord(0, 2, 28, 26), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaPaperDollToggle");
+        mPaperDollButton->setCaption("");
+        mPaperDollButton->setNeedKeyFocus(false);
+        mPaperDollButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onPaperDollClicked);
+        mPaperDollIcon = mPaperDollButton->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(3, 2, 22, 20), MyGUI::Align::Center, "ArenaPaperDollToggleIcon");
+        mPaperDollIcon->setNeedMouseFocus(false);
+        mPaperDollIcon->setImageTexture("icons/inventoryextender/Base/categories/clothing.dds");
+        mPaperDollIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
+        mPaperDollButton->setStateSelected(mPaperDollVisible);
+
+        // ArenaMW virtual key ring. The ring is injected into ItemView by
+        // SortFilterItemModel as a synthetic inventory row (first real key icon
+        // + total key count). The real keys remain in InventoryStore, so doors,
+        // scripts and encumbrance retain vanilla semantics. This floating panel
+        // is only the expanded contents view opened from that virtual row.
+        // It is intentionally parented to the inventory window itself so it
+        // appears as an overlay above the item list rather than consuming any
+        // permanent space inside the pane.
+        mKeyRingPanel = mMainWidget->createWidget<MyGUI::Widget>("HUD_Box",
+            MyGUI::IntCoord(0, 0, 320, 210), MyGUI::Align::Default, "ArenaKeyRingPanel");
+        mKeyRingTitle = mKeyRingPanel->createWidget<MyGUI::TextBox>("SandBrightText",
+            MyGUI::IntCoord(12, 8, 185, 22), MyGUI::Align::Left | MyGUI::Align::Top, "ArenaKeyRingTitle");
+        mKeyRingTitle->setCaption(arenaText("keyring.title"));
+        mKeyRingTitle->setNeedMouseFocus(false);
+        mKeyRingWeight = mKeyRingPanel->createWidget<MyGUI::TextBox>("SandTextRight",
+            MyGUI::IntCoord(210, 8, 98, 22), MyGUI::Align::Right | MyGUI::Align::Top, "ArenaKeyRingWeight");
+        mKeyRingWeight->setNeedMouseFocus(false);
+        mKeyRingList = mKeyRingPanel->createWidget<MyGUI::ScrollView>("MW_ScrollView",
+            MyGUI::IntCoord(10, 34, 300, 166), MyGUI::Align::Stretch, "ArenaKeyRingList");
+        mKeyRingList->setCanvasAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+        mKeyRingList->setVisibleHScroll(false);
+        mKeyRingList->setNeedMouseFocus(false);
+        mKeyRingPanel->setVisible(false);
+
+        mViewModeButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button",
+            MyGUI::IntCoord(0, 2, 28, 26), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryViewToggle");
+        mViewModeButton->setCaption("");
+        mViewModeButton->setNeedKeyFocus(false);
+        mViewModeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onViewModeClicked);
+        mViewModeIcon = mViewModeButton->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(5, 4, 18, 18), MyGUI::Align::Center, "ArenaInventoryViewToggleIcon");
+        mViewModeIcon->setNeedMouseFocus(false);
+        mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
+
+        mGoldIcon = mBottomBar->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(0, 6, 18, 18), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldIcon");
+        mGoldIcon->setNeedMouseFocus(false);
+        mGoldLabel = mBottomBar->createWidget<MyGUI::TextBox>("SandText",
+            MyGUI::IntCoord(0, 2, 40, 24), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaInventoryGoldLabel");
+        mGoldLabel->setNeedMouseFocus(false);
+        mGoldLabel->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
 
         mAvatarImage->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onAvatarClicked);
         mAvatarImage->setRenderItemTexture(mPreviewTexture.get());
         mAvatarImage->getSubWidgetMain()->_setUVSet(MyGUI::FloatRect(0.f, 0.f, 1.f, 1.f));
 
         getWidget(mItemView, "ItemView");
+        mItemView->setExtendedMode(true);
+        mItemView->setInternalViewModeButtonVisible(false);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &InventoryWindow::onItemSelected);
+        mItemView->eventItemDragStarted += MyGUI::newDelegate(this, &InventoryWindow::onItemDragStarted);
+        mItemView->eventItemDoubleClicked += MyGUI::newDelegate(this, &InventoryWindow::onItemDoubleClicked);
         mItemView->eventBackgroundClicked += MyGUI::newDelegate(this, &InventoryWindow::onBackgroundSelected);
 
         mFilterAll->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFilterChanged);
@@ -114,6 +216,7 @@ namespace MWGui
         mFilterApparel->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFilterChanged);
         mFilterMagic->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFilterChanged);
         mFilterMisc->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFilterChanged);
+        mFilterKeys->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFilterChanged);
         mFilterEdit->eventEditTextChange += MyGUI::newDelegate(this, &InventoryWindow::onNameFilterChanged);
 
         mFilterAll->setStateSelected(true);
@@ -125,13 +228,58 @@ namespace MWGui
 
     void InventoryWindow::adjustPanes()
     {
-        const float aspect = 0.5; // fixed aspect ratio for the avatar image
-        int leftPaneWidth = static_cast<int>((mMainWidget->getSize().height - 44 - mArmorRating->getHeight()) * aspect);
-        mLeftPane->setSize( leftPaneWidth, mMainWidget->getSize().height-44 );
-        mRightPane->setCoord( mLeftPane->getPosition().left + leftPaneWidth + 4,
-                              mRightPane->getPosition().top,
-                              mMainWidget->getSize().width - 12 - leftPaneWidth - 15,
-                              mMainWidget->getSize().height-44 );
+        if (!mLeftPane || !mRightPane)
+            return;
+
+        const int mainWidth = std::max(1, mMainWidget->getWidth());
+        const int mainHeight = std::max(1, mMainWidget->getHeight());
+        const int paneHeight = std::max(40, mainHeight - 44);
+        const int rightMargin = 23;
+        const int paneGap = 4;
+        int rightLeft = 4;
+
+        const bool paperDollAvailable = (mGuiMode == GM_Inventory);
+        const bool showPaperDoll = paperDollAvailable && mPaperDollVisible;
+
+        if (showPaperDoll)
+        {
+            const float aspect = 0.5f;
+            int leftPaneWidth = static_cast<int>((paneHeight - mArmorRating->getHeight()) * aspect);
+
+            const int minimumTableWidth = 300;
+            const int maximumPreviewWidth = std::max(80, mainWidth - minimumTableWidth - rightMargin - paneGap);
+            leftPaneWidth = std::max(80, std::min(leftPaneWidth, maximumPreviewWidth));
+
+            mLeftPane->setVisible(true);
+            mLeftPane->setSize(leftPaneWidth, paneHeight);
+            rightLeft = mLeftPane->getLeft() + leftPaneWidth + paneGap;
+        }
+        else
+        {
+            mLeftPane->setVisible(false);
+        }
+
+        const int rightWidth = std::max(120, mainWidth - rightLeft - rightMargin);
+        mRightPane->setCoord(rightLeft, mRightPane->getTop(), rightWidth, paneHeight);
+
+        // The top strip is intentionally reserved for categories and table
+        // sorting only. Search, used weight and view/paper-doll controls live
+        // in the bottom strip.
+        if (mCategories)
+            mCategories->setCoord(0, 6, rightWidth, 28);
+
+        if (mPaperDollButton)
+        {
+            mPaperDollButton->setVisible(paperDollAvailable);
+            mPaperDollButton->setEnabled(paperDollAvailable);
+            mPaperDollButton->setStateSelected(showPaperDoll);
+        }
+
+        updateBottomControls();
+        adjustKeyRingLayout();
+
+        if (mItemView)
+            mItemView->relayout();
     }
 
     void InventoryWindow::updatePlayer()
@@ -144,6 +292,7 @@ namespace MWGui
         else
             mSortModel = new SortFilterItemModel(mTradeModel);
 
+        mSortModel->setHideKeys(true);
         mSortModel->setNameFilter(mFilterEdit->getCaption());
 
         mItemView->setModel(mSortModel);
@@ -153,6 +302,7 @@ namespace MWGui
         mFilterApparel->setStateSelected(false);
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
+        mFilterKeys->setStateSelected(false);
 
         mPreview->updatePtr(mPtr);
         mPreview->rebuild();
@@ -164,6 +314,7 @@ namespace MWGui
 
         updateEncumbranceBar();
         mItemView->update();
+        updateKeyRing();
         notifyContentChanged();
     }
 
@@ -173,6 +324,12 @@ namespace MWGui
         mTradeModel = nullptr;
         mSortModel = nullptr;
         mItemView->setModel(nullptr);
+        if (mKeyRingList)
+            refreshKeyRingPopupRows();
+        if (mKeyRingPanel)
+            mKeyRingPanel->setVisible(false);
+        mKeyRingOpen = false;
+        mKeyRingUpdateTimer = 0.f;
     }
 
     void InventoryWindow::toggleMaximized()
@@ -243,13 +400,175 @@ namespace MWGui
 
     void InventoryWindow::onBackgroundSelected()
     {
-        if (mDragAndDrop->mIsOnDragAndDrop)
-            mDragAndDrop->drop(mTradeModel, mItemView);
+        if (!mDragAndDrop->mIsOnDragAndDrop)
+        {
+            mDragAndDrop->queuePendingServerDropTarget(mItemView);
+            return;
+        }
+
+        if (mDragAndDrop->isBarterDrag())
+        {
+            // Releasing back onto the source side cancels the preview drag.
+            if (mDragAndDrop->mSourceView == mItemView)
+            {
+                mDragAndDrop->finish();
+                return;
+            }
+
+            MWBase::Environment::get().getWindowManager()->getTradeWindow()->completeBarterDragToPlayer(
+                mDragAndDrop->mSourceIndex, mDragAndDrop->mDraggedCount);
+            mDragAndDrop->finish();
+            return;
+        }
+
+        mDragAndDrop->drop(mTradeModel, mItemView);
     }
 
     void InventoryWindow::onItemSelected (int index)
     {
-        onItemSelectedFromSourceModel (mSortModel->mapToSource(index));
+        if (!mSortModel || index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
+            return;
+
+        // In grid mode the virtual key ring behaves like a normal inventory
+        // item when clicked, but opens its contents instead of entering drag.
+        if (isVirtualKeyRing(mSortModel->getItem(index)))
+        {
+            onFilterChanged(mFilterKeys);
+            return;
+        }
+
+        onItemSelectedFromSourceModel(mSortModel->mapToSource(index));
+    }
+
+    void InventoryWindow::onItemDragStarted(int index)
+    {
+        if (!mSortModel || !mTradeModel || mDragAndDrop->mIsOnDragAndDrop)
+            return;
+        if (index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
+            return;
+
+        // The ring is a presentation-only grouping. Its real key records stay
+        // in InventoryStore and cannot be dragged/sold as one synthetic stack.
+        if (isVirtualKeyRing(mSortModel->getItem(index)))
+            return;
+
+        const int sourceIndex = mSortModel->mapToSource(index);
+        if (sourceIndex < 0 || sourceIndex >= static_cast<int>(mTradeModel->getItemCount()))
+            return;
+
+        const ItemStack& item = mTradeModel->getItem(sourceIndex);
+        int count = item.mCount;
+        if (MyGUI::InputManager::getInstance().isControlPressed())
+            count = 1;
+
+        mSelectedItem = sourceIndex;
+
+        if (mTrading)
+        {
+            if (item.mFlags & ItemStack::Flag_Bound)
+            {
+                MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog9}");
+                return;
+            }
+            const int services = MWBase::Environment::get().getWindowManager()->getTradeWindow()->getMerchantServices();
+            if (!item.mBase.getClass().canSell(item.mBase, services))
+            {
+                MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog4}");
+                return;
+            }
+            mDragAndDrop->startBarterDrag(mSelectedItem, mSortModel, mTradeModel, mItemView, count);
+            return;
+        }
+
+        ensureSelectedItemUnequipped(count);
+        mDragAndDrop->startDrag(mSelectedItem, mSortModel, mTradeModel, mItemView, count);
+        notifyContentChanged();
+    }
+
+    void InventoryWindow::onItemDoubleClicked(int index)
+    {
+        if (!mSortModel || !mTradeModel)
+            return;
+        if (index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
+            return;
+
+        if (isVirtualKeyRing(mSortModel->getItem(index)))
+        {
+            onFilterChanged(mFilterKeys);
+            return;
+        }
+
+        const int sourceIndex = mSortModel->mapToSource(index);
+        if (sourceIndex < 0 || sourceIndex >= static_cast<int>(mTradeModel->getItemCount()))
+            return;
+
+        const ItemStack quickItem = mTradeModel->getItem(sourceIndex);
+        int quickCount = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : quickItem.mCount;
+
+        // In barter/container/companion modes a double click means "send to the
+        // other side". This mirrors modern two-pane inventories and compensates
+        // for the paper doll being hidden by default.
+        if (mTrading)
+        {
+            mSelectedItem = sourceIndex;
+            if (quickItem.mFlags & ItemStack::Flag_Bound)
+            {
+                MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog9}");
+                return;
+            }
+            const int services = MWBase::Environment::get().getWindowManager()->getTradeWindow()->getMerchantServices();
+            if (!quickItem.mBase.getClass().canSell(quickItem.mBase, services))
+            {
+                MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog4}");
+                return;
+            }
+            sellItem(nullptr, quickCount);
+            return;
+        }
+
+        if ((mGuiMode == GM_Container || mGuiMode == GM_Companion) && mDragAndDrop->getTransferTargetView())
+        {
+            mSelectedItem = sourceIndex;
+            ensureSelectedItemUnequipped(quickCount);
+            mDragAndDrop->startDrag(mSelectedItem, mSortModel, mTradeModel, mItemView, quickCount);
+            mDragAndDrop->getTransferTargetView()->eventBackgroundClicked();
+            notifyContentChanged();
+            return;
+        }
+
+        // A list-mode double click is the paper-doll-independent quick action:
+        // equipped gear is removed, everything else goes through the same
+        // Class::use() path as dropping it on the vanilla character preview.
+        const ItemStack item = mTradeModel->getItem(sourceIndex);
+        MWWorld::Ptr object = item.mBase;
+
+        if (item.mType == ItemStack::Type_Equipped)
+        {
+            // Match the existing inventory safeguard for removing a weapon in
+            // the middle of an attack/spell action.
+            if (MWBase::Environment::get().getMechanicsManager()->isAttackingOrSpell(mPtr)
+                && object.getTypeName() == typeid(ESM::Weapon).name())
+            {
+                MWBase::Environment::get().getWindowManager()->messageBox("#{sCantEquipWeapWarning}");
+                return;
+            }
+
+            const std::string sound = object.getClass().getDownSoundId(object);
+            MWWorld::InventoryStore& invStore = mPtr.getClass().getInventoryStore(mPtr);
+            invStore.unequipItemQuantity(object, mPtr, 1);
+            // Equipment is client-authoritative in this TES3MP branch, but the
+            // resulting slot delta must be broadcast immediately so every
+            // loaded client sees the double-click unequip.
+            mwmp::Main::get().getLocalPlayer()->updateEquipment(false);
+            MWBase::Environment::get().getWindowManager()->playSound(sound);
+            updateItemView();
+            notifyContentChanged();
+            return;
+        }
+
+        // Keep the normal ArenaMP server-approved item-use path. The server
+        // echoes PlayerItemUse back before useItem() is actually executed.
+        mwmp::Main::get().getLocalPlayer()->sendItemUse(object);
     }
 
     void InventoryWindow::onItemSelectedFromSourceModel (int index)
@@ -289,6 +608,12 @@ namespace MWGui
                         messageBox("#{sBarterDialog4}");
                 return;
             }
+
+            // ArenaMW two-pane barter uses single-click transfer by default.
+            // Ctrl+click still moves exactly one item.
+            mSelectedItem = index;
+            sellItem(nullptr, count);
+            return;
         }
 
         // If we unequip weapon during attack, it can lead to unexpected behaviour
@@ -391,6 +716,29 @@ namespace MWGui
         notifyContentChanged();
     }
 
+    void InventoryWindow::completeBarterDragToMerchant(int sourceIndex, int count)
+    {
+        if (!mTrading || !mTradeModel || sourceIndex < 0
+            || sourceIndex >= static_cast<int>(mTradeModel->getItemCount()))
+            return;
+
+        mSelectedItem = sourceIndex;
+        const ItemStack& item = mTradeModel->getItem(sourceIndex);
+        if (item.mFlags & ItemStack::Flag_Bound)
+        {
+            MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog9}");
+            return;
+        }
+        const int services = MWBase::Environment::get().getWindowManager()->getTradeWindow()->getMerchantServices();
+        if (!item.mBase.getClass().canSell(item.mBase, services))
+        {
+            MWBase::Environment::get().getWindowManager()->messageBox("#{sBarterDialog4}");
+            return;
+        }
+        count = std::max(1, std::min(count, static_cast<int>(item.mCount)));
+        sellItem(nullptr, count);
+    }
+
     void InventoryWindow::updateItemView()
     {
         MWBase::Environment::get().getWindowManager()->updateSpellWindow();
@@ -407,13 +755,17 @@ namespace MWGui
         if (focus == mFilterEdit)
             MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(nullptr);
 
+        // Restore/finalize pane geometry first. Extended ItemView rows must be
+        // created against the final RightPane width, not the 350px template size.
+        adjustPanes();
+        mItemView->relayout();
+
         if (!mPtr.isEmpty())
         {
             updateEncumbranceBar();
             mItemView->update();
             notifyContentChanged();
         }
-        adjustPanes();
     }
 
     std::string InventoryWindow::getModeSetting() const
@@ -440,6 +792,9 @@ namespace MWGui
     void InventoryWindow::onWindowResize(MyGUI::Window* _sender)
     {
         adjustPanes();
+        // MyGUI parent alignment may bypass ItemView::setSize(), so explicitly
+        // reflow table columns while dragging/restoring the inventory window.
+        mItemView->relayout();
         std::string setting = getModeSetting();
 
         MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
@@ -475,9 +830,12 @@ namespace MWGui
 
     void InventoryWindow::updatePreviewSize()
     {
+        if (!mPaperDollVisible || !mLeftPane->getVisible())
+            return;
+
         MyGUI::IntSize size = mAvatarImage->getSize();
-        int width = std::min(mPreview->getTextureWidth(), size.width);
-        int height = std::min(mPreview->getTextureHeight(), size.height);
+        int width = std::min(static_cast<int>(mPreview->getTextureWidth()), size.width);
+        int height = std::min(static_cast<int>(mPreview->getTextureHeight()), size.height);
         float scalingFactor = MWBase::Environment::get().getWindowManager()->getScalingFactor();
         mPreview->setViewport(int(width*scalingFactor), int(height*scalingFactor));
 
@@ -503,15 +861,54 @@ namespace MWGui
             mSortModel->setCategory(SortFilterItemModel::Category_Magic);
         else if (_sender == mFilterMisc)
             mSortModel->setCategory(SortFilterItemModel::Category_Misc);
+        else if (_sender == mFilterKeys)
+            mSortModel->setCategory(SortFilterItemModel::Category_Keys);
         mFilterAll->setStateSelected(false);
         mFilterWeapon->setStateSelected(false);
         mFilterApparel->setStateSelected(false);
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
+        mFilterKeys->setStateSelected(false);
 
         mItemView->update();
 
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
+    }
+
+    void InventoryWindow::onPaperDollClicked(MyGUI::Widget*)
+    {
+        if (mGuiMode != GM_Inventory)
+            return;
+
+        mPaperDollVisible = !mPaperDollVisible;
+        Settings::Manager::setBool("inventory paper doll", "GUI", mPaperDollVisible);
+
+        adjustPanes();
+        if (mPaperDollVisible)
+        {
+            updatePreviewSize();
+            dirtyPreview();
+        }
+
+        // Recreate table rows after the pane width changes. This mirrors the
+        // original Inventory Extender's full-width/no-preview layout and also
+        // fixes names that were clipped while the paper doll occupied space.
+        if (mItemView)
+        {
+            mItemView->relayout();
+            mItemView->update();
+        }
+    }
+
+    void InventoryWindow::onViewModeClicked(MyGUI::Widget*)
+    {
+        if (!mItemView)
+            return;
+
+        const ItemView::ViewMode nextMode =
+            mItemView->getViewMode() == ItemView::View_List ? ItemView::View_Grid : ItemView::View_List;
+        mItemView->setViewMode(nextMode);
+        updateBottomControls();
     }
 
     void InventoryWindow::onPinToggled()
@@ -580,6 +977,12 @@ namespace MWGui
             else if (isBook)
                 ptr.getRefData().getLocals().setVarByInt(script, "pcskipequip", 1);
         }
+
+        // ArenaMW native Consuming Animated hook. Capture the item while it is
+        // still present in the inventory; ActionApply/ActionEat may remove it.
+        ArenaMW::notifyConsumableUsed(player, ptr);
+        if (ArenaMW::isConsumingAnimationActive(player))
+            mwmp::Main::get().getLocalPlayer()->sendConsumableAnimation(ptr.getCellRef().getRefId());
 
         std::shared_ptr<MWWorld::Action> action = ptr.getClass().use(ptr, force);
         action->execute(player);
@@ -678,6 +1081,228 @@ namespace MWGui
         return MWWorld::Ptr();
     }
 
+    void InventoryWindow::updateBottomControls()
+    {
+        if (!mBottomBar || !mRightPane || !mItemView)
+            return;
+
+        const int width = std::max(1, mRightPane->getWidth());
+        const int height = std::max(1, mRightPane->getHeight());
+        const int bottomHeight = 32;
+        const int gap = 4;
+        const int bottomTop = std::max(38, height - bottomHeight);
+
+        mBottomBar->setCoord(0, bottomTop, width, bottomHeight);
+
+        int x = 0;
+
+        // The paper-doll toggle deliberately occupies the old key-ring button
+        // position at the lower-left edge of the inventory pane.
+        const bool paperDollAvailable = (mGuiMode == GM_Inventory);
+        const bool showPaperDoll = paperDollAvailable && mPaperDollVisible;
+        if (mPaperDollButton)
+        {
+            mPaperDollButton->setVisible(paperDollAvailable);
+            mPaperDollButton->setEnabled(paperDollAvailable);
+            if (paperDollAvailable)
+            {
+                mPaperDollButton->setCoord(x, 2, 30, 26);
+                mPaperDollButton->setStateSelected(showPaperDoll);
+                x += 30 + gap;
+            }
+        }
+
+        const bool showGold = (mGuiMode == GM_Barter);
+        const int goldIconWidth = showGold ? 18 : 0;
+        const int goldTextWidth = showGold ? 42 : 0;
+        const int goldBlockWidth = showGold ? (goldIconWidth + 2 + goldTextWidth) : 0;
+
+        const int weightWidth = std::max(72, std::min(110, width / 4));
+        if (mEncumbranceBar)
+        {
+            mEncumbranceBar->setCoord(x, 2, weightWidth, 26);
+            x += weightWidth + gap;
+        }
+
+        if (mViewModeButton)
+        {
+            mViewModeButton->setCoord(x, 2, 30, 26);
+            x += 30 + gap;
+        }
+
+        const int filterWidth = std::max(40, width - x - (showGold ? goldBlockWidth + gap : 0));
+        if (mFilterEdit)
+            mFilterEdit->setCoord(x, 2, filterWidth, 26);
+
+        if (mGoldIcon && mGoldLabel)
+        {
+            mGoldIcon->setVisible(showGold);
+            mGoldLabel->setVisible(showGold);
+            if (showGold)
+            {
+                const int goldLeft = width - goldBlockWidth;
+                mGoldIcon->setCoord(goldLeft, 6, goldIconWidth, 18);
+                mGoldLabel->setCoord(goldLeft + goldIconWidth + 2, 2, goldTextWidth, 24);
+                const std::string goldIcon = resolveGoldIcon();
+                if (!goldIcon.empty())
+                {
+                    mGoldIcon->setVisible(true);
+                    mGoldIcon->setImageTexture(goldIcon);
+                }
+                else
+                    mGoldIcon->setVisible(false);
+                mGoldLabel->setCaption(MyGUI::utility::toString(getPlayerGold()));
+            }
+        }
+
+        if (mViewModeIcon)
+        {
+            static const std::string iconRoot = "icons/inventoryextender/Base/";
+            mViewModeIcon->setImageTexture(iconRoot
+                + (mItemView->getViewMode() == ItemView::View_List ? "view_grid.dds" : "view_table.dds"));
+            mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
+        }
+        if (mViewModeButton)
+            mViewModeButton->setStateSelected(mItemView->getViewMode() == ItemView::View_List);
+
+        // ItemView gets every remaining pixel between the top filter row and
+        // the bottom strip. Used weight/search controls never overlap the list.
+        const int itemTop = mItemView->getTop();
+        static_cast<MyGUI::Widget*>(mItemView)->setSize(
+            MyGUI::IntSize(width, std::max(40, bottomTop - itemTop - gap)));
+    }
+
+    void InventoryWindow::adjustKeyRingLayout()
+    {
+        if (!mKeyRingPanel || !mKeyRingList)
+            return;
+
+        const int mainWidth = std::max(1, mMainWidget->getWidth());
+        const int mainHeight = std::max(1, mMainWidget->getHeight());
+        const int panelWidth = std::max(260, std::min(360, mainWidth - 40));
+        const int panelHeight = std::max(150, std::min(250, mainHeight - 48));
+        const int panelLeft = std::max(12, (mainWidth - panelWidth) / 2);
+        const int panelTop = std::max(24, (mainHeight - panelHeight) / 2);
+
+        mKeyRingPanel->setCoord(panelLeft, panelTop, panelWidth, panelHeight);
+        mKeyRingTitle->setCoord(12, 8, std::max(90, panelWidth - 126), 22);
+        mKeyRingWeight->setCoord(panelWidth - 106, 8, 94, 22);
+        mKeyRingList->setCoord(10, 34, panelWidth - 20, std::max(60, panelHeight - 44));
+    }
+
+    void InventoryWindow::onKeyRingClicked(MyGUI::Widget*)
+    {
+        onFilterChanged(mFilterKeys);
+        if (mFilterEdit)
+            mFilterEdit->setOnlyText("");
+        if (mSortModel)
+            mSortModel->setNameFilter("");
+        if (mItemView)
+            mItemView->update();
+    }
+
+    void InventoryWindow::refreshKeyRingPopupRows()
+    {
+        if (!mKeyRingList)
+            return;
+
+        while (mKeyRingList->getChildCount())
+            MyGUI::Gui::getInstance().destroyWidget(mKeyRingList->getChildAt(0));
+    }
+
+    void InventoryWindow::updateKeyRing()
+    {
+        if (!mKeyRingList || !mKeyRingPanel || mPtr.isEmpty())
+            return;
+
+        MWWorld::InventoryStore& store = mPtr.getClass().getInventoryStore(mPtr);
+        struct KeyEntry
+        {
+            std::string mName;
+            std::string mIcon;
+            int mCount = 0;
+            float mWeight = 0.f;
+        };
+        std::vector<KeyEntry> keys;
+        int keyCount = 0;
+        float totalWeight = 0.f;
+
+        for (MWWorld::ContainerStoreIterator it = store.begin(MWWorld::ContainerStore::Type_Miscellaneous);
+             it != store.end(); ++it)
+        {
+            MWWorld::Ptr key = *it;
+            if (!key.getClass().isKey(key))
+                continue;
+
+            const int count = std::max(0, key.getRefData().getCount());
+            if (count == 0)
+                continue;
+
+            KeyEntry entry;
+            entry.mName = key.getClass().getName(key);
+            entry.mIcon = key.getClass().getInventoryIcon(key);
+            entry.mCount = count;
+            entry.mWeight = std::max(0.f, key.getClass().getWeight(key)) * count;
+            keyCount += count;
+            totalWeight += entry.mWeight;
+            keys.push_back(entry);
+        }
+
+        std::sort(keys.begin(), keys.end(), [](const KeyEntry& left, const KeyEntry& right)
+        {
+            return Misc::StringUtils::lowerCaseUtf8(left.mName) < Misc::StringUtils::lowerCaseUtf8(right.mName);
+        });
+
+        std::ostringstream weightCaption;
+        weightCaption << std::fixed << std::setprecision(totalWeight < 10.f ? 2 : 1) << totalWeight;
+        mKeyRingWeight->setCaption(arenaText("keyring.weight") + ": " + weightCaption.str());
+
+        refreshKeyRingPopupRows();
+
+        const int viewWidth = std::max(1, mKeyRingList->getWidth());
+        const int rowHeight = 30;
+        const int iconSize = 24;
+        const int iconLeft = 6;
+        const int textLeft = iconLeft + iconSize + 8;
+        const int textWidth = std::max(40, viewWidth - textLeft - 10);
+        const int canvasHeight = std::max(mKeyRingList->getHeight(), static_cast<int>(keys.size()) * rowHeight);
+
+        for (std::size_t i = 0; i < keys.size(); ++i)
+        {
+            const KeyEntry& key = keys[i];
+            MyGUI::Widget* row = mKeyRingList->createWidget<MyGUI::Widget>("",
+                MyGUI::IntCoord(0, static_cast<int>(i) * rowHeight, viewWidth, rowHeight),
+                MyGUI::Align::Default, "ArenaKeyRow");
+            MyGUI::ImageBox* icon = row->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(iconLeft, 3, iconSize, iconSize),
+                MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaKeyRowIcon");
+            icon->setNeedMouseFocus(false);
+            if (!key.mIcon.empty())
+                icon->setImageTexture(key.mIcon);
+
+            MyGUI::TextBox* label = row->createWidget<MyGUI::TextBox>("SandText",
+                MyGUI::IntCoord(textLeft, 0, textWidth, rowHeight),
+                MyGUI::Align::Left | MyGUI::Align::VCenter | MyGUI::Align::HStretch, "ArenaKeyRowText");
+            std::ostringstream rowCaption;
+            rowCaption << key.mName;
+            if (key.mCount > 1)
+                rowCaption << "  x" << key.mCount;
+            label->setCaption(rowCaption.str());
+            label->setNeedMouseFocus(false);
+            label->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+        }
+
+        mKeyRingList->setCanvasSize(MyGUI::IntSize(viewWidth, canvasHeight));
+        mKeyRingList->setVisibleVScroll(canvasHeight > mKeyRingList->getHeight());
+        mKeyRingPanel->setUserString("ArenaKeyCount", MyGUI::utility::toString(keyCount));
+
+        if (keyCount == 0)
+        {
+            mKeyRingOpen = false;
+            mKeyRingPanel->setVisible(false);
+        }
+    }
+
     void InventoryWindow::updateEncumbranceBar()
     {
         MWWorld::Ptr player = MWMechanics::getPlayer();
@@ -716,13 +1341,16 @@ namespace MWGui
 
     void InventoryWindow::dirtyPreview()
     {
-        mPreview->update();
+        if (!mPaperDollVisible)
+            return;
 
+        mPreview->update();
         updateArmorRating();
     }
 
     void InventoryWindow::notifyContentChanged()
     {
+        updateKeyRing();
         // update the spell window just in case new enchanted items were added to inventory
         MWBase::Environment::get().getWindowManager()->updateSpellWindow();
 
@@ -763,7 +1391,7 @@ namespace MWGui
 
         MWWorld::Ptr player = MWMechanics::getPlayer();
         MWBase::Environment::get().getWorld()->breakInvisibility(player);
-        
+
         if (!object.getRefData().activate())
             return;
 
@@ -880,5 +1508,19 @@ namespace MWGui
     void InventoryWindow::rebuildAvatar()
     {
         mPreview->rebuild();
+    }
+
+    int InventoryWindow::getPlayerGold() const
+    {
+        if (mPtr.isEmpty())
+            return 0;
+        return mPtr.getClass().getContainerStore(mPtr).count(MWWorld::ContainerStore::sGoldId);
+    }
+
+    std::string InventoryWindow::resolveGoldIcon() const
+    {
+        const ESM::Miscellaneous* gold = MWBase::Environment::get().getWorld()->getStore()
+            .get<ESM::Miscellaneous>().search(MWWorld::ContainerStore::sGoldId);
+        return gold ? gold->mIcon : std::string();
     }
 }

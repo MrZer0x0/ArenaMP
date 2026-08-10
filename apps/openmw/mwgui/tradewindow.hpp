@@ -21,11 +21,12 @@ namespace MWGui
     class ItemView;
     class SortFilterItemModel;
     class TradeItemModel;
+    class DragAndDrop;
 
     class TradeWindow : public WindowBase, public ReferenceInterface
     {
         public:
-            TradeWindow();
+            TradeWindow(DragAndDrop* dragAndDrop);
 
             void setPtr(const MWWorld::Ptr& actor) override;
 
@@ -38,6 +39,9 @@ namespace MWGui
 
             int getMerchantServices();
 
+            /// Complete a visual barter drag from the merchant side to the player.
+            void completeBarterDragToPlayer(int sourceIndex, int count);
+
             bool exit() override;
 
             void resetReference() override;
@@ -49,6 +53,7 @@ namespace MWGui
             ItemView* mItemView;
             SortFilterItemModel* mSortModel;
             TradeItemModel* mTradeModel;
+            DragAndDrop* mDragAndDrop;
             MWMechanics::Trading mTrading;
 
             static const float sBalanceChangeInitialPause; // in seconds
@@ -59,6 +64,7 @@ namespace MWGui
             MyGUI::Button* mFilterApparel;
             MyGUI::Button* mFilterMagic;
             MyGUI::Button* mFilterMisc;
+            MyGUI::Button* mFilterKeys;
 
             MyGUI::EditBox* mFilterEdit;
 
@@ -68,11 +74,13 @@ namespace MWGui
             Gui::NumericEditBox* mTotalBalance;
 
             MyGUI::Widget* mBottomPane;
+            MyGUI::Button* mViewModeButton;
+            MyGUI::ImageBox* mViewModeIcon;
 
             MyGUI::Button* mMaxSaleButton;
             MyGUI::Button* mCancelButton;
             MyGUI::Button* mOfferButton;
-            MyGUI::TextBox* mPlayerGold;
+            MyGUI::ImageBox* mMerchantGoldIcon;
             MyGUI::TextBox* mMerchantGold;
 
             int mItemToSell;
@@ -86,9 +94,13 @@ namespace MWGui
             void updateOffer();
 
             void onItemSelected (int index);
+            void onItemDragStarted(int index);
+            void onItemDoubleClicked(int index);
+            void onBackgroundSelected();
             void sellItem (MyGUI::Widget* sender, int count);
 
             void onFilterChanged(MyGUI::Widget* _sender);
+            void onViewModeClicked(MyGUI::Widget* _sender);
             void onNameFilterChanged(MyGUI::EditBox* _sender);
             void onOfferButtonClicked(MyGUI::Widget* _sender);
             void onAccept(MyGUI::EditBox* sender);
@@ -112,6 +124,7 @@ namespace MWGui
             void onReferenceUnavailable() override;
 
             int getMerchantGold();
+            std::string resolveGoldIcon(const MWWorld::Ptr& actor) const;
     };
 }
 

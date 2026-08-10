@@ -210,6 +210,10 @@ namespace MWSound
         ///< Play a 3D sound at \a initialPos. If the sound should be moving, it must be updated using Sound::setPosition.
         ///< @param offset Number of seconds into the sound to start playback.
 
+        Sound *playSoundFile3D(const MWWorld::ConstPtr &reference, const std::string& filename,
+                                      float volume, float pitch, Type type=Type::Sfx,
+                                      PlayMode mode=PlayMode::Normal, float offset=0) override;
+
         void stopSound(Sound *sound) override;
         ///< Stop the given sound from playing
         /// @note no-op if \a sound is null

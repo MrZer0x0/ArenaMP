@@ -179,6 +179,8 @@ namespace MWGui
       , mScreenFader(nullptr)
       , mDebugWindow(nullptr)
       , mJailScreen(nullptr)
+      , mContainerWindow(nullptr)
+      , mCompanionWindow(nullptr)
       , mTranslationDataStorage (translationDataStorage)
       , mCharGen(nullptr)
       , mInputBlocker(nullptr)
@@ -319,6 +321,66 @@ namespace MWGui
         mGuiModeStates[GM_MainMenu] = GuiModeState(menu);
         mWindows.push_back(menu);
 
+        // ArenaMW workspace preset v1. Earlier cumulative patches temporarily enlarged
+        // the statistics window to 40% x 60%, which made the four inventory-mode
+        // windows overlap and also caused the stats document to be built against a
+        // short initial viewport. Migrate once to the reference tiled workspace:
+        //
+        //   stats     | gameplay      | map
+        //   (full H)  | inventory     | spells
+        //
+        // Afterwards normal window dragging keeps working and the user's coordinates
+        // are persisted as usual; this migration will not run again.
+        constexpr int ArenaWorkspaceLayoutVersion = 2;
+        if (Settings::Manager::getInt("arena workspace layout version", "GUI") < ArenaWorkspaceLayoutVersion)
+        {
+            Settings::Manager::setFloat("stats x", "Windows", 0.0f);
+            Settings::Manager::setFloat("stats y", "Windows", 0.0f);
+            Settings::Manager::setFloat("stats w", "Windows", 0.2875f);
+            Settings::Manager::setFloat("stats h", "Windows", 1.0f);
+
+            Settings::Manager::setFloat("inventory x", "Windows", 0.2875f);
+            Settings::Manager::setFloat("inventory y", "Windows", 0.5275f);
+            Settings::Manager::setFloat("inventory w", "Windows", 0.452344f);
+            Settings::Manager::setFloat("inventory h", "Windows", 0.4725f);
+
+            Settings::Manager::setFloat("map x", "Windows", 0.739844f);
+            Settings::Manager::setFloat("map y", "Windows", 0.0f);
+            Settings::Manager::setFloat("map w", "Windows", 0.260156f);
+            Settings::Manager::setFloat("map h", "Windows", 0.5275f);
+
+            Settings::Manager::setFloat("spells x", "Windows", 0.739844f);
+            Settings::Manager::setFloat("spells y", "Windows", 0.5275f);
+            Settings::Manager::setFloat("spells w", "Windows", 0.260156f);
+            Settings::Manager::setFloat("spells h", "Windows", 0.4725f);
+
+            // Two-pane transfer modes: player inventory on the left, the active
+            // container/merchant/companion on the right. This is the reference
+            // 1366x768 composition supplied by the user, stored as normalized
+            // coordinates so it scales to other resolutions.
+            for (const std::string& prefix : { std::string("inventory container"),
+                     std::string("inventory barter"), std::string("inventory companion") })
+            {
+                Settings::Manager::setFloat(prefix + " x", "Windows", 0.08f);
+                Settings::Manager::setFloat(prefix + " y", "Windows", 0.095f);
+                Settings::Manager::setFloat(prefix + " w", "Windows", 0.415f);
+                Settings::Manager::setFloat(prefix + " h", "Windows", 0.85f);
+                Settings::Manager::setBool(prefix + " maximized", "Windows", false);
+            }
+
+            for (const std::string& prefix : { std::string("container"),
+                     std::string("barter"), std::string("companion") })
+            {
+                Settings::Manager::setFloat(prefix + " x", "Windows", 0.503f);
+                Settings::Manager::setFloat(prefix + " y", "Windows", 0.095f);
+                Settings::Manager::setFloat(prefix + " w", "Windows", 0.442f);
+                Settings::Manager::setFloat(prefix + " h", "Windows", 0.85f);
+                Settings::Manager::setBool(prefix + " maximized", "Windows", false);
+            }
+
+            Settings::Manager::setInt("arena workspace layout version", "GUI", ArenaWorkspaceLayoutVersion);
+        }
+
         mLocalMapRender = new MWRender::LocalMap(mViewer->getSceneData()->asGroup());
         mMap = new MapWindow(mCustomMarkers, mDragAndDrop, mLocalMapRender, mWorkQueue);
         mWindows.push_back(mMap);
@@ -339,7 +401,7 @@ namespace MWGui
         mGuiModeStates[GM_Inventory] = GuiModeState({mMap, mInventoryWindow, mSpellWindow, mStatsWindow});
         mGuiModeStates[GM_None] = GuiModeState({mMap, mInventoryWindow, mSpellWindow, mStatsWindow});
 
-        mTradeWindow = new TradeWindow();
+        mTradeWindow = new TradeWindow(mDragAndDrop);
         mWindows.push_back(mTradeWindow);
         trackWindow(mTradeWindow, "barter");
         mGuiModeStates[GM_Barter] = GuiModeState({mInventoryWindow, mTradeWindow});
@@ -456,10 +518,10 @@ namespace MWGui
 
         mSoulgemDialog = new SoulgemDialog(mMessageBoxManager);
 
-        CompanionWindow* companionWindow = new CompanionWindow(mDragAndDrop, mMessageBoxManager);
-        mWindows.push_back(companionWindow);
-        trackWindow(companionWindow, "companion");
-        mGuiModeStates[GM_Companion] = GuiModeState({mInventoryWindow, companionWindow});
+        mCompanionWindow = new CompanionWindow(mDragAndDrop, mMessageBoxManager);
+        mWindows.push_back(mCompanionWindow);
+        trackWindow(mCompanionWindow, "companion");
+        mGuiModeStates[GM_Companion] = GuiModeState({mInventoryWindow, mCompanionWindow});
 
         mJailScreen = new JailScreen();
         mWindows.push_back(mJailScreen);
@@ -1540,6 +1602,8 @@ namespace MWGui
         in the code
     */
     MWGui::ContainerWindow* WindowManager::getContainerWindow() { return mContainerWindow; }
+
+    MWGui::CompanionWindow* WindowManager::getCompanionWindow() { return mCompanionWindow; }
     /*
         End of tes3mp addition
     */
@@ -1845,6 +1909,18 @@ namespace MWGui
                             static_cast<int>(Settings::Manager::getFloat(settingName + " y", "Windows") * viewSize.height));
         MyGUI::IntSize size (static_cast<int>(Settings::Manager::getFloat(settingName + " w", "Windows") * viewSize.width),
                              static_cast<int>(Settings::Manager::getFloat(settingName + " h", "Windows") * viewSize.height));
+
+        // Keep tracked windows on-screen, but do not force the stats window back to
+        // the temporary 40% x 60% size used by older cumulative patches. Workspace
+        // preset v1 deliberately uses a narrower, full-height statistics column.
+        if (name == "stats" && !isMaximized)
+        {
+            size.width = std::max(size.width, 280);
+            size.height = std::max(size.height, 180);
+            pos.left = std::max(0, std::min(pos.left, std::max(0, viewSize.width - size.width)));
+            pos.top = std::max(0, std::min(pos.top, std::max(0, viewSize.height - size.height)));
+        }
+
         layout->mMainWidget->setPosition(pos);
         layout->mMainWidget->setSize(size);
 

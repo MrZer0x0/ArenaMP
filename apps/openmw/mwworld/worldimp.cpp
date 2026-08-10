@@ -3,6 +3,9 @@
 #include "worldimp.hpp"
 
 #include <stdio.h>
+#include <cctype>
+#include <cmath>
+#include <exception>
 
 #include <osg/Group>
 #include <osg/ComputeBoundsVisitor>
@@ -38,6 +41,13 @@
 #include <components/esm/esmwriter.hpp>
 #include <components/esm/cellid.hpp>
 #include <components/esm/cellref.hpp>
+#include <components/esm/loadalch.hpp>
+#include <components/esm/loadarmo.hpp>
+#include <components/esm/loadbook.hpp>
+#include <components/esm/loadclot.hpp>
+#include <components/esm/loadingr.hpp>
+#include <components/esm/loadmisc.hpp>
+#include <components/esm/loadweap.hpp>
 
 #include <components/misc/constants.hpp>
 #include <components/misc/stringops.hpp>
@@ -111,6 +121,288 @@ void wrap(float& rad)
         rad = std::fmod(rad+pi, 2.0f*pi)-pi;
     else
         rad = std::fmod(rad-pi, 2.0f*pi)+pi;
+}
+
+// Inverse of Scene's object rotation convention (Z * Y * X around negative
+// axes).  Physics integrates quaternions because CCD must use the true swept
+// orientation; convert back only when committing the persistent ESM transform.
+osg::Vec3f objectQuatToEuler(const osg::Quat& rot)
+{
+    float x;
+    float y;
+    float z;
+    const float test = 2.f * static_cast<float>(rot.w() * rot.y() + rot.x() * rot.z());
+
+    if (std::abs(test) >= 1.f)
+    {
+        x = std::atan2(static_cast<float>(rot.x()), static_cast<float>(rot.w()));
+        y = test > 0.f ? static_cast<float>(osg::PI_2) : -static_cast<float>(osg::PI_2);
+        z = 0.f;
+    }
+    else
+    {
+        x = std::atan2(2.f * static_cast<float>(rot.w() * rot.x() - rot.y() * rot.z()),
+            1.f - 2.f * static_cast<float>(rot.x() * rot.x() + rot.y() * rot.y()));
+        y = std::asin(test);
+        z = std::atan2(2.f * static_cast<float>(rot.w() * rot.z() - rot.x() * rot.y()),
+            1.f - 2.f * static_cast<float>(rot.y() * rot.y() + rot.z() * rot.z()));
+    }
+    return osg::Vec3f(-x, -y, -z);
+}
+
+
+std::string lowerPhysicsString(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+bool physicsStringContains(const std::string& value, const char* token)
+{
+    return value.find(token) != std::string::npos;
+}
+
+std::string getPhysicsMaterial(const MWWorld::ConstPtr& object)
+{
+    if (object.isEmpty())
+        return "Dirt";
+    if (object.getClass().isActor())
+        return "Organic";
+
+    std::string model;
+    try
+    {
+        model = lowerPhysicsString(object.getClass().getModel(object));
+    }
+    catch (const std::exception&)
+    {
+    }
+
+    const std::string type = object.getTypeName();
+    if (type == typeid(ESM::Book).name())
+    {
+        if (physicsStringContains(model, "scroll") || physicsStringContains(model, "parchment"))
+            return "Paper";
+        return "Book";
+    }
+    if (type == typeid(ESM::Potion).name())
+        return "Glass";
+    if (type == typeid(ESM::Clothing).name())
+        return "Fabric";
+    if (type == typeid(ESM::Ingredient).name())
+        return "Organic";
+
+    if (physicsStringContains(model, "soulgem") || physicsStringContains(model, "soul_gem")
+        || physicsStringContains(model, "soul gem"))
+        return "Soulgem";
+    if (physicsStringContains(model, "scroll") || physicsStringContains(model, "parchment")
+        || physicsStringContains(model, "paper"))
+        return "Paper";
+    if (physicsStringContains(model, "book"))
+        return "Book";
+    if (physicsStringContains(model, "carpet") || physicsStringContains(model, "rug"))
+        return "Carpet";
+    if (physicsStringContains(model, "fabric") || physicsStringContains(model, "cloth")
+        || physicsStringContains(model, "pillow") || physicsStringContains(model, "bed_"))
+        return "Fabric";
+    if (physicsStringContains(model, "bottle") || physicsStringContains(model, "glass")
+        || physicsStringContains(model, "flask"))
+        return "Glass";
+    if (physicsStringContains(model, "ceramic") || physicsStringContains(model, "pot_")
+        || physicsStringContains(model, "bowl") || physicsStringContains(model, "urn")
+        || physicsStringContains(model, "jug"))
+        return "Ceramic";
+    if (physicsStringContains(model, "wood") || physicsStringContains(model, "timber")
+        || physicsStringContains(model, "barrel") || physicsStringContains(model, "crate"))
+        return "Wood";
+    if (physicsStringContains(model, "stone") || physicsStringContains(model, "rock"))
+        return "Stone";
+    if (physicsStringContains(model, "metal") || physicsStringContains(model, "iron")
+        || physicsStringContains(model, "steel") || physicsStringContains(model, "dwemer")
+        || physicsStringContains(model, "silver") || physicsStringContains(model, "bronze"))
+        return "Metal";
+    if (physicsStringContains(model, "bone") || physicsStringContains(model, "skull")
+        || physicsStringContains(model, "meat") || physicsStringContains(model, "food"))
+        return "Organic";
+
+    if (type == typeid(ESM::Weapon).name() || type == typeid(ESM::Armor).name())
+        return physicsStringContains(model, "wood") ? "Wood" : "Metal";
+    if (type == typeid(ESM::Miscellaneous).name())
+        return "Wood";
+
+    return "Stone";
+}
+
+bool isLiquidPhysicsContainer(const MWWorld::ConstPtr& object)
+{
+    if (object.isEmpty())
+        return false;
+    if (object.getTypeName() == typeid(ESM::Potion).name())
+        return true;
+    try
+    {
+        const std::string model = lowerPhysicsString(object.getClass().getModel(object));
+        return physicsStringContains(model, "bottle") || physicsStringContains(model, "flask")
+            || physicsStringContains(model, "goblet") || physicsStringContains(model, "jug");
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
+
+bool isSoftPhysicsMaterial(const std::string& material)
+{
+    return material == "Dirt" || material == "Fabric" || material == "Paper"
+        || material == "Organic" || material == "Carpet" || material == "Book";
+}
+
+const char* pickPhysicsMaterialSound(const std::string& material, bool small, bool crash)
+{
+    auto pick = [](const char* const* values, std::size_t count) -> const char*
+    {
+        return count ? values[Misc::Rng::rollDice(static_cast<int>(count))] : nullptr;
+    };
+
+    if (crash)
+    {
+        static const char* glass[] = {
+            "sound/physics/Glass_Crash__01.wav", "sound/physics/Glass_Crash__02.wav" };
+        static const char* ceramic[] = {
+            "sound/physics/Ceramic_Crash__01.wav", "sound/physics/Ceramic_Crash__02.wav",
+            "sound/physics/Ceramic_Crash__04.wav" };
+        static const char* wood[] = {
+            "sound/physics/Wood_Crash__01.wav", "sound/physics/Wood_Crash__02.wav" };
+        if (material == "Glass") return pick(glass, 2);
+        if (material == "Ceramic") return pick(ceramic, 3);
+        if (material == "Wood") return pick(wood, 2);
+    }
+
+    static const char* book[] = { "sound/physics/Book__01.wav", "sound/physics/Book__02.wav" };
+    static const char* carpet[] = { "sound/physics/Carpet__01.wav", "sound/physics/Carpet__02.wav" };
+    static const char* ceramic[] = { "sound/physics/Ceramic__02.wav", "sound/physics/Ceramic__03.wav" };
+    static const char* ceramicSmall[] = { "sound/physics/Ceramic_Small__01.wav" };
+    static const char* dirt[] = { "sound/physics/Dirt__1.wav", "sound/physics/Dirt__2.wav", "sound/physics/Dirt__3.wav" };
+    static const char* fabric[] = { "sound/physics/Fabric__01.wav", "sound/physics/Fabric__02.wav" };
+    static const char* glass[] = { "sound/physics/Glass__01.wav" };
+    static const char* glassSmall[] = { "sound/physics/Glass_Small__01.wav" };
+    static const char* metal[] = { "sound/physics/Metal__01.wav", "sound/physics/Metal__02.wav" };
+    static const char* metalSmall[] = { "sound/physics/Metal_Small__01.wav", "sound/physics/Metal_Small__02.wav" };
+    static const char* organic[] = { "sound/physics/Organic__01.wav", "sound/physics/Organic__02.wav" };
+    static const char* paper[] = { "sound/physics/Paper__01.wav", "sound/physics/Paper__02.wav" };
+    static const char* soulgem[] = { "sound/physics/Soulgem__01.wav", "sound/physics/Soulgem__02.wav", "sound/physics/Soulgem__03.wav" };
+    static const char* stone[] = { "sound/physics/Stone__01.wav", "sound/physics/Stone__03.wav" };
+    static const char* wood[] = { "sound/physics/Wood__01.wav", "sound/physics/Wood__02.wav" };
+    static const char* woodSmall[] = { "sound/physics/Wood_Small__01.wav", "sound/physics/Wood_Small__02.wav" };
+
+    if (material == "Book") return pick(book, 2);
+    if (material == "Carpet") return pick(carpet, 2);
+    if (material == "Ceramic") return small ? pick(ceramicSmall, 1) : pick(ceramic, 2);
+    if (material == "Dirt") return pick(dirt, 3);
+    if (material == "Fabric") return pick(fabric, 2);
+    if (material == "Glass") return small ? pick(glassSmall, 1) : pick(glass, 1);
+    if (material == "Metal") return small ? pick(metalSmall, 2) : pick(metal, 2);
+    if (material == "Organic") return pick(organic, 2);
+    if (material == "Paper") return pick(paper, 2);
+    if (material == "Soulgem") return pick(soulgem, 3);
+    if (material == "Stone") return pick(stone, 2);
+    if (material == "Wood") return small ? pick(woodSmall, 2) : pick(wood, 2);
+    return nullptr;
+}
+
+constexpr float kMainMenuCellSize = 8192.f;
+constexpr int kMainMenuGridX = -3;
+constexpr int kMainMenuGridY = -2;
+constexpr float kMainMenuMinimumZ = 700.f;
+
+float pickMainMenuHour()
+{
+    // Use only the requested presentation times.
+    static const float hours[] = { 7.f, 10.f, 14.f, 17.f, 20.f };
+    return hours[Misc::Rng::rollDice(sizeof(hours) / sizeof(hours[0]))];
+}
+
+unsigned int pickMainMenuWeather()
+{
+    // Morrowind weather IDs: Clear=0, Rain=4, Ashstorm=6.
+    static const unsigned int weatherIds[] = { 0u, 4u, 6u };
+    return weatherIds[Misc::Rng::rollDice(sizeof(weatherIds) / sizeof(weatherIds[0]))];
+}
+
+unsigned int pickMainMenuSeed()
+{
+    return static_cast<unsigned int>(Misc::Rng::rollDice(0x7fffffff));
+}
+
+int pickMainMenuInitialGridY()
+{
+    return kMainMenuGridY;
+}
+
+float getMainMenuShotNoise(int shot, unsigned int salt, unsigned int seed)
+{
+    unsigned int value = static_cast<unsigned int>(shot) * 747796405u
+        + salt * 2891336453u + seed * 277803737u;
+    value ^= value >> 16;
+    value *= 2246822519u;
+    value ^= value >> 13;
+    return static_cast<float>(value & 0xffffu) / 65535.f;
+}
+
+int getMainMenuInitialGridY(const osg::Vec3f& center)
+{
+    (void)center;
+    return kMainMenuGridY;
+}
+
+int getMainMenuGridYForShot(int initialGridY, int shot)
+{
+    (void)initialGridY;
+    (void)shot;
+    return kMainMenuGridY;
+}
+
+osg::Vec3f getMainMenuGridCenter(int gridY)
+{
+    return osg::Vec3f(
+        (static_cast<float>(kMainMenuGridX) + 0.5f) * kMainMenuCellSize + 900.f,
+        (static_cast<float>(gridY) + 0.5f) * kMainMenuCellSize,
+        180.f);
+}
+
+osg::Vec3f getMainMenuShotPosition(int shot, int initialGridY, unsigned int seed)
+{
+    const int gridY = getMainMenuGridYForShot(initialGridY, shot);
+    const osg::Vec3f center = getMainMenuGridCenter(gridY);
+    const float angle = getMainMenuShotNoise(shot, 1u, seed)
+        * static_cast<float>(osg::PI * 2.0);
+    const float radius = 900.f + getMainMenuShotNoise(shot, 2u, seed) * 1350.f;
+    const float x = center.x() + std::cos(angle) * radius;
+    const float y = center.y() + std::sin(angle) * radius * 0.72f;
+    const float z = kMainMenuMinimumZ + 80.f
+        + getMainMenuShotNoise(shot, 3u, seed) * 1250.f;
+    return osg::Vec3f(x, y, z);
+}
+
+osg::Vec3f getMainMenuShotTarget(int shot, int initialGridY, unsigned int seed)
+{
+    const int gridY = getMainMenuGridYForShot(initialGridY, shot);
+    const osg::Vec3f center = getMainMenuGridCenter(gridY);
+    const float offsetX = (getMainMenuShotNoise(shot, 4u, seed) - 0.5f) * 950.f;
+    const float offsetY = (getMainMenuShotNoise(shot, 5u, seed) - 0.5f) * 1250.f;
+    return osg::Vec3f(center.x() + offsetX, center.y() + offsetY, center.z() + 120.f);
+}
+
+ESM::Position buildBalmoraMenuCenter(int gridY)
+{
+    const osg::Vec3f center = getMainMenuGridCenter(gridY);
+    ESM::Position pos;
+    pos.pos[0] = center.x();
+    pos.pos[1] = center.y();
+    pos.pos[2] = center.z();
+    pos.rot[0] = pos.rot[1] = pos.rot[2] = 0.f;
+    return pos;
 }
 
 }
@@ -387,6 +679,7 @@ namespace MWWorld
         mCells.clear();
 
         mDoorStates.clear();
+        mPhysicsObjects.clear();
 
         mGoToJail = false;
         mTeleportEnabled = true;
@@ -1226,6 +1519,241 @@ namespace MWWorld
    {
         return mDistanceToFacedObject;
    }
+
+    bool World::canPhysicsGrab(const MWWorld::ConstPtr& object) const
+    {
+        if (object.isEmpty() || !object.isInCell() || !object.getRefData().getBaseNode())
+            return false;
+
+        const MWWorld::Class& cls = object.getClass();
+        if (cls.isActor() || cls.isDoor() || cls.isActivator())
+            return false;
+        // TES3MP cannot address client-only dynamic records on other peers.
+        // Refuse the physics grab rather than creating an unsynchronised prop.
+        if (object.getCellRef().getRefId().find("$dynamic") != std::string::npos)
+            return false;
+        if (!cls.hasToolTip(object) || !cls.showsInInventory(object))
+            return false;
+
+        // getWeight() is the useful discriminator here: real takeable item
+        // classes implement it, while statics/containers and other world-only
+        // references fall back to Class::getWeight() and throw. Never let a
+        // physics-grab eligibility check turn that into a gameplay crash.
+        float weight = 0.f;
+        try
+        {
+            weight = std::max(0.f, cls.getWeight(object));
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+
+        // Keep the prototype intentionally conservative: extremely heavy
+        // inventory objects are still picked up normally by a tap, but are not
+        // converted into hand-held physics props.
+        return weight <= 200.f;
+    }
+
+    bool World::beginPhysicsGrab(const MWWorld::Ptr& object)
+    {
+        if (!canPhysicsGrab(object))
+            return false;
+
+        for (PhysicsObjectState& state : mPhysicsObjects)
+            state.mGrabbed = false;
+
+        PhysicsObjectState* state = nullptr;
+        for (PhysicsObjectState& current : mPhysicsObjects)
+        {
+            if (current.mPtr == object)
+            {
+                state = &current;
+                break;
+            }
+        }
+
+        if (!state)
+        {
+            // Keep a bounded native physics pool. Sleeping props have already
+            // committed their final transform to the cell and can be forgotten.
+            if (mPhysicsObjects.size() >= 96)
+            {
+                auto removable = std::find_if(mPhysicsObjects.begin(), mPhysicsObjects.end(),
+                    [](const PhysicsObjectState& candidate) { return !candidate.mGrabbed && candidate.mSleepTimer > 0.75f; });
+                if (removable == mPhysicsObjects.end())
+                    removable = std::find_if(mPhysicsObjects.begin(), mPhysicsObjects.end(),
+                        [](const PhysicsObjectState& candidate) { return !candidate.mGrabbed; });
+                if (removable != mPhysicsObjects.end())
+                    mPhysicsObjects.erase(removable);
+            }
+
+            mPhysicsObjects.emplace_back();
+            state = &mPhysicsObjects.back();
+            state->mPtr = object;
+        }
+
+        osg::Vec3f localCenter;
+        osg::Vec3f halfExtents;
+        if (mPhysics->getObjectShapeBounds(object, localCenter, halfExtents))
+        {
+            state->mLocalCenter = localCenter;
+            state->mHalfExtents.set(
+                std::max(0.75f, std::min(96.f, halfExtents.x())),
+                std::max(0.75f, std::min(96.f, halfExtents.y())),
+                std::max(0.75f, std::min(96.f, halfExtents.z())));
+        }
+        else
+        {
+            // Fallback for collider-less inventory meshes: use the render/physics
+            // world bounds once, then simulate an oriented box from those extents.
+            const osg::BoundingBox bounds = mPhysics->getBoundingBox(object);
+            const osg::Vec3f origin = object.getRefData().getPosition().asVec3();
+            if (bounds.valid())
+            {
+                state->mLocalCenter = bounds.center() - origin;
+                const osg::Vec3f size = bounds._max - bounds._min;
+                state->mHalfExtents.set(
+                    std::max(0.75f, std::min(96.f, size.x() * 0.5f)),
+                    std::max(0.75f, std::min(96.f, size.y() * 0.5f)),
+                    std::max(0.75f, std::min(96.f, size.z() * 0.5f)));
+            }
+            else
+            {
+                state->mLocalCenter.set(0.f, 0.f, 0.f);
+                state->mHalfExtents.set(4.f, 4.f, 4.f);
+            }
+        }
+
+        state->mRadius = std::max(1.5f, std::min(state->mHalfExtents.x(),
+            std::min(state->mHalfExtents.y(), state->mHalfExtents.z())));
+
+        float weight = 1.f;
+        try
+        {
+            weight = std::max(0.05f, object.getClass().getWeight(object));
+        }
+        catch (const std::exception&)
+        {
+            weight = 1.f;
+        }
+        // Morrowind item weight is a good gameplay mass signal. Clamp extremes so
+        // feather-light clutter remains stable and heavy props are still movable.
+        state->mMass = std::max(0.25f, std::min(200.f, weight));
+        state->mPhysicsMaterial = getPhysicsMaterial(object);
+        state->mImpactSoundCooldown = 0.f;
+        state->mNetworkSyncTimer = 0.f;
+        state->mBreakableGlass = state->mPhysicsMaterial == "Glass";
+        state->mLiquidContainer = state->mBreakableGlass && isLiquidPhysicsContainer(object);
+        state->mHoldDistance = std::max(70.f, std::min(220.f, mDistanceToFacedObject));
+        state->mVelocity.set(0.f, 0.f, 0.f);
+        state->mAngularVelocity *= 0.2f;
+        state->mSleepTimer = 0.f;
+        state->mHadSurfaceContact = false;
+        state->mGrabbed = true;
+
+        const osg::Quat rotation = object.getRefData().getBaseNode()
+            ? object.getRefData().getBaseNode()->getAttitude() : osg::Quat();
+
+        // Grab at the actual faced point instead of the object's centre.  The
+        // faced distance is already the ray-hit distance used by normal activation.
+        // Storing it in local box space gives a real lever arm: long objects hang,
+        // swing and rotate around the picked point instead of being camera-glued.
+        const MWWorld::Ptr player = getPlayerPtr();
+        const ESM::Position& playerPosition = player.getRefData().getPosition();
+        const osg::Quat viewRotation = osg::Quat(playerPosition.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
+            * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+        const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+        const osg::Vec3f holdOrigin = getActorHeadTransform(player).getTrans();
+        const osg::Vec3f center = object.getRefData().getPosition().asVec3() + rotation * state->mLocalCenter;
+        const osg::Vec3f facedPoint = holdOrigin + viewDirection * state->mHoldDistance;
+        const osg::Vec3f localOffset = rotation.inverse() * (facedPoint - center);
+        state->mLocalGrabOffset.set(
+            std::max(-state->mHalfExtents.x(), std::min(state->mHalfExtents.x(), localOffset.x())),
+            std::max(-state->mHalfExtents.y(), std::min(state->mHalfExtents.y(), localOffset.y())),
+            std::max(-state->mHalfExtents.z(), std::min(state->mHalfExtents.z(), localOffset.z())));
+        state->mLastHoldTarget = facedPoint;
+        return true;
+    }
+
+    void World::syncPhysicsObjectTransform(const Ptr& ptr)
+    {
+        if (ptr.isEmpty() || !ptr.isInCell()
+            || ptr.getCellRef().getRefId().find("$dynamic") != std::string::npos)
+            return;
+
+        mwmp::ObjectList* objectList = mwmp::Main::get().getNetworking()->getObjectList();
+        if (!objectList)
+            return;
+        objectList->reset();
+        objectList->packetOrigin = mwmp::CLIENT_GAMEPLAY;
+        objectList->addObjectTransform(ptr);
+        objectList->sendObjectMove();
+        objectList->sendObjectRotate();
+    }
+
+    void World::releasePhysicsGrab()
+    {
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed)
+                continue;
+
+            state.mGrabbed = false;
+            state.mSleepTimer = 0.f;
+            state.mHadSurfaceContact = false;
+
+            // Preserve the actual spring velocity as the throw/release velocity.
+            // A little spin derived from linear motion keeps a hand-released item
+            // from looking unnaturally orientation-locked.
+            const float size = std::max(4.f, state.mHalfExtents.length());
+            const osg::Vec3f releaseSpin(state.mVelocity.y(), -state.mVelocity.x(), state.mVelocity.x() * 0.25f);
+            state.mAngularVelocity += releaseSpin * (0.0022f / size);
+            syncPhysicsObjectTransform(state.mPtr);
+            state.mNetworkSyncTimer = 0.05f;
+        }
+    }
+
+    bool World::isPhysicsGrabActive() const
+    {
+        return std::any_of(mPhysicsObjects.begin(), mPhysicsObjects.end(),
+            [](const PhysicsObjectState& state) { return state.mGrabbed; });
+    }
+
+    void World::rotatePhysicsGrab(float rollInput, float pitchInput, float duration)
+    {
+        if (duration <= 0.f || (std::abs(rollInput) < 0.001f && std::abs(pitchInput) < 0.001f))
+            return;
+
+        const MWWorld::Ptr player = getPlayerPtr();
+        const ESM::Position& playerPosition = player.getRefData().getPosition();
+        const osg::Quat viewRotation = osg::Quat(playerPosition.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
+            * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+        const osg::Vec3f viewForward = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+        const osg::Vec3f viewRight = viewRotation * osg::Vec3f(1.f, 0.f, 0.f);
+
+        // Rotation is deliberately velocity-driven instead of directly writing an
+        // orientation.  The held prop therefore keeps its mass, inertia, sway and CCD
+        // response while the user twists it, which feels much closer to a physical
+        // grab than a gizmo/teleport rotation.
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed)
+                continue;
+
+            const float massScale = std::sqrt(std::max(0.25f, state.mMass));
+            const float angularAcceleration = 7.5f / std::max(1.f, massScale * 0.35f);
+            const osg::Vec3f requestedAxis = viewForward * rollInput + viewRight * pitchInput;
+            state.mAngularVelocity += requestedAxis * angularAcceleration * std::min(duration, 0.05f);
+
+            const float maxAngularSpeed = 2.8f / std::max(1.f, massScale * 0.18f);
+            const float angularSpeed = state.mAngularVelocity.length();
+            if (angularSpeed > maxAngularSpeed && angularSpeed > 0.0001f)
+                state.mAngularVelocity *= maxAngularSpeed / angularSpeed;
+
+            state.mSleepTimer = 0.f;
+        }
+    }
 
     osg::Matrixf World::getActorHeadTransform(const MWWorld::ConstPtr& actor) const
     {
@@ -2136,6 +2664,7 @@ namespace MWWorld
         if (!paused)
         {
             updateNavigator();
+            updatePhysicsObjects(duration);
         }
 
         updatePlayer();
@@ -2151,6 +2680,440 @@ namespace MWWorld
         {
             mSpellPreloadTimer = 0.1f;
             preloadSpells();
+        }
+    }
+
+    void World::updatePhysicsObjects(float duration)
+    {
+        if (mPhysicsObjects.empty() || duration <= 0.f)
+            return;
+
+        const float dt = std::min(duration, 0.05f);
+        const float gravity = 627.2f;
+        const osg::Vec3f gravityVector(0.f, 0.f, -gravity);
+        // Game-oriented contact tuning: low restitution plus explicit rolling
+        // resistance lets props react naturally to a drop but settle quickly once
+        // their potential energy is gone, like modern rigid-body game physics.
+        const float restitution = 0.065f;
+        const float staticFriction = 0.68f;
+        const float kineticFriction = 0.48f;
+        const float sleepLinearSpeed = 16.f;
+        const float sleepAngularSpeed = 0.42f;
+
+        const MWWorld::Ptr player = getPlayerPtr();
+        const ESM::Position& playerPosition = player.getRefData().getPosition();
+        const osg::Quat viewRotation = osg::Quat(playerPosition.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
+            * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+        const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+        const osg::Vec3f holdOrigin = getActorHeadTransform(player).getTrans();
+
+        auto clampLength = [](osg::Vec3f value, float maximum)
+        {
+            const float length = value.length();
+            if (length > maximum && length > 0.0001f)
+                value *= maximum / length;
+            return value;
+        };
+
+        auto it = mPhysicsObjects.begin();
+        while (it != mPhysicsObjects.end())
+        {
+            PhysicsObjectState& state = *it;
+            if (state.mPtr.isEmpty() || !state.mPtr.isInCell() || !state.mPtr.getRefData().getBaseNode())
+            {
+                it = mPhysicsObjects.erase(it);
+                continue;
+            }
+
+            state.mImpactSoundCooldown = std::max(0.f, state.mImpactSoundCooldown - dt);
+            state.mNetworkSyncTimer = std::max(0.f, state.mNetworkSyncTimer - dt);
+            if (state.mPhysicsMaterial.empty())
+                state.mPhysicsMaterial = getPhysicsMaterial(state.mPtr);
+
+            osg::Vec3f origin = state.mPtr.getRefData().getPosition().asVec3();
+            osg::Quat rotation = state.mPtr.getRefData().getBaseNode()->getAttitude();
+            const osg::Quat frameStartRotation = rotation;
+            bool transformChanged = false;
+            osg::Vec3f center = origin + rotation * state.mLocalCenter;
+
+            // If a save/old prototype left a prop intersecting a surface, recover
+            // it gently before integrating. This avoids the explosive "Bullet pop"
+            // that happens when a solver sees a large penetration all at once.
+            const osg::Vec3f recovery = mPhysics->getBoxPenetrationCorrection(
+                center, rotation, state.mHalfExtents, state.mPtr, 6.f);
+            if (recovery.length2() > 0.0001f)
+            {
+                origin += recovery;
+                center += recovery;
+                const osg::Vec3f recoveryNormal = recovery / recovery.length();
+                const float intoSurface = state.mVelocity * recoveryNormal;
+                if (intoSurface < 0.f)
+                    state.mVelocity -= recoveryNormal * intoSurface;
+                state.mVelocity *= 0.82f;
+                state.mPtr = moveObject(state.mPtr, origin.x(), origin.y(), origin.z(), true, false);
+                transformChanged = true;
+            }
+
+            if (!state.mGrabbed && state.mSleepTimer >= 0.42f
+                && state.mVelocity.length2() < 0.0001f && state.mAngularVelocity.length2() < 0.000001f)
+            {
+                ++it;
+                continue;
+            }
+
+            if (state.mGrabbed)
+            {
+                const osg::Vec3f targetAnchor = holdOrigin + viewDirection * state.mHoldDistance;
+                const osg::Vec3f grabLever = rotation * state.mLocalGrabOffset;
+                const osg::Vec3f currentAnchor = center + grabLever;
+                const osg::Vec3f targetVelocity = (targetAnchor - state.mLastHoldTarget) / std::max(dt, 0.001f);
+                const osg::Vec3f error = targetAnchor - currentAnchor;
+
+                // Critically-damped-ish spring. Mass changes both response and speed:
+                // a plate follows the hand quickly, a Dwemer/heavy object visibly lags
+                // and swings instead of being teleported to the camera ray.
+                const float massScale = std::sqrt(std::max(0.25f, state.mMass));
+                const float stiffness = 34.f / massScale;
+                const float damping = 1.7f * std::sqrt(stiffness);
+                osg::Vec3f acceleration = error * stiffness - state.mVelocity * damping
+                    + targetVelocity * 0.55f;
+                acceleration = clampLength(acceleration, 4200.f / std::max(1.f, massScale * 0.65f));
+                state.mVelocity += acceleration * dt;
+                state.mVelocity = clampLength(state.mVelocity, 1450.f / std::max(1.f, massScale * 0.28f));
+
+                // Off-axis spring error and hand motion generate a small torque. This
+                // is the visible "hanging/swaying" effect rather than rigid camera glue.
+                const float inertiaScale = std::max(16.f,
+                    state.mHalfExtents.length2() * std::max(0.5f, state.mMass));
+                const osg::Vec3f springForce = acceleration * state.mMass;
+                const osg::Vec3f anchorTorque = grabLever ^ springForce;
+                const osg::Vec3f sway = (viewDirection ^ error) * (0.025f / massScale)
+                    + (targetVelocity ^ viewDirection) * (0.00030f / massScale);
+                state.mAngularVelocity += clampLength(anchorTorque * (0.75f / inertiaScale) + sway, 4.5f) * dt;
+                state.mAngularVelocity *= std::pow(0.86f, dt * 60.f);
+
+                state.mLastHoldTarget = targetAnchor;
+                state.mSleepTimer = 0.f;
+                state.mHadSurfaceContact = false;
+            }
+
+            // Number of CCD steps is based on both linear travel and the arc swept
+            // by the furthest box corner. Long items therefore cannot tunnel by rotation.
+            const float minExtent = std::max(1.f, std::min(state.mHalfExtents.x(),
+                std::min(state.mHalfExtents.y(), state.mHalfExtents.z())));
+            const float maxExtent = std::max(state.mHalfExtents.x(),
+                std::max(state.mHalfExtents.y(), state.mHalfExtents.z()));
+            const float predictedTravel = state.mVelocity.length() * dt
+                + state.mAngularVelocity.length() * maxExtent * dt;
+            const int subSteps = std::max(1, std::min(10,
+                static_cast<int>(std::ceil(predictedTravel / std::max(2.f, minExtent * 0.45f)))));
+            const float stepDt = dt / static_cast<float>(subSteps);
+
+            bool contactedThisFrame = false;
+            bool fracturedThisFrame = false;
+            osg::Vec3f fracturePosition = center;
+            osg::Vec3f lastContactNormal(0.f, 0.f, 1.f);
+
+            for (int step = 0; step < subSteps; ++step)
+            {
+                if (!state.mGrabbed)
+                {
+                    state.mVelocity += gravityVector * stepDt;
+                    state.mVelocity *= std::max(0.f, 1.f - 0.18f * stepDt);
+                    state.mAngularVelocity *= std::max(0.f, 1.f - 0.28f * stepDt);
+                }
+
+                const osg::Vec3f angularStep = state.mAngularVelocity * stepDt;
+                osg::Quat deltaRotation;
+                const float angularAmount = angularStep.length();
+                if (angularAmount > 0.000001f)
+                    deltaRotation.makeRotate(angularAmount, angularStep / angularAmount);
+                else
+                    deltaRotation.makeRotate(0.f, osg::Vec3f(0.f, 0.f, 1.f));
+
+                const osg::Quat proposedRotation = deltaRotation * rotation;
+                const osg::Vec3f proposedOrigin = origin + state.mVelocity * stepDt;
+                const osg::Vec3f currentCenter = origin + rotation * state.mLocalCenter;
+                const osg::Vec3f proposedCenter = proposedOrigin + proposedRotation * state.mLocalCenter;
+
+                const MWPhysics::RayCastingResult hit = mPhysics->castBox(
+                    currentCenter, rotation, proposedCenter, proposedRotation,
+                    state.mHalfExtents, state.mPtr);
+
+                if (!hit.mHit)
+                {
+                    origin = proposedOrigin;
+                    rotation = proposedRotation;
+                    continue;
+                }
+
+                contactedThisFrame = true;
+                osg::Vec3f normal = hit.mHitNormal;
+                if (normal.length2() < 0.0001f)
+                    normal.set(0.f, 0.f, 1.f);
+                else
+                    normal.normalize();
+                lastContactNormal = normal;
+
+                // Stop *before* contact rather than moving to a contact point. The hit
+                // fraction comes from Bullet's convex CCD and already includes box size.
+                const float safeFraction = std::max(0.f, std::min(1.f, hit.mHitFraction - 0.008f));
+                origin += (proposedOrigin - origin) * safeFraction;
+                if (angularAmount > 0.000001f && safeFraction > 0.f)
+                {
+                    osg::Quat partialRotation;
+                    partialRotation.makeRotate(angularAmount * safeFraction, angularStep / angularAmount);
+                    rotation = partialRotation * rotation;
+                }
+
+                const float normalVelocity = state.mVelocity * normal;
+                const float impactSpeed = std::max(0.f, -normalVelocity);
+
+                // Native port of MaxYari LuaPhysics collision audio. The original
+                // starts around 50 GU/s, remaps impact speed to volume and limits
+                // each prop to roughly one material sound pair every 0.23 seconds.
+                if (Settings::Manager::getBool("physics object sounds", "GUI")
+                    && impactSpeed >= 50.f && state.mImpactSoundCooldown <= 0.f)
+                {
+                    const float volumeT = std::max(0.f, std::min(1.f, (impactSpeed - 50.f) / 550.f));
+                    float objectVolume = 0.33f + volumeT * 0.67f;
+                    float surfaceVolume = objectVolume;
+                    const std::string surfaceMaterial = getPhysicsMaterial(hit.mHitObject);
+                    const bool objectSoft = isSoftPhysicsMaterial(state.mPhysicsMaterial);
+                    const bool surfaceSoft = isSoftPhysicsMaterial(surfaceMaterial);
+                    if (objectSoft && !surfaceSoft)
+                    {
+                        objectVolume *= 1.5f;
+                        surfaceVolume *= 0.5f;
+                    }
+                    else if (!objectSoft && surfaceSoft)
+                    {
+                        objectVolume *= 0.5f;
+                        surfaceVolume *= 1.5f;
+                    }
+
+                    objectVolume = std::min(1.f, objectVolume);
+                    surfaceVolume = std::min(1.f, surfaceVolume);
+                    const bool smallObject = maxExtent <= 0.15f * 69.99f;
+                    const bool smallSurface = smallObject;
+                    const float pitch = 0.8f + static_cast<float>(Misc::Rng::rollDice(201)) / 1000.f;
+                    if (const char* sound = pickPhysicsMaterialSound(state.mPhysicsMaterial, smallObject, false))
+                        MWBase::Environment::get().getSoundManager()->playSoundFile3D(
+                            state.mPtr, sound, objectVolume, pitch);
+                    if (surfaceMaterial != state.mPhysicsMaterial)
+                    {
+                        if (const char* sound = pickPhysicsMaterialSound(surfaceMaterial, smallSurface, false))
+                            MWBase::Environment::get().getSoundManager()->playSoundFile3D(
+                                state.mPtr, sound, surfaceVolume * 0.85f, pitch);
+                    }
+                    state.mImpactSoundCooldown = 0.23f;
+                }
+
+                // LuaPhysics destructibles use repeated high-speed contacts to
+                // fracture glass. Keep the same idea natively, but scale damage
+                // with impact energy so a genuinely hard throw can shatter in one
+                // hit while ordinary table bumps only ring the glass.
+                if (Settings::Manager::getBool("physics glass breakage", "GUI")
+                    && state.mBreakableGlass && impactSpeed >= 140.f)
+                {
+                    state.mFractureDamage += std::max(1.f, impactSpeed / 120.f);
+                    if (state.mFractureDamage >= 5.f)
+                    {
+                        fracturedThisFrame = true;
+                        fracturePosition = hit.mHitPos;
+                        break;
+                    }
+                }
+
+                if (normalVelocity < 0.f)
+                {
+                    if (impactSpeed > 24.f)
+                        state.mVelocity -= normal * ((1.f + restitution) * normalVelocity);
+                    else
+                        state.mVelocity -= normal * normalVelocity;
+                }
+
+                osg::Vec3f tangentVelocity = state.mVelocity - normal * (state.mVelocity * normal);
+
+                if (!state.mGrabbed)
+                {
+                    // Coulomb-like static/kinetic friction. On a stable slope the item
+                    // comes fully to rest; when gravity along the plane exceeds static
+                    // friction it keeps sliding/rolling as a real loose object should.
+                    const osg::Vec3f tangentGravity = gravityVector - normal * (gravityVector * normal);
+                    const float tangentGravityMagnitude = tangentGravity.length();
+                    const float normalGravityMagnitude = gravity * std::max(0.f, normal.z());
+                    const bool stableSurface = tangentGravityMagnitude
+                        <= staticFriction * normalGravityMagnitude;
+                    const bool canStick = stableSurface && tangentVelocity.length() < 38.f;
+
+                    if (canStick)
+                    {
+                        tangentVelocity.set(0.f, 0.f, 0.f);
+                        // Static contact kills tiny residual spin quickly instead
+                        // of allowing a cup/bottle to rotate for many seconds.
+                        state.mAngularVelocity *= std::pow(0.38f, stepDt * 60.f);
+                    }
+                    else if (tangentVelocity.length2() > 0.0001f)
+                    {
+                        const float frictionDelta = kineticFriction * normalGravityMagnitude * stepDt;
+                        const float tangentSpeed = tangentVelocity.length();
+                        tangentVelocity *= std::max(0.f, tangentSpeed - frictionDelta) / tangentSpeed;
+
+                        // Rolling resistance is separate from sliding friction. On
+                        // an almost-flat stable surface it aggressively removes
+                        // angular energy; on a genuinely unstable slope it stays
+                        // much weaker so round objects can still roll downhill.
+                        const float angularRetention = stableSurface ? 0.82f : 0.955f;
+                        state.mAngularVelocity *= std::pow(angularRetention, stepDt * 60.f);
+                    }
+
+                    // Only gravity on a surface that cannot statically support the
+                    // object is allowed to continuously generate rolling torque.
+                    if (!stableSurface && tangentGravityMagnitude > 0.01f)
+                    {
+                        const float compactness = minExtent / std::max(minExtent, maxExtent);
+                        const osg::Vec3f downhill = tangentGravity / tangentGravityMagnitude;
+                        const osg::Vec3f rollAxis = normal ^ downhill;
+                        state.mAngularVelocity += rollAxis
+                            * ((0.08f + 0.24f * compactness) * tangentGravityMagnitude
+                               / std::max(2.f, minExtent)) * stepDt;
+                        state.mAngularVelocity = clampLength(state.mAngularVelocity, 6.0f);
+                    }
+
+                    const osg::Vec3f normalPart = normal * std::max(0.f, state.mVelocity * normal);
+                    state.mVelocity = normalPart + tangentVelocity;
+                }
+                else
+                {
+                    // While held, keep spring velocity only along the surface so the
+                    // object can slide around a table edge instead of entering it.
+                    state.mVelocity = tangentVelocity * 0.88f;
+                }
+
+                // Collision torque: use the actual contact point and the box's moment
+                // scale so long/heavy items rotate more plausibly than the old visual spin.
+                const osg::Vec3f contactCenter = origin + rotation * state.mLocalCenter;
+                const osg::Vec3f lever = hit.mHitPos - contactCenter;
+                const float inertiaScale = std::max(16.f,
+                    state.mHalfExtents.length2() * std::max(0.5f, state.mMass));
+                const osg::Vec3f impactVector = normal * impactSpeed * state.mMass;
+                state.mAngularVelocity += (lever ^ impactVector) * (0.32f / inertiaScale);
+                state.mAngularVelocity = clampLength(state.mAngularVelocity, 7.5f);
+
+                // Wake and transfer an impulse to another native physics prop if this
+                // CCD hit was one of our simulated objects.
+                if (!hit.mHitObject.isEmpty())
+                {
+                    auto otherIt = std::find_if(mPhysicsObjects.begin(), mPhysicsObjects.end(),
+                        [&](const PhysicsObjectState& candidate) { return candidate.mPtr == hit.mHitObject; });
+                    if (otherIt != mPhysicsObjects.end() && &(*otherIt) != &state && !otherIt->mGrabbed)
+                    {
+                        PhysicsObjectState& other = *otherIt;
+                        const float relNormal = (state.mVelocity - other.mVelocity) * normal;
+                        if (relNormal < -1.f)
+                        {
+                            const float impulse = -(1.f + restitution) * relNormal
+                                / (1.f / state.mMass + 1.f / std::max(0.25f, other.mMass));
+                            state.mVelocity += normal * (impulse / state.mMass);
+                            other.mVelocity -= normal * (impulse / std::max(0.25f, other.mMass));
+                            other.mSleepTimer = 0.f;
+                            other.mHadSurfaceContact = false;
+                        }
+                    }
+                }
+            }
+
+            if (fracturedThisFrame)
+            {
+                const float pitch = 0.8f + static_cast<float>(Misc::Rng::rollDice(201)) / 1000.f;
+                if (const char* crash = pickPhysicsMaterialSound("Glass", false, true))
+                    MWBase::Environment::get().getSoundManager()->playSoundFile3D(
+                        state.mPtr, crash, 1.f, pitch);
+                if (state.mLiquidContainer)
+                {
+                    MWBase::Environment::get().getSoundManager()->playSoundFile3D(
+                        state.mPtr, "sound/physics/extra/liquid_spill.wav", .65f, pitch);
+                    spawnEffect("meshes\\e\\physics\\transparent_liquid_shatter.nif",
+                        std::string(), fracturePosition, 1.f, false);
+                }
+                const MWWorld::Ptr fractured = state.mPtr;
+                mwmp::ObjectList* objectList = mwmp::Main::get().getNetworking()->getObjectList();
+                if (objectList && fractured.getCellRef().getRefId().find("$dynamic") == std::string::npos)
+                {
+                    objectList->reset();
+                    objectList->packetOrigin = mwmp::CLIENT_GAMEPLAY;
+                    objectList->addObjectGeneric(fractured);
+                    objectList->sendObjectDelete();
+                }
+                it = mPhysicsObjects.erase(it);
+                deleteObject(fractured);
+                continue;
+            }
+
+            // Commit the exact quaternion orientation accepted by CCD, then store
+            // its equivalent Morrowind Euler angles.  Adding axis-angle components
+            // directly to Euler rotation (the old prototype) slowly diverged and
+            // could make the render mesh disagree with its collision box.
+            const float rotationDot = std::abs(static_cast<float>(
+                frameStartRotation.x() * rotation.x() + frameStartRotation.y() * rotation.y()
+                + frameStartRotation.z() * rotation.z() + frameStartRotation.w() * rotation.w()));
+            if (rotationDot < 0.9999995f)
+            {
+                const osg::Vec3f euler = objectQuatToEuler(rotation);
+                rotateObject(state.mPtr, euler.x(), euler.y(), euler.z(), MWBase::RotationFlag_none);
+                transformChanged = true;
+            }
+
+            const osg::Vec3f previousOrigin = state.mPtr.getRefData().getPosition().asVec3();
+            if ((origin - previousOrigin).length2() > 0.0001f)
+            {
+                state.mPtr = moveObject(state.mPtr, origin.x(), origin.y(), origin.z(), true, false);
+                transformChanged = true;
+            }
+
+            state.mHadSurfaceContact = contactedThisFrame;
+            if (!state.mGrabbed)
+            {
+                if (contactedThisFrame && state.mVelocity.length() < sleepLinearSpeed
+                    && state.mAngularVelocity.length() < sleepAngularSpeed
+                    && lastContactNormal.z() > 0.38f)
+                {
+                    // Sleep on whole-object kinetic energy, not only nearly-zero
+                    // values. A visibly resting prop should become truly static in
+                    // a few tenths of a second instead of micro-rolling forever.
+                    state.mSleepTimer += dt * 1.8f;
+                    state.mVelocity *= 0.30f;
+                    state.mAngularVelocity *= 0.28f;
+                    if (state.mSleepTimer >= 0.42f)
+                    {
+                        state.mVelocity.set(0.f, 0.f, 0.f);
+                        state.mAngularVelocity.set(0.f, 0.f, 0.f);
+                    }
+                }
+                else if (contactedThisFrame && state.mVelocity.length() < 34.f
+                    && state.mAngularVelocity.length() < 0.9f && lastContactNormal.z() > 0.55f)
+                {
+                    // Pre-sleep stabilization band: quickly drains tiny ground
+                    // motion but still lets an actually moving/falling object wake.
+                    state.mSleepTimer += dt * 0.65f;
+                    state.mVelocity *= 0.76f;
+                    state.mAngularVelocity *= 0.72f;
+                }
+                else
+                    state.mSleepTimer = std::max(0.f, state.mSleepTimer - dt * 2.f);
+            }
+
+            const bool settled = !state.mGrabbed && state.mSleepTimer >= 0.42f
+                && state.mVelocity.length2() < 0.0001f
+                && state.mAngularVelocity.length2() < 0.000001f;
+            if (transformChanged && (state.mNetworkSyncTimer <= 0.f || settled))
+            {
+                syncPhysicsObjectTransform(state.mPtr);
+                state.mNetworkSyncTimer = 0.05f; // at most 20 Hz per simulated prop
+            }
+
+            ++it;
         }
     }
 

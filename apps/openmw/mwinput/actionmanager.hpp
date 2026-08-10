@@ -4,6 +4,8 @@
 #include <osg/ref_ptr>
 #include <osgViewer/ViewerEventHandlers>
 
+#include "../mwworld/ptr.hpp"
+
 namespace osgViewer
 {
     class Viewer;
@@ -74,6 +76,10 @@ namespace MWInput
         float mOverencumberedMessageDelay;
         float mPreviewPOVDelay;
         float mTimeIdle;
+
+        MWWorld::Ptr mActivateHoldObject;
+        float mActivateHoldTime;
+        bool mActivateHoldPending;
     };
 }
 #endif

@@ -54,17 +54,79 @@ namespace MWInput
         , mOverencumberedMessageDelay(0.f)
         , mPreviewPOVDelay(0.f)
         , mTimeIdle(0.f)
+        , mActivateHoldTime(0.f)
+        , mActivateHoldPending(false)
     {
     }
 
     void ActionManager::update(float dt, bool triedToMove)
     {
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        const bool guiMode = MWBase::Environment::get().getWindowManager()->isGuiMode();
+        const bool gameRunning = MWBase::Environment::get().getStateManager()->getState()
+            == MWBase::StateManager::State_Running;
+
+        // ArenaMW physics grab: normal world activation is deferred only for
+        // loose inventory objects. A short press behaves like vanilla E, while
+        // holding the same Activate binding takes ownership of the prop.
+        if (mActivateHoldPending)
+        {
+            const bool stillHeld = mBindingsManager->actionIsActive(A_Activate);
+            if (!gameRunning || guiMode)
+            {
+                if (world->isPhysicsGrabActive())
+                    world->releasePhysicsGrab();
+                mActivateHoldObject = MWWorld::Ptr();
+                mActivateHoldTime = 0.f;
+                mActivateHoldPending = false;
+            }
+            else if (stillHeld)
+            {
+                mActivateHoldTime += dt;
+                if (mActivateHoldTime >= 0.22f && !world->isPhysicsGrabActive())
+                {
+                    if (!world->beginPhysicsGrab(mActivateHoldObject))
+                    {
+                        mActivateHoldObject = MWWorld::Ptr();
+                        mActivateHoldPending = false;
+                    }
+                }
+            }
+            else
+            {
+                if (world->isPhysicsGrabActive())
+                    world->releasePhysicsGrab();
+                else
+                {
+                    // It was a tap rather than a hold. Use the normal activation
+                    // path so books, potions, weapons, theft ownership and
+                    // scripts retain their existing behaviour.
+                    activate();
+                }
+
+                mActivateHoldObject = MWWorld::Ptr();
+                mActivateHoldTime = 0.f;
+                mActivateHoldPending = false;
+            }
+        }
+
         // Disable movement in Gui mode
-        if (MWBase::Environment::get().getWindowManager()->isGuiMode()
-            || MWBase::Environment::get().getStateManager()->getState() != MWBase::StateManager::State_Running)
+        if (guiMode || !gameRunning)
         {
             mAttemptJump = false;
             return;
+        }
+
+        // While the normal remappable Activate action is held in physics-grab mode,
+        // the two remappable ready actions become physical rotation controls.  Nothing
+        // here depends on E/F/R: keyboard, mouse and controller bindings all go through
+        // the same action channels.  Weapon rotates in the screen plane; Spell tilts
+        // around the camera-right axis.
+        if (world->isPhysicsGrabActive())
+        {
+            const float rollInput = mBindingsManager->actionIsActive(A_ToggleWeapon) ? 1.f : 0.f;
+            const float pitchInput = mBindingsManager->actionIsActive(A_ToggleSpell) ? 1.f : 0.f;
+            world->rotatePhysicsGrab(rollInput, pitchInput, dt);
         }
 
         // QuickLoot is shown only while the player is looking at a non-empty container.
@@ -239,6 +301,18 @@ namespace MWInput
             break;
         case A_Activate:
             inputManager->resetIdleTime();
+            if (!windowManager->isGuiMode() && inputManager->getControlSwitch("playercontrols"))
+            {
+                MWBase::World* world = MWBase::Environment::get().getWorld();
+                MWWorld::Ptr faced = world->getFacedObject();
+                if (!faced.isEmpty() && world->canPhysicsGrab(faced))
+                {
+                    mActivateHoldObject = faced;
+                    mActivateHoldTime = 0.f;
+                    mActivateHoldPending = true;
+                    break;
+                }
+            }
             activate();
             break;
         case A_MoveLeft:
@@ -257,13 +331,19 @@ namespace MWInput
             toggleWalking();
             break;
         case A_ToggleWeapon:
-            toggleWeapon();
+            // When an object is physically held, this action is temporarily a
+            // screen-plane rotate modifier.  Do not also draw/sheath the weapon.
+            if (!MWBase::Environment::get().getWorld()->isPhysicsGrabActive())
+                toggleWeapon();
             break;
         case A_Rest:
             rest();
             break;
         case A_ToggleSpell:
-            toggleSpell();
+            // Same rule for the second rotation plane.  Outside physics-grab mode
+            // the original ready/unready magic action remains unchanged.
+            if (!MWBase::Environment::get().getWorld()->isPhysicsGrabActive())
+                toggleSpell();
             break;
         case A_QuickKey1:
             quickKey(1);

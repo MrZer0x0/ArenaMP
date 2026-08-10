@@ -196,6 +196,7 @@ namespace MWGui
         in the code
     */
     virtual MWGui::ContainerWindow* getContainerWindow();
+    MWGui::CompanionWindow* getCompanionWindow();
     /*
         End of tes3mp addition
     */
@@ -555,6 +556,7 @@ namespace MWGui
         in multiplayer for container sync
     */
     ContainerWindow* mContainerWindow;
+    CompanionWindow* mCompanionWindow;
     /*
         End of tes3mp addition
     */

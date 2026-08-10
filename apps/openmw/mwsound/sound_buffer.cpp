@@ -101,6 +101,49 @@ namespace MWSound
         return sfx;
     }
 
+    Sound_Buffer* SoundBufferPool::loadFile(const std::string& resourceName)
+    {
+        std::string normalized = resourceName;
+        mVfs->normalizeFilename(normalized);
+
+        const std::string key = std::string("@file:") + normalized;
+        Sound_Buffer* sfx = nullptr;
+        const auto found = mBufferNameMap.find(key);
+        if (found != mBufferNameMap.end())
+            sfx = found->second;
+        else
+        {
+            const AudioParams audioParams = makeAudioParams(*MWBase::Environment::get().getWorld());
+            float min = std::max(1.f,
+                audioParams.mAudioDefaultMinDistance * audioParams.mAudioMinDistanceMult);
+            float max = std::max(min,
+                audioParams.mAudioDefaultMaxDistance * audioParams.mAudioMaxDistanceMult);
+            Sound_Buffer& inserted = mSoundBuffers.emplace_back(normalized, 1.f, min, max);
+            sfx = &inserted;
+            mBufferNameMap.emplace(key, sfx);
+        }
+
+        if (sfx->getHandle() == nullptr)
+        {
+            auto [handle, size] = mOutput->loadSound(sfx->getResourceName());
+            if (handle == nullptr)
+                return nullptr;
+
+            sfx->mHandle = handle;
+            mBufferCacheSize += size;
+            if (mBufferCacheSize > mBufferCacheMax)
+            {
+                unloadUnused();
+                if (!mUnusedBuffers.empty() && mBufferCacheSize > mBufferCacheMax)
+                    Log(Debug::Warning) << "No unused sound buffers to free, using "
+                                        << mBufferCacheSize << " bytes!";
+            }
+            mUnusedBuffers.push_front(sfx);
+        }
+
+        return sfx;
+    }
+
     void SoundBufferPool::clear()
     {
         for (auto &sfx : mSoundBuffers)

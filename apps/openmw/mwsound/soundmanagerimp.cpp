@@ -607,6 +607,61 @@ namespace MWSound
         return result;
     }
 
+    Sound *SoundManager::playSoundFile3D(const MWWorld::ConstPtr &ptr, const std::string& filename,
+                                         float volume, float pitch, Type type, PlayMode mode,
+                                         float offset)
+    {
+        if(!mOutput->isInitialized() || ptr.isEmpty())
+            return nullptr;
+
+        const osg::Vec3f objpos(ptr.getRefData().getPosition().asVec3());
+        if ((mode & PlayMode::RemoveAtDistance) && (mListenerPos - objpos).length2() > 2000 * 2000)
+            return nullptr;
+
+        Sound_Buffer *sfx = mSoundBuffers.loadFile(filename);
+        if(!sfx)
+            return nullptr;
+
+        stopSound(sfx, ptr);
+
+        bool played;
+        SoundPtr sound = getSoundRef();
+        if(!(mode&PlayMode::NoPlayerLocal) && ptr == MWMechanics::getPlayer())
+        {
+            sound->init([&] {
+                SoundParams params;
+                params.mVolume = volume * sfx->getVolume();
+                params.mBaseVolume = volumeFromType(type);
+                params.mPitch = pitch;
+                params.mFlags = mode | type | Play_2D;
+                return params;
+            } ());
+            played = mOutput->playSound(sound.get(), sfx->getHandle(), offset);
+        }
+        else
+        {
+            sound->init([&] {
+                SoundParams params;
+                params.mPos = objpos;
+                params.mVolume = volume * sfx->getVolume();
+                params.mBaseVolume = volumeFromType(type);
+                params.mPitch = pitch;
+                params.mMinDistance = sfx->getMinDist();
+                params.mMaxDistance = sfx->getMaxDist();
+                params.mFlags = mode | type | Play_3D;
+                return params;
+            } ());
+            played = mOutput->playSound3D(sound.get(), sfx->getHandle(), offset);
+        }
+        if(!played)
+            return nullptr;
+
+        Sound* result = sound.get();
+        mActiveSounds[ptr].emplace_back(std::move(sound), sfx);
+        mSoundBuffers.use(*sfx);
+        return result;
+    }
+
     void SoundManager::stopSound(Sound *sound)
     {
         if(sound)
