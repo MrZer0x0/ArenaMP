@@ -247,6 +247,8 @@ protected:
         stateset->addUniform(new osg::Uniform("waterWaveStrength", 1.0f));
         stateset->addUniform(new osg::Uniform("waterSurfaceRoughness", 0.22f));
         stateset->addUniform(new osg::Uniform("waterTransparency", 1.0f));
+        stateset->addUniform(new osg::Uniform("waterFoamIntensity", 1.0f));
+        stateset->addUniform(new osg::Uniform("waterHighlightIntensity", 1.0f));
         stateset->addUniform(new osg::Uniform("rippleMapWorldScale", RipplesSurface::sWorldScaleFactor));
         stateset->addUniform(new osg::Uniform("rippleMapHalfWorldSize",
             static_cast<float>(RipplesSurface::sRTTSize) * RipplesSurface::sWorldScaleFactor * 0.5f));
@@ -292,6 +294,12 @@ protected:
 
         if (osg::Uniform* waterTransparencyUniform = stateset->getUniform("waterTransparency"))
             waterTransparencyUniform->set(std::clamp(Settings::Manager::getFloat("transparency", "Water"), 0.0f, 2.0f));
+
+        if (osg::Uniform* waterFoamIntensityUniform = stateset->getUniform("waterFoamIntensity"))
+            waterFoamIntensityUniform->set(std::clamp(Settings::Manager::getFloat("foam intensity", "Water"), 0.0f, 2.0f));
+
+        if (osg::Uniform* waterHighlightIntensityUniform = stateset->getUniform("waterHighlightIntensity"))
+            waterHighlightIntensityUniform->set(std::clamp(Settings::Manager::getFloat("highlight intensity", "Water"), 0.0f, 2.0f));
 
         if (mRipples)
             stateset->setTextureAttributeAndModes(4, mRipples->getColorTexture(), osg::StateAttribute::ON);
@@ -788,7 +796,27 @@ void Water::createShaderWaterStateSet(osg::Node* node, Reflection* reflection, R
 
 void Water::processChangedSettings(const Settings::CategorySettingVector& settings)
 {
-    updateWaterMaterial();
+    // These PBR controls are read by WaterStateUpdater every frame and do not
+    // require rebuilding reflection/refraction RTTs or recompiling the shader.
+    // Keeping them runtime-only makes dragging the sliders smooth.
+    bool materialRebuildRequired = false;
+    for (const auto& setting : settings)
+    {
+        if (setting.first != "Water")
+            continue;
+
+        const std::string& name = setting.second;
+        if (name == "refraction" || name == "wave strength" || name == "surface roughness" || name == "transparency"
+            || name == "foam intensity" || name == "highlight intensity"
+            || name == "caustics intensity" || name == "underwater tint")
+            continue;
+
+        materialRebuildRequired = true;
+        break;
+    }
+
+    if (materialRebuildRequired)
+        updateWaterMaterial();
 }
 
 Water::~Water()

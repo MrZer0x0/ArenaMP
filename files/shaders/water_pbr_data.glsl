@@ -72,7 +72,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
         shoreDistanceModifier = WATER_INTERIOR_PARAMS_2.w;
         return;
     }
-    
+
     // Initialize
     float calmFactor = 0.0;
     float swampFactor = 0.0;
@@ -93,7 +93,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
         // S Vvardenfell
         const vec2 calmStart2 = vec2(136000.0, 5200.0);
         const vec2 calmEnd2 = vec2(-41000.0, -76000.0);
-        
+
         // Gnisis & West Gash
         const vec2 calmStart3 = vec2(-54500.0, 125000.0);
         const vec2 calmEnd3 = vec2(-103000.0, 85000.0);
@@ -121,7 +121,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart1.x, calmEnd1.x),
             min(calmStart1.y, calmEnd1.y),
             max(calmStart1.x, calmEnd1.x),
-            max(calmStart1.y, calmEnd1.y) 
+            max(calmStart1.y, calmEnd1.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds1, calmCenter1, calmHalfSize1, -3000.0); // blending radius inside the box
 
@@ -132,7 +132,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart2.x, calmEnd2.x),
             min(calmStart2.y, calmEnd2.y),
             max(calmStart2.x, calmEnd2.x),
-            max(calmStart2.y, calmEnd2.y) 
+            max(calmStart2.y, calmEnd2.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds2, calmCenter2, calmHalfSize2, -6000.0);
 
@@ -143,7 +143,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart3.x, calmEnd3.x),
             min(calmStart3.y, calmEnd3.y),
             max(calmStart3.x, calmEnd3.x),
-            max(calmStart3.y, calmEnd3.y) 
+            max(calmStart3.y, calmEnd3.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds3, calmCenter3, calmHalfSize3, -2500.0);
 
@@ -154,7 +154,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart4.x, calmEnd4.x),
             min(calmStart4.y, calmEnd4.y),
             max(calmStart4.x, calmEnd4.x),
-            max(calmStart4.y, calmEnd4.y) 
+            max(calmStart4.y, calmEnd4.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds4, calmCenter4, calmHalfSize4, -3000.0);
 
@@ -165,7 +165,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart5.x, calmEnd5.x),
             min(calmStart5.y, calmEnd5.y),
             max(calmStart5.x, calmEnd5.x),
-            max(calmStart5.y, calmEnd5.y) 
+            max(calmStart5.y, calmEnd5.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds5, calmCenter5, calmHalfSize5, -3000.0);
 
@@ -176,7 +176,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(swampStart.x, swampEnd.x),
             min(swampStart.y, swampEnd.y),
             max(swampStart.x, swampEnd.x),
-            max(swampStart.y, swampEnd.y) 
+            max(swampStart.y, swampEnd.y)
         );
         if (worldPos.x >= swampBounds.x && worldPos.x <= swampBounds.z
             && worldPos.y >= swampBounds.y && worldPos.y <= swampBounds.w)
@@ -186,7 +186,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             if (sdf < 0.0)
             {
                 swampFactor = smoothstep(0.0, -9000.0, sdf);
-                
+
                 const vec2 swampStartEx = vec2(-55000.0, -10500.0);
                 const vec2 swampEndEx = vec2(-72000.0, -37200.0);
                 const vec2 swampCenterEx = swampStartEx * 0.5 + swampEndEx * 0.5;
@@ -195,7 +195,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
                     min(swampStartEx.x, swampEndEx.x),
                     min(swampStartEx.y, swampEndEx.y),
                     max(swampStartEx.x, swampEndEx.x),
-                    max(swampStartEx.y, swampEndEx.y) 
+                    max(swampStartEx.y, swampEndEx.y)
                 );
                 if (worldPos.x >= swampBoundsEx.x && worldPos.x <= swampBoundsEx.z
                     && worldPos.y >= swampBoundsEx.y && worldPos.y <= swampBoundsEx.w)
@@ -205,7 +205,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
                     if (sdf < 0.0)
                         swampFactor = max(0.0, swampFactor - smoothstep(0.0, -5000.0, sdf));
                 }
-                
+
                 const vec2 swampStartEx2 = vec2(-63000.0, -23000.0);
                 const vec2 swampEndEx2 = vec2(-47500.0, -13000.0);
                 const vec2 swampCenterEx2 = swampStartEx2 * 0.5 + swampEndEx2 * 0.5;
@@ -214,7 +214,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
                     min(swampStartEx2.x, swampEndEx2.x),
                     min(swampStartEx2.y, swampEndEx2.y),
                     max(swampStartEx2.x, swampEndEx2.x),
-                    max(swampStartEx2.y, swampEndEx2.y) 
+                    max(swampStartEx2.y, swampEndEx2.y)
                 );
                 if (worldPos.x >= swampBoundsEx2.x && worldPos.x <= swampBoundsEx2.z
                     && worldPos.y >= swampBoundsEx2.y && worldPos.y <= swampBoundsEx2.w)
@@ -235,7 +235,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             sulphurPos.x - sulphurRadius,
             sulphurPos.y - sulphurRadius,
             sulphurPos.x + sulphurRadius,
-            sulphurPos.y + sulphurRadius 
+            sulphurPos.y + sulphurRadius
         );
         if (worldPos.x >= sulphurBounds.x && worldPos.x <= sulphurBounds.z
             && worldPos.y >= sulphurBounds.y && worldPos.y <= sulphurBounds.w)
@@ -290,7 +290,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(tropicalStart.x, tropicalEnd.x),
             min(tropicalStart.y, tropicalEnd.y),
             max(tropicalStart.x, tropicalEnd.x),
-            max(tropicalStart.y, tropicalEnd.y) 
+            max(tropicalStart.y, tropicalEnd.y)
         );
         UpdateWaterFactor(tropicalFactor, worldPos, tropicalBounds, tropicalCenter, tropicalHalfSize, -10000.0);
 
@@ -301,7 +301,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart6.x, calmEnd6.x),
             min(calmStart6.y, calmEnd6.y),
             max(calmStart6.x, calmEnd6.x),
-            max(calmStart6.y, calmEnd6.y) 
+            max(calmStart6.y, calmEnd6.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds6, calmCenter6, calmHalfSize6, -10000.0);
 
@@ -312,7 +312,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart7.x, calmEnd7.x),
             min(calmStart7.y, calmEnd7.y),
             max(calmStart7.x, calmEnd7.x),
-            max(calmStart7.y, calmEnd7.y) 
+            max(calmStart7.y, calmEnd7.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds7, calmCenter7, calmHalfSize7, -5000.0);
 
@@ -323,7 +323,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart8.x, calmEnd8.x),
             min(calmStart8.y, calmEnd8.y),
             max(calmStart8.x, calmEnd8.x),
-            max(calmStart8.y, calmEnd8.y) 
+            max(calmStart8.y, calmEnd8.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds8, calmCenter8, calmHalfSize8, -5000.0);
 
@@ -334,7 +334,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart9.x, calmEnd9.x),
             min(calmStart9.y, calmEnd9.y),
             max(calmStart9.x, calmEnd9.x),
-            max(calmStart9.y, calmEnd9.y) 
+            max(calmStart9.y, calmEnd9.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds9, calmCenter9, calmHalfSize9, -8000.0);
 
@@ -345,7 +345,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart10.x, calmEnd10.x),
             min(calmStart10.y, calmEnd10.y),
             max(calmStart10.x, calmEnd10.x),
-            max(calmStart10.y, calmEnd10.y) 
+            max(calmStart10.y, calmEnd10.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds10, calmCenter10, calmHalfSize10, -9000.0);
 
@@ -356,7 +356,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart11.x, calmEnd11.x),
             min(calmStart11.y, calmEnd11.y),
             max(calmStart11.x, calmEnd11.x),
-            max(calmStart11.y, calmEnd11.y) 
+            max(calmStart11.y, calmEnd11.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds11, calmCenter11, calmHalfSize11, -7000.0);
 
@@ -367,7 +367,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart12.x, calmEnd12.x),
             min(calmStart12.y, calmEnd12.y),
             max(calmStart12.x, calmEnd12.x),
-            max(calmStart12.y, calmEnd12.y) 
+            max(calmStart12.y, calmEnd12.y)
         );
         if (worldPos.x >= calmBounds12.x && worldPos.x <= calmBounds12.z
             && worldPos.y >= calmBounds12.y && worldPos.y <= calmBounds12.w)
@@ -377,7 +377,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             if (sdf < 0.0)
             {
                 calmFactor = smoothstep(0.0, -8000.0, sdf);
-                
+
                 const vec2 calmStartEx = vec2(353000.0, -114000.0);
                 const vec2 calmEndEx = vec2(325000.0, -143000.0);
                 const vec2 calmCenterEx = calmStartEx * 0.5 + calmEndEx * 0.5;
@@ -386,7 +386,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
                     min(calmStartEx.x, calmEndEx.x),
                     min(calmStartEx.y, calmEndEx.y),
                     max(calmStartEx.x, calmEndEx.x),
-                    max(calmStartEx.y, calmEndEx.y) 
+                    max(calmStartEx.y, calmEndEx.y)
                 );
                 if (worldPos.x >= calmBoundsEx.x && worldPos.x <= calmBoundsEx.z
                     && worldPos.y >= calmBoundsEx.y && worldPos.y <= calmBoundsEx.w)
@@ -406,7 +406,7 @@ void UpdateWaterTypes(vec3 worldPos, bool isInterior, inout vec4 baseWaterColor,
             min(calmStart13.x, calmEnd13.x),
             min(calmStart13.y, calmEnd13.y),
             max(calmStart13.x, calmEnd13.x),
-            max(calmStart13.y, calmEnd13.y) 
+            max(calmStart13.y, calmEnd13.y)
         );
         UpdateWaterFactor(calmFactor, worldPos, calmBounds13, calmCenter13, calmHalfSize13, -5000.0);
     }

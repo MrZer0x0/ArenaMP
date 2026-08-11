@@ -24,7 +24,7 @@ const float VISIBILITY_DEPTH = VISIBILITY * 1.5;
 
 const float WAVE_CHOPPINESS = 0.02;                 // wave choppiness
 const float WAVE_SCALE = 125.0;                     // overall wave scale
-                                                    
+
 const float BUMP = 0.42;                            // overall water surface bumpiness
 const float BUMP_RAIN = 0.56;                       // surface bumpiness in rain
 const float REFR_BUMP = 0.015;                      // refraction distortion amount
@@ -95,6 +95,12 @@ uniform bool enableRainRipples;
 uniform bool isInteriorWater;
 uniform float useRefraction;
 uniform float useActorRipples;
+// ArenaMW runtime water controls. Defaults preserve the upstream PBR look.
+uniform float waterWaveStrength;
+uniform float waterSurfaceRoughness;
+uniform float waterTransparency;
+uniform float waterFoamIntensity;
+uniform float waterHighlightIntensity;
 varying vec3 screenCoordsPassthrough;
 
 #define WATER 1
@@ -199,9 +205,9 @@ vec3 dayTint(float sunZ)
 
 vec3 GetUnderwaterPos(vec2 fragUV, float d)
 {
-    float depth = 
+    float depth =
     #if @reverseZ
-        1.0 - 
+        1.0 -
     #endif
         d;
     depth = depth * 2.0 - 1.0;
@@ -266,7 +272,7 @@ float CalculateWaveHeight(vec2 pos, float time, float distFromCamera, vec4 waveS
     r = fbm.z * GetNoiseWithGradient(rot1 * (pos * 0.77f * fbm.x + dir1 * time * fbm.y));
     h = r.x * waveStrength.x;
     pos = -r.yz * fbm.w + pos;
-    
+
     bool doEarlyOut = targetH < 999.0f;
     if (!(doEarlyOut && (h + bounds.x < targetH || h - bounds.x > targetH)))
     {
@@ -274,7 +280,7 @@ float CalculateWaveHeight(vec2 pos, float time, float distFromCamera, vec4 waveS
         r = fbm.z * GetNoiseWithGradient(rot1 * (pos * 0.92f * fbm.x + dir2 * time * fbm.y));
         h = r.x * waveStrength.x + h;
         pos = -r.yz * fbm.w + pos;
-        
+
         float lod = smoothstep(10000.0f, 2000.0f, distFromCamera);
         if (lod > 0.0f && !(doEarlyOut && (h + bounds.y < targetH || h - bounds.y > targetH)))
         {
@@ -284,7 +290,7 @@ float CalculateWaveHeight(vec2 pos, float time, float distFromCamera, vec4 waveS
             r = lod * fbm.z * mix(r * 0.7f, exp(r * 2.0f - 1.9f), waveStrength.w);
             h = r.x * waveStrength.y + h;
             pos = -r.yz * fbm.w + pos;
-            
+
             if (!(doEarlyOut && (h + bounds.z < targetH || h - bounds.z > targetH)))
             {
                 fbm *= float4(1.618f, 1.346321f, 0.45f, 1.3f);
@@ -292,7 +298,7 @@ float CalculateWaveHeight(vec2 pos, float time, float distFromCamera, vec4 waveS
                 r = lod * fbm.z * mix(r * 0.7f, exp(r * 2.0f - 1.7f), waveStrength.w);
                 h = r.x * waveStrength.y + h;
                 pos = -r.yz * fbm.w + pos;
-                
+
                 lod = smoothstep(2000.0f, 700.0f, distFromCamera);
                 if (lod > 0.0f && !(doEarlyOut && (h + bounds.w < targetH || h - bounds.w > targetH)))
                 {
@@ -331,7 +337,7 @@ vec3 RaymarchWater(vec3 eyePos, vec3 direction, float t0, float t1, float time, 
 
     int raySteps = 12; // marching steps through the wave envelope
     float rayStep = (tExit - tEnter) / float(raySteps);
-    
+
     float invDirZ = 1.0f / max(abs(direction.z), 0.2f);
     float4 bounds = float4(1.37f * waveStrength.z);
     bounds.z = 1.783f * waveStrength.y + bounds.w;
@@ -340,7 +346,7 @@ vec3 RaymarchWater(vec3 eyePos, vec3 direction, float t0, float t1, float time, 
     float t = tEnter;
     vec3 p = eyePos;
     float dynamicStep = rayStep;
-    
+
     for (int i = 0; i < raySteps && t < tExit; i++)
     {
         t += dynamicStep;
@@ -349,12 +355,12 @@ vec3 RaymarchWater(vec3 eyePos, vec3 direction, float t0, float t1, float time, 
         float cellSize = max(1.0f, t * 0.02f);
         float h = CalculateWaveHeight(p.xy, time, t, waveStrength, (p.z - worldPos.z + 27.0f) / 2.7f, bounds) * distanceDamping;
         float delta = isUnderwater ? h - p.z : p.z - h;
-        
+
         if (delta <= 0.0f)
             break;
         dynamicStep = clamp(delta * invDirZ, rayStep * 0.25f, rayStep * 3.0f);
     }
-    
+
     // refine with a short binary search around the last marching interval
     t0 = t - dynamicStep;
     t1 = t;
@@ -389,17 +395,22 @@ void main(void)
     float sssIntensity = 1.0;
     float shoreSulphurIntensity = 0.0;
     float shoreDistanceModifier = 0.0;
-    
+
 #if MULTIPLE_WATER_TYPES
     {
         UpdateWaterTypes(wp, isInterior, baseWaterColor,
             waveStrength, multicolorIntensity, foamIntensity, refractionBrightness,
             sssIntensity, shoreSulphurIntensity, shoreDistanceModifier);
-            
+
         if (isUnderwater)
-            shoreSulphurIntensity = 0.0; 
+            shoreSulphurIntensity = 0.0;
     }
 #endif // MULTIPLE_WATER_TYPES
+
+    // Apply ArenaMW's global controls on top of the per-region water profile.
+    // 1.0 keeps the Complete Water Shaders PBR author's original values.
+    waveStrength = clamp(waveStrength * waterWaveStrength, 0.0, 2.5);
+    foamIntensity = clamp(foamIntensity * waterFoamIntensity, 0.0, 2.0);
 
     vec4 sunSpec = lcalcSpecular(0);
     // NOTE: upstream mod used a custom waterShadowSoft() (PCF) helper added to a
@@ -411,7 +422,7 @@ void main(void)
     screenCoords = clamp(screenCoords, vec2(0.001), vec2(0.999));
     float waterTimer = osg_SimulationTime * 0.6;
     float waveTimer = osg_SimulationTime * 0.6;
-    
+
     vec4 waveStrengthFBM = vec4(waveStrength, sqrt(waveStrength), 0.0f, 0.0f);
     waveStrengthFBM.z = sqrt(waveStrengthFBM.y);
     waveStrengthFBM.w = smoothstep(0.80f, 0.65f, waveStrengthFBM.x);
@@ -421,7 +432,7 @@ void main(void)
     // is remapped back toward worldPos anyway. The raymarched position is faded
     // back to the flat worldPos across the far transition band to avoid a seam
     // where the FBM normal also vanishes.
-    if (radialDepth < 2900.0f)
+    if (radialDepth < 2900.0f && waveStrength > 0.001f)
     {
         wp = RaymarchWater(osg_ViewMatrixInverse[3].xyz, viewDir, 0.0, radialDepth,
                 waveTimer, waveStrengthFBM, isUnderwater);
@@ -432,7 +443,7 @@ void main(void)
         wp = mix(worldPos, wp, nearBlend * farBlend);
     }
 #endif // PBR_ENABLED && RAYMARCH_WAVES
-    
+
     vec2 UV = wp.xy / 163840.0f;
 
 #if @waterRefraction
@@ -540,10 +551,27 @@ void main(void)
     vec2 smallWaves = mix(SMALL_WAVES, SMALL_WAVES_RAIN, rainIntensity);
     float bump = mix(BUMP, BUMP_RAIN, rainIntensity);
     vec3 normal5Faded = mix(vec3(0.0, 0.0, 1.0), normal5, n5Lod);
-    vec3 sunWorldDir = normal3 * midWaves.x + normal4 * midWaves.y + normal5Faded * smallWaves.x + normal0 * smallWaves.y; 
+    vec3 sunWorldDir = normal3 * midWaves.x + normal4 * midWaves.y + normal5Faded * smallWaves.x + normal0 * smallWaves.y;
     vec3 normal = (normal1 * bigWaves.x + normal2 * bigWaves.y + sunWorldDir);
     normal.xy *= lod;
     normal = normalize(vec3(-normal.x * bump, -normal.y * bump, normal.z * 0.3));
+
+    // Apply the user wave multiplier before refraction distortion is sampled,
+    // so Wave Strength = 0 really produces a flat/undistorted surface.
+    float preDepthWaveStrength = clamp(waveStrength, 0.0, 2.5);
+    if (preDepthWaveStrength <= 0.001f)
+    {
+        normal = vec3(0.0, 0.0, 1.0);
+    }
+    else if (abs(preDepthWaveStrength - 1.0f) > 0.001f)
+    {
+        vec2 scaledBigWaves = bigWaves * preDepthWaveStrength;
+        float scaledBump = mix(BUMP, BUMP_RAIN, rainIntensity * min(preDepthWaveStrength, 1.0f));
+        vec3 scaledNormal = normal1 * scaledBigWaves.x + normal2 * scaledBigWaves.y
+            + sunWorldDir * preDepthWaveStrength;
+        scaledNormal.xy *= lod;
+        normal = normalize(vec3(-scaledNormal.x * scaledBump, -scaledNormal.y * scaledBump, scaledNormal.z * 0.3));
+    }
 
     float waveAttenuation = 1.0;
     vec2 screenCoordsOffset = normal.xy * REFR_BUMP;
@@ -555,11 +583,11 @@ void main(void)
 
 #if @waterRefraction
     screenCoordsOffset *= clamp(opticalWaterDepth / BUMP_SUPPRESS_DEPTH - 0.25, 0.0, 1.0);
-    
+
     float depthSampleDistorted = sampleRefractionDepthMap(screenCoords - screenCoordsOffset);
     depthSampleDistorted = linearizeDepth(depthSampleDistorted, near, far);
     float waterDepthDistorted = max(depthSampleDistorted - surfaceDepth, 0.0);
-    
+
     screenCoordsOffset *= clamp(waterDepthDistorted / BUMP_SUPPRESS_DEPTH, 0.0, 1.0);
     if (cameraPos.z > 0.0 && opticalWaterDepth <= VISIBILITY_DEPTH && waterDepthDistorted > VISIBILITY_DEPTH)
         screenCoordsOffset = vec2(0.0);
@@ -604,24 +632,31 @@ void main(void)
         underwaterRefrOffset *= horizonGuard;
     }
 #endif
-        
-    if (waveStrength < 1.0)
+
+    // Make the global Wave Strength slider affect both raymarched displacement
+    // and the normal-map surface. The upstream shader only reduced normals for
+    // values below 1.0, which made values above 1.0 visually inconsistent.
+    if (waveStrength <= 0.001f)
+    {
+        normal = vec3(0.0, 0.0, 1.0);
+    }
+    else if (abs(waveStrength - 1.0f) > 0.001f)
     {
         bigWaves *= waveStrength;
-        bump = mix(BUMP, BUMP_RAIN, rainIntensity * waveStrength);
+        bump = mix(BUMP, BUMP_RAIN, rainIntensity * min(waveStrength, 1.0f));
         normal = (normal1 * bigWaves.x + normal2 * bigWaves.y + sunWorldDir * waveStrength);
         normal.xy *= lod;
         normal = normalize(vec3(-normal.x * bump, -normal.y * bump, normal.z * 0.3));
     }
     if (isUnderwater)
         normal = -normal;
-    if (dot(-viewDir, normal) < 0.0) 
+    if (dot(-viewDir, normal) < 0.0)
         normal = reflect(normal, viewDir);
     float sunFade = smoothstep(-0.3, 1.0, length(gl_LightModel.ambient.rgb));
     float sunFadeSqrt = sqrt(sunFade);
     if (isInterior)
         sunFade = mix(sunFade, 1.0, 0.225);
-    
+
     sunWorldDir = normalize((gl_ModelViewMatrixInverse * vec4(lcalcPosition(0).xyz, 0.0)).xyz);
     vec3 sunWorldDirUnmodified = sunWorldDir;
 
@@ -637,16 +672,16 @@ void main(void)
 #else
     float fresnel = clamp(fresnel_dielectric(viewDir, mix(normal, normal0, 0.5), ior), 0.0, 1.0);
 #endif // PBR_ENABLED
-    
+
 #if !@waterRefraction
     if (isInterior)
         fresnel *= 0.125;
-#endif 
+#endif
 
 #if !PBR_ENABLED
     if (!isInterior)
-        fresnel = min(fresnel, clamp(fresnel_dielectric(viewDir, normal0, ior), 0.0, 1.0)); 
-#endif 
+        fresnel = min(fresnel, clamp(fresnel_dielectric(viewDir, normal0, ior), 0.0, 1.0));
+#endif
 
     if (isUnderwater)
     {
@@ -736,14 +771,18 @@ void main(void)
             float waveFoam = combinedFoam * waveMask;
             float depthFoam = combinedFoam * depthOpacity;
 
-            foamMask = max(waveFoam, depthFoam);
+            foamMask = clamp(max(waveFoam, depthFoam) * foamIntensity, 0.0, 1.0);
             fresnel *= (1.0f - foamMask);
         }
     }
 #endif
 
+    float transparencyControl = clamp(waterTransparency, 0.0, 2.0);
 #if @waterRefraction
-    vec3 sigma = baseWaterColor.a * (1.0 - baseWaterColor.rgb);
+    float absorptionMultiplier = transparencyControl <= 1.0
+        ? mix(2.2, 1.0, transparencyControl)
+        : mix(1.0, 0.45, transparencyControl - 1.0);
+    vec3 sigma = baseWaterColor.a * (1.0 - baseWaterColor.rgb) * absorptionMultiplier;
     vec3 expSigma = min(vec3(1.0), exp(-sigma * waterDepthDistorted));
     vec3 diffuseShadow = mix(vec3(1.0), vec3(shadow), (1.0 - clamp(expSigma, 0.0, 1.0)));
     vec3 diffuse = diffuseShadow * (1.0 - AMBIENT_INTENSITY);
@@ -775,7 +814,7 @@ void main(void)
 #if PBR_ENABLED
     vec3 normalS = normalize(mix(normal, normal0, 0.15f) + rippleAdd * 0.4f);
     float specular = 0.0f;
-    
+
     if (!isUnderwater)
     {
         const bool isDay = true;
@@ -791,27 +830,33 @@ void main(void)
                  * (isDay ? daySpec
                     : vec3(0.10f, 0.15f, 0.20f) * sunWorldDir.z + 0.04f);
         }
-    
-        float alpha = isInterior ? 0.25f : mix(isDay ? 0.17f : 0.10f, 0.85f, foamMask);
+
+        float alphaBase = isInterior ? 0.25f : mix(isDay ? 0.17f : 0.10f, 0.85f, foamMask);
+        // Existing ArenaMW Water Roughness now controls the PBR BRDF lobe.
+        // 0.22 is the compatibility/default value and leaves the port unchanged.
+        float roughnessScale = clamp(waterSurfaceRoughness / 0.22f, 0.09f, 4.55f);
+        float alpha = clamp(alphaBase * roughnessScale, 0.02f, 1.0f);
         float NdotV = max(0.0, dot(normalS, -viewDir));
         float NdotL = max(dot(normalS, sunWorldDir), 0.0f);
         vec3 H = normalize(-viewDir + sunWorldDir);
         alpha *= alpha;
         float VdotH = dot(-viewDir, H);
         float NdotH = max(dot(normalS, H), 0.0);
-    
+
         float ks = Schlick(0.02, 1.0, VdotH) * sunSpec.a;
         float D = TrowbridgeReitz(alpha, NdotH);
         float denom = 2.0 * mix(2.0 * NdotL * NdotV, NdotL + NdotV, alpha);
         float specularBRDF = D / max(denom, 1e-4);
         // Gate the highlight by weather (interiors keep their own lighting).
         specular = ks * specularBRDF * shadow * (isInterior ? 1.0 : weatherGate);
-        
+        specular *= clamp(waterHighlightIntensity, 0.0, 2.0);
+
         diffuse *= (1.0 - ks);
     }
 #else
     float NdotL = sunFade * sunFade;
-    float specular = pow(max(dot(reflect(viewDir, normal), sunWorldDir), 0.0), SPEC_HARDNESS) * shadow * sunSpec.a * weatherGate;
+    float specular = pow(max(dot(reflect(viewDir, normal), sunWorldDir), 0.0), SPEC_HARDNESS) * shadow * sunSpec.a * weatherGate
+        * clamp(waterHighlightIntensity, 0.0, 2.0);
 #endif
 
     waterColor = waterColor * sunFade * sunFadeSqrt * (diffuse + AMBIENT_INTENSITY);
@@ -827,7 +872,10 @@ void main(void)
     vec3 rainSpecular = vec3(0.0);
     if (isUnderwater)
         rainSpecular = vec3(0.0f);
-    float waterTransparency = clamp(fresnel * 6.0 + specular, 0.0, 1.0);
+    float surfaceOpacity = clamp(fresnel * 6.0 + specular, 0.0, 1.0);
+    float opacityControl = transparencyControl <= 1.0
+        ? mix(1.20, 1.0, transparencyControl)
+        : mix(1.0, 0.68, transparencyControl - 1.0);
 
 #if PBR_ENABLED
     normal = mix(normal3, mix(normal2, mix(normal0, normal1, 0.75 * fresnel / (fresnel_dielectric(viewDir, normal1, ior) + fresnel + 0.0001)), smoothstep(80.0, 500.0, radialDepth) * 0.5f + 0.5f), 0.1 * waveAttenuation + 0.85) * (isUnderwater ? -1.0 : 1.0);
@@ -932,7 +980,7 @@ void main(void)
     if (isUnderwater)
     {
         refraction = clamp(refraction * (isInterior ? 0.4 : 0.9), 0.0, 1.0);
-        
+
         const float g = 0.6;
         const float scatteringWeight = 0.77;
         float phase = g * g + 1.0 - 2.0 * g * max(0.0, dot(viewDir, sunWorldDir));
@@ -966,13 +1014,19 @@ void main(void)
             refraction = mix(fogColor, refraction, fogTrans);
         }
 
-        refraction *= (1.0 - foamMask); 
+        refraction *= (1.0 - foamMask);
         isSky = (depthSampleDistorted >= far && viewDir.z > 0.02f);
     }
     else
     {
         refraction *= refractionBrightness;
-        refraction = clamp(mix(waterColor, refraction, (1.0 - foamMask) * expSigma), 0.0, 1.0);
+        vec3 transmission = (1.0 - foamMask) * expSigma * min(transparencyControl, 1.0);
+        refraction = clamp(mix(waterColor, refraction, transmission), 0.0, 1.0);
+        // Values above 1.0 progressively restore some of the unabsorbed scene,
+        // making clear water visibly clearer without changing the default look.
+        float extraClarity = max(transparencyControl - 1.0, 0.0);
+        refraction = mix(refraction, rawRefraction * refractionBrightness,
+            extraClarity * 0.35 * (1.0 - foamMask));
         refraction = mix(refraction, vec3(dot(refraction, vec3(0.2126, 0.7152, 0.0722))), foamMask);
 
         // Shadowed water volume: where the surface is in shadow the column below
@@ -1011,10 +1065,10 @@ void main(void)
 
     gl_FragData[0].rgb = mix(refraction, reflection, fresnel);
     gl_FragData[0].a = 1.0;
-    rainSpecular *= waterTransparency;
+    rainSpecular *= surfaceOpacity;
 #else
     gl_FragData[0].rgb = mix(waterColor, reflection, fresnel);
-    gl_FragData[0].a = isInterior ? waterTransparency * 0.5 + 0.5 : waterTransparency * 0.28 + 0.72;
+    gl_FragData[0].a = clamp((isInterior ? surfaceOpacity * 0.5 + 0.5 : surfaceOpacity * 0.28 + 0.72) * opacityControl, 0.0, 1.0);
 
     // Without refraction the grazing horizon shows a bright reflected-sky seam.
     // Roll the water back toward its own colour there so the white band fades.
@@ -1032,8 +1086,8 @@ void main(void)
     if (useRefraction < 0.5)
     {
         gl_FragData[0].rgb = mix(waterColor, reflection, fresnel);
-        gl_FragData[0].a = isInterior ? waterTransparency * 0.5 + 0.5
-                                     : waterTransparency * 0.28 + 0.72;
+        gl_FragData[0].a = clamp((isInterior ? surfaceOpacity * 0.5 + 0.5
+                                     : surfaceOpacity * 0.28 + 0.72) * opacityControl, 0.0, 1.0);
 
         if (!isInterior && !isUnderwater)
         {
@@ -1083,7 +1137,8 @@ void main(void)
         {
             float sparkle = surfaceSparkle(wp.xy, normal, osg_SimulationTime * 3.14);
             vec3 sparkleCol = mix(sunDiffuse, vec3(1.0), 0.4);
-            gl_FragData[0].rgb += sparkleCol * sparkle * sparkleGate * (0.18 + 0.12 * fresnel) * (1.0 - foamMask);
+            gl_FragData[0].rgb += sparkleCol * sparkle * sparkleGate * (0.18 + 0.12 * fresnel)
+                * clamp(waterHighlightIntensity, 0.0, 2.0) * (1.0 - foamMask);
         }
         gl_FragData[0].rgb *= surfaceBreathing(wp.xy, osg_SimulationTime * 3.14);
         vec3 tint = dayTint(sunZ);
@@ -1098,9 +1153,9 @@ void main(void)
     #else
         normal = mix(normal, vec3(0.0, 0.0, isUnderwater ? -1.0f : 1.0f), 0.5f);
     #endif // PBR_ENABLED
-    
+
     gl_FragData[1].rgb = normalize(gl_NormalMatrix * normal) * 0.5 + 0.5;
-    
+
     #if PBR_ENABLED
         if (isSky)
             gl_FragData[1].rgb = 1.0f - gl_FragData[1].rgb;
@@ -1111,7 +1166,7 @@ void main(void)
             #endif // @waterRefraction
         }
     #endif // PBR_ENABLED
-    
+
     gl_FragData[1].rgb *= (1.0f - foamMask) * (min(0.0f, rainSpecular.g) + 1.0f);
 #endif // !@disableNormals
 
