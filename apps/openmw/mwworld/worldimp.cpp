@@ -1903,18 +1903,47 @@ namespace MWWorld
         const osg::Vec3f viewForward = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
         const osg::Vec3f viewRight = viewRotation * osg::Vec3f(1.f, 0.f, 0.f);
 
-        // Rotation is deliberately velocity-driven instead of directly writing an
-        // orientation.  The held prop therefore keeps its mass, inertia, sway and CCD
-        // response while the user twists it, which feels much closer to a physical
-        // grab than a gizmo/teleport rotation.
         for (PhysicsObjectState& state : mPhysicsObjects)
         {
             if (!state.mGrabbed)
                 continue;
 
+            const osg::Vec3f requestedAxis = viewForward * rollInput + viewRight * pitchInput;
+            const float requestedLength = requestedAxis.length();
+            if (requestedLength < 0.0001f)
+                continue;
+
+            if (!state.mPhysicsOnRelease)
+            {
+                // Physics OFF is a precise placement mode: R/F changes only the
+                // requested orientation. There is no residual angular velocity, so
+                // translating the prop cannot make it swing or continue spinning.
+                osg::Quat currentRotation = state.mPtr.getRefData().getBaseNode()
+                    ? state.mPtr.getRefData().getBaseNode()->getAttitude() : osg::Quat();
+                osg::Quat deltaRotation;
+                constexpr float manualAngularSpeed = 1.65f;
+                deltaRotation.makeRotate(
+                    manualAngularSpeed * std::min(duration, 0.05f) * requestedLength,
+                    requestedAxis / requestedLength);
+                const osg::Quat proposedRotation = deltaRotation * currentRotation;
+                const osg::Vec3f euler = objectQuatToEuler(proposedRotation);
+                rotateObject(state.mPtr, euler.x(), euler.y(), euler.z(), MWBase::RotationFlag_none);
+
+                state.mVelocity.set(0.f, 0.f, 0.f);
+                state.mAngularVelocity.set(0.f, 0.f, 0.f);
+                state.mSleepTimer = 0.f;
+                if (state.mNetworkSyncTimer <= 0.f)
+                {
+                    syncPhysicsObjectTransform(state.mPtr);
+                    state.mNetworkSyncTimer = 0.05f;
+                }
+                continue;
+            }
+
+            // With physics enabled, preserve the original mass/inertia-driven
+            // rotation so an object can still behave like a physical hand-held prop.
             const float massScale = std::sqrt(std::max(0.25f, state.mMass));
             const float angularAcceleration = 7.5f / std::max(1.f, massScale * 0.35f);
-            const osg::Vec3f requestedAxis = viewForward * rollInput + viewRight * pitchInput;
             state.mAngularVelocity += requestedAxis * angularAcceleration * std::min(duration, 0.05f);
 
             const float maxAngularSpeed = 2.8f / std::max(1.f, massScale * 0.18f);
@@ -1933,7 +1962,8 @@ namespace MWWorld
 
         const float dt = std::min(duration, 0.05f);
         // About one small Morrowind clutter object per tenth of a second. The
-        // offset is world-axis based on purpose, matching the X-Y/X-Z/Z-Y mode names.
+        // stored offset is in player-local axes: X = player's right, Y = player's
+        // forward, Z = world up. updatePhysicsObjects converts it to world space.
         constexpr float placementSpeed = 110.f;
 
         for (PhysicsObjectState& state : mPhysicsObjects)
@@ -1984,7 +2014,31 @@ namespace MWWorld
         {
             if (!state.mGrabbed)
                 continue;
+
             state.mPhysicsOnRelease = !state.mPhysicsOnRelease;
+
+            // Switching physics state must take effect immediately, not only when
+            // the object is released. Clear all accumulated spring/impact motion so
+            // Physics OFF cannot keep an old spin, and Physics ON cannot inherit a
+            // one-frame throw impulse from the kinematic placement target.
+            state.mVelocity.set(0.f, 0.f, 0.f);
+            state.mAngularVelocity.set(0.f, 0.f, 0.f);
+            state.mSleepTimer = 0.f;
+
+            const MWWorld::Ptr player = getPlayerPtr();
+            const ESM::Position& playerPosition = player.getRefData().getPosition();
+            const osg::Quat viewRotation = osg::Quat(playerPosition.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
+                * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+            const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+            const osg::Quat yawRotation(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+            const osg::Vec3f playerForward = yawRotation * osg::Vec3f(0.f, 1.f, 0.f);
+            const osg::Vec3f playerRight = yawRotation * osg::Vec3f(1.f, 0.f, 0.f);
+            const osg::Vec3f playerRelativeOffset = playerRight * state.mManualHoldOffset.x()
+                + playerForward * state.mManualHoldOffset.y()
+                + osg::Vec3f(0.f, 0.f, state.mManualHoldOffset.z());
+            state.mLastHoldTarget = getActorHeadTransform(player).getTrans()
+                + viewDirection * state.mHoldDistance + playerRelativeOffset;
+
             return state.mPhysicsOnRelease;
         }
         return true;
@@ -2981,6 +3035,10 @@ namespace MWWorld
         const osg::Quat viewRotation = osg::Quat(playerPosition.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
             * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
         const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+        const osg::Quat yawRotation(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+        const osg::Vec3f playerForward = yawRotation * osg::Vec3f(0.f, 1.f, 0.f);
+        const osg::Vec3f playerRight = yawRotation * osg::Vec3f(1.f, 0.f, 0.f);
+        const osg::Vec3f playerUp(0.f, 0.f, 1.f);
         const osg::Vec3f holdOrigin = getActorHeadTransform(player).getTrans();
 
         auto clampLength = [](osg::Vec3f value, float maximum)
@@ -3052,6 +3110,90 @@ namespace MWWorld
                 }
             }
 
+            // Physics OFF is a true kinematic placement mode while the object is held.
+            // The prop follows the player's local placement axes exactly, keeps its
+            // orientation unless R/F is used, and never receives spring/sway torque.
+            // Collision sweeps and penetration correction stay active so disabling
+            // physics cannot be used to push an item through world geometry.
+            if (state.mGrabbed && !state.mPhysicsOnRelease)
+            {
+                const osg::Vec3f playerRelativeOffset = playerRight * state.mManualHoldOffset.x()
+                    + playerForward * state.mManualHoldOffset.y() + playerUp * state.mManualHoldOffset.z();
+                const osg::Vec3f targetAnchor = holdOrigin + viewDirection * state.mHoldDistance
+                    + playerRelativeOffset;
+                const osg::Vec3f grabLever = rotation * state.mLocalGrabOffset;
+                const osg::Vec3f desiredCenter = targetAnchor - grabLever;
+                const osg::Vec3f desiredOrigin = desiredCenter - rotation * state.mLocalCenter;
+
+                const float minExtent = std::max(1.f, std::min(state.mHalfExtents.x(),
+                    std::min(state.mHalfExtents.y(), state.mHalfExtents.z())));
+                const float contactSkin = std::min(0.70f, std::max(0.20f, minExtent * 0.06f));
+                const osg::Vec3f sweepHalfExtents = state.mHalfExtents
+                    + osg::Vec3f(contactSkin, contactSkin, contactSkin);
+
+                osg::Vec3f acceptedOrigin = desiredOrigin;
+                const osg::Vec3f currentCenter = origin + rotation * state.mLocalCenter;
+                const MWPhysics::RayCastingResult hit = mPhysics->castBox(
+                    currentCenter, rotation, desiredCenter, rotation, sweepHalfExtents, state.mPtr);
+                if (hit.mHit)
+                {
+                    const float safeFraction = std::max(0.f, std::min(1.f, hit.mHitFraction - 0.008f));
+                    acceptedOrigin = origin + (desiredOrigin - origin) * safeFraction;
+                }
+
+                for (int pass = 0; pass < 6; ++pass)
+                {
+                    const osg::Vec3f acceptedCenter = acceptedOrigin + rotation * state.mLocalCenter;
+                    const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                        acceptedCenter, rotation, sweepHalfExtents, state.mPtr, 12.f);
+                    if (correction.length2() < 0.0001f)
+                        break;
+                    acceptedOrigin += correction;
+                }
+
+                const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                    acceptedOrigin + rotation * state.mLocalCenter, rotation, sweepHalfExtents, state.mPtr, 2.f);
+                if (remaining.length2() >= 0.0001f && state.mHasLastSafeTransform)
+                {
+                    acceptedOrigin = state.mLastSafeOrigin;
+                    rotation = state.mLastSafeRotation;
+                    const osg::Vec3f safeEuler = objectQuatToEuler(rotation);
+                    rotateObject(state.mPtr, safeEuler.x(), safeEuler.y(), safeEuler.z(), MWBase::RotationFlag_none);
+                    transformChanged = true;
+                }
+
+                if ((acceptedOrigin - state.mPtr.getRefData().getPosition().asVec3()).length2() > 0.0001f)
+                {
+                    state.mPtr = moveObject(
+                        state.mPtr, acceptedOrigin.x(), acceptedOrigin.y(), acceptedOrigin.z(), true, false);
+                    transformChanged = true;
+                }
+
+                const osg::Vec3f finalRemaining = mPhysics->getBoxPenetrationCorrection(
+                    acceptedOrigin + rotation * state.mLocalCenter, rotation, sweepHalfExtents, state.mPtr, 2.f);
+                if (finalRemaining.length2() < 0.0001f)
+                {
+                    state.mLastSafeOrigin = acceptedOrigin;
+                    state.mLastSafeRotation = rotation;
+                    state.mHasLastSafeTransform = true;
+                }
+
+                state.mVelocity.set(0.f, 0.f, 0.f);
+                state.mAngularVelocity.set(0.f, 0.f, 0.f);
+                state.mLastHoldTarget = targetAnchor;
+                state.mSleepTimer = 0.f;
+                state.mHadSurfaceContact = false;
+
+                if (transformChanged && state.mNetworkSyncTimer <= 0.f)
+                {
+                    syncPhysicsObjectTransform(state.mPtr);
+                    state.mNetworkSyncTimer = 0.05f;
+                }
+
+                ++it;
+                continue;
+            }
+
             if (!state.mGrabbed && state.mSleepTimer >= 0.42f
                 && state.mVelocity.length2() < 0.0001f && state.mAngularVelocity.length2() < 0.000001f)
             {
@@ -3061,8 +3203,10 @@ namespace MWWorld
 
             if (state.mGrabbed)
             {
+                const osg::Vec3f playerRelativeOffset = playerRight * state.mManualHoldOffset.x()
+                    + playerForward * state.mManualHoldOffset.y() + playerUp * state.mManualHoldOffset.z();
                 const osg::Vec3f targetAnchor = holdOrigin + viewDirection * state.mHoldDistance
-                    + state.mManualHoldOffset;
+                    + playerRelativeOffset;
                 const osg::Vec3f grabLever = rotation * state.mLocalGrabOffset;
                 const osg::Vec3f currentAnchor = center + grabLever;
                 const osg::Vec3f targetVelocity = (targetAnchor - state.mLastHoldTarget) / std::max(dt, 0.001f);

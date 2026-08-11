@@ -587,15 +587,23 @@ namespace MWGui
 
         mInputBlocker = MyGUI::Gui::getInstance().createWidget<MyGUI::Widget>("",0,0,w,h,MyGUI::Align::Stretch,"InputBlocker");
 
-        // Borderless persistent placement hint. BlackBG is the same translucent
-        // dark skin used by the Z animation menu, so the overlay feels native to
-        // ArenaMP while remaining non-modal and never capturing mouse/key focus.
+        // Persistent placement helper styled and positioned like the Z animation
+        // menu: a compact BlackBG panel on the left side of the screen.  It stays
+        // non-modal and never captures mouse/key focus while an object is held.
         mPhysicsGrabHint = MyGUI::Gui::getInstance().createWidget<MyGUI::Widget>(
-            "BlackBG", 0, 0, 430, 132, MyGUI::Align::Default, "Popup");
+            "BlackBG", 0, 0, 310, 166, MyGUI::Align::Default, "Popup");
         mPhysicsGrabHint->setNeedMouseFocus(false);
         mPhysicsGrabHint->setNeedKeyFocus(false);
+
+        MyGUI::TextBox* physicsGrabHintTitle = mPhysicsGrabHint->createWidget<MyGUI::TextBox>(
+            "SandBrightText", 10, 7, 290, 22, MyGUI::Align::Top | MyGUI::Align::HStretch, "PhysicsGrabHintTitle");
+        physicsGrabHintTitle->setNeedMouseFocus(false);
+        physicsGrabHintTitle->setNeedKeyFocus(false);
+        physicsGrabHintTitle->setTextAlign(MyGUI::Align::Center);
+        physicsGrabHintTitle->setCaption(MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=placement.title}"));
+
         mPhysicsGrabHintText = mPhysicsGrabHint->createWidget<MyGUI::TextBox>(
-            "SandBrightText", 12, 9, 406, 114, MyGUI::Align::Stretch, "PhysicsGrabHintText");
+            "SandBrightText", 12, 34, 286, 124, MyGUI::Align::Stretch, "PhysicsGrabHintText");
         mPhysicsGrabHintText->setNeedMouseFocus(false);
         mPhysicsGrabHintText->setNeedKeyFocus(false);
         mPhysicsGrabHintText->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
@@ -1584,7 +1592,14 @@ namespace MWGui
             durabilityPercent = static_cast<int>(item.getClass().getItemNormalizedHealth(item) * 100);
         }
         mHud->setSelectedWeapon(item, durabilityPercent);
-        mInventoryWindow->setTitle(item.getClass().getName(item));
+
+        // The inventory window always represents the player.  The selected weapon
+        // belongs on the HUD and must not replace the player name in either the
+        // normal inventory or the player-side barter window.
+        const MWWorld::Ptr player = MWBase::Environment::get().getWorld()->getPlayerPtr();
+        const std::string playerName = player.getClass().getName(player);
+        if (!playerName.empty())
+            mInventoryWindow->setTitle(playerName);
     }
 
     const MWWorld::Ptr &WindowManager::getSelectedWeapon() const
@@ -1609,7 +1624,13 @@ namespace MWGui
     {
         mSelectedWeapon = MWWorld::Ptr();
         mHud->unsetSelectedWeapon();
-        mInventoryWindow->setTitle("#{sSkillHandtohand}");
+
+        // Do not turn the inventory caption into "Hand-to-hand" when the weapon
+        // is sheathed.  It is the player's inventory, so keep the player name.
+        const MWWorld::Ptr player = MWBase::Environment::get().getWorld()->getPlayerPtr();
+        const std::string playerName = player.getClass().getName(player);
+        if (!playerName.empty())
+            mInventoryWindow->setTitle(playerName);
     }
 
     void WindowManager::getMousePosition(int &x, int &y)
@@ -2601,23 +2622,25 @@ namespace MWGui
             return MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=" + key + "}");
         };
 
-        std::string caption = arenaText("placement.title") + "\n"
-            + arenaText("placement.release") + "\n"
+        std::string caption = arenaText("placement.release") + "\n"
             + arenaText("placement.physics") + ": "
             + arenaText(physicsEnabled ? "placement.on" : "placement.off") + "\n"
-            + arenaText("placement.rotate") + "    " + arenaText("placement.reset") + "\n"
+            + arenaText("placement.rotate") + "\n"
+            + arenaText("placement.reset") + "\n"
             + arenaText("placement.mode") + ": " + arenaText(modeKeys[safeMode]);
 
         if (safeMode != 0)
             caption += "\n" + arenaText("placement.move");
 
-        const int height = safeMode == 0 ? 132 : 151;
+        // Match the Z animation menu width and left offset, but sit slightly
+        // below vertical centre so it does not compete with the crosshair/object.
+        const int width = 310;
+        const int height = safeMode == 0 ? 166 : 185;
         const MyGUI::IntSize view = MyGUI::RenderManager::getInstance().getViewSize();
-        const int width = std::min(430, std::max(300, view.width - 24));
-        const int left = std::max(12, (view.width - width) / 2);
-        const int top = std::max(12, static_cast<int>(view.height * 0.075f));
+        const int left = std::max(14, static_cast<int>(view.width * 0.035f));
+        const int top = std::max(14, (view.height - height) / 2 + std::max(24, static_cast<int>(view.height * 0.055f)));
         mPhysicsGrabHint->setCoord(left, top, width, height);
-        mPhysicsGrabHintText->setCoord(12, 9, std::max(1, width - 24), std::max(1, height - 18));
+        mPhysicsGrabHintText->setCoord(12, 34, width - 24, height - 42);
         mPhysicsGrabHintText->setCaption(caption);
         mPhysicsGrabHint->setVisible(true);
     }
