@@ -67,6 +67,41 @@ namespace MWInput
                 consumed = togglePostProcessSetting("hdr lighting", "#{arenamp=hotkey.hdr_on}", "#{arenamp=hotkey.hdr_off}");
             else if (arg.keysym.scancode == SDL_SCANCODE_F4)
                 consumed = togglePostProcessSetting("bloom enabled", "#{arenamp=hotkey.bloom_on}", "#{arenamp=hotkey.bloom_off}");
+
+            // ArenaMP placement mode owns these literal keys while a prop is
+            // grabbed. Consume them before the binding system so Space cannot
+            // jump, R/F cannot ready spell/weapon (or fire any rebound action),
+            // Ctrl cannot sneak, and Tab cannot trigger another bound command.
+            MWBase::World* world = MWBase::Environment::get().getWorld();
+            const bool placementActive = world && world->isPhysicsGrabActive()
+                && !MWBase::Environment::get().getWindowManager()->isGuiMode();
+            if (!consumed && placementActive)
+            {
+                switch (arg.keysym.scancode)
+                {
+                    case SDL_SCANCODE_SPACE:
+                        world->togglePhysicsGrabPhysics();
+                        consumed = true;
+                        break;
+                    case SDL_SCANCODE_TAB:
+                        world->cyclePhysicsGrabMoveMode();
+                        consumed = true;
+                        break;
+                    case SDL_SCANCODE_LCTRL:
+                    case SDL_SCANCODE_RCTRL:
+                        world->resetPhysicsGrabTransform();
+                        consumed = true;
+                        break;
+                    case SDL_SCANCODE_R:
+                    case SDL_SCANCODE_F:
+                        // Rotation itself is continuous and sampled from SDL's
+                        // held-key state in ActionManager::update().
+                        consumed = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
 
         // SDL text input normally suppresses the matching printable key event and
@@ -92,12 +127,21 @@ namespace MWInput
         {
             MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
 
-            // QuickLoot remains a non-modal HUD overlay. While visible it explicitly
-            // consumes W/S for list navigation; ActionManager suppresses forward/backward
-            // movement until the overlay closes.
-            if (!windowManager->isGuiMode() && windowManager->handleQuickLootKeyPress(kc))
+            // QuickLoot remains non-modal, but axis-placement mode owns the
+            // movement bindings. Do not let its W/S navigation consume a movement
+            // key that is currently supposed to translate the grabbed object.
+            MWBase::World* world = MWBase::Environment::get().getWorld();
+            const bool placementMoveMode = world && world->isPhysicsGrabActive()
+                && world->getPhysicsGrabMoveMode() != 0;
+            const bool placementMovementKey = placementMoveMode
+                && (arg.keysym.scancode == mBindingsManager->getKeyBinding(A_MoveLeft)
+                    || arg.keysym.scancode == mBindingsManager->getKeyBinding(A_MoveRight)
+                    || arg.keysym.scancode == mBindingsManager->getKeyBinding(A_MoveForward)
+                    || arg.keysym.scancode == mBindingsManager->getKeyBinding(A_MoveBackward));
+
+            if (!placementMovementKey && !windowManager->isGuiMode() && windowManager->handleQuickLootKeyPress(kc))
                 consumed = true;
-            else if (windowManager->injectKeyPress(kc, 0, arg.repeat))
+            else if (!placementMovementKey && windowManager->injectKeyPress(kc, 0, arg.repeat))
                 consumed = true;
 
             mBindingsManager->setPlayerControlsEnabled(!consumed);
@@ -120,6 +164,11 @@ namespace MWInput
 
         if (!mBindingsManager->isDetectingBindingState())
             mBindingsManager->setPlayerControlsEnabled(!MyGUI::InputManager::getInstance().injectKeyRelease(kc));
+
+        // Always forward releases to the binding state machine. Placement-mode
+        // key *presses* are consumed above, while a release is side-effect-free
+        // and is required to clear a key that may already have been held before
+        // the grab started (for example Ctrl/Sneak).
         mBindingsManager->keyReleased(arg);
     }
 }

@@ -458,6 +458,9 @@ namespace MWBase
             virtual bool injectKeyPress(MyGUI::KeyCode key, unsigned int text, bool repeat) = 0;
             virtual bool injectKeyRelease(MyGUI::KeyCode key) = 0;
 
+            /// Persistent, non-modal placement-mode help panel.
+            virtual void setPhysicsGrabHint(bool visible, int moveMode, bool physicsEnabled) = 0;
+
             void windowVisibilityChange(bool visible) override = 0;
             void windowResized(int x, int y) override = 0;
             void windowClosed() override = 0;

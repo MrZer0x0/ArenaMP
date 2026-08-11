@@ -31,6 +31,7 @@ namespace MyGUI
     class Window;
     class UString;
     class ImageBox;
+    class TextBox;
 }
 
 namespace MWWorld
@@ -491,6 +492,7 @@ namespace MWGui
 
     bool injectKeyPress(MyGUI::KeyCode key, unsigned int text, bool repeat=false) override;
     bool injectKeyRelease(MyGUI::KeyCode key) override;
+    void setPhysicsGrabHint(bool visible, int moveMode, bool physicsEnabled) override;
 
   private:
     unsigned int mOldUpdateMask; unsigned int mOldCullMask;
@@ -572,6 +574,8 @@ namespace MWGui
     CharacterCreation* mCharGen;
 
     MyGUI::Widget* mInputBlocker;
+    MyGUI::Widget* mPhysicsGrabHint;
+    MyGUI::TextBox* mPhysicsGrabHintText;
 
     bool mCrosshairEnabled;
     bool mSubtitlesEnabled;

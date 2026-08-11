@@ -383,16 +383,29 @@ namespace MWBase
 
             virtual float getDistanceToFacedObject() = 0;
 
-            /// ArenaMW physics-grab prototype for movable inventory objects.
+            /// ArenaMP ownerless-world-item placement / physics-grab mode.
             virtual bool canPhysicsGrab(const MWWorld::ConstPtr& object) const = 0;
             virtual bool beginPhysicsGrab(const MWWorld::Ptr& object) = 0;
+            /// Release the held object as a live physics prop.
             virtual void releasePhysicsGrab() = 0;
             virtual bool isPhysicsGrabActive() const = 0;
-            /// Place the currently grabbed physics object on a supporting surface.
+            /// Finish placement with physics disabled, preserving the current transform.
             virtual bool placePhysicsGrab() = 0;
+            /// Finish the active grab using its current Physics ON/OFF setting.
+            virtual bool finishPhysicsGrab() = 0;
             /// Rotate the currently grabbed object relative to the camera.
             /// rollInput rotates in the screen plane, pitchInput rotates around the camera-right axis.
             virtual void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) = 0;
+            /// Move the held target along the currently selected world-axis pair.
+            virtual void translatePhysicsGrab(float firstAxisInput, float secondAxisInput, float duration) = 0;
+            /// Cycle Walk -> X-Y -> X-Z -> Z-Y -> Walk. Returns the new mode (0..3).
+            virtual int cyclePhysicsGrabMoveMode() = 0;
+            virtual int getPhysicsGrabMoveMode() const = 0;
+            /// Toggle whether the object becomes a live physics prop when released.
+            virtual bool togglePhysicsGrabPhysics() = 0;
+            virtual bool isPhysicsGrabPhysicsEnabled() const = 0;
+            /// Clear manual placement offset and restore the orientation from grab start.
+            virtual void resetPhysicsGrabTransform() = 0;
 
             virtual float getMaxActivationDistance() = 0;
 

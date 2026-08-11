@@ -124,9 +124,11 @@ namespace MWWorld
                 osg::Vec3f mHalfExtents = osg::Vec3f(4.f, 4.f, 4.f);
                 osg::Vec3f mLocalCenter;
                 osg::Vec3f mLocalGrabOffset;
+                osg::Vec3f mManualHoldOffset;
                 osg::Vec3f mLastHoldTarget;
                 osg::Vec3f mLastSafeOrigin;
                 osg::Quat mLastSafeRotation;
+                osg::Quat mGrabStartRotation;
                 float mRadius = 4.f;
                 float mMass = 1.f;
                 float mSleepTimer = 0.f;
@@ -138,6 +140,8 @@ namespace MWWorld
                 bool mBreakableGlass = false;
                 bool mLiquidContainer = false;
                 bool mGrabbed = false;
+                bool mPhysicsOnRelease = true;
+                int mMoveMode = 0;
                 bool mHadSurfaceContact = false;
                 bool mHasLastSafeTransform = false;
             };
@@ -494,7 +498,14 @@ namespace MWWorld
             void releasePhysicsGrab() override;
             bool isPhysicsGrabActive() const override;
             bool placePhysicsGrab() override;
+            bool finishPhysicsGrab() override;
             void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) override;
+            void translatePhysicsGrab(float firstAxisInput, float secondAxisInput, float duration) override;
+            int cyclePhysicsGrabMoveMode() override;
+            int getPhysicsGrabMoveMode() const override;
+            bool togglePhysicsGrabPhysics() override;
+            bool isPhysicsGrabPhysicsEnabled() const override;
+            void resetPhysicsGrabTransform() override;
 
             /// Returns a pointer to the object the provided object would hit (if within the
             /// specified distance), and the point where the hit occurs. This will attempt to

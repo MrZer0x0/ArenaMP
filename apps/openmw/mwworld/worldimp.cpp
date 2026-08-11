@@ -1528,6 +1528,15 @@ namespace MWWorld
         const MWWorld::Class& cls = object.getClass();
         if (cls.isActor() || cls.isDoor() || cls.isActivator())
             return false;
+
+        // Placement mode is intentionally stricter than normal activation/theft:
+        // only truly ownerless world items may be manipulated. An NPC/faction-owned
+        // item can still be taken through the normal Activate path (and therefore
+        // keeps all theft/crime handling), but it can never enter physics-grab mode.
+        const MWWorld::CellRef& cellRef = object.getCellRef();
+        if (!cellRef.getOwner().empty() || !cellRef.getFaction().empty())
+            return false;
+
         // TES3MP cannot address client-only dynamic records on other peers.
         // Refuse the physics grab rather than creating an unsynchronised prop.
         if (object.getCellRef().getRefId().find("$dynamic") != std::string::npos)
@@ -1651,9 +1660,13 @@ namespace MWWorld
         state->mSleepTimer = 0.f;
         state->mHadSurfaceContact = false;
         state->mGrabbed = true;
+        state->mPhysicsOnRelease = true;
+        state->mMoveMode = 0;
+        state->mManualHoldOffset.set(0.f, 0.f, 0.f);
 
         const osg::Quat rotation = object.getRefData().getBaseNode()
             ? object.getRefData().getBaseNode()->getAttitude() : osg::Quat();
+        state->mGrabStartRotation = rotation;
 
         // Resolve any pre-existing overlap before starting the hand spring. Every
         // held step can fall back to this most-recent safe transform if Bullet cannot
@@ -1731,117 +1744,74 @@ namespace MWWorld
             if (!state.mGrabbed || state.mPtr.isEmpty())
                 continue;
 
-            // Jump while holding an object deliberately uses the old inventory
-            // world-placement semantics: aim at a flat surface and the object is
-            // set down there in its natural upright orientation.  Unlike the
-            // normal inventory path the object already exists in the cell, so we
-            // move/rotate that reference instead of copying a new one.
-            const MWWorld::Ptr player = getPlayerPtr();
-            const ESM::Position& playerPos = player.getRefData().getPosition();
+            // Physics OFF means "place exactly where I arranged it", not the old
+            // inventory-drop behaviour that snapped the item to the crosshair/ground
+            // and reset its pitch/roll. Resolve only illegal overlap, then freeze the
+            // accepted transform in the native physics pool.
+            osg::Vec3f origin = state.mPtr.getRefData().getPosition().asVec3();
+            osg::Quat rotation = state.mPtr.getRefData().getBaseNode()
+                ? state.mPtr.getRefData().getBaseNode()->getAttitude() : osg::Quat();
 
-            osg::Vec3f target(playerPos.pos[0], playerPos.pos[1], playerPos.pos[2]);
-            bool placeAtCrosshair = false;
-
-            // castCameraToViewportRay cannot ignore the grabbed reference, which
-            // would make the held object hit itself.  Recreate the centre-screen
-            // camera ray through Bullet instead: actors are excluded just like the
-            // legacy inventory placement ray and the held object is ignored.
-            const osg::Vec3f cameraPos = mRendering->getCameraPosition();
-            MWRender::Camera* camera = mRendering->getCamera();
-            const osg::Quat cameraRotation = osg::Quat(camera->getPitch(), osg::Vec3f(1.f, 0.f, 0.f))
-                * osg::Quat(camera->getYaw(), osg::Vec3f(0.f, 0.f, 1.f));
-            osg::Vec3f cameraDirection = cameraRotation * osg::Vec3f(0.f, 1.f, 0.f);
-            if (cameraDirection.length2() > 0.0001f)
-                cameraDirection.normalize();
-
-            constexpr float placementDistance = 200.f;
-            const int placementMask = MWPhysics::CollisionType_World
-                | MWPhysics::CollisionType_HeightMap | MWPhysics::CollisionType_Door;
-            const MWPhysics::RayCastingResult aimedSurface = mPhysics->castRay(
-                cameraPos, cameraPos + cameraDirection * placementDistance, state.mPtr,
-                std::vector<MWWorld::Ptr>(), placementMask);
-
-            if (aimedSurface.mHit && aimedSurface.mHitNormal.length2() > 0.0001f)
+            bool corrected = false;
+            for (int pass = 0; pass < 8; ++pass)
             {
-                osg::Vec3f normal = aimedSurface.mHitNormal;
-                normal.normalize();
-                // Same 30 degree slope limit as World::canPlaceObject().
-                if (std::acos(std::max(-1.f, std::min(1.f, normal * osg::Vec3f(0.f, 0.f, 1.f))))
-                    < osg::DegreesToRadians(30.f))
-                {
-                    target = aimedSurface.mHitPos;
-                    placeAtCrosshair = true;
-                }
+                const osg::Vec3f center = origin + rotation * state.mLocalCenter;
+                const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                    center, rotation, state.mHalfExtents, state.mPtr, 24.f);
+                if (correction.length2() < 0.0001f)
+                    break;
+                origin += correction;
+                corrected = true;
             }
 
-            if (!placeAtCrosshair)
+            const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                origin + rotation * state.mLocalCenter, rotation, state.mHalfExtents, state.mPtr, 2.f);
+            if (remaining.length2() >= 0.0001f && state.mHasLastSafeTransform)
             {
-                // Same fallback as dragging an inventory item over an invalid
-                // world target: put it on the ground beneath the player instead
-                // of dropping it from hand height or giving it throw velocity.
-                osg::Vec3f groundStart = playerPos.asVec3();
-                groundStart.z() += 20.f;
-                const MWPhysics::RayCastingResult ground = mPhysics->castRay(
-                    groundStart, groundStart + osg::Vec3f(0.f, 0.f, -1000000.f),
-                    state.mPtr, std::vector<MWWorld::Ptr>(), placementMask);
-                if (ground.mHit)
-                    target = ground.mHitPos;
-                else
-                    target = playerPos.asVec3();
+                origin = state.mLastSafeOrigin;
+                rotation = state.mLastSafeRotation;
+                const osg::Vec3f safeEuler = objectQuatToEuler(rotation);
+                rotateObject(state.mPtr, safeEuler.x(), safeEuler.y(), safeEuler.z(), MWBase::RotationFlag_none);
+                corrected = true;
             }
 
-            // Inventory placement resets pitch/roll and keeps only the player's
-            // Z rotation. This is the important visual difference from simply
-            // releasing the physics prop: bottles stand up, plates lie flat and
-            // books use their authored resting orientation.
-            rotateObject(state.mPtr, 0.f, 0.f, playerPos.rot[2], MWBase::RotationFlag_none);
-            state.mPtr = moveObject(state.mPtr, target.x(), target.y(), target.z(), true, false);
-
-            // Reuse the same bounding-box adjustment performed by
-            // copyObjectToCell(..., adjustPos=true): the requested hit point is
-            // treated as the centre of the object's footprint and its lowest
-            // rendered point is brought exactly onto the supporting surface.
-            if (state.mPtr.getRefData().getBaseNode())
-            {
-                osg::ComputeBoundsVisitor computeBounds;
-                computeBounds.setTraversalMask(~MWRender::Mask_ParticleSystem);
-                state.mPtr.getRefData().getBaseNode()->accept(computeBounds);
-                const osg::BoundingBox bounds = computeBounds.getBoundingBox();
-                if (bounds.valid())
-                {
-                    const osg::Vec3f current = state.mPtr.getRefData().getPosition().asVec3();
-                    osg::BoundingBox relativeBounds = bounds;
-                    relativeBounds.set(bounds._min - current, bounds._max - current);
-                    const osg::Vec3f adjustment(
-                        (relativeBounds.xMin() + relativeBounds.xMax()) * 0.5f,
-                        (relativeBounds.yMin() + relativeBounds.yMax()) * 0.5f,
-                        relativeBounds.zMin());
-                    const osg::Vec3f adjusted = target - adjustment;
-                    state.mPtr = moveObject(state.mPtr, adjusted.x(), adjusted.y(), adjusted.z(), true, false);
-                }
-            }
+            if (corrected)
+                state.mPtr = moveObject(state.mPtr, origin.x(), origin.y(), origin.z(), true, false);
 
             state.mVelocity.set(0.f, 0.f, 0.f);
             state.mAngularVelocity.set(0.f, 0.f, 0.f);
             state.mGrabbed = false;
             state.mHadSurfaceContact = true;
-            // Inventory-placed objects are static immediately. Keep this object
-            // in the bounded physics pool, but mark it sleeping so the free-body
-            // pass does not make it wobble after the precise placement.
             state.mSleepTimer = 0.42f;
             state.mHasLastSafeTransform = true;
             state.mLastSafeOrigin = state.mPtr.getRefData().getPosition().asVec3();
             state.mLastSafeRotation = state.mPtr.getRefData().getBaseNode()
                 ? state.mPtr.getRefData().getBaseNode()->getAttitude() : osg::Quat();
 
-            // ArenaMP: placement is still client-authoritative for this grab, but
-            // immediately publish the final transform so other peers do not see
-            // the object snap back to its previous held/released position.
+            // ArenaMP: final static placement is immediately published to the
+            // server/other peers; held movement remains throttled to 20 Hz.
             syncPhysicsObjectTransform(state.mPtr);
             state.mNetworkSyncTimer = 0.05f;
             return true;
         }
 
+        return false;
+    }
+
+    bool World::finishPhysicsGrab()
+    {
+        for (const PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed)
+                continue;
+
+            if (state.mPhysicsOnRelease)
+            {
+                releasePhysicsGrab();
+                return true;
+            }
+            return placePhysicsGrab();
+        }
         return false;
     }
 
@@ -1953,6 +1923,111 @@ namespace MWWorld
                 state.mAngularVelocity *= maxAngularSpeed / angularSpeed;
 
             state.mSleepTimer = 0.f;
+        }
+    }
+
+    void World::translatePhysicsGrab(float firstAxisInput, float secondAxisInput, float duration)
+    {
+        if (duration <= 0.f || (std::abs(firstAxisInput) < 0.001f && std::abs(secondAxisInput) < 0.001f))
+            return;
+
+        const float dt = std::min(duration, 0.05f);
+        // About one small Morrowind clutter object per tenth of a second. The
+        // offset is world-axis based on purpose, matching the X-Y/X-Z/Z-Y mode names.
+        constexpr float placementSpeed = 110.f;
+
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed || state.mMoveMode == 0)
+                continue;
+
+            osg::Vec3f delta(0.f, 0.f, 0.f);
+            if (state.mMoveMode == 1)       // X-Y: left/right -> X, forward/back -> Y
+                delta.set(firstAxisInput, secondAxisInput, 0.f);
+            else if (state.mMoveMode == 2)  // X-Z: left/right -> X, forward/back -> Z
+                delta.set(firstAxisInput, 0.f, secondAxisInput);
+            else                            // Z-Y: left/right -> Z, forward/back -> Y
+                delta.set(0.f, secondAxisInput, firstAxisInput);
+
+            state.mManualHoldOffset += delta * placementSpeed * dt;
+            // Keep a grabbed object within a sane network/collision-editing range.
+            state.mManualHoldOffset.x() = std::max(-600.f, std::min(600.f, state.mManualHoldOffset.x()));
+            state.mManualHoldOffset.y() = std::max(-600.f, std::min(600.f, state.mManualHoldOffset.y()));
+            state.mManualHoldOffset.z() = std::max(-600.f, std::min(600.f, state.mManualHoldOffset.z()));
+            state.mSleepTimer = 0.f;
+        }
+    }
+
+    int World::cyclePhysicsGrabMoveMode()
+    {
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed)
+                continue;
+            state.mMoveMode = (state.mMoveMode + 1) % 4;
+            return state.mMoveMode;
+        }
+        return 0;
+    }
+
+    int World::getPhysicsGrabMoveMode() const
+    {
+        for (const PhysicsObjectState& state : mPhysicsObjects)
+            if (state.mGrabbed)
+                return state.mMoveMode;
+        return 0;
+    }
+
+    bool World::togglePhysicsGrabPhysics()
+    {
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed)
+                continue;
+            state.mPhysicsOnRelease = !state.mPhysicsOnRelease;
+            return state.mPhysicsOnRelease;
+        }
+        return true;
+    }
+
+    bool World::isPhysicsGrabPhysicsEnabled() const
+    {
+        for (const PhysicsObjectState& state : mPhysicsObjects)
+            if (state.mGrabbed)
+                return state.mPhysicsOnRelease;
+        return true;
+    }
+
+    void World::resetPhysicsGrabTransform()
+    {
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed || state.mPtr.isEmpty())
+                continue;
+
+            state.mManualHoldOffset.set(0.f, 0.f, 0.f);
+            state.mVelocity.set(0.f, 0.f, 0.f);
+            state.mAngularVelocity.set(0.f, 0.f, 0.f);
+
+            // Reset the spring's reference target as well. Otherwise the next
+            // physics tick interprets Ctrl-reset as an enormous one-frame hand
+            // movement and can add an unwanted throw impulse on release.
+            const MWWorld::Ptr player = getPlayerPtr();
+            const ESM::Position& playerPos = player.getRefData().getPosition();
+            const osg::Quat viewRotation = osg::Quat(playerPos.rot[0], osg::Vec3f(-1.f, 0.f, 0.f))
+                * osg::Quat(playerPos.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
+            const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
+            state.mLastHoldTarget = getActorHeadTransform(player).getTrans()
+                + viewDirection * state.mHoldDistance;
+
+            const osg::Vec3f euler = objectQuatToEuler(state.mGrabStartRotation);
+            rotateObject(state.mPtr, euler.x(), euler.y(), euler.z(), MWBase::RotationFlag_none);
+            // Keep the previous verified safe transform until the next physics
+            // tick validates this restored orientation against nearby geometry.
+            state.mSleepTimer = 0.f;
+            syncPhysicsObjectTransform(state.mPtr);
+            state.mNetworkSyncTimer = 0.05f;
+            return;
         }
     }
 
@@ -2986,7 +3061,8 @@ namespace MWWorld
 
             if (state.mGrabbed)
             {
-                const osg::Vec3f targetAnchor = holdOrigin + viewDirection * state.mHoldDistance;
+                const osg::Vec3f targetAnchor = holdOrigin + viewDirection * state.mHoldDistance
+                    + state.mManualHoldOffset;
                 const osg::Vec3f grabLever = rotation * state.mLocalGrabOffset;
                 const osg::Vec3f currentAnchor = center + grabLever;
                 const osg::Vec3f targetVelocity = (targetAnchor - state.mLastHoldTarget) / std::max(dt, 0.001f);

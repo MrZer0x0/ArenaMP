@@ -66,16 +66,17 @@ namespace MWInput
         const bool gameRunning = MWBase::Environment::get().getStateManager()->getState()
             == MWBase::StateManager::State_Running;
 
-        // ArenaMW physics grab: normal world activation is deferred only for
-        // loose inventory objects. A short press behaves like vanilla E, while
-        // holding the same Activate binding takes ownership of the prop.
+        // ArenaMP placement mode: normal activation is deferred only for a
+        // loose, ownerless world item. A short press stays vanilla Activate; a
+        // deliberate ~1 second hold enters placement mode. Once grabbed, the
+        // Activate key may be released without dropping the object.
         if (mActivateHoldPending)
         {
             const bool stillHeld = mBindingsManager->actionIsActive(A_Activate);
             if (!gameRunning || guiMode)
             {
                 if (world->isPhysicsGrabActive())
-                    world->releasePhysicsGrab();
+                    world->finishPhysicsGrab();
                 mActivateHoldObject = MWWorld::Ptr();
                 mActivateHoldTime = 0.f;
                 mActivateHoldPending = false;
@@ -83,51 +84,83 @@ namespace MWInput
             else if (stillHeld)
             {
                 mActivateHoldTime += dt;
-                if (mActivateHoldTime >= 0.22f && !world->isPhysicsGrabActive())
+                if (mActivateHoldTime >= 1.0f && !world->isPhysicsGrabActive())
                 {
-                    if (!world->beginPhysicsGrab(mActivateHoldObject))
+                    // The original reference must still be under the crosshair.
+                    // Besides feeling predictable, this is important because
+                    // beginPhysicsGrab uses the current faced-object distance as
+                    // its hold distance; grabbing a stale reference would otherwise
+                    // use the distance of a different target.
+                    const MWWorld::Ptr facedNow = world->getFacedObject();
+                    if (!mActivateHoldObject.isEmpty() && facedNow == mActivateHoldObject
+                        && world->beginPhysicsGrab(mActivateHoldObject))
+                    {
+                        // The hold gesture has completed. Do not wait for the
+                        // key-up event: releasing Activate must keep the grab alive.
+                        mActivateHoldObject = MWWorld::Ptr();
+                        mActivateHoldTime = 0.f;
+                        mActivateHoldPending = false;
+                    }
+                    else
                     {
                         mActivateHoldObject = MWWorld::Ptr();
+                        mActivateHoldTime = 0.f;
                         mActivateHoldPending = false;
                     }
                 }
             }
             else
             {
-                if (world->isPhysicsGrabActive())
-                    world->releasePhysicsGrab();
-                else
-                {
-                    // It was a tap rather than a hold. Use the normal activation
-                    // path so books, potions, weapons, theft ownership and
-                    // scripts retain their existing behaviour.
-                    activate();
-                }
-
+                // Released before the hold threshold: this was a normal tap.
+                activate();
                 mActivateHoldObject = MWWorld::Ptr();
                 mActivateHoldTime = 0.f;
                 mActivateHoldPending = false;
             }
         }
 
-        // Disable movement in Gui mode
+        // Placement is a gameplay-only state. Entering a GUI/pause transition
+        // finalizes the current object according to its Physics ON/OFF setting
+        // and always removes the persistent hint.
         if (guiMode || !gameRunning)
         {
+            if (world->isPhysicsGrabActive())
+                world->finishPhysicsGrab();
+            MWBase::Environment::get().getWindowManager()->setPhysicsGrabHint(false, 0, false);
             mAttemptJump = false;
             return;
         }
 
-        // While the normal remappable Activate action is held in physics-grab mode,
-        // the two remappable ready actions become physical rotation controls.  Nothing
-        // here depends on E/F/R: keyboard, mouse and controller bindings all go through
-        // the same action channels.  Weapon rotates in the screen plane; Spell tilts
-        // around the camera-right axis.
-        if (world->isPhysicsGrabActive())
+        const bool physicsGrabActive = world->isPhysicsGrabActive();
+        const int physicsGrabMoveMode = physicsGrabActive ? world->getPhysicsGrabMoveMode() : 0;
+
+        if (physicsGrabActive)
         {
-            const float rollInput = mBindingsManager->actionIsActive(A_ToggleWeapon) ? 1.f : 0.f;
-            const float pitchInput = mBindingsManager->actionIsActive(A_ToggleSpell) ? 1.f : 0.f;
+            // Placement controls are literal R/F as requested and are consumed by
+            // KeyboardManager, so they never also ready a spell/weapon even when
+            // the user has rebound those gameplay actions. SDL's keyboard state is
+            // still available here for smooth held-key rotation.
+            const Uint8* keys = SDL_GetKeyboardState(nullptr);
+            const float rollInput = keys && keys[SDL_SCANCODE_F] ? 1.f : 0.f;
+            const float pitchInput = keys && keys[SDL_SCANCODE_R] ? 1.f : 0.f;
             world->rotatePhysicsGrab(rollInput, pitchInput, dt);
+
+            if (physicsGrabMoveMode != 0)
+            {
+                const float firstAxis =
+                    (mBindingsManager->actionIsActive(A_MoveRight) ? 1.f : 0.f)
+                    - (mBindingsManager->actionIsActive(A_MoveLeft) ? 1.f : 0.f);
+                const float secondAxis =
+                    (mBindingsManager->actionIsActive(A_MoveForward) ? 1.f : 0.f)
+                    - (mBindingsManager->actionIsActive(A_MoveBackward) ? 1.f : 0.f);
+                world->translatePhysicsGrab(firstAxis, secondAxis, dt);
+            }
         }
+
+        // A borderless dark help panel remains visible for the entire grab.
+        MWBase::Environment::get().getWindowManager()->setPhysicsGrabHint(
+            physicsGrabActive, physicsGrabMoveMode,
+            physicsGrabActive && world->isPhysicsGrabPhysicsEnabled());
 
         // QuickLoot is shown only while the player is looking at a non-empty container.
         // Keep W/S state tracked by the binding system, but suppress forward/backward
@@ -145,14 +178,27 @@ namespace MWInput
 
             MWWorld::Player& player = MWBase::Environment::get().getWorld()->getPlayer();
 
-            if (mBindingsManager->actionIsActive(A_MoveLeft) != mBindingsManager->actionIsActive(A_MoveRight))
+            if (physicsGrabMoveMode != 0)
+            {
+                // In an axis-placement mode the normal walking channels are
+                // repurposed exclusively for the held object.
+                player.setAutoMove(false);
+                player.setLeftRight(0);
+                player.setForwardBackward(0);
+                player.setUpDown(0);
+            }
+            else if (mBindingsManager->actionIsActive(A_MoveLeft) != mBindingsManager->actionIsActive(A_MoveRight))
             {
                 alwaysRunAllowed = true;
                 triedToMove = true;
                 player.setLeftRight(mBindingsManager->actionIsActive(A_MoveRight) ? 1 : -1);
             }
 
-            if (blockForwardBackward)
+            if (physicsGrabMoveMode != 0)
+            {
+                player.setForwardBackward(0);
+            }
+            else if (blockForwardBackward)
             {
                 // Do not let W/S move the player while QuickLoot is visible.
                 player.setForwardBackward(0);
@@ -165,7 +211,7 @@ namespace MWInput
                 player.setForwardBackward(mBindingsManager->actionIsActive(A_MoveForward) ? 1 : -1);
             }
 
-            if (player.getAutoMove())
+            if (physicsGrabMoveMode == 0 && player.getAutoMove())
             {
                 alwaysRunAllowed = true;
                 triedToMove = true;
@@ -174,17 +220,17 @@ namespace MWInput
 
             if (mAttemptJump && MWBase::Environment::get().getInputManager()->getControlSwitch("playerjumping"))
             {
-                if (world->isPhysicsGrabActive())
-                {
-                    world->placePhysicsGrab();
-                    mAttemptJump = false;
-                }
-                else
+                // Space is reserved for Physics ON/OFF during any placement-mode
+                // submode, including Walk. KeyboardManager consumes the key; this
+                // guard also prevents controller/alternate Jump bindings from
+                // invoking the old placement behaviour.
+                if (!physicsGrabActive)
                 {
                     player.setUpDown(1);
                     triedToMove = true;
                     mOverencumberedMessageDelay = 0.f;
                 }
+                mAttemptJump = false;
             }
 
             // if player tried to start moving, but can't (due to being overencumbered), display a notification.
@@ -312,6 +358,20 @@ namespace MWInput
             if (!windowManager->isGuiMode() && inputManager->getControlSwitch("playercontrols"))
             {
                 MWBase::World* world = MWBase::Environment::get().getWorld();
+
+                // A second press of the same Take/Activate action ends placement.
+                // Physics ON releases a live prop; Physics OFF freezes the exact
+                // arranged transform. It never also activates the object underneath.
+                if (world->isPhysicsGrabActive())
+                {
+                    world->finishPhysicsGrab();
+                    mActivateHoldObject = MWWorld::Ptr();
+                    mActivateHoldTime = 0.f;
+                    mActivateHoldPending = false;
+                    windowManager->setPhysicsGrabHint(false, 0, false);
+                    break;
+                }
+
                 MWWorld::Ptr faced = world->getFacedObject();
                 if (!faced.isEmpty() && world->canPhysicsGrab(faced))
                 {
@@ -327,6 +387,12 @@ namespace MWInput
         case A_MoveRight:
         case A_MoveForward:
         case A_MoveBackward:
+            // In X-Y/X-Z/Z-Y placement modes these action channels belong to
+            // the object exclusively. Do not also synthesize GUI arrow presses
+            // (QuickLoot/list navigation, etc.). Walk mode keeps vanilla input.
+            if (MWBase::Environment::get().getWorld()->isPhysicsGrabActive()
+                && MWBase::Environment::get().getWorld()->getPhysicsGrabMoveMode() != 0)
+                break;
             handleGuiArrowKey(action);
             break;
         case A_Journal:

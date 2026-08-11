@@ -16,6 +16,7 @@
 #include <MyGUI_Gui.h>
 #include <MyGUI_ClipboardManager.h>
 #include <MyGUI_WidgetManager.h>
+#include <MyGUI_TextBox.h>
 
 // For BT_NO_PROFILE
 #include <LinearMath/btQuickprof.h>
@@ -186,6 +187,8 @@ namespace MWGui
       , mTranslationDataStorage (translationDataStorage)
       , mCharGen(nullptr)
       , mInputBlocker(nullptr)
+      , mPhysicsGrabHint(nullptr)
+      , mPhysicsGrabHintText(nullptr)
       , mCrosshairEnabled(Settings::Manager::getBool ("crosshair", "HUD"))
       , mSubtitlesEnabled(Settings::Manager::getBool ("subtitles", "GUI"))
       , mHitFaderEnabled(Settings::Manager::getBool ("hit fader", "GUI"))
@@ -583,6 +586,20 @@ namespace MWGui
         mWindows.push_back(mDebugWindow);
 
         mInputBlocker = MyGUI::Gui::getInstance().createWidget<MyGUI::Widget>("",0,0,w,h,MyGUI::Align::Stretch,"InputBlocker");
+
+        // Borderless persistent placement hint. BlackBG is the same translucent
+        // dark skin used by the Z animation menu, so the overlay feels native to
+        // ArenaMP while remaining non-modal and never capturing mouse/key focus.
+        mPhysicsGrabHint = MyGUI::Gui::getInstance().createWidget<MyGUI::Widget>(
+            "BlackBG", 0, 0, 430, 132, MyGUI::Align::Default, "Popup");
+        mPhysicsGrabHint->setNeedMouseFocus(false);
+        mPhysicsGrabHint->setNeedKeyFocus(false);
+        mPhysicsGrabHintText = mPhysicsGrabHint->createWidget<MyGUI::TextBox>(
+            "SandBrightText", 12, 9, 406, 114, MyGUI::Align::Stretch, "PhysicsGrabHintText");
+        mPhysicsGrabHintText->setNeedMouseFocus(false);
+        mPhysicsGrabHintText->setNeedKeyFocus(false);
+        mPhysicsGrabHintText->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+        mPhysicsGrabHint->setVisible(false);
 
         mHud->setVisible(true);
 
@@ -2561,6 +2578,48 @@ namespace MWGui
     const MWGui::TextColours& WindowManager::getTextColours()
     {
         return mTextColours;
+    }
+
+    void WindowManager::setPhysicsGrabHint(bool visible, int moveMode, bool physicsEnabled)
+    {
+        if (!mPhysicsGrabHint || !mPhysicsGrabHintText)
+            return;
+
+        if (!visible)
+        {
+            mPhysicsGrabHint->setVisible(false);
+            return;
+        }
+
+        const int safeMode = std::max(0, std::min(3, moveMode));
+        const char* modeKeys[] = {
+            "placement.mode.walk", "placement.mode.xy", "placement.mode.xz", "placement.mode.zy"
+        };
+
+        auto arenaText = [](const std::string& key)
+        {
+            return MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=" + key + "}");
+        };
+
+        std::string caption = arenaText("placement.title") + "\n"
+            + arenaText("placement.release") + "\n"
+            + arenaText("placement.physics") + ": "
+            + arenaText(physicsEnabled ? "placement.on" : "placement.off") + "\n"
+            + arenaText("placement.rotate") + "    " + arenaText("placement.reset") + "\n"
+            + arenaText("placement.mode") + ": " + arenaText(modeKeys[safeMode]);
+
+        if (safeMode != 0)
+            caption += "\n" + arenaText("placement.move");
+
+        const int height = safeMode == 0 ? 132 : 151;
+        const MyGUI::IntSize view = MyGUI::RenderManager::getInstance().getViewSize();
+        const int width = std::min(430, std::max(300, view.width - 24));
+        const int left = std::max(12, (view.width - width) / 2);
+        const int top = std::max(12, static_cast<int>(view.height * 0.075f));
+        mPhysicsGrabHint->setCoord(left, top, width, height);
+        mPhysicsGrabHintText->setCoord(12, 9, std::max(1, width - 24), std::max(1, height - 18));
+        mPhysicsGrabHintText->setCaption(caption);
+        mPhysicsGrabHint->setVisible(true);
     }
 
     bool WindowManager::injectKeyPress(MyGUI::KeyCode key, unsigned int text, bool repeat)
