@@ -125,7 +125,7 @@ ItemView::ItemView()
     , mValueSortIcon(nullptr)
     , mExtendedMode(false)
     , mInternalViewModeButtonVisible(true)
-    , mSingleClickActivation(false)
+    , mSingleClickActionEnabled(false)
     , mViewMode(View_List)
     , mListPressedIndex(-1)
     , mListDragStartX(0)
@@ -249,17 +249,6 @@ void ItemView::setExtendedMode(bool enabled)
         mViewMode = View_List;
     updateExtendedGeometry();
     updateHeaderCaptions();
-    update();
-}
-
-void ItemView::setSingleClickActivation(bool enabled)
-{
-    if (mSingleClickActivation == enabled)
-        return;
-
-    mSingleClickActivation = enabled;
-    // Input delegates are attached when rows/icons are created, so rebuild the
-    // visible widgets once when the interaction mode changes.
     update();
 }
 
@@ -610,14 +599,7 @@ void ItemView::update()
             itemWidget->setUserData(std::make_pair(i, mModel));
             itemWidget->setItem(item.mBase, state);
             itemWidget->setCount(item.mCount);
-            if (mSingleClickActivation)
-            {
-                itemWidget->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
-                itemWidget->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
-                itemWidget->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
-            }
-            else
-                itemWidget->eventMouseButtonClick += MyGUI::newDelegate(this, &ItemView::onSelectedItem);
+            itemWidget->eventMouseButtonClick += MyGUI::newDelegate(this, &ItemView::onSelectedItem);
             itemWidget->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
             continue;
         }
@@ -634,8 +616,7 @@ void ItemView::update()
         row->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
         row->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
         row->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
-        if (!mSingleClickActivation)
-            row->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
+        row->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
         row->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
 
         ItemWidget* icon = row->createWidget<ItemWidget>("MW_ItemIcon", MyGUI::IntCoord(2, 2, 32, 32), MyGUI::Align::Left);
@@ -646,8 +627,7 @@ void ItemView::update()
         icon->eventMouseButtonPressed += MyGUI::newDelegate(this, &ItemView::onListItemPressed);
         icon->eventMouseDrag += MyGUI::newDelegate(this, &ItemView::onListItemDragged);
         icon->eventMouseButtonReleased += MyGUI::newDelegate(this, &ItemView::onListItemReleased);
-        if (!mSingleClickActivation)
-            icon->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
+        icon->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &ItemView::onListItemDoubleClicked);
         icon->eventMouseWheel += MyGUI::newDelegate(this, &ItemView::onMouseWheelMoved);
 
         MyGUI::TextBox* name = row->createWidget<MyGUI::TextBox>("SandText", MyGUI::IntCoord(), MyGUI::Align::Default);
@@ -827,13 +807,17 @@ void ItemView::onListItemReleased(MyGUI::Widget* sender, int left, int top, MyGU
     if (id != MyGUI::MouseButton::Left)
         return;
 
-    const ItemModel::ModelIndex index
-        = (*sender->getUserData<std::pair<ItemModel::ModelIndex, ItemModel*> >()).first;
-
     if (!mListDragStarted)
     {
+        const ItemModel::ModelIndex index
+            = (*sender->getUserData<std::pair<ItemModel::ModelIndex, ItemModel*> >()).first;
+        const bool sameItem = index == mListPressedIndex;
         mListPressedIndex = -1;
-        if (mSingleClickActivation)
+
+        // Barter/container windows explicitly opt into modern one-click
+        // transfer. Regular inventory list rows still wait for double-click,
+        // preserving equip/use behaviour outside two-pane transfer modes.
+        if (mSingleClickActionEnabled && sameItem)
             eventItemClicked(index);
         return;
     }

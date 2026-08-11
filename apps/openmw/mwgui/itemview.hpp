@@ -45,12 +45,13 @@ namespace MWGui
         /// Disabled by default so alchemy and small item pickers keep vanilla layout.
         void setExtendedMode(bool enabled);
         bool getExtendedMode() const { return mExtendedMode; }
-        /// In transfer-oriented two-pane windows, a clean click activates the
-        /// item while a real mouse drag still starts drag-and-drop.
-        void setSingleClickActivation(bool enabled);
-        bool getSingleClickActivation() const { return mSingleClickActivation; }
         void setViewMode(ViewMode mode);
         ViewMode getViewMode() const { return mViewMode; }
+
+        /// In extended list mode, emit eventItemClicked on a normal mouse
+        /// release. Disabled by default so the regular inventory keeps its
+        /// focus/double-click behaviour; two-pane transfer windows opt in.
+        void setSingleClickActionEnabled(bool enabled) { mSingleClickActionEnabled = enabled; }
 
         /// Hide the built-in table/grid toggle when a host window provides its
         /// own control (ArenaMW inventory keeps view/search/weight on the bottom bar).
@@ -131,7 +132,7 @@ namespace MWGui
         MyGUI::ImageBox* mValueSortIcon;
         bool mExtendedMode;
         bool mInternalViewModeButtonVisible;
-        bool mSingleClickActivation;
+        bool mSingleClickActionEnabled;
         ViewMode mViewMode;
         ItemModel::ModelIndex mListPressedIndex;
         int mListDragStartX;

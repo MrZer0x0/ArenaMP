@@ -47,7 +47,7 @@ namespace MWMechanics
                 Norm,
                 CheckStuck,
                 TurnAway,
-                Retreat
+                BackOff
             };
             WalkState mWalkState;
 

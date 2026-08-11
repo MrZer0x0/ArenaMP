@@ -35,7 +35,7 @@ namespace MWGui
 {
     namespace
     {
-        bool useFramedBarterNotification()
+        bool useBarterNotificationFrame()
         {
             MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
             return windowManager && windowManager->containsMode(GM_Barter);
@@ -231,12 +231,12 @@ namespace MWGui
 
 
     MessageBox::MessageBox(MessageBoxManager& parMessageBoxManager, const std::string& message)
-      : Layout(useFramedBarterNotification() ? "openmw_messagebox_barter.layout" : "openmw_messagebox.layout")
+      : Layout(useBarterNotificationFrame() ? "openmw_messagebox_barter.layout" : "openmw_messagebox.layout")
       , mCurrentTime(0)
       , mMaxTime(0)
       , mMessageBoxManager(parMessageBoxManager)
       , mMessage(message)
-      , mFramed(useFramedBarterNotification())
+      , mFramedForBarter(useBarterNotificationFrame())
     {
         // defines
         mBottomPadding = 48;
@@ -246,14 +246,26 @@ namespace MWGui
 
         mMessageWidget->setCaptionWithReplacing(mMessage);
 
-        if (mFramed)
+        if (mFramedForBarter)
         {
-            // Barter notifications must remain legible over two dense item
-            // tables. Keep the normal transient timing/fade, but give only
-            // this context a compact opaque dialog frame and dark background.
-            const int textHeight = std::max(20, mMessageWidget->getTextSize().height);
-            mMessageWidget->setCoord(16, 10, 520, textHeight);
-            mMainWidget->setSize(552, std::max(54, textHeight + 20));
+            // Barter covers most of the screen, so transparent notifications
+            // disappear into the item lists. Size a dedicated opaque framed
+            // panel around the text while retaining the normal fade/timing.
+            const MyGUI::IntSize view = MyGUI::RenderManager::getInstance().getViewSize();
+            const int maxWidth = std::max(220, std::min(560, view.width - 40));
+            const int minWidth = std::min(300, maxWidth);
+
+            mMessageWidget->setCoord(12, 8, std::max(1, maxWidth - 24), 80);
+            MyGUI::IntSize textSize = mMessageWidget->getTextSize();
+            const int boxWidth = std::max(minWidth, std::min(maxWidth, textSize.width + 36));
+
+            mMessageWidget->setSize(std::max(1, boxWidth - 24), 120);
+            textSize = mMessageWidget->getTextSize();
+            const int boxHeight = std::max(44, textSize.height + 20);
+
+            mMainWidget->setSize(boxWidth, boxHeight);
+            mMessageWidget->setCoord(12, 8, std::max(1, boxWidth - 24), std::max(1, boxHeight - 16));
+            mBottomPadding = 64;
         }
     }
 

@@ -1,6 +1,6 @@
 #include "obstacle.hpp"
 
-#include <cmath>
+#include <algorithm>
 
 #include <osg/Math>
 
@@ -13,12 +13,13 @@
 
 namespace MWMechanics
 {
-    // Short detection and a turn-in-place response avoid rapidly switching
-    // between walk/strafe/backpedal animation groups when an actor is blocked.
+    // Short detection followed by a deterministic stop-turn-retreat sequence
+    // avoids rapidly switching between walk/strafe/backpedal groups when an
+    // actor is blocked by geometry.
     static const float DIST_SAME_SPOT = 0.35f;
     static const float DURATION_SAME_SPOT = 0.65f;
-    static const float DURATION_TO_TURN_AWAY = 0.55f;
-    static const float DURATION_RETREAT = 0.8f;
+    static const float DURATION_TO_TURN_AWAY = 0.65f;
+    static const float DURATION_TO_BACK_OFF = 0.60f;
 
     bool proximityToDoor(const MWWorld::Ptr& actor, float minDist)
     {
@@ -87,7 +88,7 @@ namespace MWMechanics
 
     bool ObstacleCheck::isEvading() const
     {
-        return mWalkState == WalkState::TurnAway || mWalkState == WalkState::Retreat;
+        return mWalkState == WalkState::TurnAway || mWalkState == WalkState::BackOff;
     }
 
     /*
@@ -96,10 +97,11 @@ namespace MWMechanics
      *
      * Walking state transitions (player greeting check not shown):
      *
-     * Initial -> Norm <-> CheckStuck -> TurnAway -> Retreat -> Norm
+     * Initial -> Norm <-> CheckStuck -> TurnAway -> BackOff -> Norm
      *
-     * The actor first stops, turns exactly away from the obstacle, walks a
-     * short distance in that opposite direction, and only then rebuilds path.
+     * The actor first stops, turns around once, walks a short distance in the
+     * opposite direction, and only then requests a path rebuild. This keeps
+     * path steering from fighting obstacle recovery every frame.
      *
      */
     void ObstacleCheck::update(const MWWorld::Ptr& actor, const osg::Vec3f& destination, float duration)
@@ -120,17 +122,17 @@ namespace MWMechanics
             mStateDuration += duration;
             if (mStateDuration >= DURATION_TO_TURN_AWAY)
             {
-                mWalkState = WalkState::Retreat;
+                mWalkState = WalkState::BackOff;
                 mStateDuration = 0.f;
                 mPrev = position;
             }
             return;
         }
 
-        if (mWalkState == WalkState::Retreat)
+        if (mWalkState == WalkState::BackOff)
         {
             mStateDuration += duration;
-            if (mStateDuration >= DURATION_RETREAT)
+            if (mStateDuration >= DURATION_TO_BACK_OFF)
             {
                 mWalkState = WalkState::Norm;
                 mStateDuration = 0.f;
@@ -168,9 +170,9 @@ namespace MWMechanics
         if (mStateDuration < DURATION_SAME_SPOT)
             return;
 
-        // Stop first, then use one stable 180-degree turn. No random left/right
-        // oscillation is allowed here: it was the main source of visible NPC
-        // twitching when several colliders met in a narrow space.
+        // Stop and choose one stable 180-degree turn. A short retreat follows
+        // before the path is rebuilt, so the NPC actually clears the obstacle
+        // instead of immediately steering back into it and twitching in place.
         mWalkState = WalkState::TurnAway;
         mStateDuration = 0.f;
         mPrev = position;
@@ -181,7 +183,7 @@ namespace MWMechanics
     void ObstacleCheck::takeEvasiveAction(MWMechanics::Movement& actorMovement) const
     {
         actorMovement.mPosition[0] = 0.f;
-        actorMovement.mPosition[1] = mWalkState == WalkState::Retreat ? 1.f : 0.f;
+        actorMovement.mPosition[1] = mWalkState == WalkState::BackOff ? 0.55f : 0.f;
     }
 
     float ObstacleCheck::getEvasionAngle() const
@@ -198,6 +200,9 @@ namespace MWMechanics
 
     void ObstacleCheck::chooseEvasionAngle(const MWWorld::Ptr& actor)
     {
+        // A fixed half-turn is intentionally boring: when an NPC hits a wall,
+        // it stops, turns around, and leaves instead of repeatedly choosing
+        // alternating side directions that look like nervous shaking.
         mEvasionAngle = actor.getRefData().getPosition().rot[2] + osg::PI;
     }
 

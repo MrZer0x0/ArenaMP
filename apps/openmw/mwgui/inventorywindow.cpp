@@ -290,6 +290,14 @@ namespace MWGui
     void InventoryWindow::updatePlayer()
     {
         mPtr = MWBase::Environment::get().getWorld ()->getPlayerPtr();
+
+        // The window caption belongs to the inventory owner, not to the currently
+        // selected weapon. Weapon/spell selection is already represented by the HUD.
+        // Keeping the player name here also makes the left barter pane unambiguous.
+        const std::string playerName = mPtr.getClass().getName(mPtr);
+        if (!playerName.empty())
+            setTitle(playerName);
+
         mTradeModel = new TradeItemModel(new InventoryItemModel(mPtr), MWWorld::Ptr());
 
         if (mSortModel) // reuse existing SortModel when possible to keep previous category/filter settings
@@ -366,9 +374,24 @@ namespace MWGui
     {
         mGuiMode = mode;
         if (mItemView)
-            mItemView->setSingleClickActivation(mode == GM_Barter || mode == GM_Container);
+            mItemView->setSingleClickActionEnabled(mode == GM_Barter || mode == GM_Container);
         std::string setting = getModeSetting();
         setPinButtonVisible(mode == GM_Inventory);
+
+        // Barter panes have the same minimum size but independent geometry.
+        // Normal inventory/container modes keep their smaller minimum.
+        MyGUI::Window* inventoryWindow = mMainWidget->castType<MyGUI::Window>();
+        if (mode == GM_Barter)
+            inventoryWindow->setMinSize(500, 460);
+        else
+            inventoryWindow->setMinSize(360, 220);
+
+        if (!mPtr.isEmpty())
+        {
+            const std::string playerName = mPtr.getClass().getName(mPtr);
+            if (!playerName.empty())
+                setTitle(playerName);
+        }
 
         if (Settings::Manager::getBool(setting + " maximized", "Windows"))
             setting += " maximized";
@@ -379,23 +402,16 @@ namespace MWGui
         MyGUI::IntSize size(static_cast<int>(Settings::Manager::getFloat(setting + " w", "Windows") * viewSize.width),
                             static_cast<int>(Settings::Manager::getFloat(setting + " h", "Windows") * viewSize.height));
 
+        if (mode == GM_Barter)
+        {
+            size.width = std::max(size.width, 500);
+            size.height = std::max(size.height, 460);
+        }
+
         bool needUpdate = (size.width != mMainWidget->getWidth() || size.height != mMainWidget->getHeight());
 
         mMainWidget->setPosition(pos);
         mMainWidget->setSize(size);
-
-        // Barter is a true two-pane workspace: keep the player and merchant
-        // windows identical in outer size even when an older settings.cfg still
-        // contains the pre-alignment player width.
-        if (mode == GM_Barter)
-        {
-            TradeWindow* tradeWindow = MWBase::Environment::get().getWindowManager()->getTradeWindow();
-            if (tradeWindow && tradeWindow->mMainWidget
-                && mMainWidget->getSize() != tradeWindow->mMainWidget->getSize())
-            {
-                mMainWidget->setSize(tradeWindow->mMainWidget->getSize());
-            }
-        }
 
         adjustPanes();
 
@@ -509,6 +525,12 @@ namespace MWGui
     {
         if (!mSortModel || !mTradeModel)
             return;
+
+        // Barter/container rows transfer on the first click. Do not let the
+        // subsequent MyGUI double-click target whichever item moved into that row.
+        if (mTrading || mGuiMode == GM_Container)
+            return;
+
         if (index < 0 || index >= static_cast<int>(mSortModel->getItemCount()))
             return;
 
@@ -843,18 +865,6 @@ namespace MWGui
         if (maximized)
             Settings::Manager::setBool(setting + " maximized", "Windows", false);
 
-        // Resizing either barter half resizes the other half as well. This keeps
-        // their item rows, scroll areas and bottom strips visually aligned.
-        if (mGuiMode == GM_Barter)
-        {
-            TradeWindow* tradeWindow = MWBase::Environment::get().getWindowManager()->getTradeWindow();
-            if (tradeWindow && tradeWindow->mMainWidget
-                && tradeWindow->mMainWidget->getSize() != _sender->getSize())
-            {
-                tradeWindow->mMainWidget->setSize(_sender->getSize());
-            }
-        }
-
         if (mMainWidget->getSize().width != mLastXSize || mMainWidget->getSize().height != mLastYSize)
         {
             mLastXSize = mMainWidget->getSize().width;
@@ -1163,7 +1173,7 @@ namespace MWGui
         // Reserve a little more room than the 30px coin itself so 5-7 digit
         // player balances are not clipped by the search field. The count still
         // overlays the coin, but its text box may extend left into this reserve.
-        const int goldBlockWidth = showGold ? 58 : 0;
+        const int goldBlockWidth = showGold ? 64 : 0;
 
         const int weightWidth = std::max(72, std::min(110, width / 4));
         if (mEncumbranceBar)
@@ -1189,7 +1199,7 @@ namespace MWGui
             if (showGold)
             {
                 const int goldLeft = width - goldBlockWidth;
-                mGoldIcon->setCoord(goldLeft + goldBlockWidth - 30, 1, 30, 30);
+                mGoldIcon->setCoord(width - 30, 1, 30, 30);
                 mGoldLabel->setCoord(goldLeft, 1, goldBlockWidth, 30);
                 const std::string goldIcon = resolveGoldIcon();
                 if (!goldIcon.empty())

@@ -1655,6 +1655,38 @@ namespace MWWorld
         const osg::Quat rotation = object.getRefData().getBaseNode()
             ? object.getRefData().getBaseNode()->getAttitude() : osg::Quat();
 
+        // Resolve any pre-existing overlap before starting the hand spring. Every
+        // held step can fall back to this most-recent safe transform if Bullet cannot
+        // find a stable projection (thin tabletops and stacked clutter are the common
+        // failure cases).
+        osg::Vec3f safeOrigin = object.getRefData().getPosition().asVec3();
+        bool safeOriginAdjusted = false;
+        for (int pass = 0; pass < 8; ++pass)
+        {
+            const osg::Vec3f safeCenter = safeOrigin + rotation * state->mLocalCenter;
+            const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                safeCenter, rotation, state->mHalfExtents, object, 24.f);
+            if (correction.length2() < 0.0001f)
+                break;
+            safeOrigin += correction;
+            safeOriginAdjusted = true;
+        }
+
+        const osg::Vec3f remainingGrabOverlap = mPhysics->getBoxPenetrationCorrection(
+            safeOrigin + rotation * state->mLocalCenter, rotation, state->mHalfExtents, object, 2.f);
+        state->mHasLastSafeTransform = remainingGrabOverlap.length2() < 0.0001f;
+        if (state->mHasLastSafeTransform)
+        {
+            state->mLastSafeOrigin = safeOrigin;
+            state->mLastSafeRotation = rotation;
+            if (safeOriginAdjusted)
+            {
+                state->mPtr = moveObject(state->mPtr, safeOrigin.x(), safeOrigin.y(), safeOrigin.z(), true, false);
+                syncPhysicsObjectTransform(state->mPtr);
+                state->mNetworkSyncTimer = 0.05f;
+            }
+        }
+
         // Grab at the actual faced point instead of the object's centre.  The
         // faced distance is already the ray-hit distance used by normal activation.
         // Storing it in local box space gives a real lever arm: long objects hang,
@@ -1665,7 +1697,7 @@ namespace MWWorld
             * osg::Quat(playerPosition.rot[2], osg::Vec3f(0.f, 0.f, -1.f));
         const osg::Vec3f viewDirection = viewRotation * osg::Vec3f(0.f, 1.f, 0.f);
         const osg::Vec3f holdOrigin = getActorHeadTransform(player).getTrans();
-        const osg::Vec3f center = object.getRefData().getPosition().asVec3() + rotation * state->mLocalCenter;
+        const osg::Vec3f center = state->mPtr.getRefData().getPosition().asVec3() + rotation * state->mLocalCenter;
         const osg::Vec3f facedPoint = holdOrigin + viewDirection * state->mHoldDistance;
         const osg::Vec3f localOffset = rotation.inverse() * (facedPoint - center);
         state->mLocalGrabOffset.set(
@@ -1698,6 +1730,54 @@ namespace MWWorld
         {
             if (!state.mGrabbed)
                 continue;
+
+            osg::Vec3f origin = state.mPtr.getRefData().getPosition().asVec3();
+            osg::Quat rotation = state.mPtr.getRefData().getBaseNode()
+                ? state.mPtr.getRefData().getBaseNode()->getAttitude() : osg::Quat();
+            bool corrected = false;
+            bool restoredSafeRotation = false;
+            for (int pass = 0; pass < 8; ++pass)
+            {
+                const osg::Vec3f center = origin + rotation * state.mLocalCenter;
+                const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                    center, rotation, state.mHalfExtents, state.mPtr, 24.f);
+                if (correction.length2() < 0.0001f)
+                    break;
+
+                origin += correction;
+                corrected = true;
+                const osg::Vec3f normal = correction / correction.length();
+                const float intoSurface = state.mVelocity * normal;
+                if (intoSurface < 0.f)
+                    state.mVelocity -= normal * intoSurface;
+            }
+
+            // Thin/complex furniture can yield alternating penetration normals.
+            // Never release from an unresolved overlap: restore the latest transform
+            // that was positively verified as collision-free.
+            const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                origin + rotation * state.mLocalCenter, rotation, state.mHalfExtents, state.mPtr, 2.f);
+            if (remaining.length2() >= 0.0001f && state.mHasLastSafeTransform)
+            {
+                origin = state.mLastSafeOrigin;
+                rotation = state.mLastSafeRotation;
+                corrected = true;
+                restoredSafeRotation = true;
+                state.mVelocity *= 0.25f;
+                state.mAngularVelocity *= 0.35f;
+            }
+
+            if (restoredSafeRotation)
+            {
+                const osg::Vec3f safeEuler = objectQuatToEuler(rotation);
+                rotateObject(state.mPtr, safeEuler.x(), safeEuler.y(), safeEuler.z(), MWBase::RotationFlag_none);
+            }
+            if (corrected)
+            {
+                state.mPtr = moveObject(state.mPtr, origin.x(), origin.y(), origin.z(), true, false);
+                state.mVelocity *= 0.72f;
+                state.mAngularVelocity *= 0.78f;
+            }
 
             state.mGrabbed = false;
             state.mSleepTimer = 0.f;
@@ -2737,21 +2817,43 @@ namespace MWWorld
             osg::Vec3f center = origin + rotation * state.mLocalCenter;
 
             // If a save/old prototype left a prop intersecting a surface, recover
-            // it gently before integrating. This avoids the explosive "Bullet pop"
-            // that happens when a solver sees a large penetration all at once.
-            const osg::Vec3f recovery = mPhysics->getBoxPenetrationCorrection(
-                center, rotation, state.mHalfExtents, state.mPtr, 6.f);
-            if (recovery.length2() > 0.0001f)
+            // it before integrating. A single small projection is insufficient for
+            // thin tabletops: the next gravity/spring step can immediately put the
+            // object back inside. Iterate until the box is actually separated.
+            bool recoveredFromPenetration = false;
+            for (int recoveryPass = 0; recoveryPass < 6; ++recoveryPass)
             {
+                const osg::Vec3f recovery = mPhysics->getBoxPenetrationCorrection(
+                    center, rotation, state.mHalfExtents, state.mPtr, 12.f);
+                if (recovery.length2() < 0.0001f)
+                    break;
+
                 origin += recovery;
                 center += recovery;
+                recoveredFromPenetration = true;
                 const osg::Vec3f recoveryNormal = recovery / recovery.length();
                 const float intoSurface = state.mVelocity * recoveryNormal;
                 if (intoSurface < 0.f)
                     state.mVelocity -= recoveryNormal * intoSurface;
-                state.mVelocity *= 0.82f;
+            }
+            if (recoveredFromPenetration)
+            {
+                state.mVelocity *= 0.78f;
+                state.mAngularVelocity *= 0.84f;
                 state.mPtr = moveObject(state.mPtr, origin.x(), origin.y(), origin.z(), true, false);
                 transformChanged = true;
+            }
+
+            if (state.mGrabbed)
+            {
+                const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                    origin + rotation * state.mLocalCenter, rotation, state.mHalfExtents, state.mPtr, 2.f);
+                if (remaining.length2() < 0.0001f)
+                {
+                    state.mLastSafeOrigin = origin;
+                    state.mLastSafeRotation = rotation;
+                    state.mHasLastSafeTransform = true;
+                }
             }
 
             if (!state.mGrabbed && state.mSleepTimer >= 0.42f
@@ -2805,9 +2907,19 @@ namespace MWWorld
                 std::max(state.mHalfExtents.y(), state.mHalfExtents.z()));
             const float predictedTravel = state.mVelocity.length() * dt
                 + state.mAngularVelocity.length() * maxExtent * dt;
-            const int subSteps = std::max(1, std::min(10,
+            const int subSteps = std::max(1, std::min(state.mGrabbed ? 14 : 10,
                 static_cast<int>(std::ceil(predictedTravel / std::max(2.f, minExtent * 0.45f)))));
             const float stepDt = dt / static_cast<float>(subSteps);
+
+            // A tiny contact shell is used only while the prop is held. It absorbs
+            // discrepancies between the visual mesh and old NIF collision bounds and
+            // prevents the familiar "half a bottle inside the table" placement.
+            // The shell is removed after release, so resting props still settle onto
+            // their real collision shape rather than visibly hovering.
+            const float grabContactSkin = state.mGrabbed
+                ? std::min(0.70f, std::max(0.20f, minExtent * 0.06f)) : 0.f;
+            const osg::Vec3f sweepHalfExtents = state.mHalfExtents
+                + osg::Vec3f(grabContactSkin, grabContactSkin, grabContactSkin);
 
             bool contactedThisFrame = false;
             bool fracturedThisFrame = false;
@@ -2838,12 +2950,75 @@ namespace MWWorld
 
                 const MWPhysics::RayCastingResult hit = mPhysics->castBox(
                     currentCenter, rotation, proposedCenter, proposedRotation,
-                    state.mHalfExtents, state.mPtr);
+                    sweepHalfExtents, state.mPtr);
 
                 if (!hit.mHit)
                 {
+                    // A sweep can miss a tiny rotation that begins exactly on a
+                    // contact plane. Validate the proposed transform itself. If a
+                    // manifold can be resolved, accept the corrected transform; if
+                    // it remains ambiguous, fall back to the latest verified clear
+                    // transform instead of accumulating penetration frame after frame.
+                    if (state.mGrabbed)
+                    {
+                        osg::Vec3f correctedOrigin = proposedOrigin;
+                        osg::Vec3f correctionNormal;
+                        bool overlapCorrected = false;
+                        for (int overlapPass = 0; overlapPass < 6; ++overlapPass)
+                        {
+                            const osg::Vec3f correctedCenter
+                                = correctedOrigin + proposedRotation * state.mLocalCenter;
+                            const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                                correctedCenter, proposedRotation, sweepHalfExtents, state.mPtr, 12.f);
+                            if (correction.length2() < 0.0001f)
+                                break;
+
+                            correctedOrigin += correction;
+                            correctionNormal = correction / correction.length();
+                            overlapCorrected = true;
+                        }
+
+                        const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                            correctedOrigin + proposedRotation * state.mLocalCenter, proposedRotation,
+                            sweepHalfExtents, state.mPtr, 2.f);
+                        if (remaining.length2() >= 0.0001f && state.mHasLastSafeTransform)
+                        {
+                            origin = state.mLastSafeOrigin;
+                            rotation = state.mLastSafeRotation;
+                            contactedThisFrame = true;
+                            state.mVelocity *= 0.20f;
+                            state.mAngularVelocity *= 0.45f;
+                            continue;
+                        }
+
+                        if (overlapCorrected)
+                        {
+                            origin = correctedOrigin;
+                            rotation = proposedRotation;
+                            contactedThisFrame = true;
+                            lastContactNormal = correctionNormal;
+
+                            const float intoSurface = state.mVelocity * correctionNormal;
+                            if (intoSurface < 0.f)
+                                state.mVelocity -= correctionNormal * intoSurface;
+                            state.mVelocity *= 0.84f;
+                            state.mAngularVelocity *= 0.82f;
+
+                            state.mLastSafeOrigin = origin;
+                            state.mLastSafeRotation = rotation;
+                            state.mHasLastSafeTransform = true;
+                            continue;
+                        }
+                    }
+
                     origin = proposedOrigin;
                     rotation = proposedRotation;
+                    if (state.mGrabbed)
+                    {
+                        state.mLastSafeOrigin = origin;
+                        state.mLastSafeRotation = rotation;
+                        state.mHasLastSafeTransform = true;
+                    }
                     continue;
                 }
 
@@ -2864,6 +3039,18 @@ namespace MWWorld
                     osg::Quat partialRotation;
                     partialRotation.makeRotate(angularAmount * safeFraction, angularStep / angularAmount);
                     rotation = partialRotation * rotation;
+                }
+
+                if (state.mGrabbed)
+                {
+                    const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                        origin + rotation * state.mLocalCenter, rotation, sweepHalfExtents, state.mPtr, 2.f);
+                    if (remaining.length2() < 0.0001f)
+                    {
+                        state.mLastSafeOrigin = origin;
+                        state.mLastSafeRotation = rotation;
+                        state.mHasLastSafeTransform = true;
+                    }
                 }
 
                 const float normalVelocity = state.mVelocity * normal;
@@ -3021,6 +3208,48 @@ namespace MWWorld
                             other.mHadSurfaceContact = false;
                         }
                     }
+                }
+            }
+
+            if (!fracturedThisFrame && state.mGrabbed)
+            {
+                // Final projection after every CCD sub-step makes placement frame-rate
+                // independent: the committed held transform cannot remain inside a
+                // table, wall, container or another physics prop.
+                for (int finalPass = 0; finalPass < 6; ++finalPass)
+                {
+                    const osg::Vec3f finalCenter = origin + rotation * state.mLocalCenter;
+                    const osg::Vec3f correction = mPhysics->getBoxPenetrationCorrection(
+                        finalCenter, rotation, sweepHalfExtents, state.mPtr, 12.f);
+                    if (correction.length2() < 0.0001f)
+                        break;
+
+                    origin += correction;
+                    contactedThisFrame = true;
+                    const osg::Vec3f correctionNormal = correction / correction.length();
+                    lastContactNormal = correctionNormal;
+                    const float intoSurface = state.mVelocity * correctionNormal;
+                    if (intoSurface < 0.f)
+                        state.mVelocity -= correctionNormal * intoSurface;
+                    state.mVelocity *= 0.86f;
+                    state.mAngularVelocity *= 0.86f;
+                }
+
+                const osg::Vec3f remaining = mPhysics->getBoxPenetrationCorrection(
+                    origin + rotation * state.mLocalCenter, rotation, sweepHalfExtents, state.mPtr, 2.f);
+                if (remaining.length2() >= 0.0001f && state.mHasLastSafeTransform)
+                {
+                    origin = state.mLastSafeOrigin;
+                    rotation = state.mLastSafeRotation;
+                    contactedThisFrame = true;
+                    state.mVelocity *= 0.18f;
+                    state.mAngularVelocity *= 0.40f;
+                }
+                else if (remaining.length2() < 0.0001f)
+                {
+                    state.mLastSafeOrigin = origin;
+                    state.mLastSafeRotation = rotation;
+                    state.mHasLastSafeTransform = true;
                 }
             }
 

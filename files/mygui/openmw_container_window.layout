@@ -27,7 +27,7 @@
                 <Property key="NeedKey" value="false"/>
             </Widget>
             <Widget type="AutoSizedButton" skin="MW_Button" name="KeysButton">
-                <Property key="Caption" value="Ключи"/>
+                <Property key="Caption" value="#{arenamp=inventory.keys}"/>
                 <Property key="NeedKey" value="false"/>
             </Widget>
         </Widget>

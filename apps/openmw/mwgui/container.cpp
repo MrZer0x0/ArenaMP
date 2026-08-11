@@ -72,7 +72,7 @@ namespace MWGui
 
         getWidget(mItemView, "ItemView");
         mItemView->setExtendedMode(true);
-        mItemView->setSingleClickActivation(true);
+        mItemView->setSingleClickActionEnabled(true);
         mItemView->setInternalViewModeButtonVisible(false);
         mItemView->eventBackgroundClicked += MyGUI::newDelegate(this, &ContainerWindow::onBackgroundSelected);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &ContainerWindow::onItemSelected);
@@ -157,22 +157,9 @@ namespace MWGui
 
     void ContainerWindow::onItemDoubleClicked(int index)
     {
-        if (!mSortModel || !mModel || mDragAndDrop->mIsOnDragAndDrop)
-            return;
-
-        const ItemStack& item = mSortModel->getItem(index);
-        if (item.mFlags & ItemStack::Flag_Bound)
-        {
-            MWBase::Environment::get().getWindowManager()->messageBox("#{sContentsMessage1}");
-            return;
-        }
-
-        mSelectedItem = mSortModel->mapToSource(index);
-        const int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
-
-        // Quick transfer still uses the exact same server-approved DRAG request.
-        // Once approved, dragItemByPtr() will auto-release it over player inventory.
-        requestDrag(count, MWBase::Environment::get().getWindowManager()->getInventoryWindow()->getItemView());
+        // One-click transfer already queued the server-authoritative DRAG.
+        // Ignore MyGUI's follow-up double-click event to avoid a duplicate request.
+        (void)index;
     }
 
     bool ContainerWindow::requestDrag(int count, ItemView* pendingTarget)

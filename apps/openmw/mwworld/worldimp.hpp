@@ -2,6 +2,7 @@
 #define GAME_MWWORLD_WORLDIMP_H
 
 #include <osg/ref_ptr>
+#include <osg/Quat>
 
 #include <components/settings/settings.hpp>
 
@@ -124,6 +125,8 @@ namespace MWWorld
                 osg::Vec3f mLocalCenter;
                 osg::Vec3f mLocalGrabOffset;
                 osg::Vec3f mLastHoldTarget;
+                osg::Vec3f mLastSafeOrigin;
+                osg::Quat mLastSafeRotation;
                 float mRadius = 4.f;
                 float mMass = 1.f;
                 float mSleepTimer = 0.f;
@@ -136,6 +139,7 @@ namespace MWWorld
                 bool mLiquidContainer = false;
                 bool mGrabbed = false;
                 bool mHadSurfaceContact = false;
+                bool mHasLastSafeTransform = false;
             };
             std::vector<PhysicsObjectState> mPhysicsObjects;
 

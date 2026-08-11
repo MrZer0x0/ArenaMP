@@ -857,6 +857,16 @@ namespace MWGui
 
     void WindowManager::messageBox (const std::string& message, enum MWGui::ShowInDialogueMode showInDialogueMode)
     {
+        // Barter is opened from dialogue, so the dialogue actor remains set while
+        // the dialogue window is hidden behind the two barter panes. Ordinary
+        // barter notifications must therefore bypass hidden dialogue history and
+        // use the dedicated framed transient message box.
+        if (containsMode(GM_Barter) && showInDialogueMode != MWGui::ShowInDialogueMode_Only)
+        {
+            mMessageBoxManager->createMessageBox(message);
+            return;
+        }
+
         // INFO result scripts can temporarily put another GUI mode above the
         // dialogue. Checking only getMode() loses quest, item and gold messages.
         // An assigned actor means the conversation is still active even during

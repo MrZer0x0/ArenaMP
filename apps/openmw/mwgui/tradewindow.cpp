@@ -105,7 +105,7 @@ namespace MWGui
 
         getWidget(mItemView, "ItemView");
         mItemView->setExtendedMode(true);
-        mItemView->setSingleClickActivation(true);
+        mItemView->setSingleClickActionEnabled(true);
         mItemView->eventItemClicked += MyGUI::newDelegate(this, &TradeWindow::onItemSelected);
         mItemView->eventItemDragStarted += MyGUI::newDelegate(this, &TradeWindow::onItemDragStarted);
         mItemView->eventItemDoubleClicked += MyGUI::newDelegate(this, &TradeWindow::onItemDoubleClicked);
@@ -179,7 +179,10 @@ namespace MWGui
 
     void TradeWindow::onFrame(float dt)
     {
+        (void)dt;
         checkReferenceAvailable();
+        // NPC and player barter panes deliberately keep independent geometry.
+        // This pane persists under "barter"; player inventory uses "inventory barter".
     }
 
     void TradeWindow::onNameFilterChanged(MyGUI::EditBox* _sender)
@@ -254,13 +257,9 @@ namespace MWGui
 
     void TradeWindow::onItemDoubleClicked(int index)
     {
-        if (!mSortModel || !mTradeModel || mDragAndDrop->mIsOnDragAndDrop)
-            return;
-
-        mItemToSell = mSortModel->mapToSource(index);
-        const ItemStack& item = mTradeModel->getItem(mItemToSell);
-        const int count = MyGUI::InputManager::getInstance().isControlPressed() ? 1 : item.mCount;
-        sellItem(nullptr, count);
+        // Barter rows already transfer on the first click. A second activation
+        // would operate on the item that slid into the old row.
+        (void)index;
     }
 
     void TradeWindow::onBackgroundSelected()

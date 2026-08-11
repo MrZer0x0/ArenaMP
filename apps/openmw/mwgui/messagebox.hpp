@@ -79,9 +79,9 @@ namespace MWGui
             MessageBoxManager& mMessageBoxManager;
             const std::string& mMessage;
             MyGUI::EditBox* mMessageWidget;
-            bool mFramed;
             int mBottomPadding;
             int mNextBoxPadding;
+            bool mFramedForBarter;
     };
 
     class InteractiveMessageBox : public WindowModal
