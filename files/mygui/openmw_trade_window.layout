@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <MyGUI type="Layout">
-    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 700 460" name="_Main">
+    <Widget type="Window" skin="MW_Window" layer="Windows" position="0 0 700 440" name="_Main">
         <Property key="Visible" value="false"/>
         <Property key="MinSize" value="500 460"/>
 
@@ -23,7 +23,7 @@
             <Widget type="Button" skin="MW_Button" position="36 2 30 26" name="IncreaseButton" align="Left Top"><Property key="Caption" value="+"/><Property key="NeedKey" value="false"/></Widget>
             <Widget type="NumericEditBox" skin="MW_TextEdit" position="72 2 82 26" name="TotalBalance" align="Left Top"><Property key="TextAlign" value="Center"/></Widget>
             <Widget type="Button" skin="MW_Button" position="160 2 30 26" name="DecreaseButton" align="Left Top"><Property key="Caption" value="-"/><Property key="NeedKey" value="false"/></Widget>
-            <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="196 2 426 26" name="FilterEdit" align="Left Top HStretch"><UserString key="AcceptTab" value="true"/></Widget>
+            <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="196 2 400 26" name="FilterEdit" align="Left Top HStretch"><UserString key="AcceptTab" value="true"/></Widget>
             <!-- Merchant gold is rendered as a compact inventory-style stack:
                  coin icon with the amount overlaid in the lower-right corner. -->
             <Widget type="ImageBox" skin="ImageBox" position="628 1 30 30" name="MerchantGoldIcon" align="Right Top"><Property key="NeedMouse" value="false"/></Widget>
@@ -34,8 +34,8 @@
 
             <!-- Row 2: barter actions, lifted fully inside the window. -->
             <Widget type="AutoSizedButton" skin="MW_Button" position="0 36 0 26" name="MaxSaleButton" align="Left Bottom"><Property key="Caption" value="#{sMaxSale}"/></Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" position="510 36 0 26" name="OfferButton" align="Right Bottom"><Property key="Caption" value="#{sBarterDialog8}"/></Widget>
-            <Widget type="AutoSizedButton" skin="MW_Button" position="600 36 0 26" name="CancelButton" align="Right Bottom"><Property key="Caption" value="#{sCancel}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="490 40 0 26" name="OfferButton" align="Right Bottom"><Property key="Caption" value="#{sBarterDialog8}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="590 40 0 26" name="CancelButton" align="Right Bottom"><Property key="Caption" value="#{sCancel}"/></Widget>
         </Widget>
     </Widget>
 </MyGUI>
