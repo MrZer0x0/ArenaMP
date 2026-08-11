@@ -40,28 +40,46 @@ float pbrShininessFromRoughness(float roughness)
     return clamp(2.0 / (r * r) - 2.0, 1.0, 255.0);
 }
 
-// Rafael-style PBR maps store material parameters in RGB rather than a
-// coloured specular reflection. Green is roughness and blue is AO. Treating
-// RGB directly as F0 produces the characteristic cyan/teal sun sparkles.
+// Packed PBR parameter maps must be recognised very conservatively.  Legacy
+// Morrowind specular/environment maps can have coloured RGB data, and a loose
+// heuristic causes random rugs, wood, cloth and furniture to be interpreted as
+// metal/roughness/AO textures, producing square or blotchy highlights.
 bool pbrLooksLikePackedParameters(vec4 sampleValue)
 {
     float spread = max(abs(sampleValue.r - sampleValue.g),
         max(abs(sampleValue.g - sampleValue.b), abs(sampleValue.r - sampleValue.b)));
-    return spread > 0.055 && sampleValue.b > 0.002;
+    float maxChannel = max(sampleValue.r, max(sampleValue.g, sampleValue.b));
+    float minChannel = min(sampleValue.r, min(sampleValue.g, sampleValue.b));
+
+    // Reject near-greys and typical bright legacy spec maps.
+    if (spread < 0.18)
+        return false;
+    if (maxChannel > 0.96 && minChannel > 0.72)
+        return false;
+
+    // Require a plausible packed-material layout: roughness and AO must both be
+    // meaningfully present, and at least one of them should dominate metallic.
+    bool plausibleRoughness = sampleValue.g > 0.16;
+    bool plausibleAO = sampleValue.b > 0.10;
+    bool plausibleBalance = (sampleValue.g > sampleValue.r + 0.04)
+        || (sampleValue.b > sampleValue.r + 0.04)
+        || sampleValue.r < 0.35;
+
+    return plausibleRoughness && plausibleAO && plausibleBalance;
 }
 
 float pbrPackedRoughness(vec4 sampleValue)
 {
-    // Very glossy values in legacy/converted maps generate unstable GGX
-    // highlights. Keep a small physical floor; fragment-stage filtering below
-    // raises it further only where the normal field actually aliases.
-    return clamp(sampleValue.g, 0.34, 1.0);
+    // Keep a safer floor for older converted maps.  The user-facing object/
+    // terrain roughness sliders still shape the overall look, but this avoids
+    // unstable micro-highlights on dense patterns such as rugs and wood grain.
+    return clamp(sampleValue.g, 0.45, 1.0);
 }
 
 float pbrPackedAO(vec4 sampleValue)
 {
     // Older maps sometimes leave AO empty. Empty must mean fully visible, not black.
-    return sampleValue.b > 0.002 ? clamp(sampleValue.b, 0.15, 1.0) : 1.0;
+    return sampleValue.b > 0.002 ? clamp(sampleValue.b, 0.18, 1.0) : 1.0;
 }
 
 vec3 pbrSafeTangentNormal(vec3 encodedNormal)
@@ -85,7 +103,7 @@ float pbrFilterRoughness(vec3 normalValue, float roughness)
     // A material-independent floor keeps old Morrowind maps from behaving like
     // polished metal. Increase it slightly at grazing angles.
     float grazingSafety = 1.0 - clamp(abs(safeNormal.z), 0.0, 1.0);
-    float filtered = max(roughness, 0.36 + grazingSafety * 0.10);
+    float filtered = max(roughness, 0.40 + grazingSafety * 0.12);
 
 #ifdef ARENAMP_FRAGMENT_SHADER
     // Toksvig-style specular anti-aliasing. Normal variation inside one pixel
@@ -93,11 +111,11 @@ float pbrFilterRoughness(vec3 normalValue, float roughness)
     vec3 dNdx = dFdx(safeNormal);
     vec3 dNdy = dFdy(safeNormal);
     float normalVariance = max(dot(dNdx, dNdx), dot(dNdy, dNdy));
-    float varianceRoughness = min(normalVariance * 0.35, 0.45);
+    float varianceRoughness = min(normalVariance * 0.40, 0.50);
     filtered = sqrt(filtered * filtered + varianceRoughness);
 #endif
 
-    return clamp(filtered, 0.36, 1.0);
+    return clamp(filtered, 0.40, 1.0);
 }
 
 vec3 pbrSunSpecular(vec3 N, vec3 V, vec3 L, float shininess, vec3 materialSpecular)

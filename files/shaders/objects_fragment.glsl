@@ -164,8 +164,14 @@ void main()
 
 #if @materialQuality > 0 && @specularMap
     vec4 arenaSpecTex = texture2D(specularMap, adjustedSpecularUV);
-    bool arenaPackedPbr = pbrLooksLikePackedParameters(arenaSpecTex);
-    float arenaMaterialAO = arenaPackedPbr ? pbrPackedAO(arenaSpecTex) : 1.0;
+    // Auto-detection of packed PBR parameter maps is disabled for the ArenaMW
+    // legacy content path. Old Morrowind specular/environment maps and their
+    // distant mip levels were being misclassified as packed material data,
+    // causing dark/black blotches that disappeared when the player moved
+    // closer. If explicit packed-PBR support is needed later, it should be a
+    // deliberate opt-in path rather than a heuristic on arbitrary textures.
+    bool arenaPackedPbr = false;
+    float arenaMaterialAO = 1.0;
 #endif
 
     // Runtime PBR material parameters. Packed PBR maps follow the Enhanced PBR
