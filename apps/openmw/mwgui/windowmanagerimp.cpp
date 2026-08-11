@@ -354,12 +354,11 @@ namespace MWGui
             Settings::Manager::setFloat("spells w", "Windows", 0.260156f);
             Settings::Manager::setFloat("spells h", "Windows", 0.4725f);
 
-            // Two-pane transfer modes: player inventory on the left, the active
-            // container/merchant/companion on the right. This is the reference
-            // 1366x768 composition supplied by the user, stored as normalized
-            // coordinates so it scales to other resolutions.
+            // Two-pane container/companion modes: player inventory on the left,
+            // the active container/companion on the right. Barter has its own
+            // independently versioned preset below.
             for (const std::string& prefix : { std::string("inventory container"),
-                     std::string("inventory barter"), std::string("inventory companion") })
+                     std::string("inventory companion") })
             {
                 Settings::Manager::setFloat(prefix + " x", "Windows", 0.08f);
                 Settings::Manager::setFloat(prefix + " y", "Windows", 0.095f);
@@ -369,7 +368,7 @@ namespace MWGui
             }
 
             for (const std::string& prefix : { std::string("container"),
-                     std::string("barter"), std::string("companion") })
+                     std::string("companion") })
             {
                 Settings::Manager::setFloat(prefix + " x", "Windows", 0.503f);
                 Settings::Manager::setFloat(prefix + " y", "Windows", 0.095f);
@@ -379,6 +378,30 @@ namespace MWGui
             }
 
             Settings::Manager::setInt("arena workspace layout version", "GUI", ArenaWorkspaceLayoutVersion);
+        }
+
+        // ArenaMW barter layout preset v1. Keep the two barter panes completely
+        // independent, but give a fresh profile (and profiles made with older
+        // cumulative patches) the compact side-by-side composition from the
+        // reference 1360x768 screenshot. This migration intentionally touches
+        // only barter geometry, so it does not reset the normal inventory/map/
+        // stats/spells workspace positions.
+        constexpr int ArenaBarterLayoutVersion = 1;
+        if (Settings::Manager::getInt("arena barter layout version", "GUI") < ArenaBarterLayoutVersion)
+        {
+            Settings::Manager::setFloat("inventory barter x", "Windows", 0.050f);
+            Settings::Manager::setFloat("inventory barter y", "Windows", 0.135f);
+            Settings::Manager::setFloat("inventory barter w", "Windows", 0.393f);
+            Settings::Manager::setFloat("inventory barter h", "Windows", 0.641f);
+            Settings::Manager::setBool("inventory barter maximized", "Windows", false);
+
+            Settings::Manager::setFloat("barter x", "Windows", 0.519f);
+            Settings::Manager::setFloat("barter y", "Windows", 0.135f);
+            Settings::Manager::setFloat("barter w", "Windows", 0.392f);
+            Settings::Manager::setFloat("barter h", "Windows", 0.641f);
+            Settings::Manager::setBool("barter maximized", "Windows", false);
+
+            Settings::Manager::setInt("arena barter layout version", "GUI", ArenaBarterLayoutVersion);
         }
 
         mLocalMapRender = new MWRender::LocalMap(mViewer->getSceneData()->asGroup());
@@ -1974,15 +1997,6 @@ namespace MWGui
         bool maximized = Settings::Manager::getBool(setting + " maximized", "Windows");
         if (maximized)
             Settings::Manager::setBool(setting + " maximized", "Windows", false);
-
-        // Merchant and player barter panes intentionally share one size. The
-        // inventory window has its own settings handler, so mirror merchant
-        // resize events here; InventoryWindow mirrors the opposite direction.
-        if (setting == "barter" && getMode() == GM_Barter && mInventoryWindow
-            && mInventoryWindow->mMainWidget->getSize() != _sender->getSize())
-        {
-            mInventoryWindow->mMainWidget->setSize(_sender->getSize());
-        }
     }
 
     void WindowManager::clear()
