@@ -14,10 +14,10 @@
         </Widget>
 
         <!-- ArenaMW writer/copy action: borderless black quill in the upper-left parchment area. -->
-        <Widget type="Widget" skin="" position="46 50 30 30" name="WriteButton">
+        <Widget type="Widget" skin="" position="47 51 28 28" name="WriteButton">
             <UserString key="ToolTipType" value="Layout"/>
             <UserString key="ToolTipLayout" value="TextToolTipOneLine"/>
-            <Widget type="ImageBox" skin="ImageBox" position="1 1 28 28" name="WriteIcon">
+            <Widget type="ImageBox" skin="ImageBox" position="0 0 28 28" name="WriteIcon">
                 <Property key="ImageTexture" value="textures\ui\arenamw\quill_black.png"/>
                 <Property key="NeedMouse" value="false"/>
             </Widget>
