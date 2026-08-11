@@ -724,6 +724,9 @@
               <UserString key="SettingLabelWidget" value="WaterHighlightLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.highlight_intensity}" />
             </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="8 516 160 24" name="WaterResetButton">
+              <Property key="Caption" value="#{arenamp=settings.reset_defaults}" />
+            </Widget>
           </Widget>
         </Widget>
         <Widget type="TabItem" skin="" position="4 32 486 412">
@@ -922,6 +925,9 @@
               <UserString key="SettingMax" value="1.5" />
               <UserString key="SettingLabelWidget" value="PbrSubsurfaceLabel" />
               <UserString key="SettingLabelCaption" value="#{arenamp=settings.pbr_subsurface_strength}" />
+            </Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" position="8 356 160 24" name="PbrResetButton">
+              <Property key="Caption" value="#{arenamp=settings.reset_defaults}" />
             </Widget>
           </Widget>
         </Widget>

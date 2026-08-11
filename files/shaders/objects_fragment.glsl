@@ -175,6 +175,7 @@ void main()
     float arenaPbrMetallicity = 0.0;
     float arenaPbrAO = 1.0;
     float arenaPbrSSS = 0.0;
+    float arenaLegacyMaterialFactor = 1.0;
 #if @materialQuality > 0 && @specularMap
     if (arenaPackedPbr)
     {
@@ -182,13 +183,19 @@ void main()
         arenaPbrMetallicity = clamp(arenaSpecTex.r, 0.0, 1.0);
         arenaPbrAO = arenaMaterialAO;
         arenaPbrSSS = clamp(1.0 - arenaSpecTex.a, 0.0, 1.0);
+        arenaLegacyMaterialFactor = 0.0;
     }
     else
     {
         float arenaLegacySpecLuma = dot(arenaSpecTex.rgb, vec3(0.2126, 0.7152, 0.0722));
         float arenaLegacySmoothness = clamp(arenaSpecTex.a * 0.65 + arenaLegacySpecLuma * 0.35, 0.0, 1.0);
-        arenaPbrRoughness = mix(arenaPbrRoughness, 0.22, arenaLegacySmoothness * 0.72);
+        float arenaLegacyRoughnessFloor = isInterior ? 0.58 : 0.42;
+        arenaPbrRoughness = max(mix(arenaPbrRoughness, 0.22, arenaLegacySmoothness * 0.72), arenaLegacyRoughnessFloor);
+        arenaPbrAO = mix(1.0, clamp(0.88 + arenaLegacySpecLuma * 0.12, 0.0, 1.0), 0.35);
+        arenaPbrSSS = 0.0;
     }
+#else
+    arenaPbrRoughness = max(arenaPbrRoughness, isInterior ? 0.58 : 0.42);
 #endif
     vec3 arenaEnhancedSpecular = vec3(0.0);
 
@@ -254,7 +261,8 @@ void main()
     vec3 arenaPbrAlbedo = clamp(gl_FragData[0].xyz * diffuseColor.xyz, 0.0, 1.0);
     arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), arenaPbrAlbedo,
         arenaPbrRoughness, arenaPbrMetallicity, arenaPbrAO, arenaPbrSSS,
-        shadowing, diffuseLight, ambientLight, arenaEnhancedSpecular);
+        shadowing, arenaLegacyMaterialFactor, isInterior ? 1.0 : 0.0,
+        diffuseLight, ambientLight, arenaEnhancedSpecular);
 #endif
 #if @materialQuality >= 4 && @specularMap
     if (arenaPackedPbr && pbrEnhancedLighting < 0.5)

@@ -133,7 +133,8 @@ vec3 arenaPbrDiffuseForLight(vec3 lightColor, vec3 N, vec3 V, vec3 L,
 
 void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
     float roughness, float metallicity, float ambientOcclusion, float sssMask,
-    float shadowing, inout vec3 diffuseLight, inout vec3 ambientLight,
+    float shadowing, float legacyMaterialFactor, float interiorFactor,
+    inout vec3 diffuseLight, inout vec3 ambientLight,
     out vec3 enhancedSpecular)
 {
     enhancedSpecular = vec3(0.0);
@@ -142,8 +143,11 @@ void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
 
     vec3 N = normalize(viewNormal);
     vec3 V = normalize(-viewPos);
-    roughness = pbrFilterRoughness(N, clamp(roughness, 0.08, 1.0));
-    metallicity = clamp(metallicity, 0.0, 1.0);
+    float legacySafety = clamp(legacyMaterialFactor, 0.0, 1.0);
+    float interiorSafety = clamp(interiorFactor, 0.0, 1.0);
+    float legacyMinRoughness = mix(0.08, mix(0.42, 0.58, interiorSafety), legacySafety);
+    roughness = pbrFilterRoughness(N, max(clamp(roughness, 0.08, 1.0), legacyMinRoughness));
+    metallicity = clamp(metallicity, 0.0, 1.0) * (1.0 - legacySafety * 0.85);
     ambientOcclusion = clamp(ambientOcclusion, 0.0, 1.0);
 
     // Rebuild the direct-light accumulator with the PBR BRDF.  The previous
@@ -187,7 +191,8 @@ void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
     // Use the rebuilt PBR result as the primary direct lighting.  A small
     // legacy contribution prevents authored Morrowind materials from becoming
     // unexpectedly black when a mod has unusual light/material data.
-    diffuseLight = mix(directPbr, diffuseLight, 0.12);
+    float legacyPreserve = mix(0.12, mix(0.38, 0.55, interiorSafety), legacySafety);
+    diffuseLight = mix(directPbr, diffuseLight, legacyPreserve);
 
     float nDotV = max(dot(N, V), 0.0);
     vec3 f0 = arenaPbrF0(albedo, metallicity);
@@ -200,13 +205,15 @@ void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
     vec3 pbrAmbient = ambientLight * ambientOcclusion * (1.0 - metallicity * 0.45);
     pbrAmbient += envRadiance * envBrdf * ambientOcclusion
         * (0.30 + 0.70 * (1.0 - roughness));
-    ambientLight = mix(ambientLight, pbrAmbient,
-        clamp(pbrAmbientStrength, 0.0, 1.0));
+    float safeAmbientStrength = clamp(pbrAmbientStrength, 0.0, 1.0) * mix(1.0, mix(0.90, 0.75, interiorSafety), legacySafety);
+    ambientLight = mix(ambientLight, pbrAmbient, safeAmbientStrength);
     if (pbrAmbientStrength > 1.0)
         ambientLight += pbrAmbient * (pbrAmbientStrength - 1.0) * 0.35;
 
-    enhancedSpecular *= clamp(pbrSpecularStrength, 0.0, 2.5);
-    enhancedSpecular = min(enhancedSpecular, vec3(3.5));
+    float specularScale = clamp(pbrSpecularStrength, 0.0, 2.5)
+        * mix(1.0, mix(0.55, 0.35, interiorSafety), legacySafety);
+    enhancedSpecular *= specularScale;
+    enhancedSpecular = min(enhancedSpecular, mix(vec3(3.5), mix(vec3(1.2), vec3(0.75), interiorSafety), legacySafety));
 
     float sssStrength = clamp(pbrSubsurfaceStrength, 0.0, 1.5)
         * clamp(sssMask, 0.0, 1.0) * (1.0 - metallicity);
@@ -217,4 +224,17 @@ void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
         diffuseLight += sssLight * (0.22 + 0.78 * shadowing);
     }
 }
+// MP compatibility overload: terrain and groundcover still use the original
+// call signature. With both safety factors set to zero this preserves their
+// previous PBR response while object materials get the artifact-safe path.
+void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
+    float roughness, float metallicity, float ambientOcclusion, float sssMask,
+    float shadowing, inout vec3 diffuseLight, inout vec3 ambientLight,
+    out vec3 enhancedSpecular)
+{
+    arenaApplyEnhancedPbr(viewPos, viewNormal, albedo, roughness, metallicity,
+        ambientOcclusion, sssMask, shadowing, 0.0, 0.0,
+        diffuseLight, ambientLight, enhancedSpecular);
+}
+
 #endif

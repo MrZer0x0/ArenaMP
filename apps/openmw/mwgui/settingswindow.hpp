@@ -42,11 +42,13 @@ namespace MWGui
 
             MyGUI::ComboBox* mWaterTextureSize;
             MyGUI::ComboBox* mWaterReflectionDetail;
+            MyGUI::Button* mWaterResetButton;
 
             MyGUI::ComboBox* mMaxLights;
             MyGUI::ComboBox* mLightingMethodButton;
             std::vector<std::string> mLightingMethodValues;
             MyGUI::Button* mLightsResetButton;
+            MyGUI::Button* mPbrResetButton;
             MyGUI::ComboBox* mHdrTonemapper;
             MyGUI::Button* mHdrResetButton;
 
@@ -84,9 +86,11 @@ namespace MWGui
 
             void onWaterTextureSizeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onWaterReflectionDetailChanged(MyGUI::ComboBox* _sender, size_t pos);
+            void onWaterResetButtonClicked(MyGUI::Widget* _sender);
 
             void onLightingMethodButtonChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onLightsResetButtonClicked(MyGUI::Widget* _sender);
+            void onPbrResetButtonClicked(MyGUI::Widget* _sender);
             void onHdrTonemapperChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onHdrResetButtonClicked(MyGUI::Widget* _sender);
             void onMaxLightsChanged(MyGUI::ComboBox* _sender, size_t pos);

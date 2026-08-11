@@ -476,8 +476,10 @@ namespace MWGui
         getWidget(mControllerSwitch, "ControllerButton");
         getWidget(mWaterTextureSize, "WaterTextureSize");
         getWidget(mWaterReflectionDetail, "WaterReflectionDetail");
+        getWidget(mWaterResetButton, "WaterResetButton");
         getWidget(mLightingMethodButton, "LightingMethodButton");
         getWidget(mLightsResetButton, "LightsResetButton");
+        getWidget(mPbrResetButton, "PbrResetButton");
         getWidget(mHdrTonemapper, "HdrTonemapper");
         getWidget(mHdrResetButton, "HdrResetButton");
         getWidget(mMaxLights, "MaxLights");
@@ -544,9 +546,11 @@ namespace MWGui
 
         mWaterTextureSize->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onWaterTextureSizeChanged);
         mWaterReflectionDetail->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onWaterReflectionDetailChanged);
+        mWaterResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &SettingsWindow::onWaterResetButtonClicked);
 
         mLightingMethodButton->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onLightingMethodButtonChanged);
         mLightsResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &SettingsWindow::onLightsResetButtonClicked);
+        mPbrResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &SettingsWindow::onPbrResetButtonClicked);
         mMaxLights->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onMaxLightsChanged);
 
         for (const char* name : hdrTonemapperNames)
@@ -775,6 +779,49 @@ namespace MWGui
         apply();
     }
 
+    void SettingsWindow::onWaterResetButtonClicked(MyGUI::Widget* _sender)
+    {
+        std::vector<std::string> buttons = {"#{sYes}", "#{sNo}"};
+        MWBase::Environment::get().getWindowManager()->interactiveMessageBox(
+            arenaText("settings.reset_water_confirm"), buttons, true);
+        const int selectedButton = MWBase::Environment::get().getWindowManager()->readPressedButton();
+        if (selectedButton == 1 || selectedButton == -1)
+            return;
+
+        constexpr std::array<const char*, 10> settings = {
+            "shader",
+            "refraction",
+            "rtt size",
+            "reflection detail",
+            "caustics intensity",
+            "underwater tint",
+            "transparency",
+            "wave strength",
+            "surface roughness",
+            "foam intensity",
+        };
+        for (const char* setting : settings)
+            Settings::Manager::setString(setting, "Water", Settings::Manager::mDefaultSettings[{"Water", setting}]);
+        Settings::Manager::setString("highlight intensity", "Water", Settings::Manager::mDefaultSettings[{"Water", "highlight intensity"}]);
+
+        const int waterTextureSize = Settings::Manager::getInt("rtt size", "Water");
+        if (waterTextureSize >= 2048)
+            mWaterTextureSize->setIndexSelected(3);
+        else if (waterTextureSize >= 1024)
+            mWaterTextureSize->setIndexSelected(2);
+        else if (waterTextureSize >= 512)
+            mWaterTextureSize->setIndexSelected(1);
+        else
+            mWaterTextureSize->setIndexSelected(0);
+
+        int waterReflectionDetail = Settings::Manager::getInt("reflection detail", "Water");
+        waterReflectionDetail = std::min(5, std::max(0, waterReflectionDetail));
+        mWaterReflectionDetail->setIndexSelected(waterReflectionDetail);
+
+        configureWidgets(mMainWidget, false);
+        apply();
+    }
+
     void SettingsWindow::onLightingMethodButtonChanged(MyGUI::ComboBox* _sender, size_t pos)
     {
         if (pos == MyGUI::ITEM_NONE)
@@ -823,6 +870,31 @@ namespace MWGui
 
         apply();
         configureWidgets(mMainWidget, false);
+    }
+
+    void SettingsWindow::onPbrResetButtonClicked(MyGUI::Widget* _sender)
+    {
+        std::vector<std::string> buttons = {"#{sYes}", "#{sNo}"};
+        MWBase::Environment::get().getWindowManager()->interactiveMessageBox(
+            arenaText("settings.reset_pbr_confirm"), buttons, true);
+        const int selectedButton = MWBase::Environment::get().getWindowManager()->readPressedButton();
+        if (selectedButton == 1 || selectedButton == -1)
+            return;
+
+        constexpr std::array<const char*, 6> settings = {
+            "enhanced pbr lighting",
+            "pbr diffuse response",
+            "pbr object roughness",
+            "pbr terrain roughness",
+            "pbr specular strength",
+            "pbr ambient strength",
+        };
+        for (const char* setting : settings)
+            Settings::Manager::setString(setting, "Shaders", Settings::Manager::mDefaultSettings[{"Shaders", setting}]);
+        Settings::Manager::setString("pbr subsurface strength", "Shaders", Settings::Manager::mDefaultSettings[{"Shaders", "pbr subsurface strength"}]);
+
+        configureWidgets(mMainWidget, false);
+        apply();
     }
 
     void SettingsWindow::onHdrTonemapperChanged(MyGUI::ComboBox* _sender, size_t pos)
