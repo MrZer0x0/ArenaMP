@@ -1,6 +1,6 @@
-// ArenaMP compatibility port of the useful material-lighting ideas from
+// ArenaMW compatibility port of the useful material-lighting ideas from
 // Enhanced PBR Lighting (OpenMW 0.49-0.51).  This deliberately keeps the
-// existing ArenaMP 0.47 lighting, HDR/Bloom and material pipeline intact and
+// existing ArenaMW 0.47 lighting, HDR/Bloom and material pipeline intact and
 // layers the PBR response on top of it through runtime uniforms.
 #ifndef ARENAMW_ENHANCED_PBR_LIGHTING_GLSL
 #define ARENAMW_ENHANCED_PBR_LIGHTING_GLSL
@@ -41,7 +41,7 @@ vec3 arenaPbrEnvironmentBrdf(vec3 f0, float roughness, float nDotV)
 
 vec3 arenaPbrF0(vec3 albedo, float metallicity)
 {
-    // ArenaMP's legacy material path is not consistently linear before the
+    // ArenaMW's legacy material path is not consistently linear before the
     // final HDR conversion, so keep this conservative and avoid another gamma
     // transform here.  This preserves existing material colours.
     vec3 safeAlbedo = clamp(albedo, vec3(0.0), vec3(1.0));
@@ -224,17 +224,4 @@ void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
         diffuseLight += sssLight * (0.22 + 0.78 * shadowing);
     }
 }
-// MP compatibility overload: terrain and groundcover still use the original
-// call signature. With both safety factors set to zero this preserves their
-// previous PBR response while object materials get the artifact-safe path.
-void arenaApplyEnhancedPbr(vec3 viewPos, vec3 viewNormal, vec3 albedo,
-    float roughness, float metallicity, float ambientOcclusion, float sssMask,
-    float shadowing, inout vec3 diffuseLight, inout vec3 ambientLight,
-    out vec3 enhancedSpecular)
-{
-    arenaApplyEnhancedPbr(viewPos, viewNormal, albedo, roughness, metallicity,
-        ambientOcclusion, sssMask, shadowing, 0.0, 0.0,
-        diffuseLight, ambientLight, enhancedSpecular);
-}
-
 #endif

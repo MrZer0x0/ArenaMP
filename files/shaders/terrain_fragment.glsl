@@ -134,7 +134,8 @@ void main()
     vec3 arenaPbrAlbedo = clamp(gl_FragData[0].xyz * diffuseColor.xyz, 0.0, 1.0);
     arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), arenaPbrAlbedo,
         arenaPbrRoughness, arenaPbrMetallicity, arenaPbrAO, arenaPbrSSS,
-        shadowing, diffuseLight, ambientLight, arenaEnhancedSpecular);
+        shadowing, 1.0, isInterior ? 1.0 : 0.0,
+        diffuseLight, ambientLight, arenaEnhancedSpecular);
 #endif
     lighting = diffuseColor.xyz * diffuseLight + getAmbientColor().xyz * ambientLight + getEmissionColor().xyz;
     clampLightingResult(lighting);

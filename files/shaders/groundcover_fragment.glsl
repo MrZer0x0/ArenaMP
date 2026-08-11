@@ -91,7 +91,8 @@ void main()
     vec3 ignoredGroundcoverSpecular = vec3(0.0);
     arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), clamp(gl_FragData[0].xyz, 0.0, 1.0),
         clamp(pbrTerrainRoughness, 0.08, 1.0), 0.0, 1.0, 0.80,
-        shadowing, diffuseLight, ambientLight, ignoredGroundcoverSpecular);
+        shadowing, 1.0, 0.0,
+        diffuseLight, ambientLight, ignoredGroundcoverSpecular);
 #endif
     lighting = diffuseLight + ambientLight;
     clampLightingResult(lighting);
