@@ -19,6 +19,11 @@ set(SHADER_FILES
     groundcover_fragment.glsl
     water_vertex.glsl
     water_fragment.glsl
+    water_pbr_vertex.glsl
+    water_pbr_fragment.glsl
+    water_pbr_compat.glsl
+    water_pbr_rain_ripples.glsl
+    water_pbr_data.glsl
     water_nm.png
     water_waves.glsl
     alpha.glsl

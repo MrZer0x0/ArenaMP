@@ -219,10 +219,11 @@ public:
 class WaterStateUpdater : public SceneUtil::StateSetUpdater
 {
 public:
-    WaterStateUpdater(osg::PositionAttitudeTransform* waterNode, Ripples* ripples)
+    WaterStateUpdater(osg::PositionAttitudeTransform* waterNode, Ripples* ripples, const bool* interior)
         : mRainIntensity(0.f)
         , mWaterNode(waterNode)
         , mRipples(ripples)
+        , mInterior(interior)
     {
     }
 
@@ -239,6 +240,10 @@ protected:
         stateset->addUniform(new osg::Uniform("playerPos", osg::Vec3f(0.f, 0.f, 0.f)));
         stateset->addUniform(new osg::Uniform("useRefraction", Settings::Manager::getBool("refraction", "Water") ? 1.0f : 0.0f));
         stateset->addUniform(new osg::Uniform("useActorRipples", mRipples ? 1.0f : 0.0f));
+        stateset->addUniform(new osg::Uniform("enableRainRipples", true));
+        stateset->addUniform(new osg::Uniform("isInteriorWater", mInterior ? *mInterior : false));
+        stateset->addUniform(new osg::Uniform("envSkyAwayColor", osg::Vec3f(0.50f, 0.55f, 0.65f)));
+        stateset->addUniform(new osg::Uniform("envSkyStrength", 0.0f));
         stateset->addUniform(new osg::Uniform("waterWaveStrength", 1.0f));
         stateset->addUniform(new osg::Uniform("waterSurfaceRoughness", 0.22f));
         stateset->addUniform(new osg::Uniform("waterTransparency", 1.0f));
@@ -276,6 +281,9 @@ protected:
         if (osg::Uniform* useActorRipplesUniform = stateset->getUniform("useActorRipples"))
             useActorRipplesUniform->set(mRipples ? 1.0f : 0.0f);
 
+        if (osg::Uniform* interiorUniform = stateset->getUniform("isInteriorWater"))
+            interiorUniform->set(mInterior ? *mInterior : false);
+
         if (osg::Uniform* waterWaveStrengthUniform = stateset->getUniform("waterWaveStrength"))
             waterWaveStrengthUniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 2.5f));
 
@@ -293,6 +301,7 @@ private:
     float mRainIntensity;
     osg::PositionAttitudeTransform* mWaterNode;
     Ripples* mRipples;
+    const bool* mInterior;
 };
 
 
@@ -695,10 +704,37 @@ void Water::createSimpleWaterStateSet(osg::Node* node, float alpha)
 
 void Water::createShaderWaterStateSet(osg::Node* node, Reflection* reflection, Refraction* refraction)
 {
+    // The Complete Water Shaders PBR package targets OpenMW 0.51's compatibility
+    // shader pipeline.  ArenaMW is based on 0.47, so compile the port through a
+    // small, water-only compatibility layer instead of replacing the complete
+    // renderer.  Refraction stays compiled in because ArenaMW intentionally keeps
+    // the refraction RTT alive to avoid the old runtime pipeline-rebuild freeze.
     Shader::ShaderManager::DefineMap defineMap;
+    defineMap["waterRefraction"] = "1";
+    defineMap["sunlightScattering"] = "1";
+    defineMap["wobblyShores"] = "1";
+    defineMap["disableNormals"] = "1";
+    defineMap["reverseZ"] = "0";
+    defineMap["rainRippleDetail"] = "2";
+    defineMap["rippleMapWorldScale"] = std::to_string(RipplesSurface::sWorldScaleFactor);
+    defineMap["rippleMapSize"] = std::to_string(RipplesSurface::sRTTSize) + ".0";
+
     Shader::ShaderManager& shaderMgr = mResourceSystem->getSceneManager()->getShaderManager();
-    osg::ref_ptr<osg::Shader> vertexShader (shaderMgr.getShader("water_vertex.glsl", defineMap, osg::Shader::VERTEX));
-    osg::ref_ptr<osg::Shader> fragmentShader (shaderMgr.getShader("water_fragment.glsl", defineMap, osg::Shader::FRAGMENT));
+    osg::ref_ptr<osg::Shader> vertexShader(
+        shaderMgr.getShader("water_pbr_vertex.glsl", defineMap, osg::Shader::VERTEX));
+    osg::ref_ptr<osg::Shader> fragmentShader(
+        shaderMgr.getShader("water_pbr_fragment.glsl", defineMap, osg::Shader::FRAGMENT));
+
+    // Keep the previous ArenaMW water shader as a parse-time fallback.  This does
+    // not mask GPU compile errors, but protects the build from a missing resource
+    // or an unsupported template directive.
+    if (!vertexShader || !fragmentShader)
+    {
+        Log(Debug::Error) << "PBR water shader template failed to load, falling back to ArenaMW legacy water shader";
+        Shader::ShaderManager::DefineMap legacyDefineMap;
+        vertexShader = shaderMgr.getShader("water_vertex.glsl", legacyDefineMap, osg::Shader::VERTEX);
+        fragmentShader = shaderMgr.getShader("water_fragment.glsl", legacyDefineMap, osg::Shader::FRAGMENT);
+    }
 
     osg::ref_ptr<osg::Texture2D> normalMap (new osg::Texture2D(readPngImage(mResourcePath + "/shaders/water_nm.png")));
 
@@ -746,7 +782,7 @@ void Water::createShaderWaterStateSet(osg::Node* node, Reflection* reflection, R
 
     node->setStateSet(shaderStateset);
 
-    mWaterStateUpdater = new WaterStateUpdater(mWaterNode.get(), mRipples.get());
+    mWaterStateUpdater = new WaterStateUpdater(mWaterNode.get(), mRipples.get(), &mInterior);
     node->setUpdateCallback(mWaterStateUpdater);
 }
 

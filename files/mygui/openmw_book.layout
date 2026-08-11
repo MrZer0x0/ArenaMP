@@ -15,10 +15,10 @@
             </Widget>
 
             <!-- ArenaMW writer/copy action: borderless black quill in the upper-left book margin. -->
-            <Widget type="Widget" skin="" position="31 11 28 28" name="WriteButton">
+            <Widget type="Widget" skin="" position="21 1 25 25" name="WriteButton">
                 <UserString key="ToolTipType" value="Layout"/>
                 <UserString key="ToolTipLayout" value="TextToolTipOneLine"/>
-                <Widget type="ImageBox" skin="ImageBox" position="0 0 28 28" name="WriteIcon">
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 25 25" name="WriteIcon">
                     <Property key="ImageTexture" value="textures\ui\arenamw\quill_black.png"/>
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
