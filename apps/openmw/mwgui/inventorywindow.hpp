@@ -106,6 +106,8 @@ namespace MWGui
             MyGUI::Button* mPaperDollButton;
             MyGUI::ImageBox* mPaperDollIcon;
             MyGUI::Button* mViewModeButton;
+            MyGUI::Widget* mWriterButton;
+            MyGUI::ImageBox* mWriterIcon;
             MyGUI::ImageBox* mViewModeIcon;
             MyGUI::ImageBox* mGoldIcon;
             MyGUI::TextBox* mGoldLabel;
@@ -161,7 +163,10 @@ namespace MWGui
             void onNameFilterChanged(MyGUI::EditBox* _sender);
             void onAvatarClicked(MyGUI::Widget* _sender);
             void onPaperDollClicked(MyGUI::Widget* _sender);
+            void refreshPaperDollToggleVisual();
+            void refreshWriterButtonVisual();
             void onViewModeClicked(MyGUI::Widget* _sender);
+            void onWriterClicked(MyGUI::Widget* _sender);
             void onKeyRingClicked(MyGUI::Widget* _sender);
             void onPinToggled() override;
 

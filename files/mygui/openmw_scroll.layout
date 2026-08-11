@@ -13,6 +13,16 @@
             <Property key="ImagePushed" value="textures\tx_menubook_take_pressed.dds"/>
         </Widget>
 
+        <!-- ArenaMW writer/copy action: borderless black quill in the upper-left parchment area. -->
+        <Widget type="Widget" skin="" position="46 50 30 30" name="WriteButton">
+            <UserString key="ToolTipType" value="Layout"/>
+            <UserString key="ToolTipLayout" value="TextToolTipOneLine"/>
+            <Widget type="ImageBox" skin="ImageBox" position="1 1 28 28" name="WriteIcon">
+                <Property key="ImageTexture" value="textures\ui\arenamw\quill_black.png"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+        </Widget>
+
         <Widget type="ImageButton" skin="ImageBox" position="415 20 128 32" name="CloseButton">
             <Property key="ImageHighlighted" value="textures\tx_menubook_close_over.dds"/>
             <Property key="ImageNormal" value="textures\tx_menubook_close_idle.dds"/>

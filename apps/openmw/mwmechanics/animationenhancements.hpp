@@ -39,6 +39,11 @@ namespace ArenaMW
     /// OpenMW 0.47-based ArenaMW branch. Call immediately before the item is
     /// actually consumed so its record/model are still valid.
     void notifyConsumableUsed(const MWWorld::Ptr& actor, const MWWorld::Ptr& item);
+    /// Start a cosmetic, inventory-aware eating/drinking habit for an idle NPC.
+    /// The selected item is never consumed or removed from the NPC inventory.
+    bool tryStartAmbientNpcHabit(const MWWorld::Ptr& actor);
+    /// Replay a cell-authority-selected cosmetic habit on a remote MP client.
+    bool playAmbientConsumableAnimation(const MWWorld::Ptr& actor, const std::string& refId);
     void updateConsumingAnimations(float dt);
     bool isConsumingAnimationActive(const MWWorld::Ptr& ptr);
 

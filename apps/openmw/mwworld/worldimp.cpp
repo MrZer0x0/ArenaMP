@@ -1724,6 +1724,127 @@ namespace MWWorld
         objectList->sendObjectRotate();
     }
 
+    bool World::placePhysicsGrab()
+    {
+        for (PhysicsObjectState& state : mPhysicsObjects)
+        {
+            if (!state.mGrabbed || state.mPtr.isEmpty())
+                continue;
+
+            // Jump while holding an object deliberately uses the old inventory
+            // world-placement semantics: aim at a flat surface and the object is
+            // set down there in its natural upright orientation.  Unlike the
+            // normal inventory path the object already exists in the cell, so we
+            // move/rotate that reference instead of copying a new one.
+            const MWWorld::Ptr player = getPlayerPtr();
+            const ESM::Position& playerPos = player.getRefData().getPosition();
+
+            osg::Vec3f target(playerPos.pos[0], playerPos.pos[1], playerPos.pos[2]);
+            bool placeAtCrosshair = false;
+
+            // castCameraToViewportRay cannot ignore the grabbed reference, which
+            // would make the held object hit itself.  Recreate the centre-screen
+            // camera ray through Bullet instead: actors are excluded just like the
+            // legacy inventory placement ray and the held object is ignored.
+            const osg::Vec3f cameraPos = mRendering->getCameraPosition();
+            MWRender::Camera* camera = mRendering->getCamera();
+            const osg::Quat cameraRotation = osg::Quat(camera->getPitch(), osg::Vec3f(1.f, 0.f, 0.f))
+                * osg::Quat(camera->getYaw(), osg::Vec3f(0.f, 0.f, 1.f));
+            osg::Vec3f cameraDirection = cameraRotation * osg::Vec3f(0.f, 1.f, 0.f);
+            if (cameraDirection.length2() > 0.0001f)
+                cameraDirection.normalize();
+
+            constexpr float placementDistance = 200.f;
+            const int placementMask = MWPhysics::CollisionType_World
+                | MWPhysics::CollisionType_HeightMap | MWPhysics::CollisionType_Door;
+            const MWPhysics::RayCastingResult aimedSurface = mPhysics->castRay(
+                cameraPos, cameraPos + cameraDirection * placementDistance, state.mPtr,
+                std::vector<MWWorld::Ptr>(), placementMask);
+
+            if (aimedSurface.mHit && aimedSurface.mHitNormal.length2() > 0.0001f)
+            {
+                osg::Vec3f normal = aimedSurface.mHitNormal;
+                normal.normalize();
+                // Same 30 degree slope limit as World::canPlaceObject().
+                if (std::acos(std::max(-1.f, std::min(1.f, normal * osg::Vec3f(0.f, 0.f, 1.f))))
+                    < osg::DegreesToRadians(30.f))
+                {
+                    target = aimedSurface.mHitPos;
+                    placeAtCrosshair = true;
+                }
+            }
+
+            if (!placeAtCrosshair)
+            {
+                // Same fallback as dragging an inventory item over an invalid
+                // world target: put it on the ground beneath the player instead
+                // of dropping it from hand height or giving it throw velocity.
+                osg::Vec3f groundStart = playerPos.asVec3();
+                groundStart.z() += 20.f;
+                const MWPhysics::RayCastingResult ground = mPhysics->castRay(
+                    groundStart, groundStart + osg::Vec3f(0.f, 0.f, -1000000.f),
+                    state.mPtr, std::vector<MWWorld::Ptr>(), placementMask);
+                if (ground.mHit)
+                    target = ground.mHitPos;
+                else
+                    target = playerPos.asVec3();
+            }
+
+            // Inventory placement resets pitch/roll and keeps only the player's
+            // Z rotation. This is the important visual difference from simply
+            // releasing the physics prop: bottles stand up, plates lie flat and
+            // books use their authored resting orientation.
+            rotateObject(state.mPtr, 0.f, 0.f, playerPos.rot[2], MWBase::RotationFlag_none);
+            state.mPtr = moveObject(state.mPtr, target.x(), target.y(), target.z(), true, false);
+
+            // Reuse the same bounding-box adjustment performed by
+            // copyObjectToCell(..., adjustPos=true): the requested hit point is
+            // treated as the centre of the object's footprint and its lowest
+            // rendered point is brought exactly onto the supporting surface.
+            if (state.mPtr.getRefData().getBaseNode())
+            {
+                osg::ComputeBoundsVisitor computeBounds;
+                computeBounds.setTraversalMask(~MWRender::Mask_ParticleSystem);
+                state.mPtr.getRefData().getBaseNode()->accept(computeBounds);
+                const osg::BoundingBox bounds = computeBounds.getBoundingBox();
+                if (bounds.valid())
+                {
+                    const osg::Vec3f current = state.mPtr.getRefData().getPosition().asVec3();
+                    osg::BoundingBox relativeBounds = bounds;
+                    relativeBounds.set(bounds._min - current, bounds._max - current);
+                    const osg::Vec3f adjustment(
+                        (relativeBounds.xMin() + relativeBounds.xMax()) * 0.5f,
+                        (relativeBounds.yMin() + relativeBounds.yMax()) * 0.5f,
+                        relativeBounds.zMin());
+                    const osg::Vec3f adjusted = target - adjustment;
+                    state.mPtr = moveObject(state.mPtr, adjusted.x(), adjusted.y(), adjusted.z(), true, false);
+                }
+            }
+
+            state.mVelocity.set(0.f, 0.f, 0.f);
+            state.mAngularVelocity.set(0.f, 0.f, 0.f);
+            state.mGrabbed = false;
+            state.mHadSurfaceContact = true;
+            // Inventory-placed objects are static immediately. Keep this object
+            // in the bounded physics pool, but mark it sleeping so the free-body
+            // pass does not make it wobble after the precise placement.
+            state.mSleepTimer = 0.42f;
+            state.mHasLastSafeTransform = true;
+            state.mLastSafeOrigin = state.mPtr.getRefData().getPosition().asVec3();
+            state.mLastSafeRotation = state.mPtr.getRefData().getBaseNode()
+                ? state.mPtr.getRefData().getBaseNode()->getAttitude() : osg::Quat();
+
+            // ArenaMP: placement is still client-authoritative for this grab, but
+            // immediately publish the final transform so other peers do not see
+            // the object snap back to its previous held/released position.
+            syncPhysicsObjectTransform(state.mPtr);
+            state.mNetworkSyncTimer = 0.05f;
+            return true;
+        }
+
+        return false;
+    }
+
     void World::releasePhysicsGrab()
     {
         for (PhysicsObjectState& state : mPhysicsObjects)

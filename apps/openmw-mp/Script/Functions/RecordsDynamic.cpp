@@ -178,6 +178,8 @@ const char *RecordsDynamicFunctions::GetRecordModel(unsigned int index) noexcept
 
     if (readRecordsType == mwmp::RECORD_TYPE::POTION)
         return WorldstateFunctions::readWorldstate->potionRecords.at(index).data.mModel.c_str();
+    else if (readRecordsType == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mModel.c_str();
 
     return "invalid";
 }
@@ -188,6 +190,8 @@ const char *RecordsDynamicFunctions::GetRecordIcon(unsigned int index) noexcept
 
     if (readRecordsType == mwmp::RECORD_TYPE::POTION)
         return WorldstateFunctions::readWorldstate->potionRecords.at(index).data.mIcon.c_str();
+    else if (readRecordsType == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mIcon.c_str();
 
     return "invalid";
 }
@@ -198,8 +202,31 @@ const char *RecordsDynamicFunctions::GetRecordScript(unsigned int index) noexcep
 
     if (readRecordsType == mwmp::RECORD_TYPE::POTION)
         return WorldstateFunctions::readWorldstate->potionRecords.at(index).data.mScript.c_str();
+    else if (readRecordsType == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mScript.c_str();
 
     return "invalid";
+}
+
+const char *RecordsDynamicFunctions::GetRecordText(unsigned int index) noexcept
+{
+    if (RecordsDynamicFunctions::GetRecordType() == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mText.c_str();
+    return "invalid";
+}
+
+int RecordsDynamicFunctions::GetRecordScrollState(unsigned int index) noexcept
+{
+    if (RecordsDynamicFunctions::GetRecordType() == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mData.mIsScroll;
+    return -1;
+}
+
+int RecordsDynamicFunctions::GetRecordSkillId(unsigned int index) noexcept
+{
+    if (RecordsDynamicFunctions::GetRecordType() == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mData.mSkillId;
+    return -1;
 }
 
 const char *RecordsDynamicFunctions::GetRecordEnchantmentId(unsigned int index) noexcept
@@ -284,6 +311,8 @@ int RecordsDynamicFunctions::GetRecordValue(unsigned int index) noexcept
 
     if (readRecordsType == mwmp::RECORD_TYPE::POTION)
         return WorldstateFunctions::readWorldstate->potionRecords.at(index).data.mData.mValue;
+    else if (readRecordsType == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mData.mValue;
 
     return -1;
 }
@@ -294,6 +323,8 @@ double RecordsDynamicFunctions::GetRecordWeight(unsigned int index) noexcept
 
     if (readRecordsType == mwmp::RECORD_TYPE::POTION)
         return WorldstateFunctions::readWorldstate->potionRecords.at(index).data.mData.mWeight;
+    else if (readRecordsType == mwmp::RECORD_TYPE::BOOK)
+        return WorldstateFunctions::readWorldstate->bookRecords.at(index).data.mData.mWeight;
 
     return -1;
 }

@@ -673,6 +673,48 @@ namespace MWGui
         getWidget(classWidget, "Class_str");
         ToolTips::createClassToolTip(classWidget, *playerClass);
 
+        if (!mBirthSignId.empty())
+        {
+            // Add a line separator if there are items above
+            if (!mSkillWidgets.empty())
+                addSeparator(coord1, coord2);
+
+            addGroup(MWBase::Environment::get().getWindowManager()->getGameSettingString("sBirthSign", "Sign"), coord1, coord2);
+            const ESM::BirthSign *sign =
+                store.get<ESM::BirthSign>().find(mBirthSignId);
+            MyGUI::Widget* w = addItem(sign->mName, coord1, coord2);
+
+            ToolTips::createBirthsignToolTip(w, mBirthSignId);
+        }
+
+        // Add a line separator if there are items above
+        if (!mSkillWidgets.empty())
+            addSeparator(coord1, coord2);
+
+        addValueItem(MWBase::Environment::get().getWindowManager()->getGameSettingString("sReputation", "Reputation"),
+                    MyGUI::utility::toString(static_cast<int>(mReputation)), "normal", coord1, coord2);
+
+        for (int i=0; i<2; ++i)
+        {
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipType", "Layout");
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipLayout", "TextToolTip");
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("Caption_Text", "#{sSkillsMenuReputationHelp}");
+        }
+
+        addValueItem(MWBase::Environment::get().getWindowManager()->getGameSettingString("sBounty", "Bounty"),
+                    MyGUI::utility::toString(static_cast<int>(mBounty)), "normal", coord1, coord2);
+
+        for (int i=0; i<2; ++i)
+        {
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipType", "Layout");
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipLayout", "TextToolTip");
+            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("Caption_Text", "#{sCrimeHelp}");
+        }
+
+        // Keep faction membership directly after Reputation/Bounty in the compact
+        // one-column ArenaMW statistics document. The classic layout supplied by
+        // the user used this same dynamic SkillView for skills/factions; only the
+        // pane geometry differed.
         if (!mFactions.empty())
         {
             MWWorld::Ptr playerPtr = MWMechanics::getPlayer();
@@ -754,44 +796,6 @@ namespace MWGui
                 w->setUserString("ToolTipLayout", "FactionToolTip");
                 w->setUserString("Caption_FactionText", text);
             }
-        }
-
-        if (!mBirthSignId.empty())
-        {
-            // Add a line separator if there are items above
-            if (!mSkillWidgets.empty())
-                addSeparator(coord1, coord2);
-
-            addGroup(MWBase::Environment::get().getWindowManager()->getGameSettingString("sBirthSign", "Sign"), coord1, coord2);
-            const ESM::BirthSign *sign =
-                store.get<ESM::BirthSign>().find(mBirthSignId);
-            MyGUI::Widget* w = addItem(sign->mName, coord1, coord2);
-
-            ToolTips::createBirthsignToolTip(w, mBirthSignId);
-        }
-
-        // Add a line separator if there are items above
-        if (!mSkillWidgets.empty())
-            addSeparator(coord1, coord2);
-
-        addValueItem(MWBase::Environment::get().getWindowManager()->getGameSettingString("sReputation", "Reputation"),
-                    MyGUI::utility::toString(static_cast<int>(mReputation)), "normal", coord1, coord2);
-
-        for (int i=0; i<2; ++i)
-        {
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipType", "Layout");
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipLayout", "TextToolTip");
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("Caption_Text", "#{sSkillsMenuReputationHelp}");
-        }
-
-        addValueItem(MWBase::Environment::get().getWindowManager()->getGameSettingString("sBounty", "Bounty"),
-                    MyGUI::utility::toString(static_cast<int>(mBounty)), "normal", coord1, coord2);
-
-        for (int i=0; i<2; ++i)
-        {
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipType", "Layout");
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("ToolTipLayout", "TextToolTip");
-            mSkillWidgets[mSkillWidgets.size()-1-i]->setUserString("Caption_Text", "#{sCrimeHelp}");
         }
 
         // Expand the skills section to its full content height and let the outer

@@ -111,6 +111,10 @@ namespace MWBase
             virtual void setNewGame(bool newgame) = 0;
 
             virtual void pushGuiMode (MWGui::GuiMode mode, const MWWorld::Ptr& arg) = 0;
+
+            /// Open the native ArenaMP book/scroll writing desk.
+            virtual void openBookWriter() = 0;
+            virtual void openBookWriter(const MWWorld::Ptr& source) = 0;
             virtual void pushGuiMode (MWGui::GuiMode mode) = 0;
             virtual void popGuiMode(bool noSound=false) = 0;
 

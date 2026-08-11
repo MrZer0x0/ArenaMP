@@ -1719,7 +1719,7 @@ eventHandler.OnRecordDynamic = function(pid)
 
                     -- If this is an enchantable item record, add a link to it from its associated
                     -- enchantment record
-                    if isEnchantable then
+                    if isEnchantable and record.enchantmentId ~= nil and record.enchantmentId ~= "" then
                         enchantmentStore:AddLinkToRecord(record.enchantmentId,
                             recordId, storeType)
                     end

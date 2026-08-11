@@ -12,6 +12,7 @@ set(MYGUI_FILES
     core_layouteditor.xml
     openmw_alchemy_window.layout
     openmw_book.layout
+    openmw_book_editor.layout
     openmw_box.skin.xml
     openmw_button.skin.xml
     openmw_chargen_birth.layout

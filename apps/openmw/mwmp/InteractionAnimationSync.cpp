@@ -29,6 +29,7 @@ namespace
     const char* sPrefixV2 = "arenamp_interaction2|";
     const char* sWalkPrefix = "arenamp_walk|";
     const char* sConsumePrefix = "arenamp_consume|";
+    const char* sAmbientConsumePrefix = "arenamp_ambient_consume|";
     constexpr float sDynamicInteractionTransitionSeconds = 0.16f;
     std::map<int, std::string> sWalkAnimationStyles;
     std::map<int, MWRender::PartHolderPtr> sInteractionProps;
@@ -341,6 +342,27 @@ namespace mwmp
         {
             return false;
         }
+    }
+
+    std::string encodeAmbientConsumableAnimation(const std::string& refId)
+    {
+        if (refId.empty() || refId.size() > 128 || refId.find('|') != std::string::npos)
+            return std::string();
+        return std::string(sAmbientConsumePrefix) + refId;
+    }
+
+    bool decodeAmbientConsumableAnimation(const std::string& value, std::string& refId)
+    {
+        const std::string prefix(sAmbientConsumePrefix);
+        if (value.compare(0, prefix.size(), prefix) != 0)
+            return false;
+        refId = value.substr(prefix.size());
+        return !refId.empty() && refId.size() <= 128 && refId.find('|') == std::string::npos;
+    }
+
+    bool playAmbientConsumableAnimation(const MWWorld::Ptr& ptr, const std::string& refId)
+    {
+        return ArenaMW::playAmbientConsumableAnimation(ptr, refId);
     }
 
     bool isValidWalkAnimationStyle(const std::string& group)

@@ -493,6 +493,7 @@ namespace MWWorld
             bool beginPhysicsGrab(const MWWorld::Ptr& object) override;
             void releasePhysicsGrab() override;
             bool isPhysicsGrabActive() const override;
+            bool placePhysicsGrab() override;
             void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) override;
 
             /// Returns a pointer to the object the provided object would hit (if within the

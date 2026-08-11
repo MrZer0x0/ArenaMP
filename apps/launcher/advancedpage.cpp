@@ -242,6 +242,16 @@ bool Launcher::AdvancedPage::loadSettings()
         loadSettingBool(normaliseRaceSpeedCheckBox, "normalise race speed", "Game");
         loadSettingBool(swimUpwardCorrectionCheckBox, "swim upward correction", "Game");
         loadSettingBool(avoidCollisionsCheckBox, "NPCs avoid collisions", "Game");
+
+        const float npcPassScale = Settings::Manager::getFloat("npc pass collision scale", "Game");
+        const float npcToNpcScale = Settings::Manager::getFloat("npc to npc collision scale", "Game");
+        int actorCollisionProfile = 1;
+        if (npcPassScale >= 0.95f && npcToNpcScale >= 0.95f)
+            actorCollisionProfile = 0;
+        else if (npcPassScale <= 0.675f || npcToNpcScale <= 0.815f)
+            actorCollisionProfile = 2;
+        actorCollisionProfileComboBox->setCurrentIndex(actorCollisionProfile);
+
         int unarmedFactorsStrengthIndex = Settings::Manager::getInt("strength influences hand to hand", "Game");
         if (unarmedFactorsStrengthIndex >= 0 && unarmedFactorsStrengthIndex <= 2)
             unarmedFactorsStrengthComboBox->setCurrentIndex(unarmedFactorsStrengthIndex);
@@ -411,6 +421,27 @@ void Launcher::AdvancedPage::saveSettings()
         saveSettingBool(normaliseRaceSpeedCheckBox, "normalise race speed", "Game");
         saveSettingBool(swimUpwardCorrectionCheckBox, "swim upward correction", "Game");
         saveSettingBool(avoidCollisionsCheckBox, "NPCs avoid collisions", "Game");
+
+        float npcPassScale = 0.75f;
+        float npcToNpcScale = 0.88f;
+        switch (actorCollisionProfileComboBox->currentIndex())
+        {
+            case 0:
+                npcPassScale = 1.0f;
+                npcToNpcScale = 1.0f;
+                break;
+            case 2:
+                npcPassScale = 0.60f;
+                npcToNpcScale = 0.75f;
+                break;
+            default:
+                break;
+        }
+        if (npcPassScale != Settings::Manager::getFloat("npc pass collision scale", "Game"))
+            Settings::Manager::setFloat("npc pass collision scale", "Game", npcPassScale);
+        if (npcToNpcScale != Settings::Manager::getFloat("npc to npc collision scale", "Game"))
+            Settings::Manager::setFloat("npc to npc collision scale", "Game", npcToNpcScale);
+
         int unarmedFactorsStrengthIndex = unarmedFactorsStrengthComboBox->currentIndex();
         if (unarmedFactorsStrengthIndex != Settings::Manager::getInt("strength influences hand to hand", "Game"))
             Settings::Manager::setInt("strength influences hand to hand", "Game", unarmedFactorsStrengthIndex);

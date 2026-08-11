@@ -163,6 +163,38 @@
            </property>
           </widget>
          </item>
+         <item row="7" column="0">
+          <widget class="QLabel" name="actorCollisionProfileLabel">
+           <property name="toolTip">
+            <string>Controls only how closely the player and NPCs can pass each other while moving. Combat hit detection and collision with walls keep their original size.</string>
+           </property>
+           <property name="text">
+            <string>Character passage collision:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="1">
+          <widget class="QComboBox" name="actorCollisionProfileComboBox">
+           <property name="toolTip">
+            <string>Normal keeps original actor spacing. Compact is recommended for narrow interiors. Very compact allows noticeably closer passage without changing weapon/projectile hitboxes.</string>
+           </property>
+           <item>
+            <property name="text">
+             <string>Normal</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Compact (recommended)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Very compact</string>
+            </property>
+           </item>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>

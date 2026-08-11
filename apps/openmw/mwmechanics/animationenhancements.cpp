@@ -6,6 +6,7 @@
 #include <exception>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <osg/Matrix>
@@ -31,6 +32,10 @@
 #include "../mwworld/inventorystore.hpp"
 #include "../mwworld/interactionanimation.hpp"
 #include "../mwmp/PlayerList.hpp"
+#include "../mwmp/Main.hpp"
+#include "../mwmp/CellController.hpp"
+#include "../mwmp/LocalActor.hpp"
+#include "../mwmp/InteractionAnimationSync.hpp"
 
 
 
@@ -82,6 +87,7 @@ namespace
         bool mWeaponHidden = false;
         bool mShatterProp = false;
         bool mShatterPlayed = false;
+        bool mAmbient = false;
         std::string mPropBone;
         MWRender::PartHolderPtr mPropHolder;
     };
@@ -440,6 +446,127 @@ namespace
     }
 
 
+    bool startConsumingAnimation(const MWWorld::Ptr& actor, ConsumableAnimationSpec spec, bool ambient)
+    {
+        if (actor.isEmpty() || spec.mGroup.empty() || !actor.getClass().isActor())
+            return false;
+
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        const bool localPlayer = actor == world->getPlayerPtr();
+        const bool player = localPlayer || mwmp::PlayerList::isDedicatedPlayer(actor);
+        const MWMechanics::CreatureStats& stats = actor.getClass().getCreatureStats(actor);
+        if (stats.isDead())
+            return false;
+
+        const int id = actorId(actor);
+        if (id < 0 || sConsumingAnimations.find(id) != sConsumingAnimations.end())
+            return false;
+
+        MWRender::Animation* animation = world->getAnimation(actor);
+        if (!animation || !animation->hasAnimation(spec.mGroup))
+            return false;
+
+        if (localPlayer && MWWorld::InteractionAnimation::isActive())
+            MWWorld::InteractionAnimation::cancel();
+
+        // Ambient habits are visual behaviour only. They must never create the
+        // bottle-shatter effect that represents a genuinely consumed potion.
+        if (ambient)
+        {
+            spec.mShatterProp = false;
+            spec.mSoundAtEnd = false;
+        }
+
+        ConsumingAnimationState state;
+        state.mActor = actor;
+        state.mGroup = spec.mGroup;
+        state.mPropModel = spec.mPropModel;
+        state.mPropBone = spec.mPropBone;
+        state.mSoundFile = spec.mSoundFile;
+        state.mBlendMask = MWRender::Animation::BlendMask_Torso
+            | MWRender::Animation::BlendMask_LeftArm
+            | MWRender::Animation::BlendMask_RightArm;
+        state.mPropRemoveTime = spec.mPropRemoveTime;
+        state.mSoundTime = spec.mSoundTime;
+        state.mSoundAtEnd = spec.mSoundAtEnd;
+        state.mShatterProp = spec.mShatterProp;
+        state.mAmbient = ambient;
+
+        const float speed = ambient
+            ? std::max(.25f, Settings::Manager::getFloat("dynamic ambient habit speed", "GUI"))
+            : (player
+                ? std::max(.25f, Settings::Manager::getFloat("animated consuming speed", "GUI"))
+                : std::max(.25f, Settings::Manager::getFloat("animated consuming npc speed", "GUI")));
+
+        MWRender::Animation::AnimPriority priority(MWMechanics::Priority_Weapon);
+        priority[MWRender::Animation::BoneGroup_Torso] = MWMechanics::Priority_Persistent;
+        priority[MWRender::Animation::BoneGroup_LeftArm] = MWMechanics::Priority_Persistent;
+        priority[MWRender::Animation::BoneGroup_RightArm] = MWMechanics::Priority_Persistent;
+
+        animation->beginBoneTransition(state.mBlendMask, sConsumingTransitionSeconds);
+        animation->play(spec.mGroup, priority, state.mBlendMask, false, speed,
+            "start", "stop", 0.f, 0, true);
+        if (!animation->isPlaying(spec.mGroup))
+            return false;
+
+        const float start = animation->getStartTime(spec.mGroup);
+        const float stop = animation->getTextKeyTime(spec.mGroup + ": stop");
+        if (start >= 0.f && stop > start)
+            state.mDuration = (stop - start) / speed;
+        else
+            state.mDuration = spec.mFallbackDuration / speed;
+
+        // A KF discard key is preferred because it matches the actual hand motion.
+        // For food/special props the package uses explicit timing instead.
+        if (state.mPropRemoveTime < 0.f)
+        {
+            const float discard = animation->getTextKeyTime(spec.mGroup + ": discard");
+            if (discard >= start && start >= 0.f)
+                state.mPropRemoveTime = (discard - start) / speed;
+        }
+        else
+            state.mPropRemoveTime /= speed;
+        if (state.mSoundTime >= 0.f)
+            state.mSoundTime /= speed;
+
+        if (stats.getDrawState() != MWMechanics::DrawState_Nothing)
+        {
+            animation->showWeapons(false);
+            state.mWeaponHidden = true;
+        }
+
+        if (!state.mPropModel.empty())
+        {
+            state.mPropHolder = attachHandProp(animation, state.mPropModel, state.mPropBone);
+            state.mPropRemoved = false;
+        }
+        else
+            state.mPropRemoved = true;
+
+        sConsumingAnimations.emplace(id, std::move(state));
+        return true;
+    }
+
+    constexpr const char* sAmbientGenericDrinkToken = "__arenamp_generic_drink__";
+
+    void queueNpcAnimPlay(const MWWorld::Ptr& actor, const std::string& encoded)
+    {
+        if (actor.isEmpty() || encoded.empty())
+            return;
+
+        mwmp::CellController* cellController = mwmp::Main::get().getCellController();
+        if (!cellController || !cellController->isLocalActor(actor))
+            return;
+
+        if (mwmp::LocalActor* localActor = cellController->getLocalActor(actor))
+        {
+            localActor->animation.groupname = encoded;
+            localActor->animation.mode = 0;
+            localActor->animation.count = 1;
+            localActor->animation.persist = false;
+        }
+    }
+
     int getPlayerPoseBlendMask(const MWWorld::Ptr& ptr, int requestedMask)
     {
         int result = requestedMask;
@@ -740,99 +867,126 @@ namespace ArenaMW
             return;
 
         MWBase::World* world = MWBase::Environment::get().getWorld();
-        const bool localPlayer = actor == world->getPlayerPtr();
-        const bool player = localPlayer || mwmp::PlayerList::isDedicatedPlayer(actor);
+        const bool player = actor == world->getPlayerPtr() || mwmp::PlayerList::isDedicatedPlayer(actor);
         if (!player && !Settings::Manager::getBool("animated consuming npc", "GUI"))
             return;
 
-        const MWMechanics::CreatureStats& stats = actor.getClass().getCreatureStats(actor);
-        if (stats.isDead())
-            return;
+        ConsumableAnimationSpec spec = resolveConsumable(actor, item);
+        if (!spec.mGroup.empty() && startConsumingAnimation(actor, std::move(spec), false) && !player)
+            queueNpcAnimPlay(actor, mwmp::encodeConsumableAnimation(item.getCellRef().getRefId()));
+    }
 
-        const int id = actorId(actor);
-        if (id < 0 || sConsumingAnimations.find(id) != sConsumingAnimations.end())
-            return; // prevent consecutive consumption animations, matching the Lua mod
+    bool tryStartAmbientNpcHabit(const MWWorld::Ptr& actor)
+    {
+        if (actor.isEmpty() || !actor.isInCell() || !actor.getClass().isNpc())
+            return false;
+        if (!Settings::Manager::getBool("animated consuming", "GUI")
+            || !Settings::Manager::getBool("animated consuming npc", "GUI")
+            || !Settings::Manager::getBool("dynamic ambient habits", "GUI"))
+            return false;
+
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        if (actor == world->getPlayerPtr() || mwmp::PlayerList::isDedicatedPlayer(actor)
+            || isConsumingAnimationActive(actor))
+            return false;
+
+        const MWMechanics::CreatureStats& stats = actor.getClass().getCreatureStats(actor);
+        const MWMechanics::Movement& movement = actor.getClass().getMovementSettings(actor);
+        if (stats.isDead() || stats.getKnockedDown() || stats.getAiSequence().isInCombat()
+            || stats.getDrawState() != MWMechanics::DrawState_Nothing
+            || std::abs(movement.mPosition[0]) > .05f
+            || std::abs(movement.mPosition[1]) > .05f
+            || std::abs(movement.mPosition[2]) > .05f
+            || world->isSwimming(actor))
+            return false;
+
+        MWRender::Animation* animation = world->getAnimation(actor);
+        if (!animation || !animation->upperBodyReady())
+            return false;
+
+        // Prefer something the NPC actually carries.  This gives food, potions,
+        // alcohol, Moon Sugar + skooma pipes and Hackle-Lo + smoking pipes the same
+        // visual treatment as genuine consumption, without changing inventory count.
+        std::vector<MWWorld::Ptr> candidates;
+        if (actor.getClass().hasInventoryStore(actor))
+        {
+            MWWorld::ContainerStore& store = actor.getClass().getContainerStore(actor);
+            for (MWWorld::ContainerStoreIterator it = store.begin(); it != store.end(); ++it)
+            {
+                MWWorld::Ptr item = *it;
+                const ConsumableAnimationSpec spec = resolveConsumable(actor, item);
+                if (!spec.mGroup.empty() && animation->hasAnimation(spec.mGroup))
+                    candidates.push_back(item);
+            }
+        }
+
+        if (!candidates.empty())
+        {
+            const MWWorld::Ptr item
+                = candidates[Misc::Rng::rollDice(static_cast<int>(candidates.size()))];
+            ConsumableAnimationSpec spec = resolveConsumable(actor, item);
+            if (!startConsumingAnimation(actor, std::move(spec), true))
+                return false;
+            queueNpcAnimPlay(actor, mwmp::encodeAmbientConsumableAnimation(item.getCellRef().getRefId()));
+            return true;
+        }
+
+        // NPCs with no suitable food/drink still get a rare tavern-like generic
+        // drink using the bundled goblet. Keeping this fallback uncommon prevents
+        // every guard and shopkeeper from constantly materialising a cup.
+        if (Misc::Rng::rollDice(100) >= 30 || !animation->hasAnimation("drinkbone"))
+            return false;
+
+        ConsumableAnimationSpec genericDrink;
+        genericDrink.mGroup = "drinkbone";
+        genericDrink.mPropModel = "meshes\\consan\\o_goblet_juicr.nif";
+        genericDrink.mFallbackDuration = 2.6f;
+        genericDrink.mPropRemoveTime = 2.2f;
+        genericDrink.mShatterProp = false;
+        if (!startConsumingAnimation(actor, std::move(genericDrink), true))
+            return false;
+        queueNpcAnimPlay(actor, mwmp::encodeAmbientConsumableAnimation(sAmbientGenericDrinkToken));
+        return true;
+    }
+
+    bool playAmbientConsumableAnimation(const MWWorld::Ptr& actor, const std::string& refId)
+    {
+        if (actor.isEmpty() || refId.empty() || isConsumingAnimationActive(actor))
+            return false;
+
+        if (refId == sAmbientGenericDrinkToken)
+        {
+            ConsumableAnimationSpec genericDrink;
+            genericDrink.mGroup = "drinkbone";
+            genericDrink.mPropModel = "meshes\\consan\\o_goblet_juicr.nif";
+            genericDrink.mFallbackDuration = 2.6f;
+            genericDrink.mPropRemoveTime = 2.2f;
+            genericDrink.mShatterProp = false;
+            return startConsumingAnimation(actor, std::move(genericDrink), true);
+        }
+
+        MWWorld::Ptr item;
+        if (actor.getClass().hasInventoryStore(actor))
+        {
+            MWWorld::ContainerStore& store = actor.getClass().getContainerStore(actor);
+            const std::string wanted = lowerCase(refId);
+            for (MWWorld::ContainerStoreIterator it = store.begin(); it != store.end(); ++it)
+            {
+                if (lowerCase(it->getCellRef().getRefId()) == wanted)
+                {
+                    item = *it;
+                    break;
+                }
+            }
+        }
+
+        if (item.isEmpty())
+            return false;
 
         ConsumableAnimationSpec spec = resolveConsumable(actor, item);
         if (spec.mGroup.empty())
-            return;
-
-        MWRender::Animation* animation = world->getAnimation(actor);
-        if (!animation || !animation->hasAnimation(spec.mGroup))
-            return;
-
-        if (localPlayer && MWWorld::InteractionAnimation::isActive())
-            MWWorld::InteractionAnimation::cancel();
-
-        ConsumingAnimationState state;
-        state.mActor = actor;
-        state.mGroup = spec.mGroup;
-        state.mPropModel = spec.mPropModel;
-        state.mPropBone = spec.mPropBone;
-        state.mSoundFile = spec.mSoundFile;
-        state.mBlendMask = MWRender::Animation::BlendMask_Torso
-            | MWRender::Animation::BlendMask_LeftArm
-            | MWRender::Animation::BlendMask_RightArm;
-        state.mPropRemoveTime = spec.mPropRemoveTime;
-        state.mSoundTime = spec.mSoundTime;
-        state.mSoundAtEnd = spec.mSoundAtEnd;
-        state.mShatterProp = spec.mShatterProp;
-
-        const float speed = player
-            ? std::max(.25f, Settings::Manager::getFloat("animated consuming speed", "GUI"))
-            : std::max(.25f, Settings::Manager::getFloat("animated consuming npc speed", "GUI"));
-
-        MWRender::Animation::AnimPriority priority(MWMechanics::Priority_Weapon);
-        priority[MWRender::Animation::BoneGroup_Torso] = MWMechanics::Priority_Persistent;
-        priority[MWRender::Animation::BoneGroup_LeftArm] = MWMechanics::Priority_Persistent;
-        priority[MWRender::Animation::BoneGroup_RightArm] = MWMechanics::Priority_Persistent;
-
-        animation->beginBoneTransition(state.mBlendMask, sConsumingTransitionSeconds);
-        animation->play(spec.mGroup, priority, state.mBlendMask, false, speed,
-            "start", "stop", 0.f, 0, true);
-        if (!animation->isPlaying(spec.mGroup))
-            return;
-
-        const float start = animation->getStartTime(spec.mGroup);
-        const float stop = animation->getTextKeyTime(spec.mGroup + ": stop");
-        if (start >= 0.f && stop > start)
-            state.mDuration = (stop - start) / speed;
-        else
-            state.mDuration = spec.mFallbackDuration / speed;
-
-        // A KF discard key is preferred because it matches the actual hand motion.
-        // For food/special props the package uses explicit timing instead.
-        if (state.mPropRemoveTime < 0.f)
-        {
-            const float discard = animation->getTextKeyTime(spec.mGroup + ": discard");
-            if (discard >= start && start >= 0.f)
-                state.mPropRemoveTime = (discard - start) / speed;
-        }
-        else
-            state.mPropRemoveTime /= speed;
-        if (state.mSoundTime >= 0.f)
-            state.mSoundTime /= speed;
-
-        if (stats.getDrawState() != MWMechanics::DrawState_Nothing)
-        {
-            // Hide the equipped weapon before creating the temporary hand prop.
-            // The prop itself is an independent scene attachment and survives
-            // weapon-part updates.
-            animation->showWeapons(false);
-            state.mWeaponHidden = true;
-        }
-
-        if (!state.mPropModel.empty())
-        {
-            state.mPropHolder = attachHandProp(animation, state.mPropModel, state.mPropBone);
-            // Do not permanently give up on a transient missing rig. update()
-            // will retry after first/third-person or equipment rebuilds.
-            state.mPropRemoved = false;
-        }
-        else
-            state.mPropRemoved = true;
-
-        sConsumingAnimations.emplace(id, std::move(state));
+            return false;
+        return startConsumingAnimation(actor, std::move(spec), true);
     }
 
     bool isConsumingAnimationActive(const MWWorld::Ptr& ptr)
@@ -861,9 +1015,20 @@ namespace ArenaMW
             }
 
             state.mElapsed += std::max(0.f, dt);
-            const bool dead = state.mActor.getClass().getCreatureStats(state.mActor).isDead();
+            const MWMechanics::CreatureStats& stats
+                = state.mActor.getClass().getCreatureStats(state.mActor);
+            const bool dead = stats.isDead();
+            const MWMechanics::Movement& movement
+                = state.mActor.getClass().getMovementSettings(state.mActor);
+            const bool ambientInterrupted = state.mAmbient
+                && (stats.getKnockedDown() || stats.getAiSequence().isInCombat()
+                    || stats.getDrawState() != MWMechanics::DrawState_Nothing
+                    || std::abs(movement.mPosition[0]) > .05f
+                    || std::abs(movement.mPosition[1]) > .05f
+                    || std::abs(movement.mPosition[2]) > .05f
+                    || MWBase::Environment::get().getWorld()->isSwimming(state.mActor));
 
-            if (!dead && !state.mPropRemoved && !state.mPropModel.empty()
+            if (!dead && !ambientInterrupted && !state.mPropRemoved && !state.mPropModel.empty()
                 && !isPropAttached(state.mPropHolder))
             {
                 state.mPropHolder = attachHandProp(
@@ -875,10 +1040,10 @@ namespace ArenaMW
                 removeConsumableProp(state, animation);
 
             if (!state.mSoundAtEnd && !state.mSoundPlayed && state.mSoundTime >= 0.f
-                && state.mElapsed >= state.mSoundTime && !dead)
+                && state.mElapsed >= state.mSoundTime && !dead && !ambientInterrupted)
                 playConsumableSound(state);
 
-            const bool finished = dead || state.mElapsed >= state.mDuration
+            const bool finished = dead || ambientInterrupted || state.mElapsed >= state.mDuration
                 || !animation->isPlaying(state.mGroup);
             if (!finished)
             {
@@ -886,7 +1051,7 @@ namespace ArenaMW
                 continue;
             }
 
-            finishConsumingAnimation(state, animation, !dead);
+            finishConsumingAnimation(state, animation, !dead && !ambientInterrupted);
             it = sConsumingAnimations.erase(it);
         }
     }

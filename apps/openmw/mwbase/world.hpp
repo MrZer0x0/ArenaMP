@@ -388,6 +388,8 @@ namespace MWBase
             virtual bool beginPhysicsGrab(const MWWorld::Ptr& object) = 0;
             virtual void releasePhysicsGrab() = 0;
             virtual bool isPhysicsGrabActive() const = 0;
+            /// Place the currently grabbed physics object on a supporting surface.
+            virtual bool placePhysicsGrab() = 0;
             /// Rotate the currently grabbed object relative to the camera.
             /// rollInput rotates in the screen plane, pitchInput rotates around the camera-right axis.
             virtual void rotatePhysicsGrab(float rollInput, float pitchInput, float duration) = 0;

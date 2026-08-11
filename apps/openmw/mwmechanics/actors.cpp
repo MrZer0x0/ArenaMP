@@ -31,6 +31,8 @@
 #include "../mwmp/PlayerList.hpp"
 #include "../mwmp/DedicatedPlayer.hpp"
 #include "../mwmp/CellController.hpp"
+#include "../mwmp/LocalActor.hpp"
+#include "../mwmp/InteractionAnimationSync.hpp"
 #include "../mwmp/MechanicsHelper.hpp"
 #include "../mwmp/ObjectList.hpp"
 /*
@@ -61,6 +63,7 @@
 #include "../mwphysics/ragdoll.hpp"
 
 #include "spellcasting.hpp"
+#include "animationenhancements.hpp"
 #include "steering.hpp"
 #include "npcstats.hpp"
 #include "creaturestats.hpp"
@@ -86,6 +89,8 @@ struct DynamicIdleAnimation
     const char* mGroup;
     float mSpeed;
     std::size_t mLoops;
+    int mWeight = 4;
+    bool mRequiresNearbyNpc = false;
 };
 
 float randomRange(float minimum, float maximum)
@@ -114,6 +119,35 @@ int dynamicIdleBlendMask(bool leftArmProtected)
     if (leftArmProtected)
         blendMask &= ~MWRender::Animation::BlendMask_LeftArm;
     return blendMask;
+}
+
+void queueDynamicNpcInteraction(const MWWorld::Ptr& ptr, const std::string& group,
+    int blendMask, float speed, int loops, bool stop)
+{
+    mwmp::CellController* cellController = mwmp::Main::get().getCellController();
+    if (!cellController || !cellController->isLocalActor(ptr))
+        return;
+
+    mwmp::LocalActor* localActor = cellController->getLocalActor(ptr);
+    if (!localActor)
+        return;
+
+    mwmp::InteractionAnimationData data;
+    data.group = group;
+    data.blendMask = blendMask;
+    data.speed = speed;
+    data.loops = std::max(1, loops);
+    data.duration = stop ? 0.1f : 60.f;
+    data.stop = stop;
+
+    const std::string encoded = mwmp::encodeInteractionAnimation(data);
+    if (encoded.empty())
+        return;
+
+    localActor->animation.groupname = encoded;
+    localActor->animation.mode = 0;
+    localActor->animation.count = 1;
+    localActor->animation.persist = false;
 }
 
 bool isActiveDialogueTarget(const MWWorld::Ptr& ptr)
@@ -545,6 +579,8 @@ namespace MWMechanics
         MWRender::Animation* animation = MWBase::Environment::get().getWorld()->getAnimation(ptr);
         if (!animation)
         {
+            queueDynamicNpcInteraction(ptr, state.mAnimation,
+                dynamicIdleBlendMask(state.mLeftArmProtected), 1.f, 1, true);
             state.mAnimation.clear();
             state.mEnding = false;
             state.mTransitionTimeout = 0.f;
@@ -554,9 +590,11 @@ namespace MWMechanics
 
         if (immediate)
         {
-            animation->beginBoneTransition(
-                dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
+            const std::string stoppedGroup = state.mAnimation;
+            const int stoppedMask = dynamicIdleBlendMask(state.mLeftArmProtected);
+            animation->beginBoneTransition(stoppedMask, sDynamicIdleTransitionSeconds);
             animation->disable(state.mAnimation);
+            queueDynamicNpcInteraction(ptr, stoppedGroup, stoppedMask, 1.f, 1, true);
             state.mAnimation.clear();
             state.mEnding = false;
             state.mTransitionTimeout = 0.f;
@@ -583,6 +621,24 @@ namespace MWMechanics
 
         Actor::DynamicIdleState& state = actorState.mDynamicIdle;
         MWBase::World* world = MWBase::Environment::get().getWorld();
+
+        // ArenaMP: only the current cell-authority client may choose random NPC
+        // ambience. Dedicated copies replay the authority's ActorAnimPlay packet;
+        // letting every client roll independently would make the same NPC perform
+        // different gestures for different players.
+        if (!mwmp::Main::get().getCellController()->isLocalActor(ptr))
+        {
+            if (!state.mAnimation.empty())
+            {
+                if (MWRender::Animation* stale = world->getAnimation(ptr))
+                    stale->disable(state.mAnimation);
+                state.mAnimation.clear();
+                state.mEnding = false;
+                state.mTransitionTimeout = 0.f;
+                state.mLeftArmProtected = false;
+            }
+            return;
+        }
         MWRender::Animation* animation = world->getAnimation(ptr);
         CharacterController* controller = actorState.getCharacterController();
         if (!animation || !controller)
@@ -611,7 +667,7 @@ namespace MWMechanics
             || stats.getDrawState() != DrawState_Nothing || moving || constructionSetAnimation
             || controller->hasQueuedAnimation()
             || world->isSwimming(ptr) || MWBase::Environment::get().getSoundManager()->sayActive(ptr)
-            || dialogueTarget;
+            || dialogueTarget || ArenaMW::isConsumingAnimationActive(ptr);
 
         if (hardBlocked)
         {
@@ -624,12 +680,14 @@ namespace MWMechanics
             state.mTransitionTimeout -= duration;
             if (!animation->isPlaying(state.mAnimation) || state.mTransitionTimeout <= 0.f)
             {
+                const std::string stoppedGroup = state.mAnimation;
+                const int stoppedMask = dynamicIdleBlendMask(state.mLeftArmProtected);
                 if (animation->isPlaying(state.mAnimation))
                 {
-                    animation->beginBoneTransition(
-                        dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
+                    animation->beginBoneTransition(stoppedMask, sDynamicIdleTransitionSeconds);
                     animation->disable(state.mAnimation);
                 }
+                queueDynamicNpcInteraction(ptr, stoppedGroup, stoppedMask, 1.f, 1, true);
                 state.mAnimation.clear();
                 state.mEnding = false;
                 state.mTransitionTimeout = 0.f;
@@ -656,9 +714,11 @@ namespace MWMechanics
                 // the same system on the next frame with a blend mask that leaves
                 // the occupied left arm to the shield/torch controller while the
                 // torso and free right arm remain animated.
-                animation->beginBoneTransition(
-                    dynamicIdleBlendMask(state.mLeftArmProtected), sDynamicIdleTransitionSeconds);
+                const std::string stoppedGroup = state.mAnimation;
+                const int stoppedMask = dynamicIdleBlendMask(state.mLeftArmProtected);
+                animation->beginBoneTransition(stoppedMask, sDynamicIdleTransitionSeconds);
                 animation->disable(state.mAnimation);
+                queueDynamicNpcInteraction(ptr, stoppedGroup, stoppedMask, 1.f, 1, true);
                 state.mAnimation.clear();
                 state.mEnding = false;
                 state.mTransitionTimeout = 0.f;
@@ -669,6 +729,8 @@ namespace MWMechanics
 
             if (!animation->isPlaying(state.mAnimation))
             {
+                queueDynamicNpcInteraction(ptr, state.mAnimation,
+                    dynamicIdleBlendMask(state.mLeftArmProtected), 1.f, 1, true);
                 state.mAnimation.clear();
                 state.mLeftArmProtected = false;
                 state.mTimer = randomRange(5.f, 12.f);
@@ -685,6 +747,40 @@ namespace MWMechanics
         if (state.mTimer > 0.f || !animation->upperBodyReady())
             return;
 
+        // Eating Habits-style ambience: before choosing another static pose, give
+        // stationary NPCs a modest chance to perform an inventory-aware cosmetic
+        // eating/drinking/smoking action.  No item is consumed; movement/combat can
+        // interrupt the action in updateConsumingAnimations().
+        const int ambientHabitChance = std::max(0,
+            std::min(100, Settings::Manager::getInt("dynamic ambient habit chance", "GUI")));
+        if (Settings::Manager::getBool("dynamic ambient habits", "GUI")
+            && Misc::Rng::rollDice(100) < ambientHabitChance
+            && ArenaMW::tryStartAmbientNpcHabit(ptr))
+        {
+            state.mTimer = randomRange(18.f, 34.f);
+            return;
+        }
+
+        // Sit Down Please's sermon gestures make the ambient system much less
+        // repetitive, but only use the social pool when another living NPC is
+        // actually nearby. This prevents lone guards/shopkeepers from randomly
+        // preaching to an empty room.
+        bool nearbyNpc = false;
+        std::vector<MWWorld::Ptr> nearbyObjects;
+        getObjectsInRange(ptr.getRefData().getPosition().asVec3(), 520.f, nearbyObjects);
+        for (const MWWorld::Ptr& other : nearbyObjects)
+        {
+            if (other == ptr || other.isEmpty() || !other.getClass().isNpc()
+                || mwmp::PlayerList::isDedicatedPlayer(other))
+                continue;
+            const CreatureStats& otherStats = other.getClass().getCreatureStats(other);
+            if (!otherStats.isDead() && !otherStats.getKnockedDown())
+            {
+                nearbyNpc = true;
+                break;
+            }
+        }
+
         static const DynamicIdleAnimation sAnimations[] = {
             { "armsakimbo", 0.68f, 8 },
             { "armsfolded", 0.68f, 8 },
@@ -700,11 +796,34 @@ namespace MWMechanics
             { "idle8_copy", 0.90f, 2 },
             { "armsgesture", 0.88f, 2 },
             { "armssunshield", 0.65f, 1 },
+            // Bundled interaction animation sources that previously existed in VFS
+            // but were not selected by the ambient NPC controller.
+            { "prayer1", 0.82f, 2, 1 },
+            { "prayer2", 0.82f, 2, 1 },
+            { "petit", 0.90f, 1, 1 },
+
+            // Sit Down Please 3.5.1: safe standing/social sermon gestures.
+            // Seated audience animations are intentionally not selected here: the
+            // ambient controller does not own furniture placement, so playing a
+            // seated group on a standing NPC would make it sit in mid-air.
+            { "sdppreachattentive", 1.00f, 2, 2, true },
+            { "sdppreachadmonish", 1.00f, 1, 1, true },
+            { "sdppreachformal01", 1.00f, 2, 1, true },
+            { "sdppreachformal02", 1.00f, 2, 1, true },
+            { "sdppreachbeckon", 1.00f, 1, 1, true },
+            { "sdppreachhold", 1.00f, 1, 1, true },
+            { "sdppreachscan", 1.00f, 1, 1, true },
+            { "sdppreachcommand01", 1.00f, 1, 1, true },
+            { "sdppreachcommand02", 1.00f, 1, 1, true },
+            { "sdppreachcommand03", 1.00f, 1, 1, true },
+            { "sdppreachcommand04", 1.00f, 1, 1, true },
         };
 
         std::vector<const DynamicIdleAnimation*> available;
         for (const DynamicIdleAnimation& candidate : sAnimations)
         {
+            if (candidate.mRequiresNearbyNpc && !nearbyNpc)
+                continue;
             if (animation->hasAnimation(candidate.mGroup))
                 available.push_back(&candidate);
         }
@@ -715,8 +834,21 @@ namespace MWMechanics
             return;
         }
 
-        const DynamicIdleAnimation& selected
-            = *available[Misc::Rng::rollDice(static_cast<int>(available.size()))];
+        int totalWeight = 0;
+        for (const DynamicIdleAnimation* candidate : available)
+            totalWeight += std::max(1, candidate->mWeight);
+
+        int selection = Misc::Rng::rollDice(totalWeight);
+        const DynamicIdleAnimation* selected = available.back();
+        for (const DynamicIdleAnimation* candidate : available)
+        {
+            selection -= std::max(1, candidate->mWeight);
+            if (selection < 0)
+            {
+                selected = candidate;
+                break;
+            }
+        }
 
         const bool leftArmProtected = dynamicActorLeftArmOccupied(ptr);
         const int blendMask = dynamicIdleBlendMask(leftArmProtected);
@@ -727,17 +859,21 @@ namespace MWMechanics
             priority[MWRender::Animation::BoneGroup_LeftArm] = Priority_Movement;
         priority[MWRender::Animation::BoneGroup_RightArm] = Priority_Movement;
 
-        if (animation->isPlaying(selected.mGroup))
-            animation->disable(selected.mGroup);
+        if (animation->isPlaying(selected->mGroup))
+            animation->disable(selected->mGroup);
         animation->beginBoneTransition(blendMask, sDynamicIdleTransitionSeconds);
-        animation->play(selected.mGroup, priority, blendMask, true,
-            selected.mSpeed, "start", "stop", 0.f, selected.mLoops, true);
+        animation->play(selected->mGroup, priority, blendMask, true,
+            selected->mSpeed, "start", "stop", 0.f, selected->mLoops, true);
 
-        if (animation->isPlaying(selected.mGroup))
+        if (animation->isPlaying(selected->mGroup))
         {
-            state.mAnimation = selected.mGroup;
+            state.mAnimation = selected->mGroup;
             state.mLeftArmProtected = leftArmProtected;
             state.mTimer = randomRange(15.f, 28.f);
+            // animation->play receives an extra-loop count; the MP interaction
+            // payload stores a total play count, hence +1 here.
+            queueDynamicNpcInteraction(ptr, selected->mGroup, blendMask,
+                selected->mSpeed, static_cast<int>(selected->mLoops + 1), false);
         }
         else
         {

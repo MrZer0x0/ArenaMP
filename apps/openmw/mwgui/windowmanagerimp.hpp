@@ -126,6 +126,7 @@ namespace MWGui
   class JailScreen;
   class KeyboardNavigation;
   class ArenaLocalization;
+  class BookEditorDialog;
 
   class WindowManager :
       public MWBase::WindowManager
@@ -384,6 +385,8 @@ namespace MWGui
     void windowClosed() override;
     bool isWindowVisible() override;
     std::string getArenaLanguage() const override;
+    void openBookWriter() override;
+    void openBookWriter(const MWWorld::Ptr& source) override;
 
     void watchActor(const MWWorld::Ptr& ptr) override;
     MWWorld::Ptr getWatchedActor() const override;
@@ -530,6 +533,7 @@ namespace MWGui
     InventoryWindow *mInventoryWindow;
     ScrollWindow* mScrollWindow;
     BookWindow* mBookWindow;
+    BookEditorDialog* mBookEditorDialog;
     CountDialog* mCountDialog;
     TradeWindow* mTradeWindow;
     SettingsWindow* mSettingsWindow;

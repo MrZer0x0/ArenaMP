@@ -245,6 +245,14 @@ namespace MWClass
 
     std::shared_ptr<MWWorld::Action> Miscellaneous::use (const MWWorld::Ptr& ptr, bool force) const
     {
+        // ArenaMP native book writing: the normal Morrowind quill opens the
+        // writing desk while keeping the multiplayer item-use path intact.
+        if (Misc::StringUtils::ciEqual(ptr.getCellRef().getRefId(), "misc_quill"))
+        {
+            MWBase::Environment::get().getWindowManager()->openBookWriter();
+            return std::shared_ptr<MWWorld::Action>(new MWWorld::NullAction());
+        }
+
         if (ptr.getCellRef().getSoul().empty() || !MWBase::Environment::get().getWorld()->getStore().get<ESM::Creature>().search(ptr.getCellRef().getSoul()))
             return std::shared_ptr<MWWorld::Action>(new MWWorld::NullAction());
         else

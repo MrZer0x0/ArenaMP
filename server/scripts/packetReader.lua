@@ -622,6 +622,31 @@ packetReader.GetRecordDynamicArray = function(pid)
             -- Temporary data that should be discarded afterwards
             record.clientsideEnchantmentId = tes3mp.GetRecordId(recordIndex)
 
+        elseif recordNumericalType == enumerations.recordType.BOOK then
+            -- ArenaMP authored books/scrolls are full dynamic BOOK records rather
+            -- than enchantment-only overrides. Preserve every field required to
+            -- reconstruct the record after a server restart or player reconnect.
+            local baseId = tes3mp.GetRecordBaseId(recordIndex)
+            if baseId ~= nil and baseId ~= "" then record.baseId = baseId end
+            record.model = tes3mp.GetRecordModel(recordIndex)
+            record.icon = tes3mp.GetRecordIcon(recordIndex)
+            record.text = tes3mp.GetRecordText(recordIndex)
+            record.weight = math.floor(tes3mp.GetRecordWeight(recordIndex) * 100) / 100
+            record.value = tes3mp.GetRecordValue(recordIndex)
+            record.scrollState = tes3mp.GetRecordScrollState(recordIndex)
+            record.skillId = tes3mp.GetRecordSkillId(recordIndex)
+            record.script = tes3mp.GetRecordScript(recordIndex)
+            record.enchantmentCharge = tes3mp.GetRecordEnchantmentCharge(recordIndex)
+            record.quantity = 1
+
+            local clientEnchantmentId = tes3mp.GetRecordEnchantmentId(recordIndex)
+            if clientEnchantmentId ~= nil and clientEnchantmentId ~= "" then
+                record.enchantmentId = Players[pid].unresolvedEnchantments[clientEnchantmentId]
+                if record.enchantmentId ~= nil then
+                    Players[pid].unresolvedEnchantments[clientEnchantmentId] = nil
+                end
+            end
+
         else
             record.baseId = tes3mp.GetRecordBaseId(recordIndex)
             record.enchantmentCharge = tes3mp.GetRecordEnchantmentCharge(recordIndex)

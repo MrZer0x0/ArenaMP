@@ -32,7 +32,7 @@ add_openmw_dir (mwinput
 add_openmw_dir (mwgui
     layout textinput widgets race class birth review windowmanagerimp arenalocalization console dialogue
     windowbase statswindow messagebox journalwindow charactercreation
-    mapwindow windowpinnablebase tooltips quickloot playeranimationmenu scrollwindow bookwindow resourceskin
+    mapwindow windowpinnablebase tooltips quickloot playeranimationmenu scrollwindow bookwindow bookeditordialog resourceskin
     formatting inventorywindow container hud countdialog tradewindow settingswindow
     confirmationdialog alchemywindow referenceinterface spellwindow mainmenu quickkeysmenu
     itemselection spellbuyingwindow loadingscreen levelupdialog waitdialog spellcreationdialog

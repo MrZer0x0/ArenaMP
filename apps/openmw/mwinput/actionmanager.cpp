@@ -174,9 +174,17 @@ namespace MWInput
 
             if (mAttemptJump && MWBase::Environment::get().getInputManager()->getControlSwitch("playerjumping"))
             {
-                player.setUpDown(1);
-                triedToMove = true;
-                mOverencumberedMessageDelay = 0.f;
+                if (world->isPhysicsGrabActive())
+                {
+                    world->placePhysicsGrab();
+                    mAttemptJump = false;
+                }
+                else
+                {
+                    player.setUpDown(1);
+                    triedToMove = true;
+                    mOverencumberedMessageDelay = 0.f;
+                }
             }
 
             // if player tried to start moving, but can't (due to being overencumbered), display a notification.

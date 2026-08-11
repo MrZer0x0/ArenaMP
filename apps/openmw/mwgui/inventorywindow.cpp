@@ -102,6 +102,8 @@ namespace MWGui
         , mPaperDollButton(nullptr)
         , mPaperDollIcon(nullptr)
         , mViewModeButton(nullptr)
+        , mWriterButton(nullptr)
+        , mWriterIcon(nullptr)
         , mViewModeIcon(nullptr)
         , mPaperDollVisible(false)
         , mFilterKeys(nullptr)
@@ -151,11 +153,10 @@ namespace MWGui
         mPaperDollButton->setNeedKeyFocus(false);
         mPaperDollButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onPaperDollClicked);
         mPaperDollIcon = mPaperDollButton->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(3, 2, 22, 20), MyGUI::Align::Center, "ArenaPaperDollToggleIcon");
+            MyGUI::IntCoord(3, 1, 24, 24), MyGUI::Align::Center, "ArenaPaperDollToggleIcon");
         mPaperDollIcon->setNeedMouseFocus(false);
-        mPaperDollIcon->setImageTexture("icons/inventoryextender/Base/categories/clothing.dds");
-        mPaperDollIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
         mPaperDollButton->setStateSelected(mPaperDollVisible);
+        refreshPaperDollToggleVisual();
 
         // ArenaMW virtual key ring. The ring is injected into ItemView by
         // SortFilterItemModel as a synthetic inventory row (first real key icon
@@ -190,6 +191,19 @@ namespace MWGui
             MyGUI::IntCoord(5, 4, 18, 18), MyGUI::Align::Center, "ArenaInventoryViewToggleIcon");
         mViewModeIcon->setNeedMouseFocus(false);
         mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
+
+        // Native writing button. Keep the click target borderless and move the
+        // quill one full icon slot to the right of the view toggle in
+        // updateBottomControls(), matching the requested layout.
+        mWriterButton = mBottomBar->createWidget<MyGUI::Widget>("",
+            MyGUI::IntCoord(0, 2, 30, 26), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaBookWriterButton");
+        mWriterButton->setNeedKeyFocus(false);
+        mWriterButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onWriterClicked);
+        mWriterIcon = mWriterButton->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(2, 0, 26, 26), MyGUI::Align::Center, "ArenaBookWriterIcon");
+        mWriterIcon->setNeedMouseFocus(false);
+        mWriterIcon->setImageTexture("textures/ui/arenamw/quill_white.png");
+        refreshWriterButtonVisual();
 
         // Barter gold uses the same visual language as an inventory stack:
         // the amount is drawn directly over the coin icon instead of taking a
@@ -810,6 +824,9 @@ namespace MWGui
         if (focus == mFilterEdit)
             MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(nullptr);
 
+        refreshPaperDollToggleVisual();
+        refreshWriterButtonVisual();
+
         // Restore/finalize pane geometry first. Extended ItemView rows must be
         // created against the final RightPane width, not the 350px template size.
         adjustPanes();
@@ -930,6 +947,30 @@ namespace MWGui
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
     }
 
+    void InventoryWindow::refreshPaperDollToggleVisual()
+    {
+        if (!mPaperDollButton || !mPaperDollIcon)
+            return;
+
+        mPaperDollIcon->setImageTexture(mPaperDollVisible
+            ? "textures/ui/arenamw/paper_doll_visible.png"
+            : "textures/ui/arenamw/paper_doll_hidden.png");
+        mPaperDollIcon->setColour(MyGUI::Colour::White);
+        mPaperDollButton->setUserString("ToolTipType", "Layout");
+        mPaperDollButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        mPaperDollButton->setUserString("Caption_TextOneLine",
+            arenaText(mPaperDollVisible ? "inventory.paper_doll_hide" : "inventory.paper_doll_show"));
+    }
+
+    void InventoryWindow::refreshWriterButtonVisual()
+    {
+        if (!mWriterButton)
+            return;
+        mWriterButton->setUserString("ToolTipType", "Layout");
+        mWriterButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        mWriterButton->setUserString("Caption_TextOneLine", arenaText("writer.tooltip_open"));
+    }
+
     void InventoryWindow::onPaperDollClicked(MyGUI::Widget*)
     {
         if (mGuiMode != GM_Inventory)
@@ -937,6 +978,7 @@ namespace MWGui
 
         mPaperDollVisible = !mPaperDollVisible;
         Settings::Manager::setBool("inventory paper doll", "GUI", mPaperDollVisible);
+        refreshPaperDollToggleVisual();
 
         adjustPanes();
         if (mPaperDollVisible)
@@ -964,6 +1006,11 @@ namespace MWGui
             mItemView->getViewMode() == ItemView::View_List ? ItemView::View_Grid : ItemView::View_List;
         mItemView->setViewMode(nextMode);
         updateBottomControls();
+    }
+
+    void InventoryWindow::onWriterClicked(MyGUI::Widget*)
+    {
+        MWBase::Environment::get().getWindowManager()->openBookWriter();
     }
 
     void InventoryWindow::onPinToggled()
@@ -1186,6 +1233,18 @@ namespace MWGui
         {
             mViewModeButton->setCoord(x, 2, 30, 26);
             x += 30 + gap;
+        }
+
+        const bool showWriter = (mGuiMode == GM_Inventory);
+        if (mWriterButton)
+        {
+            mWriterButton->setVisible(showWriter);
+            mWriterButton->setEnabled(showWriter);
+            if (showWriter)
+            {
+                mWriterButton->setCoord(x, 2, 30, 26);
+                x += 30 + gap;
+            }
         }
 
         const int filterWidth = std::max(40, width - x - (showGold ? goldBlockWidth + gap : 0));

@@ -92,6 +92,7 @@
 #include "quickloot.hpp"
 #include "scrollwindow.hpp"
 #include "bookwindow.hpp"
+#include "bookeditordialog.hpp"
 #include "hud.hpp"
 #include "mainmenu.hpp"
 #include "countdialog.hpp"
@@ -161,6 +162,7 @@ namespace MWGui
       , mInventoryWindow(nullptr)
       , mScrollWindow(nullptr)
       , mBookWindow(nullptr)
+      , mBookEditorDialog(nullptr)
       , mCountDialog(nullptr)
       , mTradeWindow(nullptr)
       , mSettingsWindow(nullptr)
@@ -487,6 +489,9 @@ namespace MWGui
         mGuiModeStates[GM_Book] = GuiModeState(mBookWindow);
         mGuiModeStates[GM_Book].mOpenSound = "book open";
         mGuiModeStates[GM_Book].mCloseSound = "book close";
+
+        mBookEditorDialog = new BookEditorDialog();
+        mWindows.push_back(mBookEditorDialog);
 
         mCountDialog = new CountDialog();
         mWindows.push_back(mCountDialog);
@@ -1391,6 +1396,30 @@ namespace MWGui
     std::string WindowManager::getArenaLanguage() const
     {
         return mArenaLocalization ? mArenaLocalization->getLanguage() : "en";
+    }
+
+    void WindowManager::openBookWriter()
+    {
+        if (MWMechanics::isPlayerInCombat())
+        {
+            messageBox("#{arenamp=writer.no_combat}");
+            return;
+        }
+        if (getMode() == GM_None)
+            pushGuiMode(GM_Inventory);
+        if (mBookEditorDialog)
+            mBookEditorDialog->openNew();
+    }
+
+    void WindowManager::openBookWriter(const MWWorld::Ptr& source)
+    {
+        if (MWMechanics::isPlayerInCombat())
+        {
+            messageBox("#{arenamp=writer.no_combat}");
+            return;
+        }
+        if (mBookEditorDialog)
+            mBookEditorDialog->openForBook(source);
     }
 
     void WindowManager::windowVisibilityChange(bool visible)

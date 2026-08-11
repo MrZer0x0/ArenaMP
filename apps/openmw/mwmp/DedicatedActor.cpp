@@ -322,6 +322,26 @@ void DedicatedActor::playAnimation()
             animation.groupname.clear();
             return;
         }
+
+        std::string ambientConsumableRefId;
+        if (decodeAmbientConsumableAnimation(animation.groupname, ambientConsumableRefId))
+        {
+            mwmp::playAmbientConsumableAnimation(ptr, ambientConsumableRefId);
+            animation.groupname.clear();
+            return;
+        }
+
+        InteractionAnimationData interactionData;
+        if (decodeInteractionAnimation(animation.groupname, interactionData))
+        {
+            if (interactionData.stop)
+                stopInteractionAnimation(ptr, interactionData);
+            else
+                playInteractionAnimation(ptr, interactionData);
+            animation.groupname.clear();
+            return;
+        }
+
         MWBase::Environment::get().getMechanicsManager()->playAnimationGroup(ptr,
             animation.groupname, animation.mode, animation.count, animation.persist);
 

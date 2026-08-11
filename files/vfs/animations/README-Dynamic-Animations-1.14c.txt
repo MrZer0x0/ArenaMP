@@ -12,12 +12,12 @@ ArenaMP animation controllers.
 Integrated behaviour
 --------------------
 
-* The Z player animation menu contains a Walking style group.
-* Classic, Dirnae, female and soldier walk cycles are selected only when the
-  current player skeleton actually contains the requested group.
-* The selected walking style is synchronized over TES3MP's existing
-  ID_PLAYER_ANIM_PLAY channel and periodically refreshed for players entering
-  the loaded-cell area.
+* Walking animation sources remain available to the engine/network layer, but
+  the Walking category is intentionally not exposed in the Z player animation
+  menu.
+* Existing walking-style synchronization over TES3MP's ID_PLAYER_ANIM_PLAY
+  channel remains intact for compatibility with previously stored/networked
+  animation state.
 * First-person walk, run and sneak animation sources are selected natively when
   available.
 * Standard NPCs receive deterministic male, female, beast, noble and guard

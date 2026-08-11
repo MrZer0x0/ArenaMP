@@ -18,6 +18,9 @@
     SCRIPT_API_ENTRY("GetRecordModel", RecordsDynamicFunctions::GetRecordModel),\
     SCRIPT_API_ENTRY("GetRecordIcon", RecordsDynamicFunctions::GetRecordIcon),\
     SCRIPT_API_ENTRY("GetRecordScript", RecordsDynamicFunctions::GetRecordScript),\
+    SCRIPT_API_ENTRY("GetRecordText", RecordsDynamicFunctions::GetRecordText),\
+    SCRIPT_API_ENTRY("GetRecordScrollState", RecordsDynamicFunctions::GetRecordScrollState),\
+    SCRIPT_API_ENTRY("GetRecordSkillId", RecordsDynamicFunctions::GetRecordSkillId),\
     SCRIPT_API_ENTRY("GetRecordEnchantmentId", RecordsDynamicFunctions::GetRecordEnchantmentId),\
     SCRIPT_API_ENTRY("GetRecordEnchantmentCharge", RecordsDynamicFunctions::GetRecordEnchantmentCharge),\
     \
@@ -236,6 +239,15 @@ public:
     * \return The script of the record.
     */
     static const char *GetRecordScript(unsigned int index) noexcept;
+
+    /** Book text for BOOK dynamic records. */
+    static const char *GetRecordText(unsigned int index) noexcept;
+
+    /** BOOK scroll flag (0 book, 1 scroll). */
+    static int GetRecordScrollState(unsigned int index) noexcept;
+
+    /** BOOK skill id, including ArenaMP authored marker -2. */
+    static int GetRecordSkillId(unsigned int index) noexcept;
 
     /**
     * \brief Get the enchantment id of the record at a certain index in the read

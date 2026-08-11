@@ -29,7 +29,7 @@ namespace
         if (category == "Gestures") return arenaText("animation.group.gestures");
         if (category == "Poses") return arenaText("animation.group.poses");
         if (category == "Sitting") return arenaText("animation.group.sitting");
-        if (category == "Walking") return arenaText("animation.group.walking");
+        if (category == "Social") return arenaText("animation.group.social");
         return category;
     }
 
@@ -51,7 +51,7 @@ namespace
         "Gestures",
         "Poses",
         "Sitting",
-        "Walking"
+        "Social"
     };
 
     // The menu intentionally exposes only player-selected full-body poses and
@@ -103,13 +103,28 @@ namespace
         { "Sitting", "animation.name.sit_9", "vasitting9", 0.90f, false, 0.f, 1, 0, false },
         { "Sitting", "animation.name.sit_floor", "vasittingfloor", 0.90f, false, 0.f, 1, 0, false },
 
-        // Dynamic Animations 1.14 walking styles. These are movement
-        // overrides, not persistent poses, and are synchronized separately.
-        { "Walking", "animation.name.walk_default", "", 1.00f, false, 0.f, 1, 0, false },
-        { "Walking", "animation.name.walk_classic", "walkforward_mw", 1.00f, false, 0.f, 1, 0, false },
-        { "Walking", "animation.name.walk_dirnae", "walkforward_dirn154", 1.00f, false, 0.f, 1, 0, false },
-        { "Walking", "animation.name.walk_female", "walkforward_mwfem", 1.00f, false, 0.f, 1, 0, false },
-        { "Walking", "animation.name.walk_soldier", "walkforward_march154", 1.00f, false, 0.f, 1, 0, false }
+        // Sit Down Please 3.5.1. Player-selected animations keep using
+        // LocalPlayer's existing network animation packets, so other clients
+        // see the same Z-menu pose/one-shot without any local-only fallback.
+        { "Sitting", "animation.name.sdp_sit_arms_knees", "sdparmsonkneessitidle1", 1.00f, false, 0.f, 1, 0, true },
+        { "Sitting", "animation.name.sdp_sit_2", "sdpvasitting2", 1.00f, false, 0.f, 1, 0, true },
+        { "Sitting", "animation.name.sdp_sit_3", "sdpvasitting3", 1.00f, false, 0.f, 1, 0, true },
+        { "Sitting", "animation.name.sdp_sit_4", "sdpvasitting4", 1.00f, false, 0.f, 1, 0, true },
+        { "Sitting", "animation.name.sdp_sit_6", "sdpvasitting6", 1.00f, false, 0.f, 1, 0, true },
+        { "Poses", "animation.name.sdp_sleep_side", "sdpvasitting8", 1.00f, false, 0.f, 1, 0, true },
+        { "Poses", "animation.name.sdp_lie_back", "sdpvasitting9", 1.00f, false, 0.f, 1, 0, true },
+
+        { "Social", "animation.name.sdp_attentive", "sdppreachattentive", 1.00f, false, 0.f, 1, 0, false },
+        { "Social", "animation.name.sdp_admonish", "sdppreachadmonish", 1.00f, true, 2.40f, 1, 0, false },
+        { "Social", "animation.name.sdp_formal_1", "sdppreachformal01", 1.00f, false, 0.f, 1, 0, false },
+        { "Social", "animation.name.sdp_formal_2", "sdppreachformal02", 1.00f, false, 0.f, 1, 0, false },
+        { "Social", "animation.name.sdp_beckon", "sdppreachbeckon", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_hold", "sdppreachhold", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_scan", "sdppreachscan", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_command_1", "sdppreachcommand01", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_command_2", "sdppreachcommand02", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_command_3", "sdppreachcommand03", 1.00f, true, 2.20f, 1, 0, false },
+        { "Social", "animation.name.sdp_command_4", "sdppreachcommand04", 1.00f, true, 2.20f, 1, 0, false }
     };
 }
 
@@ -197,20 +212,13 @@ namespace MWGui
         mList->addItem(cancel);
         mList->addItem(back);
 
-        MWRender::Animation* playerAnimation = nullptr;
-        if (mwmp::LocalPlayer* player = mwmp::Main::get().getLocalPlayer())
-            playerAnimation = MWBase::Environment::get().getWorld()->getAnimation(player->getPlayerPtr());
-
         for (const Candidate& candidate : sAnimations)
         {
             if (group != candidate.mCategory)
                 continue;
-            if (group == "Walking" && candidate.mGroup[0] != '\0'
-                && (!playerAnimation || !playerAnimation->hasAnimation(candidate.mGroup)))
-                continue;
             mEntries.push_back({ candidate.mCaption, candidate.mGroup, candidate.mSpeed,
                 candidate.mOneShot, candidate.mDuration, candidate.mLoops,
-                candidate.mProp, candidate.mThirdPersonOnly, group == "Walking" });
+                candidate.mProp, candidate.mThirdPersonOnly, false });
             mList->addItem(arenaText(candidate.mCaption));
         }
 

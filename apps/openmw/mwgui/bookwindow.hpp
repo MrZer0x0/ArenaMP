@@ -7,6 +7,7 @@
 
 #include <components/widgets/imagebutton.hpp>
 
+
 namespace MWGui
 {
     class BookWindow : public BookWindowBase
@@ -25,6 +26,7 @@ namespace MWGui
             void onPrevPageButtonClicked (MyGUI::Widget* sender);
             void onCloseButtonClicked (MyGUI::Widget* sender);
             void onTakeButtonClicked (MyGUI::Widget* sender);
+            void onWriteButtonClicked (MyGUI::Widget* sender);
             void onMouseWheel(MyGUI::Widget* _sender, int _rel);
             void setTakeButtonShow(bool show);
 
@@ -42,6 +44,7 @@ namespace MWGui
 
             Gui::ImageButton* mCloseButton;
             Gui::ImageButton* mTakeButton;
+            MyGUI::Widget* mWriteButton;
             Gui::ImageButton* mNextPageButton;
             Gui::ImageButton* mPrevPageButton;
 

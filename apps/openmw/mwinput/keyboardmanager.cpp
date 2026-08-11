@@ -69,11 +69,25 @@ namespace MWInput
                 consumed = togglePostProcessSetting("bloom enabled", "#{arenamp=hotkey.bloom_on}", "#{arenamp=hotkey.bloom_off}");
         }
 
-        consumed = consumed || (SDL_IsTextInputActive() &&  // Little trick to check if key is printable
-                        (!(SDLK_SCANCODE_MASK & arg.keysym.sym) &&
-                        (std::isprint(arg.keysym.sym) ||
+        // SDL text input normally suppresses the matching printable key event and
+        // sends only SDL_TEXTINPUT. That is correct for ordinary typing, but it
+        // also swallowed Ctrl+C/V/X/Z before MyGUI::EditBox could execute its
+        // clipboard/undo commands. Let the standard editing shortcuts through as
+        // key events while keeping normal character entry on SDL_TEXTINPUT.
+        const bool editingModifier = (arg.keysym.mod & (KMOD_CTRL | KMOD_GUI)) != 0;
+        const bool textEditingShortcut = SDL_IsTextInputActive() && editingModifier
+            && (arg.keysym.scancode == SDL_SCANCODE_C
+                || arg.keysym.scancode == SDL_SCANCODE_V
+                || arg.keysym.scancode == SDL_SCANCODE_X
+                || arg.keysym.scancode == SDL_SCANCODE_Z
+                || arg.keysym.scancode == SDL_SCANCODE_Y
+                || arg.keysym.scancode == SDL_SCANCODE_A);
+
+        consumed = consumed || (SDL_IsTextInputActive() && !textEditingShortcut
+                        && (!(SDLK_SCANCODE_MASK & arg.keysym.sym)
+                        && (std::isprint(arg.keysym.sym)
                         // Don't trust isprint for symbols outside the extended ASCII range
-                        (kc == MyGUI::KeyCode::None && arg.keysym.sym > 0xff))));
+                        || (kc == MyGUI::KeyCode::None && arg.keysym.sym > 0xff))));
         if (!consumed && kc != MyGUI::KeyCode::None && !mBindingsManager->isDetectingBindingState())
         {
             MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();

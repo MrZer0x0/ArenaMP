@@ -32,6 +32,7 @@ file(GLOB_RECURSE BUILTIN_VFS_FILES
     textures/vfx/*.dds
     textures/vfx/*.tga
     textures/exploot/food/*.tga
+    textures/ui/arenamw/*.png
     l10n/arenamp/*.ini
     icons/inventoryextender/*.dds
 )

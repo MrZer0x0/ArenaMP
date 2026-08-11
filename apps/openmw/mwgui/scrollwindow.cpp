@@ -1,6 +1,7 @@
 #include "scrollwindow.hpp"
 
 #include <MyGUI_ScrollView.h>
+#include <MyGUI_LanguageManager.h>
 
 #include <components/esm/loadbook.hpp>
 #include <components/widgets/imagebutton.hpp>
@@ -33,6 +34,9 @@ namespace MWGui
         getWidget(mTakeButton, "TakeButton");
         mTakeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ScrollWindow::onTakeButtonClicked);
 
+        getWidget(mWriteButton, "WriteButton");
+        mWriteButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ScrollWindow::onWriteButtonClicked);
+
         adjustButton("CloseButton");
         adjustButton("TakeButton");
 
@@ -51,6 +55,15 @@ namespace MWGui
         bool showTakeButton = scroll.getContainerStore() != &player.getClass().getContainerStore(player);
 
         MWWorld::LiveCellRef<ESM::Book> *ref = mScroll.get<ESM::Book>();
+
+        const bool editable = scroll.getContainerStore() == &player.getClass().getContainerStore(player)
+            && ref->mBase->mData.mSkillId == -2 && ref->mBase->mEnchant.empty() && ref->mBase->mScript.empty();
+        mWriteButton->setUserString("ToolTipType", "Layout");
+        mWriteButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        mWriteButton->setUserString("Caption_TextOneLine",
+            MyGUI::LanguageManager::getInstance().replaceTags(
+                editable ? "#{arenamp=writer.tooltip_edit}" : "#{arenamp=writer.tooltip_copy}"));
+        mWriteButton->setVisible(true);
 
         Formatting::BookFormatter formatter;
         formatter.markupToWidget(mTextView, ref->mBase->mText, 390, mTextView->getHeight());
@@ -98,6 +111,11 @@ namespace MWGui
     void ScrollWindow::onCloseButtonClicked (MyGUI::Widget* _sender)
     {
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Scroll);
+    }
+
+    void ScrollWindow::onWriteButtonClicked (MyGUI::Widget* _sender)
+    {
+        MWBase::Environment::get().getWindowManager()->openBookWriter(mScroll);
     }
 
     void ScrollWindow::onTakeButtonClicked (MyGUI::Widget* _sender)

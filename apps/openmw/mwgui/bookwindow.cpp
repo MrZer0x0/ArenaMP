@@ -2,6 +2,7 @@
 
 #include <MyGUI_TextBox.h>
 #include <MyGUI_InputManager.h>
+#include <MyGUI_LanguageManager.h>
 
 #include <components/esm/loadbook.hpp>
 
@@ -31,6 +32,9 @@ namespace MWGui
 
         getWidget(mTakeButton, "TakeButton");
         mTakeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &BookWindow::onTakeButtonClicked);
+
+        getWidget(mWriteButton, "WriteButton");
+        mWriteButton->eventMouseButtonClick += MyGUI::newDelegate(this, &BookWindow::onWriteButtonClicked);
 
         getWidget(mNextPageButton, "NextPageBTN");
         mNextPageButton->eventMouseButtonClick += MyGUI::newDelegate(this, &BookWindow::onNextPageButtonClicked);
@@ -95,6 +99,17 @@ namespace MWGui
 
         MWWorld::LiveCellRef<ESM::Book> *ref = mBook.get<ESM::Book>();
 
+        const bool editable = book.getContainerStore() == &player.getClass().getContainerStore(player)
+            && ref->mBase->mData.mSkillId == -2 && ref->mBase->mEnchant.empty() && ref->mBase->mScript.empty();
+        // The black quill is deliberately textless and frameless.  Keep the
+        // meaning discoverable with a localized tooltip that follows the action.
+        mWriteButton->setUserString("ToolTipType", "Layout");
+        mWriteButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        mWriteButton->setUserString("Caption_TextOneLine",
+            MyGUI::LanguageManager::getInstance().replaceTags(
+                editable ? "#{arenamp=writer.tooltip_edit}" : "#{arenamp=writer.tooltip_copy}"));
+        mWriteButton->setVisible(true);
+
         Formatting::BookFormatter formatter;
         mPages = formatter.markupToWidget(mLeftPage, ref->mBase->mText);
         formatter.markupToWidget(mRightPage, ref->mBase->mText);
@@ -129,6 +144,11 @@ namespace MWGui
     void BookWindow::onCloseButtonClicked (MyGUI::Widget* sender)
     {
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_Book);
+    }
+
+    void BookWindow::onWriteButtonClicked (MyGUI::Widget* sender)
+    {
+        MWBase::Environment::get().getWindowManager()->openBookWriter(mBook);
     }
 
     void BookWindow::onTakeButtonClicked (MyGUI::Widget* sender)

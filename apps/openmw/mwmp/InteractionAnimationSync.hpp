@@ -33,6 +33,12 @@ namespace mwmp
     bool decodeConsumableAnimation(const std::string& value, std::string& refId);
     bool playConsumableAnimation(const MWWorld::Ptr& ptr, const std::string& refId);
 
+    /// Cosmetic NPC consumption uses a separate marker so remote clients replay
+    /// exactly the same habit without potion shatter/sound side effects.
+    std::string encodeAmbientConsumableAnimation(const std::string& refId);
+    bool decodeAmbientConsumableAnimation(const std::string& value, std::string& refId);
+    bool playAmbientConsumableAnimation(const MWWorld::Ptr& ptr, const std::string& refId);
+
     /// Dynamic Animations 1.14-compatible walking styles are sent through the
     /// existing PlayerAnimPlay channel so no TES3MP packet format changes are
     /// required.
