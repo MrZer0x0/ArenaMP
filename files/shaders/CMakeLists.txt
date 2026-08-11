@@ -13,6 +13,10 @@ set(SHADER_FILES
     bloom_extract_horizontal.frag
     bloom_vertical.frag
     bloom_composite.frag
+    native_effects_composite.frag
+    native_smaa_edge.frag
+    native_smaa_weights.frag
+    native_final.frag
     ripples_blobber.frag
     ripples_simulate.frag
     groundcover_vertex.glsl
@@ -35,6 +39,7 @@ set(SHADER_FILES
     terrain_fragment.glsl
     lighting.glsl
     lighting_pbr_compat.glsl
+    lighting_enhanced_pbr.glsl
     lighting_util.glsl
     parallax.glsl
     s360_fragment.glsl

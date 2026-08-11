@@ -160,6 +160,12 @@ namespace
     constexpr std::array<const char*, 4> npcBarModes =
         { "off", "combat", "hover", "both" };
 
+    constexpr std::array<const char*, 5> chatModeNames =
+        { "chat.mode.visible", "chat.mode.opacity_30", "chat.mode.opacity_60",
+          "chat.mode.autohide", "chat.mode.hidden" };
+    constexpr std::array<const char*, 5> chatModes =
+        { "visible", "transparent30", "transparent60", "autohide", "hidden" };
+
     std::string getWeaponSpellBoxMode()
     {
         const auto modeKey = std::make_pair(std::string("GUI"), std::string("weapon spell box mode"));
@@ -455,6 +461,8 @@ namespace MWGui
         getWidget(mHudScroll, "HUDScroll");
         getWidget(mDisplayScroll, "DisplayScroll");
         getWidget(mWaterScroll, "WaterScroll");
+        getWidget(mPbrScroll, "PbrScroll");
+        getWidget(mEffectsScroll, "EffectsScroll");
         getWidget(mHdrScroll, "HdrScroll");
         getWidget(mOkButton, "OkButton");
         getWidget(mResolutionList, "ResolutionList");
@@ -476,6 +484,7 @@ namespace MWGui
         getWidget(mWeaponSpellBoxMode, "WeaponSpellBoxMode");
         getWidget(mResourceBarMode, "ResourceBarMode");
         getWidget(mNpcBarMode, "NpcBarMode");
+        getWidget(mChatMode, "ChatMode");
         getWidget(mQuickLootMode, "QuickLootMode");
         getWidget(mTerrainPreset, "TerrainPreset");
         getWidget(mMaterialQuality, "MaterialQuality");
@@ -488,7 +497,8 @@ namespace MWGui
 
         mMainWidget->setSize(settingsWindowWidth, settingsWindowHeight);
 
-        const std::array<const char*, 13> sectionKeys = {
+        // Must match the TabItem order in openmw_settings_window.layout.
+        const std::array<const char*, 15> sectionKeys = {
             "settings.section.interface",
             "settings.section.hud",
             "settings.section.controls",
@@ -496,6 +506,8 @@ namespace MWGui
             "settings.subsection.quality",
             "settings.subsection.water",
             "settings.subsection.lighting",
+            "settings.subsection.pbr",
+            "settings.subsection.effects",
             "settings.subsection.hdr",
             "settings.subsection.bloom",
             "settings.subsection.world",
@@ -573,6 +585,10 @@ namespace MWGui
         for (const char* name : npcBarModeNames)
             mNpcBarMode->addItem(arenaText(name));
         mNpcBarMode->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onNpcBarModeChanged);
+
+        for (const char* name : chatModeNames)
+            mChatMode->addItem(arenaText(name));
+        mChatMode->eventComboChangePosition += MyGUI::newDelegate(this, &SettingsWindow::onChatModeChanged);
 
         mQuickLootMode->addItem(arenaText("value.disabled"));
         mQuickLootMode->addItem(arenaText("value.container"));
@@ -652,6 +668,7 @@ namespace MWGui
         updateWeaponSpellBoxModeCombo();
         updateResourceBarModeCombo();
         updateNpcBarModeCombo();
+        updateChatModeCombo();
         updateQuickLootModeCombo();
         updateTerrainPresetCombo();
         updateMaterialQualityCombo();
@@ -915,9 +932,9 @@ namespace MWGui
             Settings::Manager::setBool(settingName, settingCategory, newState);
             apply();
 
-            // Persist HUD preferences immediately so they survive crashes or
-            // forced shutdowns without requiring the Options window to close.
-            if (settingCategory == "HUD"
+            // Persist this HUD preference immediately. This prevents it from
+            // reverting after reconnects, crashes or forced client shutdowns.
+            if (settingCategory == "HUD" || settingCategory == "Chat"
                 || (settingCategory == "GUI" && settingName == "target info panel"))
                 Settings::Manager::saveUser();
             return;
@@ -963,6 +980,14 @@ namespace MWGui
         mNpcBarMode->setIndexSelected(it == npcBarModes.end()
             ? (Settings::Manager::getBool("target info panel", "GUI") ? 3 : 1)
             : static_cast<size_t>(std::distance(npcBarModes.begin(), it)));
+    }
+
+    void SettingsWindow::updateChatModeCombo()
+    {
+        const std::string mode = Settings::Manager::getString("mode", "Chat");
+        const auto it = std::find(chatModes.begin(), chatModes.end(), mode);
+        mChatMode->setIndexSelected(it == chatModes.end()
+            ? 1 : static_cast<size_t>(std::distance(chatModes.begin(), it)));
     }
 
     void SettingsWindow::updateQuickLootModeCombo()
@@ -1054,6 +1079,16 @@ namespace MWGui
         pos = std::min(pos, npcBarModes.size() - 1);
         Settings::Manager::setString("npc bar mode", "HUD", npcBarModes[pos]);
         Settings::Manager::setBool("target info panel", "GUI", pos >= 2);
+        Settings::Manager::saveUser();
+        apply();
+    }
+
+    void SettingsWindow::onChatModeChanged(MyGUI::ComboBox*, size_t pos)
+    {
+        if (pos == MyGUI::ITEM_NONE)
+            return;
+        pos = std::min(pos, chatModes.size() - 1);
+        Settings::Manager::setString("mode", "Chat", chatModes[pos]);
         Settings::Manager::saveUser();
         apply();
     }
@@ -1195,7 +1230,7 @@ namespace MWGui
 
             apply();
             const std::string category = getSettingCategory(scroller);
-            if (category == "HUD")
+            if (category == "HUD" || category == "Chat")
                 Settings::Manager::saveUser();
         }
     }
@@ -1387,6 +1422,7 @@ namespace MWGui
         updateWeaponSpellBoxModeCombo();
         updateResourceBarModeCombo();
         updateNpcBarModeCombo();
+        updateChatModeCombo();
         updateQuickLootModeCombo();
         updateTerrainPresetCombo();
         updateMaterialQualityCombo();
@@ -1415,6 +1451,8 @@ namespace MWGui
         mHudScroll->setViewOffset(MyGUI::IntPoint(0, 0));
         mDisplayScroll->setViewOffset(MyGUI::IntPoint(0, 0));
         mWaterScroll->setViewOffset(MyGUI::IntPoint(0, 0));
+        mPbrScroll->setViewOffset(MyGUI::IntPoint(0, 0));
+        mEffectsScroll->setViewOffset(MyGUI::IntPoint(0, 0));
         mHdrScroll->setViewOffset(MyGUI::IntPoint(0, 0));
     }
 }

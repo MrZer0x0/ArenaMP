@@ -95,7 +95,7 @@ uniform bool enableRainRipples;
 uniform bool isInteriorWater;
 uniform float useRefraction;
 uniform float useActorRipples;
-// ArenaMW runtime water controls. Defaults preserve the upstream PBR look.
+// ArenaMP runtime water controls. Defaults preserve the upstream PBR look.
 uniform float waterWaveStrength;
 uniform float waterSurfaceRoughness;
 uniform float waterTransparency;
@@ -407,7 +407,7 @@ void main(void)
     }
 #endif // MULTIPLE_WATER_TYPES
 
-    // Apply ArenaMW's global controls on top of the per-region water profile.
+    // Apply ArenaMP's global controls on top of the per-region water profile.
     // 1.0 keeps the Complete Water Shaders PBR author's original values.
     waveStrength = clamp(waveStrength * waterWaveStrength, 0.0, 2.5);
     foamIntensity = clamp(foamIntensity * waterFoamIntensity, 0.0, 2.0);
@@ -777,7 +777,7 @@ void main(void)
     }
 #endif
 
-    float transparencyControl = clamp(waterTransparency, 0.0, 2.0);
+    float transparencyControl = clamp(waterTransparency, 0.0, 1.4);
 #if @waterRefraction
     float absorptionMultiplier = transparencyControl <= 1.0
         ? mix(2.2, 1.0, transparencyControl)
@@ -832,7 +832,7 @@ void main(void)
         }
 
         float alphaBase = isInterior ? 0.25f : mix(isDay ? 0.17f : 0.10f, 0.85f, foamMask);
-        // Existing ArenaMW Water Roughness now controls the PBR BRDF lobe.
+        // Existing ArenaMP Water Roughness now controls the PBR BRDF lobe.
         // 0.22 is the compatibility/default value and leaves the port unchanged.
         float roughnessScale = clamp(waterSurfaceRoughness / 0.22f, 0.09f, 4.55f);
         float alpha = clamp(alphaBase * roughnessScale, 0.02f, 1.0f);
@@ -1080,7 +1080,7 @@ void main(void)
     }
 #endif // @waterRefraction
 
-    // ArenaMW keeps the refraction RTT alive even when the user disables the
+    // ArenaMP keeps the refraction RTT alive even when the user disables the
     // visual refraction option.  Reuse the 0.51 no-refraction look dynamically
     // instead of rebuilding/switching the water pipeline at runtime.
     if (useRefraction < 0.5)

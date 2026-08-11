@@ -21,7 +21,7 @@ add_openmw_dir (mwrender
     actors objects renderingmanager animation rotatecontroller sky npcanimation vismask
     creatureanimation effectmanager util renderinginterface pathgrid rendermode weaponanimation screenshotmanager
     bulletdebugdraw globalmap characterpreview camera viewovershoulder localmap water terrainstorage ripplesimulation ripples
-    renderbin actoranimation landmanager navmesh actorspaths recastmesh fogmanager objectpaging groundcover occlusionculling
+    renderbin actoranimation landmanager navmesh actorspaths recastmesh fogmanager objectpaging groundcover occlusionculling nativeeffects
     )
 
 add_openmw_dir (mwinput

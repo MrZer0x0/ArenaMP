@@ -47,6 +47,7 @@ uniform float waterUnderwaterBlend;
 #include "shadows_fragment.glsl"
 #define ARENAMP_FRAGMENT_SHADER 1
 #include "lighting.glsl"
+#include "lighting_enhanced_pbr.glsl"
 #define TERRAIN
 #include "parallax.glsl"
 
@@ -97,6 +98,15 @@ void main()
     vec4 diffuseTex = texture2D(diffuseMap, adjustedUV);
     gl_FragData[0] = vec4(diffuseTex.xyz, 1.0);
 
+    float arenaPbrRoughness = clamp(pbrTerrainRoughness, 0.08, 1.0);
+    float arenaPbrMetallicity = 0.0;
+    float arenaPbrAO = 1.0;
+    // Terrain gets a restrained SSS mask; the global slider can still turn it
+    // completely off. This reproduces the soft grazing response without
+    // turning rock/soil into translucent material.
+    float arenaPbrSSS = 0.28;
+    vec3 arenaEnhancedSpecular = vec3(0.0);
+
 #if @blendMap
     vec2 blendMapUV = (gl_TextureMatrix[1] * vec4(uv, 0.0, 1.0)).xy;
     gl_FragData[0].a *= texture2D(blendMap, blendMapUV).a;
@@ -120,6 +130,12 @@ void main()
     diffuseLight *= parallaxDirectVisibility;
     ambientLight *= parallaxAmbientVisibility;
 #endif
+#if @materialQuality > 0
+    vec3 arenaPbrAlbedo = clamp(gl_FragData[0].xyz * diffuseColor.xyz, 0.0, 1.0);
+    arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), arenaPbrAlbedo,
+        arenaPbrRoughness, arenaPbrMetallicity, arenaPbrAO, arenaPbrSSS,
+        shadowing, diffuseLight, ambientLight, arenaEnhancedSpecular);
+#endif
     lighting = diffuseColor.xyz * diffuseLight + getAmbientColor().xyz * ambientLight + getEmissionColor().xyz;
     clampLightingResult(lighting);
 #endif
@@ -127,6 +143,14 @@ void main()
     gl_FragData[0].xyz *= lighting;
 
 #if @materialQuality > 0
+#if @materialQuality > 0 && PER_PIXEL_LIGHTING
+    if (pbrEnhancedLighting >= 0.5)
+    {
+        gl_FragData[0].xyz += arenaEnhancedSpecular;
+    }
+    else
+#endif
+    {
 #if @specularMap
     // Terrain alpha in old assets is not a metalness map. Treat it only as a
     // restrained dielectric specular mask and use a broad rough lobe.
@@ -145,6 +169,7 @@ void main()
         vec3 viewNormal = gl_NormalMatrix * normalize(passNormal);
 #endif
         gl_FragData[0].xyz += getSpecular(normalize(viewNormal), normalize(passViewPos), shininess, matSpec) * shadowing;
+    }
     }
 #endif
 

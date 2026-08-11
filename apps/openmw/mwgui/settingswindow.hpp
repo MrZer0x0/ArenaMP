@@ -28,6 +28,8 @@ namespace MWGui
             MyGUI::ScrollView* mHudScroll;
             MyGUI::ScrollView* mDisplayScroll;
             MyGUI::ScrollView* mWaterScroll;
+            MyGUI::ScrollView* mPbrScroll;
+            MyGUI::ScrollView* mEffectsScroll;
             MyGUI::ScrollView* mHdrScroll;
             MyGUI::Button* mOkButton;
 
@@ -51,6 +53,7 @@ namespace MWGui
             MyGUI::ComboBox* mWeaponSpellBoxMode;
             MyGUI::ComboBox* mResourceBarMode;
             MyGUI::ComboBox* mNpcBarMode;
+            MyGUI::ComboBox* mChatMode;
             MyGUI::ComboBox* mQuickLootMode;
             MyGUI::ComboBox* mTerrainPreset;
             MyGUI::ComboBox* mMaterialQuality;
@@ -90,6 +93,7 @@ namespace MWGui
             void onWeaponSpellBoxModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onResourceBarModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onNpcBarModeChanged(MyGUI::ComboBox* _sender, size_t pos);
+            void onChatModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onQuickLootModeChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onTerrainPresetChanged(MyGUI::ComboBox* _sender, size_t pos);
             void onMaterialQualityChanged(MyGUI::ComboBox* _sender, size_t pos);
@@ -99,6 +103,7 @@ namespace MWGui
             void updateWeaponSpellBoxModeCombo();
             void updateResourceBarModeCombo();
             void updateNpcBarModeCombo();
+            void updateChatModeCombo();
             void updateQuickLootModeCombo();
             void updateTerrainPresetCombo();
             void updateMaterialQualityCombo();

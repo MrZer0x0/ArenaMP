@@ -89,6 +89,7 @@ uniform mat4 osg_ViewMatrixInverse;
 #include "shadows_fragment.glsl"
 #define ARENAMP_FRAGMENT_SHADER 1
 #include "lighting.glsl"
+#include "lighting_enhanced_pbr.glsl"
 #include "parallax.glsl"
 #include "alpha.glsl"
 
@@ -167,6 +168,30 @@ void main()
     float arenaMaterialAO = arenaPackedPbr ? pbrPackedAO(arenaSpecTex) : 1.0;
 #endif
 
+    // Runtime PBR material parameters. Packed PBR maps follow the Enhanced PBR
+    // convention: R=metallicity, G=roughness, B=AO, A=inverse SSS. Legacy
+    // specular maps are estimated conservatively so old texture packs stay sane.
+    float arenaPbrRoughness = clamp(pbrObjectRoughness, 0.08, 1.0);
+    float arenaPbrMetallicity = 0.0;
+    float arenaPbrAO = 1.0;
+    float arenaPbrSSS = 0.0;
+#if @materialQuality > 0 && @specularMap
+    if (arenaPackedPbr)
+    {
+        arenaPbrRoughness = clamp(arenaSpecTex.g, 0.08, 1.0);
+        arenaPbrMetallicity = clamp(arenaSpecTex.r, 0.0, 1.0);
+        arenaPbrAO = arenaMaterialAO;
+        arenaPbrSSS = clamp(1.0 - arenaSpecTex.a, 0.0, 1.0);
+    }
+    else
+    {
+        float arenaLegacySpecLuma = dot(arenaSpecTex.rgb, vec3(0.2126, 0.7152, 0.0722));
+        float arenaLegacySmoothness = clamp(arenaSpecTex.a * 0.65 + arenaLegacySpecLuma * 0.35, 0.0, 1.0);
+        arenaPbrRoughness = mix(arenaPbrRoughness, 0.22, arenaLegacySmoothness * 0.72);
+    }
+#endif
+    vec3 arenaEnhancedSpecular = vec3(0.0);
+
     vec4 diffuseColor = getDiffuseColor();
     gl_FragData[0].a *= diffuseColor.a;
     alphaTest();
@@ -225,8 +250,14 @@ void main()
     diffuseLight *= parallaxDirectVisibility;
     ambientLight *= parallaxAmbientVisibility;
 #endif
+#if @materialQuality > 0
+    vec3 arenaPbrAlbedo = clamp(gl_FragData[0].xyz * diffuseColor.xyz, 0.0, 1.0);
+    arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), arenaPbrAlbedo,
+        arenaPbrRoughness, arenaPbrMetallicity, arenaPbrAO, arenaPbrSSS,
+        shadowing, diffuseLight, ambientLight, arenaEnhancedSpecular);
+#endif
 #if @materialQuality >= 4 && @specularMap
-    if (arenaPackedPbr)
+    if (arenaPackedPbr && pbrEnhancedLighting < 0.5)
         ambientLight *= arenaMaterialAO;
 #endif
     vec3 emission = getEmissionColor().xyz * emissiveMult;
@@ -252,6 +283,14 @@ void main()
 #endif
 
 #if @materialQuality > 0
+#if @materialQuality > 0 && PER_PIXEL_LIGHTING
+    if (pbrEnhancedLighting >= 0.5)
+    {
+        gl_FragData[0].xyz += arenaEnhancedSpecular;
+    }
+    else
+#endif
+    {
 #if @specularMap
     float shininess;
     vec3 matSpec;
@@ -260,8 +299,8 @@ void main()
         float roughness = pbrPackedRoughness(arenaSpecTex);
         shininess = pbrShininessFromRoughness(roughness);
 #if @materialQuality >= 4
-        // Rafael maps: red = SSS, green = roughness, blue = AO.
-        // Use neutral dielectric F0 instead of interpreting those channels as colour.
+        // Legacy fallback for packed parameter maps. Enhanced PBR uses the full
+        // R=metal, G=roughness, B=AO, A=inverse-SSS convention above.
         matSpec = vec3(0.007);
 #else
         float smoothness = 1.0 - roughness;
@@ -285,6 +324,7 @@ void main()
         vec3 viewNormal = gl_NormalMatrix * normalize(passNormal);
 #endif
         gl_FragData[0].xyz += getSpecular(normalize(viewNormal), normalize(passViewPos.xyz), shininess, matSpec) * shadowing;
+    }
     }
 #endif
 

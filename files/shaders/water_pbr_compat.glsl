@@ -1,7 +1,7 @@
 #ifndef ARENAMW_WATER_PBR_COMPAT
 #define ARENAMW_WATER_PBR_COMPAT
 
-// OpenMW 0.51 water shader compatibility bridge for ArenaMW/OpenMW 0.47.
+// OpenMW 0.51 water shader compatibility bridge for ArenaMP/OpenMW 0.47.
 // The PBR water only queries the sun (light 0), so keep the 0.47 FFP light
 // interface instead of pulling the complete 0.51 light-buffer pipeline.
 #define lcalcPosition(lightIndex) (gl_LightSource[lightIndex].position.xyz)

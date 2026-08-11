@@ -84,6 +84,7 @@
 #include "fogmanager.hpp"
 #include "objectpaging.hpp"
 #include "screenshotmanager.hpp"
+#include "nativeeffects.hpp"
 #include "groundcover.hpp"
 #include "occlusionculling.hpp"
 #include <components/sceneutil/occlusionculling.hpp>
@@ -172,6 +173,24 @@ namespace MWRender
             stateset->addUniform(new osg::Uniform("waterUnderwaterBlend", 0.0f));
             stateset->addUniform(new osg::Uniform("waterWaveStrength", 1.0f));
             stateset->addUniform(new osg::Uniform("waterSurfaceRoughness", 0.22f));
+
+            // Runtime Enhanced PBR controls. These are inherited by object,
+            // terrain and groundcover shaders so tweaking them does not require
+            // shader recreation or disturbing the HDR/Bloom pipeline.
+            stateset->addUniform(new osg::Uniform("pbrEnhancedLighting", 1.0f));
+            stateset->addUniform(new osg::Uniform("pbrDiffuseResponse", 1.0f));
+            stateset->addUniform(new osg::Uniform("pbrObjectRoughness", 0.84f));
+            stateset->addUniform(new osg::Uniform("pbrTerrainRoughness", 0.92f));
+            stateset->addUniform(new osg::Uniform("pbrSpecularStrength", 1.0f));
+            stateset->addUniform(new osg::Uniform("pbrAmbientStrength", 0.75f));
+            stateset->addUniform(new osg::Uniform("pbrSubsurfaceStrength", 0.35f));
+
+            // Shadow filtering is also runtime-only. Keep map generation and
+            // cascades untouched; only the sampling kernel changes.
+            stateset->addUniform(new osg::Uniform("arenaEnhancedShadowFiltering", 1.0f));
+            stateset->addUniform(new osg::Uniform("arenaShadowSoftness", 1.0f));
+            stateset->addUniform(new osg::Uniform("arenaShadowAdaptiveSoftness", 1.0f));
+            stateset->addUniform(new osg::Uniform("arenaShadowTexelSize", 1.0f / 512.0f));
         }
 
         void apply(osg::StateSet* stateset, osg::NodeVisitor*) override
@@ -191,9 +210,36 @@ namespace MWRender
             if (osg::Uniform* uniform = stateset->getUniform("waterUnderwaterBlend"))
                 uniform->set(mUnderwaterBlend);
             if (osg::Uniform* uniform = stateset->getUniform("waterWaveStrength"))
-                uniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 2.5f));
+                uniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 1.0f));
             if (osg::Uniform* uniform = stateset->getUniform("waterSurfaceRoughness"))
                 uniform->set(std::clamp(Settings::Manager::getFloat("surface roughness", "Water"), 0.02f, 1.0f));
+
+            if (osg::Uniform* uniform = stateset->getUniform("pbrEnhancedLighting"))
+                uniform->set(Settings::Manager::getBool("enhanced pbr lighting", "Shaders") ? 1.0f : 0.0f);
+            if (osg::Uniform* uniform = stateset->getUniform("pbrDiffuseResponse"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr diffuse response", "Shaders"), 0.0f, 1.0f));
+            if (osg::Uniform* uniform = stateset->getUniform("pbrObjectRoughness"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr object roughness", "Shaders"), 0.08f, 1.0f));
+            if (osg::Uniform* uniform = stateset->getUniform("pbrTerrainRoughness"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr terrain roughness", "Shaders"), 0.08f, 1.0f));
+            if (osg::Uniform* uniform = stateset->getUniform("pbrSpecularStrength"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr specular strength", "Shaders"), 0.0f, 2.5f));
+            if (osg::Uniform* uniform = stateset->getUniform("pbrAmbientStrength"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr ambient strength", "Shaders"), 0.0f, 1.5f));
+            if (osg::Uniform* uniform = stateset->getUniform("pbrSubsurfaceStrength"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("pbr subsurface strength", "Shaders"), 0.0f, 1.5f));
+
+            if (osg::Uniform* uniform = stateset->getUniform("arenaEnhancedShadowFiltering"))
+                uniform->set(Settings::Manager::getBool("enhanced filtering", "Shadows") ? 1.0f : 0.0f);
+            if (osg::Uniform* uniform = stateset->getUniform("arenaShadowSoftness"))
+                uniform->set(std::clamp(Settings::Manager::getFloat("filter softness", "Shadows"), 0.25f, 3.0f));
+            if (osg::Uniform* uniform = stateset->getUniform("arenaShadowAdaptiveSoftness"))
+                uniform->set(Settings::Manager::getBool("adaptive softness", "Shadows") ? 1.0f : 0.0f);
+            if (osg::Uniform* uniform = stateset->getUniform("arenaShadowTexelSize"))
+            {
+                const int shadowMapResolution = std::max(1, Settings::Manager::getInt("shadow map resolution", "Shadows"));
+                uniform->set(1.0f / static_cast<float>(shadowMapResolution));
+            }
         }
 
         void setAmbientColor(const osg::Vec4f& col)
@@ -258,6 +304,7 @@ namespace MWRender
             , mRootNode(rootNode)
             , mOriginalPostDrawCallback(mainCamera ? mainCamera->getPostDrawCallback() : nullptr)
             , mEnabled(false)
+            , mSuppressed(false)
             , mReady(false)
             , mWidth(0)
             , mHeight(0)
@@ -399,7 +446,15 @@ namespace MWRender
             mBloomRadiusVertical->set(radius);
             mBloomIntensity->set(std::clamp(
                 Settings::Manager::getFloat("bloom intensity", "Shaders"), 0.f, 3.f));
-            setEnabled(Settings::Manager::getBool("bloom enabled", "Shaders"));
+            setEnabled(Settings::Manager::getBool("bloom enabled", "Shaders") && !mSuppressed);
+        }
+
+        void setSuppressed(bool suppressed)
+        {
+            if (mSuppressed == suppressed)
+                return;
+            mSuppressed = suppressed;
+            reloadSettings();
         }
 
         void update()
@@ -578,6 +633,7 @@ namespace MWRender
         osg::observer_ptr<osg::Group> mRootNode;
         osg::ref_ptr<osg::Camera::DrawCallback> mOriginalPostDrawCallback;
         bool mEnabled;
+        bool mSuppressed;
         bool mReady;
         int mWidth;
         int mHeight;
@@ -943,6 +999,10 @@ namespace MWRender
 
         mBloomProcessor.reset(new BloomProcessor(
             mViewer->getCamera(), mRootNode, mResourceSystem->getSceneManager()->getShaderManager()));
+        mNativeEffectsProcessor.reset(new NativeEffectsProcessor(
+            mViewer->getCamera(), mRootNode, mResourceSystem->getSceneManager()->getShaderManager()));
+        if (mBloomProcessor && mNativeEffectsProcessor)
+            mBloomProcessor->setSuppressed(mNativeEffectsProcessor->isEnabled());
     }
 
     RenderingManager::~RenderingManager()
@@ -1309,7 +1369,6 @@ namespace MWRender
         mCamera->getPosition(focal, cameraPos);
         mCurrentCameraPos = cameraPos;
 
-
         // Switch underwater colouring immediately. A very small hysteresis band
         // prevents head bob and animated water from toggling the state every frame,
         // but there is deliberately no timed debounce or colour/fog interpolation.
@@ -1329,6 +1388,13 @@ namespace MWRender
         mStateUpdater->setFogEnd(mFog->getFogEnd(mUnderwaterFogActive));
         setFogColor(mFog->getFogColor(mUnderwaterFogActive));
         mStateUpdater->setUnderwaterBlend(mUnderwaterFogActive ? 1.f : 0.f);
+
+        if (mNativeEffectsProcessor)
+        {
+            mNativeEffectsProcessor->update();
+            if (mBloomProcessor)
+                mBloomProcessor->setSuppressed(mNativeEffectsProcessor->isEnabled());
+        }
     }
 
     void RenderingManager::updatePlayerPtr(const MWWorld::Ptr &ptr)
@@ -1918,6 +1984,7 @@ namespace MWRender
         bool refreshHdrSettings = false;
         bool refreshBloomSettings = false;
         bool refreshHdrLighting = false;
+        bool refreshNativeEffects = false;
 
         for (const auto& setting : changed)
         {
@@ -2078,6 +2145,15 @@ namespace MWRender
                 || setting.second == "bloom radius"))
             {
                 refreshBloomSettings = true;
+                refreshNativeEffects = true;
+            }
+            else if (setting.first == "Shaders" && (setting.second == "native ssr enabled"
+                || setting.second == "ssr strength"
+                || setting.second == "ssr distance"
+                || setting.second == "smaa enabled"
+                || setting.second == "smaa threshold"))
+            {
+                refreshNativeEffects = true;
             }
             else if (setting.first == "Shaders" && setting.second == "material quality")
             {
@@ -2128,8 +2204,16 @@ namespace MWRender
             }
             else if (setting.first == "Shadows")
             {
-                refreshShadowSettings = true;
-                refreshShaderDefines = true;
+                // Sampling-only controls are uniforms updated by StateUpdater.
+                // Do not rebuild cascades/shadow cameras or shader defines while
+                // the user drags these sliders.
+                if (setting.second != "enhanced filtering"
+                    && setting.second != "filter softness"
+                    && setting.second != "adaptive softness")
+                {
+                    refreshShadowSettings = true;
+                    refreshShaderDefines = true;
+                }
             }
         }
 
@@ -2138,7 +2222,7 @@ namespace MWRender
         // cycles in the same settings update can let an OSG render stage retain
         // references created by the previous cycle.
         const bool postProcessTransaction
-            = refreshHdrSettings || refreshBloomSettings || refreshHdrLighting;
+            = refreshHdrSettings || refreshBloomSettings || refreshHdrLighting || refreshNativeEffects;
         if (postProcessTransaction)
             mViewer->stopThreading();
 
@@ -2147,6 +2231,11 @@ namespace MWRender
 
         if (refreshBloomSettings && mBloomProcessor)
             mBloomProcessor->reloadSettings();
+
+        if (refreshNativeEffects && mNativeEffectsProcessor)
+            mNativeEffectsProcessor->reloadSettings();
+        if ((refreshNativeEffects || refreshBloomSettings) && mBloomProcessor && mNativeEffectsProcessor)
+            mBloomProcessor->setSuppressed(mNativeEffectsProcessor->isEnabled());
 
         if (refreshTerrainLodSettings && mTerrain)
         {

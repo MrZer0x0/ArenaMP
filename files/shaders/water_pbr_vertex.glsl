@@ -1,6 +1,6 @@
 #version 120
 
-// ArenaMW/OpenMW 0.47 vertex bridge for the OpenMW 0.51 PBR water shader.
+// ArenaMP/OpenMW 0.47 vertex bridge for the OpenMW 0.51 PBR water shader.
 varying vec4 position;
 varying float linearDepth;
 varying vec3 worldPos;

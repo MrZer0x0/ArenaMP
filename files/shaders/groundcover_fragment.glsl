@@ -48,6 +48,7 @@ centroid varying vec3 shadowDiffuseLighting;
 #include "helpsettings.glsl"
 #include "shadows_fragment.glsl"
 #include "lighting.glsl"
+#include "lighting_enhanced_pbr.glsl"
 #include "alpha.glsl"
 #include "atmosphere.glsl"
 
@@ -86,6 +87,12 @@ void main()
 #else
     vec3 diffuseLight, ambientLight;
     doLighting(passViewPos, normalize(viewNormal), shadowing, diffuseLight, ambientLight);
+#if @materialQuality > 0
+    vec3 ignoredGroundcoverSpecular = vec3(0.0);
+    arenaApplyEnhancedPbr(passViewPos, normalize(viewNormal), clamp(gl_FragData[0].xyz, 0.0, 1.0),
+        clamp(pbrTerrainRoughness, 0.08, 1.0), 0.0, 1.0, 0.80,
+        shadowing, diffuseLight, ambientLight, ignoredGroundcoverSpecular);
+#endif
     lighting = diffuseLight + ambientLight;
     clampLightingResult(lighting);
 #endif

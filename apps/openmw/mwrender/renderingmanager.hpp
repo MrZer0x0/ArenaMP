@@ -76,6 +76,7 @@ namespace MWRender
     class GroundcoverUpdater;
     class StateUpdater;
     class BloomProcessor;
+    class NativeEffectsProcessor;
 
     class EffectManager;
     class ScreenshotManager;
@@ -305,6 +306,7 @@ namespace MWRender
         std::unique_ptr<EffectManager> mEffectManager;
         std::unique_ptr<SceneUtil::ShadowManager> mShadowManager;
         std::unique_ptr<BloomProcessor> mBloomProcessor;
+        std::unique_ptr<NativeEffectsProcessor> mNativeEffectsProcessor;
         osg::ref_ptr<NpcAnimation> mPlayerAnimation;
         osg::ref_ptr<SceneUtil::PositionAttitudeTransform> mPlayerNode;
         std::unique_ptr<Camera> mCamera;

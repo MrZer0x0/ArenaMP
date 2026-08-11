@@ -287,13 +287,13 @@ protected:
             interiorUniform->set(mInterior ? *mInterior : false);
 
         if (osg::Uniform* waterWaveStrengthUniform = stateset->getUniform("waterWaveStrength"))
-            waterWaveStrengthUniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 2.5f));
+            waterWaveStrengthUniform->set(std::clamp(Settings::Manager::getFloat("wave strength", "Water"), 0.0f, 1.0f));
 
         if (osg::Uniform* waterSurfaceRoughnessUniform = stateset->getUniform("waterSurfaceRoughness"))
             waterSurfaceRoughnessUniform->set(std::clamp(Settings::Manager::getFloat("surface roughness", "Water"), 0.02f, 1.0f));
 
         if (osg::Uniform* waterTransparencyUniform = stateset->getUniform("waterTransparency"))
-            waterTransparencyUniform->set(std::clamp(Settings::Manager::getFloat("transparency", "Water"), 0.0f, 2.0f));
+            waterTransparencyUniform->set(std::clamp(Settings::Manager::getFloat("transparency", "Water"), 0.0f, 1.4f));
 
         if (osg::Uniform* waterFoamIntensityUniform = stateset->getUniform("waterFoamIntensity"))
             waterFoamIntensityUniform->set(std::clamp(Settings::Manager::getFloat("foam intensity", "Water"), 0.0f, 2.0f));
@@ -713,9 +713,9 @@ void Water::createSimpleWaterStateSet(osg::Node* node, float alpha)
 void Water::createShaderWaterStateSet(osg::Node* node, Reflection* reflection, Refraction* refraction)
 {
     // The Complete Water Shaders PBR package targets OpenMW 0.51's compatibility
-    // shader pipeline.  ArenaMW is based on 0.47, so compile the port through a
+    // shader pipeline.  ArenaMP is based on 0.47, so compile the port through a
     // small, water-only compatibility layer instead of replacing the complete
-    // renderer.  Refraction stays compiled in because ArenaMW intentionally keeps
+    // renderer.  Refraction stays compiled in because ArenaMP intentionally keeps
     // the refraction RTT alive to avoid the old runtime pipeline-rebuild freeze.
     Shader::ShaderManager::DefineMap defineMap;
     defineMap["waterRefraction"] = "1";
@@ -733,12 +733,12 @@ void Water::createShaderWaterStateSet(osg::Node* node, Reflection* reflection, R
     osg::ref_ptr<osg::Shader> fragmentShader(
         shaderMgr.getShader("water_pbr_fragment.glsl", defineMap, osg::Shader::FRAGMENT));
 
-    // Keep the previous ArenaMW water shader as a parse-time fallback.  This does
+    // Keep the previous ArenaMP water shader as a parse-time fallback.  This does
     // not mask GPU compile errors, but protects the build from a missing resource
     // or an unsupported template directive.
     if (!vertexShader || !fragmentShader)
     {
-        Log(Debug::Error) << "PBR water shader template failed to load, falling back to ArenaMW legacy water shader";
+        Log(Debug::Error) << "PBR water shader template failed to load, falling back to ArenaMP legacy water shader";
         Shader::ShaderManager::DefineMap legacyDefineMap;
         vertexShader = shaderMgr.getShader("water_vertex.glsl", legacyDefineMap, osg::Shader::VERTEX);
         fragmentShader = shaderMgr.getShader("water_fragment.glsl", legacyDefineMap, osg::Shader::FRAGMENT);
