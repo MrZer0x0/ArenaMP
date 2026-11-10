@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<MyGUI type="Layout">
+    <Widget type="Window" skin="MW_Window_NoCaption" layer="Windows" align="Center" position="0 0 730 520" name="_Main">
+       <Property key="MinSize" value="730 520"/>
+
+        <!-- Name -->
+
+        <Widget type="TextBox" skin="SandText" position="10 8 55 28">
+            <Property key="Caption" value="#{sName}"/>
+            <Property key="TextAlign" value="Left"/>
+        </Widget>
+
+        <Widget type="EditBox" skin="MW_TextEdit" position="70 8 400 28" align="Top Left HStretch" name="NameEdit">
+        </Widget>
+
+        <Widget type="Button" skin="MW_Button" position="480 8 78 28" name="PotionMode">
+            <Property key="Caption" value="#{arenamp=alchemy.mode_potion}"/>
+        </Widget>
+        <Widget type="Button" skin="MW_Button" position="566 8 64 28" name="PoisonMode">
+            <Property key="Caption" value="#{arenamp=alchemy.mode_poison}"/>
+        </Widget>
+
+
+        <!-- Apparatus -->
+
+        <Widget type="TextBox" skin="SandText" position="10 42 250 24">
+            <Property key="Caption" value="#{sApparatus}"/>
+            <Property key="TextAlign" value="Left"/>
+        </Widget>
+
+        <Widget type="Widget" skin="" position="10 66 250 50">
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="0 0 50 50" name="Apparatus1"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="60 0 50 50" name="Apparatus2"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="120 0 50 50" name="Apparatus3"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="180 0 50 50" name="Apparatus4"/>
+
+        </Widget>
+
+
+        <!-- Used Ingredients -->
+
+        <Widget type="TextBox" skin="SandText" position="10 120 250 24">
+            <Property key="Caption" value="#{sIngredients}"/>
+            <Property key="TextAlign" value="Left"/>
+        </Widget>
+
+        <Widget type="Widget" skin="" position="10 146 250 50">
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="0 0 50 50" name="Ingredient1"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="60 0 50 50" name="Ingredient2"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="120 0 50 50" name="Ingredient3"/>
+
+            <Widget type="ItemWidget" skin="MW_ItemIconBox" position="180 0 50 50" name="Ingredient4"/>
+
+        </Widget>
+
+
+        <!-- Available Ingredients -->
+
+        <Widget type="ItemView" skin="MW_ItemView" position="10 206 690 160" name="ItemView" align="Left Top Stretch"/>
+
+        <!-- Created Effects -->
+
+        <Widget type="TextBox" skin="SandText" position="280 42 420 24">
+            <Property key="Caption" value="#{sCreatedEffects}"/>
+            <Property key="TextAlign" value="Left"/>
+        </Widget>
+
+        <Widget type="Widget" skin="MW_Box" position="280 66 420 130" align="Top Left HStretch">
+            <Widget type="Widget" skin="" position="4 4 412 122" name="CreatedEffects" align="HStretch"/>
+        </Widget>
+
+        <!-- Filters -->
+
+        <Widget type="HBox" skin="MW_Box" position="10 375 690 39" align="Bottom HStretch">
+            <Property key="Padding" value="5"/>
+            <Property key="Spacing" value="10"/>
+
+            <Widget type="AutoSizedButton" skin="MW_Button" position="10 2 1 1" name="FilterType">
+                <Property key="Caption" value="#{sIngredients}"/> <!-- default value, can be either sIngredients of sMagicEffects -->
+            </Widget>
+            <Widget type="ComboBox" skin="MW_ComboBox" position="0 2 0 24" name="FilterValue">
+                <UserString key="HStretch" value="true"/>
+                <Property key="ModeDrop" value="false"/>
+            </Widget>
+        </Widget>
+
+
+        <!-- Buttons -->
+
+        <Widget type="HBox" skin="" position="10 420 690 28" align="Bottom HStretch">
+            <Widget type="AutoSizedButton" skin="MW_Button" name="DecreaseButton">
+                <Property key="Caption" value=" - "/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+
+            <Widget type="NumericEditBox" skin="MW_TextEdit" position="0 0 96 25" name="BrewCount">
+                <Property key="TextAlign" value="Center"/>
+            </Widget>
+
+            <Widget type="AutoSizedButton" skin="MW_Button" name="IncreaseButton">
+                <Property key="Caption" value=" + "/>
+                <Property key="NeedKey" value="false"/>
+            </Widget>
+
+            <Widget type="Spacer"/>
+
+            <Widget type="AutoSizedButton" skin="MW_Button" name="CreateButton">
+                <Property key="Caption" value="#{sCreate}"/>
+            </Widget>
+
+            <Widget type="AutoSizedButton" skin="MW_Button" name="CancelButton">
+                <Property key="Caption" value="#{sCancel}"/>
+            </Widget>
+
+        </Widget>
+
+        <Widget type="TextBox" skin="SandText" position="10 458 500 24" name="LastBrew" align="Bottom HStretch">
+            <Property key="Caption" value="#{arenamp=alchemy.last_brew}: -"/>
+            <Property key="TextAlign" value="Left VCenter"/>
+        </Widget>
+        <Widget type="Button" skin="MW_Button" position="560 456 140 28" name="RepeatLast" align="Bottom Right">
+            <Property key="Caption" value="#{arenamp=alchemy.repeat_last}"/>
+        </Widget>
+
+    </Widget>
+</MyGUI>

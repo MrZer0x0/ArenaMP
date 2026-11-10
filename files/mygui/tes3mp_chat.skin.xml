@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+    <!-- X050d: passive HUD chat uses the original wide Russo font.
+         C++ switches history/input to DejaVu LGC only while Player Menu is active. -->
+    <Resource type="ResourceSkin" name="TES3MP_EditClient" size="10 10">
+        <Property key="FontName" value="Russo"/>
+        <Property key="TextAlign" value="Left Top"/>
+        <Property key="TextColour" value="1 1 1"/>
+        <BasisSkin type="EditText" offset="0 0 10 10" align="Stretch"/>
+    </Resource>
+
+    <Resource type="ResourceSkin" name="TES3MP_ChatHistory" size="512 20">
+        <Property key="FontName" value="Russo"/>
+        <Property key="TextAlign" value="Left Top"/>
+        <Property key="TextColour" value="1 1 1"/>
+        <Property key="WordWrap" value="true"/>
+        <Property key="MultiLine" value="true"/>
+        <Property key="MaxTextLength" value="10000000"/>
+        <Property key="InvertSelected" value="false"/>
+        <Child type="TextBox" skin="TES3MP_EditClient" offset="0 0 492 20" align="Stretch" name="Client"/>
+        <Child type="ScrollBar" skin="MW_VScroll" offset="494 3 14 14" align="Right VStretch" name="VScroll"/>
+    </Resource>
+
+    <Resource type="ResourceSkin" name="TES3MP_ChatMsg" size="512 28">
+        <Property key="TextAlign" value="Left Top"/>
+        <Property key="WordWrap" value="true"/>
+        <Property key="MultiLine" value="true"/>
+        <Child type="TextBox" skin="TES3MP_EditClient" offset="4 2 484 24" align="Stretch" name="Client"/>
+        <Child type="ScrollBar" skin="MW_VScroll" offset="494 3 14 22" align="Right VStretch" name="VScroll"/>
+    </Resource>
+</MyGUI>

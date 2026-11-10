@@ -1,0 +1,5 @@
+upstream=rubic0n-2.1-agentzh
+source=user-supplied-archive
+base=openresty/luajit2
+license=MIT see COPYRIGHT
+provenance=source zip rubic0n-2.1-agentzh(1).zip

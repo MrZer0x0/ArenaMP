@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_example_missing_ring",
+  "version": 1,
+  "name": "Пропавшее кольцо (пример)",
+  "author": "ArenaMP X035",
+  "status": "draft",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "caius cosades",
+    "cell": "Balmora, Caius Cosades' House"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_missing_ring",
+      "text": "пропавшее кольцо",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Кай Косадес попросил меня найти пропавшее кольцо.",
+      "dialogue": "Мне нужна помощь. Я потерял одно кольцо. Если найдёшь его, я заплачу.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false
+    },
+    {
+      "index": 20,
+      "journal": "Я нашёл кольцо и вернул его владельцу.",
+      "dialogue": "Да, это оно. Спасибо. Вот твоя награда.",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 250
+        },
+        {
+          "type": "xp",
+          "amount": 125
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false
+    }
+  ],
+  "audit": [],
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The Missing Ring (example)",
+      "topics": {
+        "arena_missing_ring": "missing ring"
+      },
+      "stages": {
+        "10": {
+          "journal": "Caius Cosades asked me to find a missing ring.",
+          "dialogue": "I need a hand. I lost a ring. Find it for me and I'll pay."
+        },
+        "20": {
+          "journal": "I found the ring and returned it to its owner.",
+          "dialogue": "Yes, that's the one. Thank you. Here's your reward."
+        }
+      }
+    }
+  }
+}

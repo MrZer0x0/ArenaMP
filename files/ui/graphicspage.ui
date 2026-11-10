@@ -1,0 +1,1653 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>GraphicsPage</class>
+ <widget class="QWidget" name="GraphicsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>650</width>
+    <height>340</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <item alignment="Qt::AlignTop">
+    <widget class="QTabWidget" name="DisplayTabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="QualityWrapper">
+      <attribute name="title">
+       <string>Quality</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="qualityPageLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <property name="leftMargin">
+        <number>8</number>
+       </property>
+       <property name="topMargin">
+        <number>8</number>
+       </property>
+       <property name="rightMargin">
+        <number>8</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="qualityTopLayout" stretch="3,2">
+         <property name="spacing">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QFrame" name="qualityQuickCard">
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
+           </property>
+           <property name="arenaCard" stdset="0">
+            <bool>true</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>3</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <layout class="QVBoxLayout" name="qualityQuickLayout">
+            <property name="spacing">
+             <number>7</number>
+            </property>
+            <property name="leftMargin">
+             <number>12</number>
+            </property>
+            <property name="topMargin">
+             <number>10</number>
+            </property>
+            <property name="rightMargin">
+             <number>12</number>
+            </property>
+            <property name="bottomMargin">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="qualityQuickTitle">
+              <property name="text">
+               <string>Graphics quick setup</string>
+              </property>
+              <property name="arenaTitle" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="qualityQuickSubtitle">
+              <property name="text">
+               <string>Start with one preset, then adjust only the visual details you really want to change.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="arenaMuted" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QWidget" name="qualityPresetLogicHost">
+              <property name="visible">
+               <bool>false</bool>
+              </property>
+              <layout class="QHBoxLayout" name="qualityPresetLogicLayout">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QComboBox" name="qualityPresetComboBox">
+                 <item>
+                  <property name="text">
+                   <string>Auto (recommended)</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Minimum</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Low</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Balanced</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Medium</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>High</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Ultra</string>
+                  </property>
+                 </item>
+                 <property name="visible">
+                  <bool>false</bool>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>1</width>
+                   <height>1</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QWidget" name="qualityPresetButtonsHost">
+              <layout class="QGridLayout" name="qualityPresetButtonsLayout">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>2</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>3</number>
+               </property>
+               <item row="0" column="0">
+                <widget class="QPushButton" name="presetAutoButton">
+                 <property name="text">
+                  <string>Auto</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QPushButton" name="presetMinimumButton">
+                 <property name="text">
+                  <string>Minimum</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QPushButton" name="presetLowButton">
+                 <property name="text">
+                  <string>Low</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="3">
+                <widget class="QPushButton" name="presetBalancedButton">
+                 <property name="text">
+                  <string>Balance</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="presetMediumButton">
+                 <property name="text">
+                  <string>Medium</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QPushButton" name="presetHighButton">
+                 <property name="text">
+                  <string>High</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="2">
+                <widget class="QPushButton" name="presetUltraButton">
+                 <property name="text">
+                  <string>Ultra</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="autoExclusive">
+                  <bool>true</bool>
+                 </property>
+                 <property name="arenaPresetButton" stdset="0">
+                  <bool>true</bool>
+                 </property>
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>1</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="qualityFineTuneLayout" columnstretch="0,1">
+              <property name="horizontalSpacing">
+               <number>9</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>5</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="terrainDetailLabel">
+                <property name="text">
+                 <string>Terrain detail:</string>
+                </property>
+                <property name="arenaSettingLabel" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="terrainDetailComboBox">
+                <property name="toolTip">
+                 <string>Maximum PBR is available only with High or Ultra terrain detail.</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>Minimum</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Low</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Balanced</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Medium</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>High</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Ultra</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="pbrQualityLabel">
+                <property name="text">
+                 <string>Material / PBR quality:</string>
+                </property>
+                <property name="arenaSettingLabel" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="pbrQualityComboBox">
+                <property name="toolTip">
+                 <string>Maximum PBR automatically selects High terrain detail. Lower terrain settings automatically use Quality PBR.</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>Disabled</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Simple</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Balanced</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Quality</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Maximum</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="waterModeLabel">
+                <property name="text">
+                 <string>Water rendering:</string>
+                </property>
+                <property name="arenaSettingLabel" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QComboBox" name="waterModeComboBox">
+                <property name="toolTip">
+                 <string>Simple uses the lightweight legacy shader water. PBR / New uses the current physically-based water path.</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>Simple (faster)</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>PBR / New</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="autoSelectQualityCheckBox">
+              <property name="text">
+               <string>Use hardware recommendation in Auto mode</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="vendorOptimizationsCheckBox">
+              <property name="text">
+               <string>Apply safe GPU/driver optimizations</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="qualityActionLayout">
+              <property name="spacing">
+               <number>7</number>
+              </property>
+              <item>
+               <spacer name="qualityActionSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="detectHardwareButton">
+                <property name="text">
+                 <string>Detect hardware again</string>
+                </property>
+                <property name="arenaQuiet" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="applyQualityButton">
+                <property name="text">
+                 <string>Apply preset</string>
+                </property>
+                <property name="arenaPrimary" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="qualityHardwareCard">
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
+           </property>
+           <property name="arenaCard" stdset="0">
+            <bool>true</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>2</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <layout class="QVBoxLayout" name="qualityHardwareCardLayout">
+            <property name="spacing">
+             <number>7</number>
+            </property>
+            <property name="leftMargin">
+             <number>12</number>
+            </property>
+            <property name="topMargin">
+             <number>10</number>
+            </property>
+            <property name="rightMargin">
+             <number>12</number>
+            </property>
+            <property name="bottomMargin">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="qualityHardwareTitle">
+              <property name="text">
+               <string>Your hardware</string>
+              </property>
+              <property name="arenaTitle" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="qualityHardwareSubtitle">
+              <property name="text">
+               <string>Hardware summary and the recommended profile.</string>
+              </property>
+              <property name="arenaMuted" stdset="0">
+               <bool>true</bool>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="detectedHardwareLayout" columnstretch="0,1">
+              <property name="horizontalSpacing">
+               <number>8</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>5</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="qualityGpuTitleLabel">
+                <property name="text">
+                 <string>Graphics adapter:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLabel" name="qualityGpuLabel">
+                <property name="text">
+                 <string>Not detected</string>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::TextSelectableByMouse</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="qualityCpuTitleLabel">
+                <property name="text">
+                 <string>Processor:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="qualityCpuLabel">
+                <property name="text">
+                 <string>Not detected</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="qualityRecommendationTitleLabel">
+                <property name="text">
+                 <string>Recommendation:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="qualityRecommendationLabel">
+                <property name="text">
+                 <string>Balanced</string>
+                </property>
+                <property name="arenaAccent" stdset="0">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QFrame" name="qualityHardwareDivider">
+              <property name="frameShape">
+               <enum>QFrame::HLine</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Plain</enum>
+              </property>
+              <property name="arenaDivider" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="qualityDescriptionLabel">
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="text">
+               <string>Select a preset to configure rendering distance, terrain detail, lighting, water, shadows, grass, paging and worker threads together. Display resolution and window mode are preserved.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="arenaMuted" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="hardwareBottomSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>1</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="qualityStreamingCard">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="arenaCard" stdset="0">
+          <bool>true</bool>
+         </property>
+         <layout class="QVBoxLayout" name="qualityStreamingCardLayout">
+          <property name="spacing">
+           <number>5</number>
+          </property>
+          <property name="leftMargin">
+           <number>12</number>
+          </property>
+          <property name="topMargin">
+           <number>8</number>
+          </property>
+          <property name="rightMargin">
+           <number>12</number>
+          </property>
+          <property name="bottomMargin">
+           <number>8</number>
+          </property>
+          <item>
+           <layout class="QHBoxLayout" name="qualityStreamingHeaderLayout">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="qualityStreamingTitle">
+              <property name="text">
+               <string>Streaming and visibility</string>
+              </property>
+              <property name="arenaTitle" stdset="0">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="streamTitleSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QLabel" name="occlusionTerrainBudgetLabel">
+              <property name="text">
+               <string>Terrain occluder build budget:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="occlusionTerrainBudgetSpinBox">
+              <property name="minimum">
+               <number>0</number>
+              </property>
+              <property name="maximum">
+               <number>128</number>
+              </property>
+              <property name="singleStep">
+               <number>4</number>
+              </property>
+              <property name="suffix">
+               <string> cell(s)</string>
+              </property>
+              <property name="toolTip">
+               <string>Maximum newly decoded LAND cells per terrain-occluder rebuild. 0 builds the whole region at once; lower values reduce cell-transition spikes.</string>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>125</width>
+                <height>28</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="occlusionTerrainFrustumCullCheckBox">
+            <property name="text">
+             <string>Cull terrain occluders outside the camera view</string>
+            </property>
+            <property name="toolTip">
+             <string>Skip cached terrain occluder cells outside the camera side planes before software rasterization. Recommended on all presets.</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="occlusionTerrainBudgetHintLabel">
+            <property name="text">
+             <string>Recommended: 12–16 on weak CPUs, 24 balanced, 32–40 on fast desktop CPUs.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="arenaMuted" stdset="0">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="DisplayWrapper">
+      <attribute name="title">
+       <string>Display</string>
+      </attribute>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QWidget" name="DisplayWidget">
+         <layout class="QGridLayout" name="gridLayout_4" columnstretch="1,0">
+          <item row="3" column="0">
+           <widget class="QLabel" name="antiAliasingLabel">
+            <property name="text">
+             <string>Anti-aliasing:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QCheckBox" name="framerateLimitCheckBox">
+            <property name="text">
+             <string>Framerate Limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <layout class="QGridLayout" name="resolutionLayout">
+            <item row="1" column="2">
+             <layout class="QHBoxLayout" name="customResolutionLayout" stretch="1,0,1">
+              <item>
+               <widget class="QSpinBox" name="customWidthSpinBox">
+                <property name="minimum">
+                 <number>800</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="multiplyLabel">
+                <property name="text">
+                 <string> x </string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="customHeightSpinBox">
+                <property name="minimum">
+                 <number>600</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="1" column="1">
+             <widget class="QRadioButton" name="customRadioButton">
+              <property name="text">
+               <string>Custom:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QRadioButton" name="standardRadioButton">
+              <property name="text">
+               <string>Standard:</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QComboBox" name="resolutionComboBox" />
+            </item>
+           </layout>
+          </item>
+          <item row="6" column="1">
+           <widget class="QDoubleSpinBox" name="framerateLimitSpinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="suffix">
+             <string> FPS</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="minimum">
+             <double>1</double>
+            </property>
+            <property name="maximum">
+             <double>1000</double>
+            </property>
+            <property name="singleStep">
+             <double>15</double>
+            </property>
+            <property name="value">
+             <double>300</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="windowBorderCheckBox">
+            <property name="text">
+             <string>Window Border</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="fullScreenCheckBox">
+            <property name="text">
+             <string>Full Screen</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="resolutionLabel">
+            <property name="text">
+             <string>Resolution:</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QComboBox" name="screenComboBox" />
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="screenLabel">
+            <property name="text">
+             <string>Screen:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="antiAliasingComboBox">
+            <item>
+             <property name="text">
+              <string>0</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>4</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>8</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>16</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="vSyncCheckBox">
+            <property name="text">
+             <string>Vertical Sync</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="WaterWrapper">
+      <attribute name="title">
+       <string>Water</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="waterPageLayout">
+       <item>
+        <layout class="QHBoxLayout" name="waterColumnsLayout">
+         <item>
+          <widget class="QGroupBox" name="waterRendererGroupBox">
+           <property name="title">
+            <string>Renderer &amp; textures</string>
+           </property>
+           <layout class="QGridLayout" name="waterRendererLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="waterModeAdvancedLabel">
+              <property name="text">
+               <string>Rendering:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="waterModeAdvancedComboBox">
+              <item>
+               <property name="text">
+                <string>Simple shader (faster)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>PBR / New</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="waterTextureSizeLabel">
+              <property name="text">
+               <string>Texture quality:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="waterTextureSizeComboBox">
+              <item>
+               <property name="text">
+                <string>Low (256)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Medium (512)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>High (1024)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Ultra (2048)</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QCheckBox" name="waterRefractionCheckBox">
+              <property name="text">
+               <string>Enable refraction</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="waterReflectionDetailLabel">
+              <property name="text">
+               <string>Reflection detail:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="waterReflectionDetailComboBox">
+              <item>
+               <property name="text">
+                <string>Level 0</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Level 1</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Level 2</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Level 3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Level 4</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Level 5</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="waterRefractionScaleLabel">
+              <property name="text">
+               <string>Refraction resolution:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QComboBox" name="waterRefractionScaleComboBox">
+              <item>
+               <property name="text">
+                <string>Quarter (4x downscale)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Third (3x downscale)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Half (2x downscale)</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Full (1x)</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="waterSmallFeatureLabel">
+              <property name="text">
+               <string>RTT small feature culling:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QDoubleSpinBox" name="waterSmallFeatureSpinBox">
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <double>64.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="suffix">
+               <string> px</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="waterSurfaceGroupBox">
+           <property name="title">
+            <string>Surface / PBR</string>
+           </property>
+           <layout class="QGridLayout" name="waterSurfaceLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="waterCausticsLabel">
+              <property name="text">
+               <string>Caustics:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="waterCausticsSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>3.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="waterTintLabel">
+              <property name="text">
+               <string>Underwater tint:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="waterTintSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>2.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="waterWaveLabel">
+              <property name="text">
+               <string>Wave strength:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QDoubleSpinBox" name="waterWaveSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.050000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="waterRoughnessLabel">
+              <property name="text">
+               <string>Surface roughness:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QDoubleSpinBox" name="waterRoughnessSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>0.020000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.020000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="waterTransparencyLabel">
+              <property name="text">
+               <string>Transparency:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QDoubleSpinBox" name="waterTransparencySpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>1.400000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.050000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="waterFoamLabel">
+              <property name="text">
+               <string>Foam:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QDoubleSpinBox" name="waterFoamSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>2.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="waterHighlightLabel">
+              <property name="text">
+               <string>Sun highlights:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QDoubleSpinBox" name="waterHighlightSpinBox">
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <double>2.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="waterRipplesGroupBox">
+           <property name="title">
+            <string>Ripples &amp; performance</string>
+           </property>
+           <layout class="QGridLayout" name="waterRipplesLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="waterRippleDetailLabel">
+              <property name="text">
+               <string>Rain ripple detail:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="waterRippleDetailComboBox">
+              <item>
+               <property name="text">
+                <string>Low</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Normal</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>High</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="1" column="0" colspan="2">
+             <widget class="QCheckBox" name="waterShaderRipplesCheckBox">
+              <property name="text">
+               <string>Actor/object shader ripples</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QCheckBox" name="waterIdleRipplesCheckBox">
+              <property name="text">
+               <string>Idle actor ripples</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="waterMaxRipplesLabel">
+              <property name="text">
+               <string>Maximum ripple sources:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QSpinBox" name="waterMaxRipplesSpinBox">
+              <property name="maximum">
+               <number>16</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="LightingWrapper">
+      <attribute name="title">
+       <string>Lighting</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="lightingLayout">
+       <item>
+        <layout class="QHBoxLayout" name="lightingMethodLayout">
+         <item>
+          <widget class="QLabel" name="lightingMethodLabel">
+           <property name="text">
+            <string>Lighting Method:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="lightingMethodComboBox">
+           <item>
+            <property name="text">
+             <string>legacy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>shaders compatibility</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="ShadowWrapper">
+      <attribute name="title">
+       <string>Shadows</string>
+      </attribute>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QWidget" name="ShadowWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>1</horstretch>
+           <verstretch>1</verstretch>
+          </sizepolicy>
+         </property>
+         <layout class="QGridLayout" name="shadowsLayout" columnstretch="0,0">
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="playerShadowsCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable shadows exclusively for the player character. May have a very minor performance impact.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Player Shadows</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="actorShadowsCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable shadows for NPCs and creatures besides the player character. May have a minor performance impact.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Actor Shadows</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="objectShadowsCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable shadows for primarily inanimate objects. May have a significant performance impact.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Object Shadows</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QCheckBox" name="terrainShadowsCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable shadows for the terrain including distant terrain. May have a significant performance and shadow quality impact.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Terrain Shadows</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QCheckBox" name="indoorShadowsCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Due to limitations with Morrowind's data, only actors can cast shadows indoors, which some might feel is distracting.&lt;/p&gt;&lt;p&gt;Has no effect if actor/player shadows are not enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Indoor Shadows</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="shadowComputeSceneBoundsLabel">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type of "compute scene bounds" computation method to be used. Bounds (default) for good balance between performance and shadow quality, primitives for better looking shadows or none for no computation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Shadow Near Far Computation Method:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">compute scene bounds
+           <widget class="QComboBox" name="shadowComputeSceneBoundsComboBox">
+            <item>
+             <property name="text">
+              <string>bounds</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>primitives</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>none</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="shadowResolutionLabel">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The resolution of each individual shadow map. Increasing it significantly improves shadow quality but may have a minor performance impact.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Shadow Map Resolution:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QComboBox" name="shadowResolutionComboBox">
+            <item>
+             <property name="text">
+              <string>256</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>512</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1024</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>2048</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>4096</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>8192</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QCheckBox" name="shadowDistanceCheckBox">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The distance from the camera at which shadows completely disappear.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Shadow Distance Limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QSpinBox" name="shadowDistanceSpinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;64 game units is 1 real life yard or about 0.9 m&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="suffix">
+             <string> unit(s)</string>
+            </property>
+            <property name="minimum">
+             <number>512</number>
+            </property>
+            <property name="maximum">
+             <number>16384</number>
+            </property>
+            <property name="value">
+             <number>8192</number>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="fadeStartLabel">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The fraction of the limit above at which shadows begin to gradually fade away.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Fade Start Multiplier:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="1">
+           <widget class="QDoubleSpinBox" name="fadeStartSpinBox">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0</double>
+            </property>
+            <property name="maximum">
+             <double>1</double>
+            </property>
+            <property name="value">
+             <double>0.90</double>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0" colspan="2">
+           <widget class="QCheckBox" name="linkShadowDistanceCheckBox">
+            <property name="text">
+             <string>Link shadow distance to viewing distance (max 16384)</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="toolTip">
+             <string>When enabled, the launcher keeps shadow distance equal to the current viewing distance, clamped to 16384 game units.</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources />
+ <connections />
+</ui>

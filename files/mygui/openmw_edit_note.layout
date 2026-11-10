@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Window" skin="MW_DialogNoTransp" layer="Windows" position="0 0 360 312" align="Center" name="_Main">
+        <Widget type="AutoSizedTextBox" skin="SandText" position="13 13 220 16">
+            <Property key="Caption" value="#{sEditNote}"/>
+        </Widget>
+
+        <Widget type="AutoSizedTextBox" skin="SandText" position="13 43 45 20">
+            <Property key="Caption" value="#{arenamp=map.marker.type}"/>
+        </Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="62 38 72 26" name="MarkerType"/>
+
+        <Widget type="AutoSizedTextBox" skin="SandText" position="145 43 55 20">
+            <Property key="Caption" value="#{arenamp=map.marker.color}"/>
+        </Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="202 38 140 26" name="MarkerColor"/>
+
+        <Widget type="Button" skin="MW_Button" position="13 72 329 26" name="GroupShareButton"/>
+
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="13 108 329 142" name="TextEdit" align="Left Top Stretch">
+            <Property key="MultiLine" value="true"/>
+            <Property key="VisibleVScroll" value="true"/>
+            <Property key="WordWrap" value="true"/>
+            <Property key="TextAlign" value="Left Top"/>
+        </Widget>
+
+        <Widget type="HBox" position="13 268 329 24">
+            <Property key="Spacing" value="6"/>
+            <Widget type="Spacer"/>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="DeleteButton"><Property key="Caption" value="#{sDelete}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="OkButton"><Property key="Caption" value="#{sOk}"/></Widget>
+            <Widget type="AutoSizedButton" skin="MW_Button" name="CancelButton"><Property key="Caption" value="#{sCancel}"/></Widget>
+        </Widget>
+    </Widget>
+</MyGUI>

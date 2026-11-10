@@ -1,0 +1,21 @@
+# Authors:
+
+For assets and code made specifically for this mod. For other authors' assets see credits section in README.md
+
+## Code
+- Arrean
+
+## Balance and formula design
+- Arrean
+- Cybvep
+
+## Animations
+
+- Arrean - Most parry/block animations, animation cleanup, animation speed and timings.
+- SaintJ - h2h block 3rd person animation
+- DubiousNPC - 8 of 11 miss-dodge animations. Goblin Shield Block animation, Almalexia Parry Animation
+
+### Localisation:
+- Ukrainian - Arrean
+- French - Billie
+- German - Semaro, Yenster

@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_caius_drink",
+  "version": 3,
+  "name": "Выпивка для Кая",
+  "author": "ArenaMP X037 built-in example",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "caius cosades",
+    "cell": "Balmora, Caius Cosades' House"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_caius_drink_topic",
+      "text": "немного выпивки",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Кай Косадес попросил меня принести ему бутылку мацта. Купить её можно почти в любой таверне Балморы.",
+      "dialogue": "Ну что, с выпивкой получилось? Мне нужна всего одна бутылка мацта.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "hand_over",
+          "text": "Вот бутылка мацта.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "not_yet",
+          "text": "Пока нет. Я ещё поищу.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я принёс Каю Косадесу бутылку мацта. Он забрал её и расплатился со мной.",
+      "dialogue": "Вот это другое дело. Оставляй бутылку здесь. За услугу — немного золота. И считай, что я запомнил твою расторопность.",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "potion_local_brew_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "potion_local_brew_01",
+          "count": 1
+        },
+        {
+          "type": "gold",
+          "amount": 75
+        },
+        {
+          "type": "xp",
+          "amount": 40
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP X036",
+      "action": "built-in example"
+    },
+    {
+      "time": 0,
+      "by": "ArenaMP X037",
+      "action": "added server-authoritative offer and choices"
+    },
+    {
+      "time": 0,
+      "by": "ArenaMP X048",
+      "action": "hand_over is always offered; the item check lives on stage 20 only, so a missing bottle is reported instead of hiding the answer"
+    }
+  ],
+  "offer": {
+    "dialogue": "Слушай, прежде чем вернёмся к делам, не принесёшь мне бутылку мацта? Ничего редкого, обычную бутылку.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Хорошо, принесу тебе мацт.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "A Drink for Caius",
+      "topics": {
+        "arena_caius_drink_topic": "a little drink"
+      },
+      "offer": {
+        "dialogue": "Listen, before we get back to business - fetch me a bottle of mazte, would you? Nothing rare, just an ordinary bottle.",
+        "choices": {
+          "accept": "All right, I'll bring you the mazte.",
+          "decline": "Not right now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Caius Cosades asked me to bring him a bottle of mazte. Almost any tavern in Balmora sells it.",
+          "dialogue": "So, any luck with that drink? All I need is one bottle of mazte.",
+          "choices": {
+            "hand_over": "Here's the bottle of mazte.",
+            "not_yet": "Not yet. I'm still looking."
+          }
+        },
+        "20": {
+          "journal": "I brought Caius Cosades a bottle of mazte. He took it and paid me for the trouble.",
+          "dialogue": "Now that's more like it. Leave the bottle here. A bit of gold for your trouble - and I'll remember you were quick about it."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_eydis_fireeye_dues",
+  "version": 1,
+  "name": "Взнос Гильдии бойцов",
+  "author": "ArenaMP X048",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "eydis fire-eye",
+    "cell": "Balmora, Guild of Fighters"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_eydis_dues_topic",
+      "text": "взнос гильдии",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Эйдис Огненный Глаз просит внести в кассу Гильдии бойцов 25 золотых.",
+      "dialogue": "Двадцать пять септимов в кассу — и можешь пользоваться койкой и тренировочным залом.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "pay",
+          "text": "Вот двадцать пять септимов.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Зайду позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я внёс взнос в кассу Гильдии бойцов Балморы.",
+      "dialogue": "Записано. Теперь ты не просто прохожий.",
+      "requirements": [
+        {
+          "type": "gold",
+          "operator": ">=",
+          "value": 25
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "gold_001",
+          "count": 25
+        },
+        {
+          "type": "xp",
+          "amount": 30
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP X048",
+      "action": "simple gold-sink quest, exercises the gold requirement and the deferred inventory retry"
+    }
+  ],
+  "offer": {
+    "dialogue": "Новичок? Тогда сперва — взнос.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Что нужно сделать?",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не интересует.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Fighters Guild Dues",
+      "topics": {
+        "arena_eydis_dues_topic": "guild dues"
+      },
+      "offer": {
+        "dialogue": "New here? Then the dues come first.",
+        "choices": {
+          "accept": "What do I need to do?",
+          "decline": "Not interested."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Eydis Fire-Eye wants me to pay 25 gold into the Fighters Guild coffers.",
+          "dialogue": "Twenty-five septims into the coffers, and the bed and the training room are yours to use.",
+          "choices": {
+            "pay": "Here are twenty-five septims.",
+            "later": "I'll come back later."
+          }
+        },
+        "20": {
+          "journal": "I paid my dues to the Balmora Fighters Guild.",
+          "dialogue": "Noted. You're more than a passer-by now."
+        }
+      }
+    }
+  }
+}

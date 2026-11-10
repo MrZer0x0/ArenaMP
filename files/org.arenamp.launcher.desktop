@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ArenaMP Launcher
+GenericName=Role Playing Game
+Comment=ArenaMP client launcher
+Keywords=Morrowind;Reimplementation Mods;esm;bsa;
+TryExec=arenamp-launcher
+Exec=arenamp-launcher
+Icon=openmw
+Categories=Game;RolePlaying;

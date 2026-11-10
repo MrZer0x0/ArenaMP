@@ -1,0 +1,5 @@
+blending_rules:
+  - from: "*:*follow start"
+    to: "*idle*:*"
+    easing: "sineInOut"
+    duration: 0.6

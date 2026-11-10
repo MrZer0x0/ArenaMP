@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_my_quest_001",
+  "version": 1,
+  "name": "Название квеста",
+  "author": "ModeratorName",
+  "status": "draft",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "npc_ref_id",
+    "cell": ""
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_my_topic",
+      "text": "новая тема разговора",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Первая запись серверного журнала.",
+      "dialogue": "Первая серверная реплика NPC.",
+      "requirements": [
+        {
+          "type": "level",
+          "operator": ">=",
+          "value": 1
+        }
+      ],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "finish",
+          "text": "Я выполнил задание.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я ещё не закончил.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Квест завершён.",
+      "dialogue": "Спасибо за помощь.",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 100
+        },
+        {
+          "type": "xp",
+          "amount": 125
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [],
+  "offer": {
+    "dialogue": "NPC предлагает игроку новый квест.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Quest name",
+      "topics": {
+        "arena_my_topic": "a new conversation topic"
+      },
+      "stages": {
+        "10": {
+          "journal": "First server journal entry.",
+          "dialogue": "First server NPC line.",
+          "choices": {
+            "finish": "I have done what you asked.",
+            "later": "I am not finished yet."
+          }
+        },
+        "20": {
+          "journal": "Quest complete.",
+          "dialogue": "Thank you for your help."
+        }
+      }
+    }
+  }
+}

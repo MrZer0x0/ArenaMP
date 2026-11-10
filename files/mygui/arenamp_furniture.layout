@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+  <!-- Transparent host: when embedded, the Player Menu DecorPane supplies the frame. -->
+  <Widget type="Widget" skin="" layer="Windows" position="0 0 700 416" name="_Main">
+    <Widget type="TextBox" skin="SandBrightText" position="8 2 574 24" name="FurnitureTitle"/>
+    <Widget type="Button" skin="MW_Button" position="590 0 102 26" name="CloseButton"><Property key="Caption" value="Close"/></Widget>
+
+    <Widget type="Button" skin="MW_Button" position="8 30 220 28" name="ShopTab"><Property key="Caption" value="Shop"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="234 30 220 28" name="InventoryTab"><Property key="Caption" value="Inventory"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="460 30 232 28" name="PlacedTab"><Property key="Caption" value="Placed"/></Widget>
+
+    <Widget type="TextBox" skin="SandText" position="8 64 122 18" name="CategoryLabel"><Property key="Caption" value="Categories"/></Widget>
+    <Widget type="ListBox" skin="MW_List" position="8 84 122 254" name="CategoryList"/>
+    <Widget type="Button" skin="MW_Button" position="8 344 122 27" name="StyleButton"><Property key="Caption" value="All"/></Widget>
+
+    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="138 64 286 27" name="SearchEdit"/>
+    <Widget type="ListBox" skin="MW_List" position="138 97 286 241" name="ItemList"/>
+    <Widget type="Button" skin="MW_Button" position="138 344 78 27" name="PreviousButton"><Property key="Caption" value="Previous"/></Widget>
+    <Widget type="TextBox" skin="SandText" position="220 348 118 20" name="PageText"><Property key="TextAlign" value="Center"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="342 344 82 27" name="NextButton"><Property key="Caption" value="Next"/></Widget>
+    <Widget type="TextBox" skin="SandText" position="138 377 286 30" name="NoticeText"/>
+
+    <Widget type="Widget" skin="MW_Box" position="440 64 252 240" name="PreviewBox">
+      <Widget type="ImageBox" skin="ImageBox" position="20 8 212 212" name="PreviewImage"/>
+      <Widget type="TextBox" skin="SandText" position="8 222 236 16" name="PreviewCaption"><Property key="TextAlign" value="Center"/></Widget>
+    </Widget>
+
+    <Widget type="TextBox" skin="SandBrightText" position="440 308 252 20" name="ItemTitle"/>
+    <Widget type="TextBox" skin="SandText" position="440 329 252 18" name="ItemPrice"/>
+    <Widget type="Button" skin="MW_Button" position="440 351 80 27" name="PrimaryButton"><Property key="Caption" value="Action"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="526 351 80 27" name="SecondaryButton"><Property key="Caption" value="Action"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="612 351 80 27" name="AdminEditButton"><Property key="Caption" value="Edit"/><Property key="Visible" value="false"/></Widget>
+
+    <Widget type="Button" skin="MW_Button" position="440 383 123 27" name="AdminCaptureButton"><Property key="Caption" value="Add furniture"/><Property key="Visible" value="false"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="569 383 123 27" name="AdminRefreshButton"><Property key="Caption" value="Refresh"/><Property key="Visible" value="false"/></Widget>
+  </Widget>
+</MyGUI>

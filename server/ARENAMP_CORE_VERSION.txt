@@ -1,0 +1,35 @@
+ArenaMP cumulative patch: Y057
+Anti-abuse: no skill/SP changes while incapacitated
+ArenaMP bundled CoreScripts v19
+Source snapshot: ArenaMP Y032 (Y029 + Y030 + Y031 + MMO persistence fix)
+Network protocol: ArenaMP 806 (matching client/server build required)
+Riding subsystem: not included
+HUD event feed: enabled
+Actor batch receive isolation: enabled
+HUD notification backing: uniform medium opacity
+XP notifications: localized iconless right-side cards
+XP death penalty authority: server
+XP penalty: full current-level XP wipe; no skill/SP/level loss
+Zero-XP death cooldown: current level * 5 seconds above base delay
+Shader-water legacy ripple fallback: disabled
+Chat input: 14 px white
+World journal/topic sharing default: disabled in MMO; optional group sync remains available
+Skill Point class cost: Major x1 / Minor x2 / Misc x3
+Custom quest chronology: mixed with vanilla journal by persistent anchor
+Custom quest journal header: quest name + date
+Y020 cell-load desync guard: enabled
+Y020 DedicatedActor equipment dedupe: enabled
+Y020 server actor-loot repair: enabled
+Y020 exterior actor-cache preseed: disabled
+Y020 interior actor return persistence: enabled
+Y020 protected physics grab: player-dropped only for regular players; Moderator+ bypass
+Y020 gold tooltip/runtime weight: 0.0001
+Y021 floating weapon damage numbers: local confirmed weapon HP loss beside crosshair
+Y023 combat HP: direct Widget fill; no ProgressBar Track; frameless overhead; frame only in HUD
+Y024 chat HUD live feed: HUD no-scroll; Player Menu/pause history scroll only
+
+Y025 combat HP cell reset + validated fill ownership + floating damage recovery
+Y056 dynamic stats: fatigue and magicka derived by the engine; base health rebuilt from
+  stats.healthLedger (origin level + per-level Endurance), seeded once for old profiles
+
+H036: master telemetry uses configured data path and Windows Unicode IO; publication diagnostics.

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Window" skin="MW_DialogNoTransp" layer="Windows" position="0 0 780 520" align="Center" name="_Main">
+        <Widget type="TextBox" skin="HeaderText" position="18 12 630 28" name="RaceDetailsTitle">
+            <Property key="Caption" value="#{arenamp=chargen.race_details_title}"/>
+            <Property key="FontHeight" value="18"/>
+        </Widget>
+        <Widget type="Button" skin="MW_Button" position="670 10 88 28" name="RaceDetailsClose">
+            <Property key="Caption" value="#{arenamp=common.close}"/>
+        </Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="18 50 740 220" name="RaceDetailsText">
+            <Property key="EditStatic" value="true"/>
+            <Property key="ReadOnly" value="true"/>
+            <Property key="MultiLine" value="true"/>
+            <Property key="WordWrap" value="true"/>
+            <Property key="VScroll" value="true"/>
+        </Widget>
+        <Widget type="TextBox" skin="HeaderText" position="18 282 740 24">
+            <Property key="Caption" value="#{arenamp=chargen.racial_abilities}"/>
+        </Widget>
+        <Widget type="ScrollView" skin="MW_ScrollView" position="18 312 740 188" name="RacePowerArea">
+            <Property key="CanvasAlign" value="Left"/>
+        </Widget>
+    </Widget>
+</MyGUI>

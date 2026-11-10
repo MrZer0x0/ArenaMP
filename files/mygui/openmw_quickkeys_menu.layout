@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+ <Widget type="Window" skin="MW_Dialog" position="0 0 646 515" layer="Windows" align="Center" name="_Main">
+  <Widget type="TextBox" skin="SandText" position="12 8 622 24" name="QuickKeyTitle"><Property key="Caption" value="#{arenamp=quickbar.title}"/><Property key="TextAlign" value="Center"/></Widget>
+  <Widget type="EditBox" skin="SandText" position="12 36 622 66" name="InstructionLabel"><Property key="Caption" value="#{arenamp=quickbar.help}"/><Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/><Property key="Static" value="true"/></Widget>
+  <Widget type="Widget" position="12 108 622 366" name="QuickKeyGrid"/>
+  <Widget type="AutoSizedButton" skin="MW_Button" name="OKButton" position="545 478 80 24"><Property key="ExpandDirection" value="Left"/><Property key="Caption" value="#{sOK}"/></Widget>
+ </Widget>
+</MyGUI>

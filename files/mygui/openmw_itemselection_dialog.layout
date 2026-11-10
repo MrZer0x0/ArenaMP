@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Window" skin="MW_DialogNoTransp" position="0 0 560 400" layer="Windows" align="Center" name="_Main">
+
+        <Widget type="TextBox" skin="SandText" position="8 8 300 18" name="Label"/>
+
+        <Widget type="EditBox" skin="MW_TextEdit" position="8 36 535 28" name="Search" align="Left Top HStretch"><UserString key="ToolTipType" value="Text"/><UserString key="ToolTipText" value="#{arenamp=ce.search}"/></Widget>
+        <Widget type="ItemView" skin="MW_ItemView" position="8 72 535 262" name="ItemView" align="Left Top Stretch">
+        </Widget>
+
+        <Widget type="AutoSizedButton" skin="MW_Button" position="500 350 24 24" name="CancelButton">
+            <Property key="ExpandDirection" value="Left"/>
+            <Property key="Caption" value="#{sCancel}"/>
+        </Widget>
+
+
+    </Widget>
+</MyGUI>

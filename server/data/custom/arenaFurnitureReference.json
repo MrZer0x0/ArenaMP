@@ -1,0 +1,4137 @@
+{
+  "version": 1,
+  "categories": [
+    "Мебель",
+    "Кровати",
+    "Контейнеры",
+    "Декор",
+    "Освещение",
+    "Камины",
+    "Растения",
+    "Ковры и текстиль",
+    "Двери",
+    "Торговля"
+  ],
+  "items": [
+    {
+      "refId": "Bugs1000",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Бездонный сундук (требуется активация)",
+      "nameEn": "Bottomless chest (activation required)",
+      "style": "other"
+    },
+    {
+      "refId": "t_nor_furnr_table_05",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский стол прямоугольный",
+      "nameEn": "Nordic table rectangular",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_table_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский стол прямоугольный c узором",
+      "nameEn": "Nordic table rectangular c pattern",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_endtable_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский столик круглый",
+      "nameEn": "Nordic small table round",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_endtable_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский столик квадратный",
+      "nameEn": "Nordic small table square",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_tablelow_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский столик кофейный прямоугольный",
+      "nameEn": "Nordic small table coffee rectangular",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_chair_02",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Нордский стул",
+      "nameEn": "Nordic chair",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_chair_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский стул с подлокотниками",
+      "nameEn": "Nordic chair with armrests",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bench_05",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордская скамейка длинная",
+      "nameEn": "Nordic bench long",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bench_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордская скамейка со спинкой",
+      "nameEn": "Nordic bench with backrest",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bench_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордская скамейка длинная со спинкой",
+      "nameEn": "Nordic bench long with backrest",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bed_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать односпальная зел.",
+      "nameEn": "Nordic bed single green.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bed_02",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать односпальная син.",
+      "nameEn": "Nordic bed single blue.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bed_03",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать односпальная крас.",
+      "nameEn": "Nordic bed single red.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная зел.",
+      "nameEn": "Nordic bed double green.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_02",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная син.",
+      "nameEn": "Nordic bed double blue.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_03",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная крас.",
+      "nameEn": "Nordic bed double red.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_04",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная зел. с балками",
+      "nameEn": "Nordic bed double green. with beams",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_05",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная син. с балками",
+      "nameEn": "Nordic bed double blue. with beams",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_beddouble_06",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Нордская кровать двухспальная крас. с балками",
+      "nameEn": "Nordic bed double red. with beams",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_sideboard_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский книжный шкаф малый со стенкой",
+      "nameEn": "Nordic book cabinet small with backboard",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bookshelf_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский книжный шкаф со стенкой",
+      "nameEn": "Nordic book cabinet with backboard",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_sideboard_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский книжный шкаф малый со стенкой",
+      "nameEn": "Nordic book cabinet small with backboard",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_bookshelf_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский книжный шкаф",
+      "nameEn": "Nordic book cabinet",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnr_shelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордская полка настенная",
+      "nameEn": "Nordic shelf wall-mounted",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furn_ch2potion",
+      "category": "Контейнеры",
+      "price": 10000,
+      "nameRu": "Нордский сундук (250 ед.)",
+      "nameEn": "Nordic chest (250 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnr_dw2cltfem",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский комод (300 ед.)",
+      "nameEn": "Nordic chest of drawers (300 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnr_cls1empty",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордская тумбочка (100 ед.)",
+      "nameEn": "Nordic nightstand (100 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnr_ds2msc",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский письменный стол (250 ед.)",
+      "nameEn": "Nordic writing table (250 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnr_cl1cltmal",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Нордский гардероб (300 ед.)",
+      "nameEn": "Nordic wardrobe (300 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_bookshelf_01",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский книжный шкаф",
+      "nameEn": "Nordic book cabinet",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnm_cl1cltep",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский гардероб (300 ед.)",
+      "nameEn": "Nordic wardrobe (300 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_chair_01",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский стул с подлокотниками",
+      "nameEn": "Nordic chair with armrests",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_bar_02",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская барная стойка угол",
+      "nameEn": "Nordic bar counter corner",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_bar_01",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская барная стойка середина",
+      "nameEn": "Nordic bar counter middle",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_bar_06",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская барная стойка конец лев.",
+      "nameEn": "Nordic bar counter end left.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnm_bar_03",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская барная стойка конец прав.",
+      "nameEn": "Nordic bar counter end right.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skyimp_furnm_ds1empty",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский письменный стол (75 ед.)",
+      "nameEn": "Nordic writing table (75 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_bench_02a",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская скамейка длинная",
+      "nameEn": "Nordic bench long",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_stool_01",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская скамейка",
+      "nameEn": "Nordic bench",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_stool_02",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская табуретка",
+      "nameEn": "Nordic stool",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_table_02",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский стол круглый",
+      "nameEn": "Nordic table round",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_table_03",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский стол прямоугольный",
+      "nameEn": "Nordic table rectangular",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_table_04",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский стол квадратный",
+      "nameEn": "Nordic table square",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_shelf_02",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская настенная полка длинная",
+      "nameEn": "Nordic wall-mounted shelf long",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_imp_furnsky_shelf_01",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордская настенная полка",
+      "nameEn": "Nordic wall-mounted shelf",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skyimp_furn_cb1empty",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский буфет (100 ед.)",
+      "nameEn": "Nordic sideboard (100 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnm_cb1goblet",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Нордский буфет напольный (75 ед.)",
+      "nameEn": "Nordic sideboard floor (75 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_furn_ch1clt",
+      "category": "Контейнеры",
+      "price": 7000,
+      "nameRu": "Нордский cундук 1 (150 ед.)",
+      "nameEn": "Nordic c chest 1 (150 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furn_ch1hunter",
+      "category": "Контейнеры",
+      "price": 7000,
+      "nameRu": "Нордский сундук (250 ед.)",
+      "nameEn": "Nordic chest (250 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_com_furn_bedsky_02",
+      "category": "Кровати",
+      "price": 7000,
+      "nameRu": "Нордская кровать односпальная красн.",
+      "nameEn": "Nordic bed single red.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_com_furn_bedsky_04",
+      "category": "Кровати",
+      "price": 7000,
+      "nameRu": "Нордская кровать односпальная зел.",
+      "nameEn": "Nordic bed single green.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_com_furn_bedsky_05",
+      "category": "Кровати",
+      "price": 7000,
+      "nameRu": "Нордская кровать односпальная корич.",
+      "nameEn": "Nordic bed single brown.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_com_furn_bedsky_01",
+      "category": "Кровати",
+      "price": 7000,
+      "nameRu": "Нордская кровать двухспальная зел",
+      "nameEn": "Nordic bed double green",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_furn_chhv2g015",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордский cундук (250 ед.)",
+      "nameEn": "Nordic c chest (250 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_cl1cltfem",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский гардероб (300 ед.)",
+      "nameEn": "Nordic wardrobe (300 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_dw1cltmal",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский комод (100 ед.)",
+      "nameEn": "Nordic chest of drawers (100 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_ds1empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский писменный стол (75 ед.)",
+      "nameEn": "Nordic writing table (75 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_cb1tankar",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский буфет (100 ед.)",
+      "nameEn": "Nordic sideboard (100 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_cb2empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский буфет с полками (100 ед.)",
+      "nameEn": "Nordic sideboard with shelves (100 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_furnp_dw2empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордская тумбочка (300 ед.)",
+      "nameEn": "Nordic nightstand (300 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bench_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордская cкамейка",
+      "nameEn": "Nordic c bench",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bench_03",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордская cкамейка длинная",
+      "nameEn": "Nordic c bench long",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_chair_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский cтул с подлокотниками",
+      "nameEn": "Nordic c chair with armrests",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_chair_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стул",
+      "nameEn": "Nordic chair",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол круглый большой",
+      "nameEn": "Nordic table round large",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_04",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол прямоугольный",
+      "nameEn": "Nordic table rectangular",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_05",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол кофейный прямоугольный",
+      "nameEn": "Nordic table coffee rectangular",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_06",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол кофейный квадратный",
+      "nameEn": "Nordic table coffee square",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_07",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол круглый",
+      "nameEn": "Nordic table round",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_table_08",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский стол квадратный",
+      "nameEn": "Nordic table square",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bar_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордская барная стойка угловая",
+      "nameEn": "Nordic bar counter corner",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bar_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордская барная стойка",
+      "nameEn": "Nordic bar counter",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bookshelf_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский книжн. шкаф средний",
+      "nameEn": "Nordic book. cabinet medium",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_shelf_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский книжн. шкаф средний со стенкой",
+      "nameEn": "Nordic book. cabinet medium with backboard",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_shelf_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Нордский книжн. шкаф высокий со стенкой",
+      "nameEn": "Nordic book. cabinet tall with backboard",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bed_02",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Нордская кровать двухспальная син.",
+      "nameEn": "Nordic bed double blue.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furnp_bed_01",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Нордская кровать односпальная син.",
+      "nameEn": "Nordic bed single blue.",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_rga_setreach_i_tilescreen_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Нордская перегородка решетчатая",
+      "nameEn": "Nordic partition lattice",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_var_bl2arrow1",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордская бочка (75 ед.)",
+      "nameEn": "Nordic barrel (75 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_var_cr8tool",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордский ящик малый",
+      "nameEn": "Nordic crate small",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_var_cr2food1",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордский ящик 1 (200 ед.)",
+      "nameEn": "Nordic crate 1 (200 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skycom_var_cr5empty",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордский ящик 2 (200 ед.)",
+      "nameEn": "Nordic crate 2 (200 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_skynor_var_bs2ing",
+      "category": "Контейнеры",
+      "price": 5000,
+      "nameRu": "Нордская корзина низкая (30 ед.)",
+      "nameEn": "Nordic basket low (30 capacity.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furn_rugbig_23",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Нордский ковер с узором",
+      "nameEn": "Nordic rug with pattern",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furn_rugbig_11",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Нордский ковер с узором 1",
+      "nameEn": "Nordic rug with pattern 1",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furn_rug_01",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Нордский ковер(черн. св. охра)",
+      "nameEn": "Nordic rug (black. light. ochre)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furn_rugbig_15",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Нордский ковер(кор.зел. беж.)",
+      "nameEn": "Nordic rug (brown. green. beige.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_nor_furn_rugbig_09",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Нордский ковер с ромбами(красн. желт. зел.)",
+      "nameEn": "Nordic rug with diamonds (red. yellow. green.)",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_mwde_furnm_cl1cltmale",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский гардероб (200 ед.)",
+      "nameEn": "Dunmer wardrobe (200 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furnm_dw1clt",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский комод (150 ед.)",
+      "nameEn": "Dunmer chest of drawers (150 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furnm_ch1cltep",
+      "category": "Контейнеры",
+      "price": 10000,
+      "nameRu": "Данмерский сундук (100 ед.)",
+      "nameEn": "Dunmer chest (100 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furn_chsogem",
+      "category": "Контейнеры",
+      "price": 10000,
+      "nameRu": "Данмерская шкатулка (10 ед.)",
+      "nameEn": "Dunmer jewelry box (10 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_s_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать односпальная зел.",
+      "nameEn": "Dunmer bed single green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_s_02",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать односпальная крас.",
+      "nameEn": "Dunmer bed single red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_s_03",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать односпальная кор.",
+      "nameEn": "Dunmer bed single brown.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_b_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухярусная зел.",
+      "nameEn": "Dunmer bed bunk green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_b_02",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухярусная крас.",
+      "nameEn": "Dunmer bed bunk red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_b_03",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухярусная кор.",
+      "nameEn": "Dunmer bed bunk brown.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_d_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухспальная зел.",
+      "nameEn": "Dunmer bed double green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_d_02",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухспальная крас.",
+      "nameEn": "Dunmer bed double red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bed_d_03",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Данмерская кровать двухспальная кор.",
+      "nameEn": "Dunmer bed double brown.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_stool_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская табуретка квадратная",
+      "nameEn": "Dunmer stool square",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_chair_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стул",
+      "nameEn": "Dunmer chair",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_chair_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский cтул с подлокотниками",
+      "nameEn": "Dunmer c chair with armrests",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол прямоугольный",
+      "nameEn": "Dunmer table rectangular",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол круглый",
+      "nameEn": "Dunmer table round",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_05",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол овальный",
+      "nameEn": "Dunmer table oval",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_06",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол восьмиугольный",
+      "nameEn": "Dunmer table octagonal",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол квадратный малый",
+      "nameEn": "Dunmer table square small",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_table_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский стол круглый малый",
+      "nameEn": "Dunmer table round small",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bar_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская барная стойка прямая",
+      "nameEn": "Dunmer bar counter straight",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bar_cnr_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская барная стойка угловая",
+      "nameEn": "Dunmer bar counter corner",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bar_end_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская барная стойка(конец правый)",
+      "nameEn": "Dunmer bar counter (end right)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bar_end_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская барная стойка(конец левый)",
+      "nameEn": "Dunmer bar counter (end left)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_shelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская полка настенная",
+      "nameEn": "Dunmer shelf wall-mounted",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bookshelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский книжный шкаф",
+      "nameEn": "Dunmer book cabinet",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furnm_ds1empty",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерский письменный стол (40 ед.)",
+      "nameEn": "Dunmer writing table (40 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_bench_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Данмерская скамейка длинная",
+      "nameEn": "Dunmer bench long",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnm_wallscreen_01",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Данмерская перегородка",
+      "nameEn": "Dunmer partition",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furnr_ds1pos",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский письменный стол (75 ед.)",
+      "nameEn": "Dunmer writing table (75 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_chair_03",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский стул с подлокотниками",
+      "nameEn": "Dunmer chair with armrests",
+      "style": "dunmer"
+    },
+    {
+      "refId": "T_De_FurnR_Chair_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский стул",
+      "nameEn": "Dunmer chair",
+      "style": "dunmer"
+    },
+    {
+      "refId": "T_De_FurnR_Stool_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский стул барный",
+      "nameEn": "Dunmer chair bar",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_lecturn",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерская кафедра",
+      "nameEn": "Dunmer lectern",
+      "style": "dunmer"
+    },
+    {
+      "refId": "mr_furn_desk_rich",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский письменный стол (75 ед.)",
+      "nameEn": "Dunmer writing table (75 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_winerack",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский винный стелаж",
+      "nameEn": "Dunmer wine rack",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_wallscreen_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Данмерская перегородка",
+      "nameEn": "Dunmer partition",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_shelf_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерская полка настенная",
+      "nameEn": "Dunmer shelf wall-mounted",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_furnr_wpnsdisplay",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Данмерская стойка оружейная",
+      "nameEn": "Dunmer counter weapon",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_table_07",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский прямоуг. стол",
+      "nameEn": "Dunmer rectangular. table",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_table_03",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский овальный стол",
+      "nameEn": "Dunmer oval table",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_table_08",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский круглый стол",
+      "nameEn": "Dunmer round table",
+      "style": "dunmer"
+    },
+    {
+      "refId": "Furn_De_R_Bookshelf_02",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерская книжный шкаф",
+      "nameEn": "Dunmer book cabinet",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_bench_02",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерская скамейка",
+      "nameEn": "Dunmer bench",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_r_bench_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерская скамейка длинная",
+      "nameEn": "Dunmer bench long",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_r_bed_01",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать односпальная зел. узор.",
+      "nameEn": "Dunmer bed single green. patterned.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_r_bed_17",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать односпальная зел.",
+      "nameEn": "Dunmer bed single green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_r_bed_18",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать односпальная корич.",
+      "nameEn": "Dunmer bed single brown.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_r_bed_19",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать односпальная красн.",
+      "nameEn": "Dunmer bed single red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Furn_DeRchBedDouble02",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать двухспальная зел.",
+      "nameEn": "Dunmer bed double green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Furn_DeRchBedDouble03",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать двухспальная сер.",
+      "nameEn": "Dunmer bed double gray.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Furn_DeRchBedDouble01",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Данмерская кровать двухспальная зел. со спинкой",
+      "nameEn": "Dunmer bed double green. with backrest",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_r_closet_01_empty",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский шкаф (300 ед.)",
+      "nameEn": "Dunmer cabinet (300 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_r_drawers_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Данмерский комод (300 ед.)",
+      "nameEn": "Dunmer chest of drawers (300 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_p_bed_11",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Данмерская кровать односпальная узор. син.",
+      "nameEn": "Dunmer bed single patterned. blue.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_p_bed_12",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Данмерская кровать односпальная син.",
+      "nameEn": "Dunmer bed single blue.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_p_bed_13",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Данмерская кровать односпальная крас.",
+      "nameEn": "Dunmer bed single red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_p_bed_14",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Данмерская кровать односпальная зел.",
+      "nameEn": "Dunmer bed single green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "active_de_p_bed_03",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Данмерская кровать двухярусная зел.",
+      "nameEn": "Dunmer bed bunk green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_p_closet_02_de_fclot",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский гардероб (300 ед.)",
+      "nameEn": "Dunmer wardrobe (300 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_drawers_02_mclothes4",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский комод (300 ед.)",
+      "nameEn": "Dunmer chest of drawers (300 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_p_table_01_pos4",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская тумбочка (25 ед.)",
+      "nameEn": "Dunmer nightstand (25 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_table_06",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стол круглый",
+      "nameEn": "Dunmer table round",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_table_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стол круглый1",
+      "nameEn": "Dunmer table round 1",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_table_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стол круглый малый",
+      "nameEn": "Dunmer table round small",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_table_04",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стол прямоугольный",
+      "nameEn": "Dunmer table rectangular",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_table_05",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стол квадратный малый",
+      "nameEn": "Dunmer table square small",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_shelf_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская полка настенная",
+      "nameEn": "Dunmer shelf wall-mounted",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_bookshelf_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский книжный шкаф",
+      "nameEn": "Dunmer book cabinet",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_p_desk_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский письменный стол (75 ед.)",
+      "nameEn": "Dunmer writing table (75 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_o_DePlnDesk2Empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский письменный стол1 (75 ед.)",
+      "nameEn": "Dunmer writing table 1 (75 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_stool_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский барный табурет",
+      "nameEn": "Dunmer bar stool",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_bench_03",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская скамейка длинная",
+      "nameEn": "Dunmer bench long",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_screen_guar_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Данмерская ширма",
+      "nameEn": "Dunmer screen",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_chair_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стул",
+      "nameEn": "Dunmer chair",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_p_chair_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стул с подлокотниками",
+      "nameEn": "Dunmer chair with armrests",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_bar_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская барная стойка конец",
+      "nameEn": "Dunmer bar counter end",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_bar_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская барная стойка центр",
+      "nameEn": "Dunmer bar counter center",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_bar_03",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерская барная стойка угол",
+      "nameEn": "Dunmer bar counter corner",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Door_ComRchBookshelf01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Данмерские двойные дверцы",
+      "nameEn": "Dunmer double doors",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Door_ComRchBookshelf03",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Данмерская одинарная дверца",
+      "nameEn": "Dunmer single door",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Door_ComRchBookshelf04",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Данмерские двойные дверцы низкие",
+      "nameEn": "Dunmer double doors low",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_mwde_furn_vs1scroll",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Данмерская ваза с крышкой",
+      "nameEn": "Dunmer vase with lid",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_de_lamp_03_128",
+      "category": "Освещение",
+      "price": 8000,
+      "nameRu": "Данмерский светильник напольный",
+      "nameEn": "Dunmer light fixture floor",
+      "style": "dunmer"
+    },
+    {
+      "refId": "Furn_de_rug_big_01",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер овальный син.",
+      "nameEn": "Dunmer rug oval blue.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "Furn_de_rug_big_02",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер овальный цветной.",
+      "nameEn": "Dunmer rug oval colored.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "Furn_de_rug_big_03",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер овальный красн.",
+      "nameEn": "Dunmer rug oval red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "Furn_de_rug_big_09",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер прямоуг. син.",
+      "nameEn": "Dunmer rug rectangular. blue.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_rug_big_05",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер прямоуг. цветной",
+      "nameEn": "Dunmer rug rectangular. colored",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_rug_big_06",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер прямоуг. красн.",
+      "nameEn": "Dunmer rug rectangular. red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_de_rug_big_07",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Данмерский ковер прямоуг. син. узор",
+      "nameEn": "Dunmer rug rectangular. blue. patterned",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_com_furnr_chandelier_256",
+      "category": "Освещение",
+      "price": 10000,
+      "nameRu": "Имперский светильник потолочный кованный 8 свечей",
+      "nameEn": "Imperial light fixture ceiling wrought iron 8 candles",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furn_chs1g050",
+      "category": "Контейнеры",
+      "price": 10000,
+      "nameRu": "Имперская шкатулка металл. (25 ед.)",
+      "nameEn": "Imperial jewelry box metal. (25 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_display1",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская витрина аним.",
+      "nameEn": "Imperial display case animated.",
+      "style": "imperial"
+    },
+    {
+      "refId": "com_drawers_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский комод (300 ед.)",
+      "nameEn": "Imperial chest of drawers (300 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_dw1g",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский комод узкий (75 ед.)",
+      "nameEn": "Imperial chest of drawers narrow (75 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "com_closet_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский Гардероб (300 ед.)",
+      "nameEn": "Imperial wardrobe (300 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_dw3g",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский комод низкий (75 ед.)",
+      "nameEn": "Imperial chest of drawers low (75 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_cb1silvw",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский буфет",
+      "nameEn": "Imperial sideboard",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_furn_bed_05",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Имперская кровать односпальная син.",
+      "nameEn": "Imperial bed single blue.",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bed_01",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Имперская кровать односпальная син. с крышей",
+      "nameEn": "Imperial bed single blue. with canopy",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_furn_bed_04",
+      "category": "Кровати",
+      "price": 10000,
+      "nameRu": "Имперская кровать двухспальная син.1",
+      "nameEn": "Imperial bed double blue. 1",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_tablesmall_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стол квадратный",
+      "nameEn": "Imperial table square",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_table_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стол круглый",
+      "nameEn": "Imperial table round",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_table_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стол прямоугольный",
+      "nameEn": "Imperial table rectangular",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_r_table_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стол прямоугольный1",
+      "nameEn": "Imperial table rectangular 1",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_tablesmall_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стол квадратный малый",
+      "nameEn": "Imperial table square small",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_chair_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стул с подлокотниками тем. зел.",
+      "nameEn": "Imperial chair with armrests dark. green.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_chair_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стул с подлокотниками оранж.",
+      "nameEn": "Imperial chair with armrests orange.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_chair_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стул с подлокотниками крас.",
+      "nameEn": "Imperial chair with armrests red.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_chair_05",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стул с подлокотниками крас. леопард",
+      "nameEn": "Imperial chair with armrests red. leopard",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_chair_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский стул с подлокотниками зел.",
+      "nameEn": "Imperial chair with armrests green.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bar_05",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская барная стойка",
+      "nameEn": "Imperial bar counter",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bar_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская барная стойка центр",
+      "nameEn": "Imperial bar counter center",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bar_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская барная стойка конец",
+      "nameEn": "Imperial bar counter end",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bar_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская барная стойка угловая",
+      "nameEn": "Imperial bar counter corner",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bookshelf_02",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский книжный шкаф высокий",
+      "nameEn": "Imperial book cabinet tall",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_r_bookshelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский книжный шкаф",
+      "nameEn": "Imperial book cabinet",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bookshelf_04",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский книжный шкаф низкий",
+      "nameEn": "Imperial book cabinet low",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bookshelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский книжный шкаф низкий1",
+      "nameEn": "Imperial book cabinet low 1",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bookshelf_03",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский книжный шкаф узкий",
+      "nameEn": "Imperial book cabinet narrow",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_shelf_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская полка настенная",
+      "nameEn": "Imperial shelf wall-mounted",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_wallscreen_01",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Имперская перегородка крас.",
+      "nameEn": "Imperial partition red.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_ds2posco",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский письменный стол (100 ед.)",
+      "nameEn": "Imperial writing table (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_ds1paper",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский письменный стол с полкой (100 ед.)",
+      "nameEn": "Imperial writing table with shelf (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_lc1scrol",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская кафедра (30 ед.)",
+      "nameEn": "Imperial lectern (30 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_basin_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперский умывальник с водой",
+      "nameEn": "Imperial washbasin with water",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnr_bath_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперская ванна с водой",
+      "nameEn": "Imperial bathtub with water",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_mwcom_furnm_dw1mcloth",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский комод (300 ед.)",
+      "nameEn": "Imperial chest of drawers (300 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_mwcom_furnm_dw4fcloth",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский комод узкий (75 ед.)",
+      "nameEn": "Imperial chest of drawers narrow (75 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "com_hutch_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский комод с полками (75 ед.)",
+      "nameEn": "Imperial chest of drawers with shelves (75 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_mwcom_furnm_cb1msc",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский комод с полками резной высокий (100 ед.)",
+      "nameEn": "Imperial chest of drawers with shelves carved tall (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnm_ds1paper",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский письменный стол с полкой (100 ед.)",
+      "nameEn": "Imperial writing table with shelf (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_table_04",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский стол прямоугольный",
+      "nameEn": "Imperial table rectangular",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_table_03",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский стол круглый",
+      "nameEn": "Imperial table round",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_table_05",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский стол квадратный малый",
+      "nameEn": "Imperial table square small",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_chair_03",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский стул",
+      "nameEn": "Imperial chair",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_stool_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперская скамейка короткая",
+      "nameEn": "Imperial bench short",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_furn_bed_03",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Имперская кровать односпальная зел.",
+      "nameEn": "Imperial bed single green.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_furn_bed_02",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Имперская кровать односпальная крас.",
+      "nameEn": "Imperial bed single red.",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bed_07",
+      "category": "Кровати",
+      "price": 8000,
+      "nameRu": "Имперская кровать двухспальная зел.",
+      "nameEn": "Imperial bed double green.",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnm_bookshelf_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский книжный шкаф высокий",
+      "nameEn": "Imperial book cabinet tall",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnm_bookshelf_02",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский книжный шкаф средний",
+      "nameEn": "Imperial book cabinet medium",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnm_bookshelf_04",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский книжный шкаф узкий",
+      "nameEn": "Imperial book cabinet narrow",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnm_bookshelf_03",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский книжный шкаф низкий",
+      "nameEn": "Imperial book cabinet low",
+      "style": "imperial"
+    },
+    {
+      "refId": "AB_Door_ComMidBookshelf02",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперские двойные стеклянные дверцы",
+      "nameEn": "Imperial double glass doors",
+      "style": "imperial"
+    },
+    {
+      "refId": "AB_Door_ComMidBookshelf04",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперская одинарные стеклянные дверцы",
+      "nameEn": "Imperial single glass doors",
+      "style": "imperial"
+    },
+    {
+      "refId": "AB_Door_ComMidBookshelf03",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперские двойные стеклянные дверцы низкие",
+      "nameEn": "Imperial double glass doors low",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_shelf_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперская полка настенная",
+      "nameEn": "Imperial shelf wall-mounted",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_rm_winerack",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский винный стелаж",
+      "nameEn": "Imperial wine rack",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnm_lectern_01",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперская кафедра",
+      "nameEn": "Imperial lectern",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bar_door",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Имперская барная дверца(аним.)",
+      "nameEn": "Imperial bar door (animated.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bed_03",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Имперская кровать односпальная кор.",
+      "nameEn": "Imperial bed single brown.",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bunk_02",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Имперская кровать двухспальная зел.",
+      "nameEn": "Imperial bed double green.",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bunk_01",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Имперская кровать двухспальная кор.",
+      "nameEn": "Imperial bed double brown.",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_p_bench_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперская скамейка длинная",
+      "nameEn": "Imperial bench long",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_pm_stool_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперская табуретка",
+      "nameEn": "Imperial stool",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_p_table_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский стол прямоугольный",
+      "nameEn": "Imperial table rectangular",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_p_shelf_03",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперская полка настенная",
+      "nameEn": "Imperial shelf wall-mounted",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_colony_shelf01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский шкаф с полками старый",
+      "nameEn": "Imperial cabinet with shelves old",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnp_bookshelf_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский шкаф с полками",
+      "nameEn": "Imperial cabinet with shelves",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnp_bookshelf_03",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский шкаф с полками низкий",
+      "nameEn": "Imperial cabinet with shelves low",
+      "style": "imperial"
+    },
+    {
+      "refId": "com_cupboard_01_pos",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский буфет (100 ед.)",
+      "nameEn": "Imperial sideboard (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_imp_flag_01_indoor",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер империи",
+      "nameEn": "Imperial banner",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_setmw_bannertownoestat_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер старого эбенгарда крас.",
+      "nameEn": "banner Old Ebonheart red.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_setmw_bannertownoestat_02",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер старого эбенгарда син.",
+      "nameEn": "banner Old Ebonheart blue.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestryhla_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер весы светлый",
+      "nameEn": "banner scales light",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestryhla_05",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер весы темный",
+      "nameEn": "banner scales dark",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestrybast_12",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. растения",
+      "nameEn": "banner patterned. plants",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_19",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. фиол.",
+      "nameEn": "banner patterned. purple.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_03",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. син.",
+      "nameEn": "banner patterned. blue.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_07",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. зол.",
+      "nameEn": "banner patterned. gold.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_06",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. син. бел.",
+      "nameEn": "banner patterned. blue. white.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_15",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. крас.",
+      "nameEn": "banner patterned. red.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_02",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. крас. чер.",
+      "nameEn": "banner patterned. red. black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_04",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. кругл. крас. чер.",
+      "nameEn": "banner patterned. round. red. black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_tapestry_11",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. чер.",
+      "nameEn": "banner patterned. black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_44",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. бел.",
+      "nameEn": "banner patterned. white.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_21",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер узор. квадраты чер.",
+      "nameEn": "banner patterned. squares black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestryfg_02",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер ГИ бойцов",
+      "nameEn": "Fighters Guild banner",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestrymg_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер ГИ магов",
+      "nameEn": "Mages Guild banner",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigxp_11",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Ковер бел. син.",
+      "nameEn": "rug white. blue.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugovalxp_01",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Ковер овальный",
+      "nameEn": "rug oval",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugoctagonxp_03",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Ковер восьмиугольный чер.",
+      "nameEn": "rug octagonal black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigxp_05",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Ковер прямоугольный чер.",
+      "nameEn": "rug rectangular black.",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigcm_02",
+      "category": "Ковры и текстиль",
+      "price": 8000,
+      "nameRu": "Ковер прямоугольный беж.",
+      "nameEn": "rug rectangular beige.",
+      "style": "other"
+    },
+    {
+      "refId": "in_nord_rafterboards_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Щит из досок",
+      "nameEn": "shield of boards",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_fg_shield01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Щит и мечи ГИ бойцов",
+      "nameEn": "shield and swords Guild Fighters",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_cauldron_01",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Котел",
+      "nameEn": "cauldron",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_cushion_square_02",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Пуфик (прямоугольный)",
+      "nameEn": "ottoman (rectangular)",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_tray_01",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Витрина",
+      "nameEn": "display case",
+      "style": "other"
+    },
+    {
+      "refId": "AB_Furn_HlaFireplace01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Балморский Камин",
+      "nameEn": "Balmora fireplace",
+      "style": "other"
+    },
+    {
+      "refId": "AB_Furn_TelFireplace",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Телванский Камин",
+      "nameEn": "Telvanni fireplace",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_In_ComMidFireplace01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Имперский Камин",
+      "nameEn": "Imperial fireplace",
+      "style": "imperial"
+    },
+    {
+      "refId": "AB_In_ComRchFireplace01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Имперский Камин1",
+      "nameEn": "Imperial fireplace 1",
+      "style": "imperial"
+    },
+    {
+      "refId": "AB_In_ComRchFireplace02",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Имперский Камин2",
+      "nameEn": "Imperial fireplace 2",
+      "style": "imperial"
+    },
+    {
+      "refId": "T_Imp_SetGC_I_Fireplace_01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Имперский Камин дома",
+      "nameEn": "Imperial fireplace home",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_fireplace10",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Нордский Камин",
+      "nameEn": "Nordic fireplace",
+      "style": "nordic"
+    },
+    {
+      "refId": "T_Imp_SetSky_I_Fireplace_01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Нордский Камин1",
+      "nameEn": "Nordic fireplace 1",
+      "style": "nordic"
+    },
+    {
+      "refId": "T_Nor_Furn_Fireplace_03",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Нордский Камин2",
+      "nameEn": "Nordic fireplace 2",
+      "style": "nordic"
+    },
+    {
+      "refId": "T_Nor_Furn_Fireplace_02",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Нордский Камин3",
+      "nameEn": "Nordic fireplace 3",
+      "style": "nordic"
+    },
+    {
+      "refId": "in_imp_fireplace_grand",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Гранд Камин",
+      "nameEn": "Grand fireplace",
+      "style": "other"
+    },
+    {
+      "refId": "furn_redoran_hearth_02",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Альд'рун Камин",
+      "nameEn": "Ald ' Ruhn fireplace",
+      "style": "other"
+    },
+    {
+      "refId": "T_Nor_Set_Forge_01",
+      "category": "Камины",
+      "price": 30000,
+      "nameRu": "Кузнечный Камин",
+      "nameEn": "blacksmith fireplace",
+      "style": "other"
+    },
+    {
+      "refId": "light_de_paper_lantern_01",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Желтая сферическая лампа",
+      "nameEn": "yellow spherical lamp",
+      "style": "other"
+    },
+    {
+      "refId": "light_de_paper_lantern_04",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Синяя сферическая лампа",
+      "nameEn": "blue spherical lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperGrn02_256",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Зеленая сферическая лампа",
+      "nameEn": "green spherical lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperRed02_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Красная сферическая лампа",
+      "nameEn": "red spherical lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaper01_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "желтая лампа",
+      "nameEn": "yellow lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaper03_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "желтая лампа1",
+      "nameEn": "yellow lamp 1",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperBlu01_256",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "синяя лампа",
+      "nameEn": "blue lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperBlu03_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "синяя лампа1",
+      "nameEn": "blue lamp 1",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperGrn01_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "зеленая лампа",
+      "nameEn": "green lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperGrn03_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "зеленая лампа1",
+      "nameEn": "green lamp 1",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperRed01_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "красная лампа",
+      "nameEn": "red lamp",
+      "style": "other"
+    },
+    {
+      "refId": "AB_light_DeLantPaperRed03_128",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "красная лампа1",
+      "nameEn": "red lamp 1",
+      "style": "other"
+    },
+    {
+      "refId": "AB_Light_TelExBallLamp02_400",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Телванская напол. лампа",
+      "nameEn": "Telvanni floor. lamp",
+      "style": "dunmer"
+    },
+    {
+      "refId": "AB_Light_TelExBallLamp04_350",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Телванская настенная лампа",
+      "nameEn": "Telvanni wall-mounted lamp",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_01",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа син.",
+      "nameEn": "Ashlander. lamp blue.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_03",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа красн.",
+      "nameEn": "Ashlander. lamp red.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_02",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа оранж.",
+      "nameEn": "Ashlander. lamp orange.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_04",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа фиол.",
+      "nameEn": "Ashlander. lamp purple.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_05",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа желт.",
+      "nameEn": "Ashlander. lamp yellow.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "light_ashl_lantern_06",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Эшленд.лампа зел.",
+      "nameEn": "Ashlander. lamp green.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "furn_com_planter",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений имперский",
+      "nameEn": "pot for plants Imperial",
+      "style": "imperial"
+    },
+    {
+      "refId": "T_Imp_Furn_Planter_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений имперский высокий",
+      "nameEn": "pot for plants Imperial tall",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_planter_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений серый данмерский",
+      "nameEn": "pot for plants gray Dunmer",
+      "style": "dunmer"
+    },
+    {
+      "refId": "T_Nor_Furn_Planter_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений нордский",
+      "nameEn": "pot for plants Nordic",
+      "style": "nordic"
+    },
+    {
+      "refId": "t_glb_flora_nirnroot01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение корень нирна",
+      "nameEn": "plant root Nirn",
+      "style": "other"
+    },
+    {
+      "refId": "flora_plant_03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение тимсовые цветы",
+      "nameEn": "plant timsa flowers",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_fern_03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение папоротник",
+      "nameEn": "plant fern",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_fern_02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение папоротник большой",
+      "nameEn": "plant fern large",
+      "style": "other"
+    },
+    {
+      "refId": "flora_plant_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение рогатая лилия",
+      "nameEn": "plant horned lily",
+      "style": "other"
+    },
+    {
+      "refId": "flora_gold_kanet_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение золотой канет",
+      "nameEn": "plant golden canet",
+      "style": "other"
+    },
+    {
+      "refId": "flora_black_anther_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение черный пыльник",
+      "nameEn": "plant black dust cap",
+      "style": "other"
+    },
+    {
+      "refId": "furn_pottedplant",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение бамбук",
+      "nameEn": "plant bamboo",
+      "style": "other"
+    },
+    {
+      "refId": "flora_stoneflower_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение каменевка",
+      "nameEn": "plant stonecrop",
+      "style": "other"
+    },
+    {
+      "refId": "flora_plant_05",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение кактус",
+      "nameEn": "plant cactus",
+      "style": "other"
+    },
+    {
+      "refId": "flora_kreshweed_02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение креш-трава",
+      "nameEn": "plant cress - grass",
+      "style": "other"
+    },
+    {
+      "refId": "t_mw_flora_meadowrye02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение луговая рожь",
+      "nameEn": "plant meadow rye",
+      "style": "other"
+    },
+    {
+      "refId": "t_mw_flora_nirthfly01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение ниртовая цветоножка",
+      "nameEn": "plant nirth flower stalk",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_mushroom_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение светящаяся сыроежка",
+      "nameEn": "plant glowing russula mushroom",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_mushroom_06",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение копринус лиловый",
+      "nameEn": "plant coprinus mushroom lilac",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bm_grass_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение длинолист",
+      "nameEn": "plant longleaf",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_podplant_03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение цветок коды",
+      "nameEn": "plant flower codes",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bc_grass_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение листья коды",
+      "nameEn": "plant leaves codes",
+      "style": "other"
+    },
+    {
+      "refId": "flora_heather_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение вереск",
+      "nameEn": "plant heather",
+      "style": "other"
+    },
+    {
+      "refId": "T_Glb_Flora_WtHyacint01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Водный гиацинт",
+      "nameEn": "water hyacinth",
+      "style": "other"
+    },
+    {
+      "refId": "T_Mw_Flora_BlueKanet_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Голубой канет",
+      "nameEn": "light blue canet",
+      "style": "other"
+    },
+    {
+      "refId": "T_Mw_Flora_MountDama03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горный дамаск",
+      "nameEn": "mountain damask",
+      "style": "other"
+    },
+    {
+      "refId": "T_Hr_Flora_Dragynia01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Драгиния",
+      "nameEn": "draginia",
+      "style": "other"
+    },
+    {
+      "refId": "T_Cyr_Flora_Goldenrod01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Золотарник",
+      "nameEn": "goldenrod",
+      "style": "other"
+    },
+    {
+      "refId": "T_Glb_Flora_Lavender01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Лаванда",
+      "nameEn": "lavender",
+      "style": "other"
+    },
+    {
+      "refId": "T_Hr_Flora_Shadowfly03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Летучий теневик",
+      "nameEn": "flying shade fern",
+      "style": "other"
+    },
+    {
+      "refId": "T_Sky_Flora_Brideth02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Невестошип",
+      "nameEn": "bridal thorn",
+      "style": "other"
+    },
+    {
+      "refId": "T_Sky_Flora_Comatus01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Навозник белый",
+      "nameEn": "inkcap mushroom white",
+      "style": "other"
+    },
+    {
+      "refId": "Flora_BM_holly_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Падуб",
+      "nameEn": "holly",
+      "style": "other"
+    },
+    {
+      "refId": "T_Cyr_Flora_Peony01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Пион",
+      "nameEn": "peony",
+      "style": "other"
+    },
+    {
+      "refId": "T_Mw_Flora_PorExidia01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Пористая Эксидия",
+      "nameEn": "porous exidia",
+      "style": "other"
+    },
+    {
+      "refId": "TT_Berrybush2",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Пустотный ягодный куст",
+      "nameEn": "void berry bush",
+      "style": "other"
+    },
+    {
+      "refId": "barrel_01",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Бочка 1 (75 ед.)",
+      "nameEn": "barrel 1 (75 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "barrel_02",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Бочка 2 (100 ед.)",
+      "nameEn": "barrel 2 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "crate_01_empty",
+      "category": "Контейнеры",
+      "price": 4000,
+      "nameRu": "Ящик 1 (200 ед.)",
+      "nameEn": "crate 1 (200 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "crate_02_empty",
+      "category": "Контейнеры",
+      "price": 4000,
+      "nameRu": "Ящик 2 (200 ед.)",
+      "nameEn": "crate 2 (200 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_basket_01",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Корзина (50 ед.)",
+      "nameEn": "basket (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_sack_01",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Мешок (Плоский)(50 ед.)",
+      "nameEn": "sack (flat) (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_sack_02",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Мешок (Сумка)(50 ед.)",
+      "nameEn": "sack (bag) (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_sack_03",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Мешок (Мятый)(50 ед.)",
+      "nameEn": "sack (crumpled) (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_sack_00",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Мешок (Легкий)(50 ед.)",
+      "nameEn": "sack (light) (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "urn_01",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Урна 1 (100 ед.)",
+      "nameEn": "urn 1 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "urn_02",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Урна 2 (100 ед.)",
+      "nameEn": "urn 2 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "urn_03",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Урна 3 (100 ед.)",
+      "nameEn": "urn 3 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "urn_04",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Урна 4 (100 ед.)",
+      "nameEn": "urn 4 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "urn_05",
+      "category": "Контейнеры",
+      "price": 2000,
+      "nameRu": "Урна 5 (100 ед.)",
+      "nameEn": "urn 5 (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "dwrv_barrel00_empty",
+      "category": "Контейнеры",
+      "price": 3000,
+      "nameRu": "Стальной Бочонок (100 ед.)",
+      "nameEn": "steel small barrel (100 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "dwrv_barrel10_empty",
+      "category": "Контейнеры",
+      "price": 1500,
+      "nameRu": "Стальной Маленький Бочонок (50 ед.)",
+      "nameEn": "steel small small barrel (50 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_chest_11_empty",
+      "category": "Контейнеры",
+      "price": 3000,
+      "nameRu": "Дешевый Сундук (150 ед.)",
+      "nameEn": "cheap chest (150 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_chest_11_open",
+      "category": "Контейнеры",
+      "price": 3000,
+      "nameRu": "Дешевый Сундук (Открытый)(150 ед.)",
+      "nameEn": "cheap chest (open) (150 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "chest_small_01",
+      "category": "Контейнеры",
+      "price": 1000,
+      "nameRu": "Маленький Сундук (Металл)(25 ед.)",
+      "nameEn": "small chest (metal) (25 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "chest_small_02",
+      "category": "Контейнеры",
+      "price": 500,
+      "nameRu": "Маленький Сундук (Дерево)(25 ед.)",
+      "nameEn": "small chest (tree) (25 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "com_chest_01",
+      "category": "Контейнеры",
+      "price": 3000,
+      "nameRu": "Имперский Сундук (Дешевый)(150 ед.)",
+      "nameEn": "Imperial chest (cheap) (150 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "com_chest_02",
+      "category": "Контейнеры",
+      "price": 8000,
+      "nameRu": "Имперcкий Сундук (Дорогой)(200 ед.)",
+      "nameEn": "Imperial c cue chest (expensive) (200 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "de_r_chest_01",
+      "category": "Контейнеры",
+      "price": 4000,
+      "nameRu": "Данмерский Сундук (Дешевый)(200 ед.)",
+      "nameEn": "Dunmer chest (cheap) (200 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "de_p_chest_02",
+      "category": "Контейнеры",
+      "price": 8000,
+      "nameRu": "Данмерский Сундук (Дорогой)(200 ед.)",
+      "nameEn": "Dunmer chest (expensive) (200 capacity.)",
+      "style": "dunmer"
+    },
+    {
+      "refId": "in_hlaalu_door",
+      "category": "Двери",
+      "price": 1000,
+      "nameRu": "Двеь (Хлаау)",
+      "nameEn": "door (Hlaalu)",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_setmw_x_marketstand_06e",
+      "category": "Торговля",
+      "price": 5000,
+      "nameRu": "Торговая палатка",
+      "nameEn": "market tent",
+      "style": "other"
+    },
+    {
+      "refId": "tt_palace_bookshelf",
+      "category": "Мебель",
+      "price": 200000,
+      "nameRu": "Даэдрическая полка",
+      "nameEn": "Daedric shelf",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_daemetalbench01",
+      "category": "Мебель",
+      "price": 200000,
+      "nameRu": "Даэдрическая скамья",
+      "nameEn": "Daedric bench",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_daemetalchair01",
+      "category": "Мебель",
+      "price": 140000,
+      "nameRu": "Даэдрический стул",
+      "nameEn": "Daedric chair",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_daemetaltable01",
+      "category": "Мебель",
+      "price": 200000,
+      "nameRu": "Даэдрический стол",
+      "nameEn": "Daedric table",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_daemetaltable02",
+      "category": "Мебель",
+      "price": 150000,
+      "nameRu": "Даэдрический кофейный столик",
+      "nameEn": "Daedric coffee small table",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_daemetalbookshelf01",
+      "category": "Мебель",
+      "price": 230000,
+      "nameRu": "Узорчатый даэдрический книжный шкаф",
+      "nameEn": "patterned Daedric book cabinet",
+      "style": "other"
+    },
+    {
+      "refId": "furn_museum_display_01",
+      "category": "Декор",
+      "price": 50000,
+      "nameRu": "Демонстрационный подиум",
+      "nameEn": "display podium",
+      "style": "other"
+    },
+    {
+      "refId": "furn_museum_display_02",
+      "category": "Декор",
+      "price": 30000,
+      "nameRu": "Демонстрационный подиум (малый)",
+      "nameEn": "display podium (small)",
+      "style": "other"
+    },
+    {
+      "refId": "mr_furn_common_ladder_small",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперская стремянка маленькая",
+      "nameEn": "Imperial stepladder small",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furn_incense_01_64",
+      "category": "Освещение",
+      "price": 8000,
+      "nameRu": "Лампа для благовоний металл",
+      "nameEn": "lamp for incense metal",
+      "style": "other"
+    },
+    {
+      "refId": "mr_misc_water_barrel_half",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперская бадья с водой",
+      "nameEn": "Imperial tub with water",
+      "style": "imperial"
+    },
+    {
+      "refId": "light_com_rm_chandelier_05_177",
+      "category": "Освещение",
+      "price": 8000,
+      "nameRu": "Имперский светильник круглый на 8 свечей",
+      "nameEn": "Imperial light fixture round on 8 candles",
+      "style": "imperial"
+    },
+    {
+      "refId": "light_com_lamp_01",
+      "category": "Освещение",
+      "price": 8000,
+      "nameRu": "Имперский напольный светильник",
+      "nameEn": "Imperial floor light fixture",
+      "style": "imperial"
+    },
+    {
+      "refId": "mr_misc_cookingpot",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Котелок с похлёбкой",
+      "nameEn": "pot with stew",
+      "style": "other"
+    },
+    {
+      "refId": "mr_misc_water_bucket",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Ведро с водой",
+      "nameEn": "bucket with water",
+      "style": "other"
+    },
+    {
+      "refId": "furn_velothi_prayer_stool_01",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Данмерский стул для молений",
+      "nameEn": "Dunmer chair for prayers",
+      "style": "dunmer"
+    },
+    {
+      "refId": "mr_ashpit_02",
+      "category": "Декор",
+      "price": 25000,
+      "nameRu": "Пепельная яма",
+      "nameEn": "ash pit",
+      "style": "other"
+    },
+    {
+      "refId": "furn_log_04",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Дровница",
+      "nameEn": "wood rack",
+      "style": "other"
+    },
+    {
+      "refId": "furn_com_rm_barstool",
+      "category": "Мебель",
+      "price": 8000,
+      "nameRu": "Имперский барный стул",
+      "nameEn": "Imperial bar chair",
+      "style": "imperial"
+    },
+    {
+      "refId": "flora_ivy_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение плющ декор 1",
+      "nameEn": "plant ivy decor 1",
+      "style": "other"
+    },
+    {
+      "refId": "flora_ivy_02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение плющ декор 2",
+      "nameEn": "plant ivy decor 2",
+      "style": "other"
+    },
+    {
+      "refId": "t_nor_var_logssmall_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Дровница большая",
+      "nameEn": "wood rack large",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furnm_chandelier1_128",
+      "category": "Освещение",
+      "price": 5000,
+      "nameRu": "Светильник квадратный 4 свечи",
+      "nameEn": "light fixture square 4 candles",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_thunglew01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение терновник",
+      "nameEn": "plant thornbush",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_alkanet01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение алканна",
+      "nameEn": "plant alkanna",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigcm_04",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Ковёр бежевый с ромбами",
+      "nameEn": "rug beige with diamonds",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_planterhanging_01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений подвесной",
+      "nameEn": "pot for plants hanging",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_ropeclothes_06",
+      "category": "Декор",
+      "price": 2000,
+      "nameRu": "Бельевая верёвка (салфетки)",
+      "nameEn": "laundry rope (napkins)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_ropeclothes_05",
+      "category": "Декор",
+      "price": 2000,
+      "nameRu": "Бельевая верёвка (бельё)",
+      "nameEn": "laundry rope (laundry)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_ropeclothes_04",
+      "category": "Декор",
+      "price": 2000,
+      "nameRu": "Бельевая верёвка (одежда)",
+      "nameEn": "laundry rope (clothes)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_barrelwater_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Бочка с водой",
+      "nameEn": "barrel with water",
+      "style": "other"
+    },
+    {
+      "refId": "t_glb_var_spiderweb_06b",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Паутина большая",
+      "nameEn": "cobweb large",
+      "style": "other"
+    },
+    {
+      "refId": "t_glb_var_spiderweb_03b",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Паутина угол",
+      "nameEn": "cobweb corner",
+      "style": "other"
+    },
+    {
+      "refId": "mr_furn_parchment_pile",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Куча бумаг",
+      "nameEn": "pile papers",
+      "style": "other"
+    },
+    {
+      "refId": "light_com_candle_07_77",
+      "category": "Освещение",
+      "price": 1000,
+      "nameRu": "Свеча белая 3шт",
+      "nameEn": "candle white 3 pcs",
+      "style": "other"
+    },
+    {
+      "refId": "tr_m1_fw_gatei1_bar_01",
+      "category": "Декор",
+      "price": 500,
+      "nameRu": "Бревно",
+      "nameEn": "log",
+      "style": "other"
+    },
+    {
+      "refId": "light_com_chandelier_04",
+      "category": "Освещение",
+      "price": 5000,
+      "nameRu": "Светильник потолочный 4 свечи с веревкой",
+      "nameEn": "light fixture ceiling 4 candles with rope",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_rope_03",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Верёвка для лампы",
+      "nameEn": "rope for lamps",
+      "style": "other"
+    },
+    {
+      "refId": "light_com_candle_11_77",
+      "category": "Освещение",
+      "price": 1000,
+      "nameRu": "Свеча синяя 3шт",
+      "nameEn": "candle blue 3 pcs",
+      "style": "other"
+    },
+    {
+      "refId": "light_com_candle_13_77",
+      "category": "Освещение",
+      "price": 1000,
+      "nameRu": "Свеча красная 3шт",
+      "nameEn": "candle red 3 pcs",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_tigerlill02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение тигровая лилия",
+      "nameEn": "plant tiger lily",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_morninggl01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение ипомея",
+      "nameEn": "plant morning glory",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_ruglongxp_05b",
+      "category": "Ковры и текстиль",
+      "price": 10000,
+      "nameRu": "Ковёр красная дорожка",
+      "nameEn": "rug red runner",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_bloodlill01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение кровавая лилия",
+      "nameEn": "plant blood lily",
+      "style": "other"
+    },
+    {
+      "refId": "light_de_lantern_13",
+      "category": "Освещение",
+      "price": 800,
+      "nameRu": "Портовый красный фонарь.",
+      "nameEn": "port red lantern.",
+      "style": "other"
+    },
+    {
+      "refId": "furn_com_lantern_hook_02",
+      "category": "Декор",
+      "price": 2500,
+      "nameRu": "Крючок для фонаря, настенный.",
+      "nameEn": "hook for lantern, wall-mounted.",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_lightpost_01",
+      "category": "Декор",
+      "price": 200,
+      "nameRu": "Подвеска настенная для ламп, из деревнянных брусьев.",
+      "nameEn": "pendant wall-mounted for lamps, of wooden bars.",
+      "style": "other"
+    },
+    {
+      "refId": "mr_furn_p_table",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Имперский жюрнальный столик(75 ед.)",
+      "nameEn": "Imperial coffee small table (75 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "mr_furn_p_drawers",
+      "category": "Мебель",
+      "price": 7000,
+      "nameRu": "Имперский комод (100 ед.)",
+      "nameEn": "Imperial chest of drawers (100 capacity.)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_furn_dartboard_01",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Мишень для дартса",
+      "nameEn": "target for darts\n",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_ropenoose_01",
+      "category": "Декор",
+      "price": 750,
+      "nameRu": "Петля из верёвки",
+      "nameEn": "loop of rope",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_cratefill_straw01",
+      "category": "Декор",
+      "price": 1500,
+      "nameRu": "Ящик открытый с сеном.",
+      "nameEn": "crate open with hay.",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_ropeclothes_03",
+      "category": "Декор",
+      "price": 2000,
+      "nameRu": "Бельевая верёвка (одежда) 2 ",
+      "nameEn": "laundry rope (clothes) 2",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rug_04",
+      "category": "Ковры и текстиль",
+      "price": 8500,
+      "nameRu": "Имперский ковер, с гербами",
+      "nameEn": "Imperial rug, with coats of arms",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnr_ht1silvw",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Имперский комод с полками",
+      "nameEn": "Imperial chest of drawers with shelves",
+      "style": "imperial"
+    },
+    {
+      "refId": "light_com_sconce_01",
+      "category": "Освещение",
+      "price": 500,
+      "nameRu": "Светильник настенный",
+      "nameEn": "light fixture wall-mounted",
+      "style": "other"
+    },
+    {
+      "refId": "t_nor_furnm_weaponstand_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Подставка для оружия деревянная",
+      "nameEn": "stand for weapons wooden",
+      "style": "other"
+    },
+    {
+      "refId": "t_dae_ward_light_s_01",
+      "category": "Освещение",
+      "price": 1000000,
+      "nameRu": "Даэдрик литер",
+      "nameEn": "Daedric letter",
+      "style": "other"
+    },
+    {
+      "refId": "ab_furn_dwrvpanel00",
+      "category": "Декор",
+      "price": 20000,
+      "nameRu": "Загадочная чтойка",
+      "nameEn": "mysterious stand",
+      "style": "other"
+    },
+    {
+      "refId": "misc_com_bucket_01",
+      "category": "Декор",
+      "price": 100,
+      "nameRu": "Ведро",
+      "nameEn": "bucket",
+      "style": "other"
+    },
+    {
+      "refId": "t_glb_flora_flax02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение лен",
+      "nameEn": "plant linen",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_lillyvall04",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение ландыш",
+      "nameEn": "plant lily of the valley",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_setgc_x_planter_02",
+      "category": "Растения",
+      "price": 5000,
+      "nameRu": "Кашпо прямоугольник белый",
+      "nameEn": "planter rectangle white",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_setgc_x_planter_01",
+      "category": "Растения",
+      "price": 5000,
+      "nameRu": "Кашпо круг белый",
+      "nameEn": "planter circle white",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_trinitypl01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение росток троицы",
+      "nameEn": "plant sprout Tribunal",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigxp_09",
+      "category": "Ковры и текстиль",
+      "price": 3000,
+      "nameRu": "Ковер золото.бирюза",
+      "nameEn": "rug gold. turquoise",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugsquarexp_04",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Ковер ярко красный",
+      "nameEn": "rug bright red",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_12",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер фиолетовый",
+      "nameEn": "banner purple",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_03",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Банер серо-малин. узор",
+      "nameEn": "banner gray - raspberry. patterned",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtain_02r",
+      "category": "Ковры и текстиль",
+      "price": 2500,
+      "nameRu": "Штора коралл (П)",
+      "nameEn": "curtain coral (right)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtain_02l",
+      "category": "Ковры и текстиль",
+      "price": 2500,
+      "nameRu": "Штора коралл (Л)",
+      "nameEn": "curtain coral (left)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtain_04l",
+      "category": "Ковры и текстиль",
+      "price": 2500,
+      "nameRu": "Штора черная (Л)",
+      "nameEn": "curtain black (left)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtain_04r",
+      "category": "Ковры и текстиль",
+      "price": 2500,
+      "nameRu": "Штора черная (П)",
+      "nameEn": "curtain black (right)",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtainrod_01",
+      "category": "Ковры и текстиль",
+      "price": 1000,
+      "nameRu": "Карниз",
+      "nameEn": "curtain rod",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_curtainhook_01",
+      "category": "Ковры и текстиль",
+      "price": 1000,
+      "nameRu": "Крюк для карниза 1шт",
+      "nameEn": "hook for curtain rod 1 pcs",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_primrose02",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение примула",
+      "nameEn": "plant primrose",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_cushion_round_05",
+      "category": "Декор",
+      "price": 1000,
+      "nameRu": "Пуфик (круглый)",
+      "nameEn": "ottoman (round)",
+      "style": "other"
+    },
+    {
+      "refId": "furn_com_r_chair_01",
+      "category": "Мебель",
+      "price": 10000,
+      "nameRu": "Стул имперский голубой",
+      "nameEn": "chair Imperial light blue",
+      "style": "imperial"
+    },
+    {
+      "refId": "furn_com_tapestry_04",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Гобелен Империи коричневый",
+      "nameEn": "tapestry Imperial brown",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_glb_flora_foxglove01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение наперстянка",
+      "nameEn": "plant foxglove",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyr_flora_apple02",
+      "category": "Растения",
+      "price": 5000,
+      "nameRu": "Дерево яблоня",
+      "nameEn": "tree apple tree",
+      "style": "other"
+    },
+    {
+      "refId": "furn_imp_sconce_01",
+      "category": "Освещение",
+      "price": 2000,
+      "nameRu": "Держатель факела настенный",
+      "nameEn": "holder torch wall-mounted",
+      "style": "other"
+    },
+    {
+      "refId": "in_impsmall_door_01",
+      "category": "Двери",
+      "price": 3000,
+      "nameRu": "Деревянная имперская",
+      "nameEn": "wooden Imperial",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furn_rugbigcm_15",
+      "category": "Ковры и текстиль",
+      "price": 3000,
+      "nameRu": "Коврик плетёный разноцветный",
+      "nameEn": "mat woven multicolored",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furnr_chandelierlong_256",
+      "category": "Освещение",
+      "price": 25000,
+      "nameRu": "Имперский кованый на 8 свечей длин.цепь",
+      "nameEn": "Imperial wrought iron on 8 candles long. chain",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furn_tapestrydragon_08",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Гобелен Империи белый",
+      "nameEn": "tapestry Imperial white",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furn_rugbigxp_01",
+      "category": "Ковры и текстиль",
+      "price": 10000,
+      "nameRu": "Ковер серый геометрия",
+      "nameEn": "rug gray geometry",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugbigcm_11",
+      "category": "Ковры и текстиль",
+      "price": 6000,
+      "nameRu": "Ковер желтый цветочный",
+      "nameEn": "rug yellow floral",
+      "style": "other"
+    },
+    {
+      "refId": "t_glb_flora_flax01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение лен синий",
+      "nameEn": "plant linen blue",
+      "style": "other"
+    },
+    {
+      "refId": "t_glb_flora_flax03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение лен желтый",
+      "nameEn": "plant linen yellow",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestrywoollarge_04",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Гобелен малиновый горизонтальный",
+      "nameEn": "tapestry raspberry horizontal",
+      "style": "other"
+    },
+    {
+      "refId": "light_com_sconce_02",
+      "category": "Освещение",
+      "price": 4000,
+      "nameRu": "Светильник настенный на 3 свечи",
+      "nameEn": "light fixture wall-mounted on 3 candles",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_rugsquarexp_02",
+      "category": "Ковры и текстиль",
+      "price": 10000,
+      "nameRu": "Ковер малиновый квадратный",
+      "nameEn": "rug raspberry square",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_ruglongxp_01",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Ковер дорожка малиновая",
+      "nameEn": "rug runner raspberry",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furnm_chandelier2l_256",
+      "category": "Освещение",
+      "price": 25000,
+      "nameRu": "Светильник потолочный 24 свечи",
+      "nameEn": "light fixture ceiling 24 candles",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_ruglongxp_03b",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Ковер синяя дорожка край",
+      "nameEn": "rug blue runner edge",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_ruglongxp_03a",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Ковер синяя дорожка центр",
+      "nameEn": "rug blue runner center",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furnp_grindstone_01",
+      "category": "Двери",
+      "price": 200000,
+      "nameRu": "Точильный камень",
+      "nameEn": "grind stone",
+      "style": "other"
+    },
+    {
+      "refId": "furn_com_pm_chair_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Стул складной матерчатый",
+      "nameEn": "chair folding cloth",
+      "style": "other"
+    },
+    {
+      "refId": "t_rga_furn_incense_01_16",
+      "category": "Декор",
+      "price": 2500,
+      "nameRu": "Подставка под аромапалочки",
+      "nameEn": "stand under incense sticks",
+      "style": "other"
+    },
+    {
+      "refId": "t_els_flora_nightsh01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение паслен",
+      "nameEn": "plant nightshade",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_planter_03",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Горшок для растений высокий",
+      "nameEn": "pot for plants tall",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_incense_02_16",
+      "category": "Камины",
+      "price": 1000000,
+      "nameRu": "дымок",
+      "nameEn": "smoke",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestry_17",
+      "category": "Декор",
+      "price": 8000,
+      "nameRu": "Гобелен синий",
+      "nameEn": "tapestry blue",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furnm_chair01brown",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский стул",
+      "nameEn": "Imperial chair",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furn_rugovalxp_02",
+      "category": "Ковры и текстиль",
+      "price": 7000,
+      "nameRu": "Ковер яркий овал",
+      "nameEn": "rug bright oval",
+      "style": "other"
+    },
+    {
+      "refId": "active_de_p_bed_28",
+      "category": "Кровати",
+      "price": 2500,
+      "nameRu": "Кровать-гамак",
+      "nameEn": "bed - hammock",
+      "style": "other"
+    },
+    {
+      "refId": "t_sky_flora_aspyrtea01",
+      "category": "Растения",
+      "price": 1000,
+      "nameRu": "Растение аспир-чай",
+      "nameEn": "plant aspyr - tea",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_furn_bed_01",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Имперская кровать односпальная",
+      "nameEn": "Imperial bed single",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnp_wallscreen_02",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Имперская ширма черная",
+      "nameEn": "Imperial screen black",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnp_dw1empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский комод (75 ед)",
+      "nameEn": "Imperial chest of drawers (75 capacity)",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_cyrimp_furnp_st1empty",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперская тумбочка (50 ед)",
+      "nameEn": "Imperial nightstand (50 capacity)",
+      "style": "imperial"
+    },
+    {
+      "refId": "active_com_bed_05",
+      "category": "Кровати",
+      "price": 5000,
+      "nameRu": "Имперская кровать серая",
+      "nameEn": "Imperial bed gray",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_imp_furnp_bookshelf_04",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский шкаф с полками узкий",
+      "nameEn": "Imperial cabinet with shelves narrow",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_com_var_candlebox_14",
+      "category": "Декор",
+      "price": 2000,
+      "nameRu": "Ящик со свечами белые",
+      "nameEn": "crate with candles white",
+      "style": "other"
+    },
+    {
+      "refId": "t_com_var_cauldron_02",
+      "category": "Декор",
+      "price": 3000,
+      "nameRu": "Котел на треноге",
+      "nameEn": "cauldron on tripod",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furnp_table_02",
+      "category": "Мебель",
+      "price": 5000,
+      "nameRu": "Имперский столик квадратный",
+      "nameEn": "Imperial small table square",
+      "style": "imperial"
+    },
+    {
+      "refId": "t_glb_var_blood_04",
+      "category": "Декор",
+      "price": 50000,
+      "nameRu": "след крови",
+      "nameEn": "stain blood",
+      "style": "other"
+    },
+    {
+      "refId": "mr_vivec_planter_01_ai",
+      "category": "Растения",
+      "price": 10000,
+      "nameRu": "Кашпо данмерский круг",
+      "nameEn": "planter Dunmer circle",
+      "style": "dunmer"
+    },
+    {
+      "refId": "flora_tree_ai_03",
+      "category": "Растения",
+      "price": 10000,
+      "nameRu": "Красивое дерево",
+      "nameEn": "beautiful tree",
+      "style": "other"
+    },
+    {
+      "refId": "furn_uni_spearholder_01",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Подставка для оружия напольная",
+      "nameEn": "stand for weapons floor",
+      "style": "other"
+    },
+    {
+      "refId": "furn_uni_weaponrack_01",
+      "category": "Декор",
+      "price": 5000,
+      "nameRu": "Подставка для оружия настенная",
+      "nameEn": "stand for weapons wall-mounted",
+      "style": "other"
+    },
+    {
+      "refId": "furn_anvil00",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Наковальня",
+      "nameEn": "anvil",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_practice_mat",
+      "category": "Ковры и текстиль",
+      "price": 5000,
+      "nameRu": "Тренировочный мат",
+      "nameEn": "training mat",
+      "style": "other"
+    },
+    {
+      "refId": "flora_bush_01",
+      "category": "Растения",
+      "price": 10000,
+      "nameRu": "Можжевеловый куст",
+      "nameEn": "juniper bush",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_sethla_x_balconynarsis_02a",
+      "category": "Декор",
+      "price": 6000,
+      "nameRu": "Балконные перила",
+      "nameEn": "balcony\n railing",
+      "style": "other"
+    },
+    {
+      "refId": "t_imp_furn_tapestrytamrmap_01",
+      "category": "Декор",
+      "price": 15000,
+      "nameRu": "Большая, цветная карта Тамриэля.",
+      "nameEn": "large, colored map Tamriel.",
+      "style": "other"
+    },
+    {
+      "refId": "furn_de_rug_02",
+      "category": "Ковры и текстиль",
+      "price": 12000,
+      "nameRu": "Данмерский квадратный ковер с орнаментом Шестого Дома",
+      "nameEn": "Dunmer square rug with ornament Sixth home",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_dreu_furn_tapestry_02",
+      "category": "Декор",
+      "price": 25000,
+      "nameRu": "Дреугские решетчатые перегородки",
+      "nameEn": "Dreugh latticed partitions",
+      "style": "other"
+    },
+    {
+      "refId": "t_dreu_furn_tapestry_01",
+      "category": "Декор",
+      "price": 40000,
+      "nameRu": "Дреугское чучело ",
+      "nameEn": "Dreugh taxidermy",
+      "style": "other"
+    },
+    {
+      "refId": "t_dreu_var_lantern_01_256",
+      "category": "Освещение",
+      "price": 45000,
+      "nameRu": "Дреугский белый фонарь",
+      "nameEn": "Dreugh white lantern",
+      "style": "other"
+    },
+    {
+      "refId": "t_dreu_var_lantern_03_256",
+      "category": "Освещение",
+      "price": 45000,
+      "nameRu": "Друегский белый фонарь 2",
+      "nameEn": "Dreugh white lantern 2",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyrimp_furn_chs3pearl",
+      "category": "Контейнеры",
+      "price": 40000,
+      "nameRu": "Дреугская красивая шкатулка (40 ед.)",
+      "nameEn": "Dreugh beautiful jewelry box (40 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "t_bre_furn_ladder_03",
+      "category": "Декор",
+      "price": 6500,
+      "nameRu": "Деревянная лестница",
+      "nameEn": "wooden ladder",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_furn_rugsmall_01",
+      "category": "Ковры и текстиль",
+      "price": 6500,
+      "nameRu": "Ковер драповый, крупного плетения.",
+      "nameEn": "rug draped, large weave.",
+      "style": "other"
+    },
+    {
+      "refId": "t_cyrrga_furn_urn1drink",
+      "category": "Контейнеры",
+      "price": 8000,
+      "nameRu": "Урна красная с зеленой крышкой (200 ед.)",
+      "nameEn": "urn red with green lid (200 capacity.)",
+      "style": "other"
+    },
+    {
+      "refId": "t_de_setind_drum_03",
+      "category": "Декор",
+      "price": 10000,
+      "nameRu": "Индорильский барабан, маленький.",
+      "nameEn": "Indoril drum, small.",
+      "style": "dunmer"
+    },
+    {
+      "refId": "t_de_setind_drum_02",
+      "category": "Декор",
+      "price": 12000,
+      "nameRu": "Индорильский барабан, большой.",
+      "nameEn": "Indoril drum, large.",
+      "style": "dunmer"
+    }
+  ]
+}

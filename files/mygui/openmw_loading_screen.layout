@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" layer="LoadingScreen" position="0 0 800 600" name="_Main" align="Stretch">
+        <Widget type="Widget" skin="FullBlackBG" position="0 0 800 600" align="Stretch" name="BlackBackground">
+            <Property key="Alpha" value="1"/>
+            <Property key="NeedMouseFocus" value="false"/>
+        </Widget>
+        <Widget type="Widget" position="0 0 800 600" align="Stretch" name="LoadingBox">
+            <!-- Y092: exterior center loading label. -->
+            <Widget type="TextBox" skin="SandText" position="28 278 744 44" name="CenterLoadingText">
+                <Property key="FontName" value="ArenaLoadingFont"/>
+                <Property key="TextAlign" value="HCenter VCenter"/>
+                <Property key="NeedMouseFocus" value="false"/>
+                <Property key="NeedKeyFocus" value="false"/>
+            </Widget>
+            <!-- ArenaMP: slim top hint strip. Opaque black background; no splash textures. -->
+            <Widget type="Widget" position="0 0 800 64" align="HStretch Top" name="LoadingTipStrip">
+                <Widget type="Widget" skin="FullBlackBG" position="0 0 800 64" align="Stretch">
+                    <Property key="Alpha" value="0.46"/>
+                    <Property key="NeedMouseFocus" value="false"/>
+                </Widget>
+                <Widget type="TextBox" skin="SandText" position="28 6 744 52" align="Stretch" name="LoadingTip">
+                    <Property key="FontName" value="ArenaLoadingFont"/>
+                    <Property key="TextAlign" value="HCenter VCenter"/>
+                    <Property key="WordWrap" value="true"/>
+                    <Property key="NeedMouseFocus" value="false"/>
+                </Widget>
+            </Widget>
+
+            <!-- ArenaMP: slim bottom loading strip with status text and edge progress line. -->
+            <Widget type="Widget" position="0 542 800 58" align="HStretch Bottom" name="LoadingStatusStrip">
+                <Widget type="Widget" skin="FullBlackBG" position="0 0 800 58" align="Stretch" name="LoadingStatusBackground">
+                    <Property key="Alpha" value="0.46"/>
+                    <Property key="NeedMouseFocus" value="false"/>
+                </Widget>
+                <Widget type="TextBox" skin="SandText" position="28 4 744 44" align="HStretch Top" name="LoadingText">
+                    <Property key="FontName" value="ArenaLoadingFont"/>
+                    <Property key="TextAlign" value="HCenter VCenter"/>
+                    <Property key="NeedMouseFocus" value="false"/>
+                </Widget>
+                <Widget type="ScrollBar" skin="Arena_LoadingScroll" position="0 53 800 5" align="HStretch Bottom" name="ProgressBar">
+                    <Property key="NeedMouseFocus" value="false"/>
+                    <Property key="NeedKeyFocus" value="false"/>
+                </Widget>
+            </Widget>
+        </Widget>
+    </Widget>
+</MyGUI>

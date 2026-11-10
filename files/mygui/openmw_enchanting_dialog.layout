@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+  <Widget type="Window" skin="MW_Dialog" layer="Windows" position="0 0 700 550" align="Center" name="_Main">
+    <Widget type="EditBox" skin="MW_TextEdit" position="12 10 340 30" name="NameEdit"><UserString key="ToolTipType" value="Text"/><UserString key="ToolTipText" value="#{sName}"/></Widget>
+    <Widget type="HBox" position="12 48 340 64"><Property key="Spacing" value="8"/>
+      <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sItem}"/></Widget>
+      <Widget type="ItemWidget" skin="MW_ItemIconBox" position="0 0 54 54" name="ItemBox"/>
+      <Widget type="Spacer"/>
+      <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sSoulGem}"/></Widget>
+      <Widget type="ItemWidget" skin="MW_ItemIconBox" position="0 0 54 54" name="SoulBox"/>
+    </Widget>
+    <Widget type="VBox" position="380 8 300 110" align="Right Top">
+      <Widget type="HBox"><UserString key="HStretch" value="true"/>
+        <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sEnchantmentMenu3}"/></Widget>
+        <Widget type="AutoSizedTextBox" skin="SandText" name="Enchantment"><Property key="Caption" value="0"/><Property key="TextAlign" value="Right VCenter"/><UserString key="HStretch" value="true"/></Widget>
+      </Widget>
+      <Widget type="HBox"><UserString key="HStretch" value="true"/>
+        <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sEnchantmentMenu4}"/></Widget>
+        <Widget type="AutoSizedTextBox" skin="SandText" name="CastCost"><Property key="Caption" value="0"/><Property key="TextAlign" value="Right VCenter"/><UserString key="HStretch" value="true"/></Widget>
+      </Widget>
+      <Widget type="HBox"><UserString key="HStretch" value="true"/>
+        <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sCharges}"/></Widget>
+        <Widget type="AutoSizedTextBox" skin="SandText" name="Charge"><Property key="Caption" value="0"/><Property key="TextAlign" value="Right VCenter"/><UserString key="HStretch" value="true"/></Widget>
+      </Widget>
+      <Widget type="HBox" name="ChanceLayout"><UserString key="HStretch" value="true"/>
+        <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{sEnchantmentMenu6}"/></Widget>
+        <Widget type="AutoSizedTextBox" skin="SandText" name="SuccessChance"><Property key="Caption" value="0"/><Property key="TextAlign" value="Right VCenter"/><UserString key="HStretch" value="true"/></Widget>
+      </Widget>
+      <Widget type="HBox"><UserString key="HStretch" value="true"/>
+        <Widget type="AutoSizedTextBox" skin="NormalText"><Property key="Caption" value="#{arenamp=ce.uses}"/></Widget>
+        <Widget type="AutoSizedTextBox" skin="SandText" name="Uses"><Property key="Caption" value="0"/><Property key="TextAlign" value="Right VCenter"/><UserString key="HStretch" value="true"/></Widget>
+      </Widget>
+    </Widget>
+    <Widget type="EditBox" skin="MW_TextEdit" position="12 128 300 28" name="EffectSearch"><UserString key="ToolTipType" value="Text"/><UserString key="ToolTipText" value="#{arenamp=ce.search}"/></Widget>
+    <Widget type="TextBox" skin="NormalText" position="326 130 354 26"><Property key="Caption" value="#{sEffects}"/></Widget>
+    <Widget type="MWList" skin="MW_SimpleList" position="12 162 300 216" name="AvailableEffects" align="Left Top VStretch"/>
+    <Widget type="Widget" skin="MW_Box" position="326 162 354 216" align="Left Top Stretch">
+      <Widget type="ScrollView" skin="MW_ScrollViewH" position="4 4 346 208" name="UsedEffects" align="Stretch"><Property key="CanvasAlign" value="Left Top"/></Widget>
+    </Widget>
+    <Widget type="ComboBox" skin="MW_ComboBox" position="12 394 202 30" name="Templates" align="Left Bottom"><Property key="ComboBox_ModeDrop" value="true"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="220 394 130 30" name="SaveTemplate" align="Left Bottom"><Property key="Caption" value="#{arenamp=ce.save_template}"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="356 394 130 30" name="LoadTemplate" align="Left Bottom"><Property key="Caption" value="#{arenamp=ce.load_template}"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="492 394 188 30" name="FitButton" align="Right Bottom"><Property key="Caption" value="#{arenamp=ce.fit}"/></Widget>
+    <Widget type="TextBox" skin="NormalText" position="12 434 668 32" name="EconomicStatus" align="Left Bottom HStretch"><Property key="NeedMouse" value="false"/></Widget>
+    <Widget type="HBox" position="12 480 668 32" align="Left Bottom HStretch"><Property key="Spacing" value="8"/>
+      <Widget type="AutoSizedButton" skin="MW_Button" name="TypeButton"><Property key="Caption" value="#{sItemCastWhenUsed}"/></Widget>
+      <Widget type="Spacer"/>
+      <Widget type="AutoSizedTextBox" skin="NormalText" name="PriceTextLabel"><Property key="Caption" value="#{sBarterDialog7}"/></Widget>
+      <Widget type="AutoSizedTextBox" skin="SandText" name="PriceLabel"><Property key="Caption" value="0"/></Widget>
+      <Widget type="AutoSizedButton" skin="MW_Button" name="BuyButton"><Property key="Caption" value="#{sCreate}"/></Widget>
+      <Widget type="AutoSizedButton" skin="MW_Button" name="CancelButton"><Property key="Caption" value="#{sCancel}"/></Widget>
+    </Widget>
+  </Widget>
+</MyGUI>

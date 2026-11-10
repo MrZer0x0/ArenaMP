@@ -1,0 +1,731 @@
+name: Build and release (Windows, Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_windows:
+        description: Build Windows x64
+        type: boolean
+        default: true
+      build_linux:
+        description: Build Linux x64 / Steam Deck
+        type: boolean
+        default: true
+      clear_build_cache:
+        description: Ignore/refresh compiled build caches
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-builds-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BUILD_TYPE: Release
+  BUILD_LABEL: ${{ github.run_number }}-${{ github.run_attempt }}
+  CACHE_EPOCH: v3
+
+jobs:
+  windows-x64:
+    if: github.event_name == 'push' || inputs.build_windows
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.cache/ccache
+      CCACHE_MAXSIZE: 3G
+      CCACHE_COMPRESS: "true"
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      WINDOWS_CACHE_EPOCH: v2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify vendored Rubic0n LuaJIT source (Windows)
+        run: python CI/verify-rubic0n-vendor.py
+
+      - name: Restore Windows dependency downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            deps
+            .cache/vcpkg-assets
+          key: ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-deps-${{ hashFiles('CI/before_script.msvc.sh', 'CI/build_luajit_fallback.ps1', 'CI/vendor_luajit.ps1', 'extern/LuaJIT/src/**', 'extern/LuaJIT/dynasm/**', 'CI/vcpkg_asset_download.py') }}
+          restore-keys: |
+            ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-deps-
+
+      - name: Restore Windows incremental build tree
+        if: (github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')) && inputs.clear_build_cache != true
+        uses: actions/cache@v5
+        with:
+          path: MSVC2022_64_Ninja
+          key: ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-build-${{ hashFiles('CI/before_script.msvc.sh', 'CMakeLists.txt', 'cmake/**', 'components/**/CMakeLists.txt', 'apps/**/CMakeLists.txt', 'extern/**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-build-${{ hashFiles('CI/before_script.msvc.sh', 'CMakeLists.txt', 'cmake/**', 'components/**/CMakeLists.txt', 'apps/**/CMakeLists.txt', 'extern/**/CMakeLists.txt') }}-
+
+      - name: Restore Windows compiler cache
+        if: inputs.clear_build_cache != true
+        uses: actions/cache@v5
+        with:
+          path: .cache/ccache
+          key: ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ env.WINDOWS_CACHE_EPOCH }}-windows-x64-ccache-
+
+      - name: Install Windows incremental build tools
+        shell: pwsh
+        run: |
+          # windows-2022 ships Ninja. Avoid Chocolatey Community feed outages.
+          if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+            throw 'Required Ninja build tool is missing from the GitHub runner image.'
+          }
+          ninja --version
+
+          # ccache is an optimization only. Download the official upstream archive
+          # and continue without compiler cache if GitHub release delivery is down.
+          $ccacheVersion = '4.13.6'
+          $ccacheSha256 = '3d7cebb05850ad704e197b3f1d3f0f924ab6c9fdfc561578e146184fe9d89380'
+          $ccacheUrl = "https://github.com/ccache/ccache/releases/download/v$ccacheVersion/ccache-$ccacheVersion-windows-x86_64.zip"
+          $ccacheZip = Join-Path $env:RUNNER_TEMP "ccache-$ccacheVersion-windows-x86_64.zip"
+          $ccacheRoot = Join-Path $env:RUNNER_TEMP "ccache-$ccacheVersion"
+          $ccacheAvailable = $false
+
+          try {
+            Invoke-WebRequest -Uri $ccacheUrl -OutFile $ccacheZip -UseBasicParsing
+            $actualSha256 = (Get-FileHash -Path $ccacheZip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualSha256 -ne $ccacheSha256) {
+              throw "ccache SHA-256 mismatch: expected $ccacheSha256, got $actualSha256"
+            }
+            if (Test-Path $ccacheRoot) { Remove-Item -Recurse -Force $ccacheRoot }
+            Expand-Archive -Path $ccacheZip -DestinationPath $ccacheRoot -Force
+            $ccacheExe = Get-ChildItem -Path $ccacheRoot -Filter ccache.exe -File -Recurse | Select-Object -First 1
+            if ($null -eq $ccacheExe) { throw 'ccache.exe was not found in the official release archive.' }
+            $ccacheExe.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            & $ccacheExe.FullName --set-config=max_size=$env:CCACHE_MAXSIZE
+            & $ccacheExe.FullName --set-config=compression=true
+            & $ccacheExe.FullName --zero-stats
+            $ccacheAvailable = $true
+          }
+          catch {
+            Write-Warning "ccache setup failed; continuing without compiler cache. $($_.Exception.Message)"
+          }
+
+          if ($ccacheAvailable) {
+            'ARENA_USE_CCACHE=1' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          else {
+            'ARENA_USE_CCACHE=0' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          exit 0
+
+      - name: Prepare Windows build tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf install
+          if [[ "$GITHUB_REF" == refs/tags/* || "${{ inputs.clear_build_cache }}" == "true" ]]; then
+            rm -rf MSVC2022_64_Ninja
+          fi
+
+      - name: Restore source timestamps for incremental Ninja build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          marker="MSVC2022_64_Ninja/.arenamp-cache-sha"
+          cached_sha=""
+
+          if [[ -f "$marker" ]]; then
+            cached_sha="$(tr -d '\r\n' < "$marker")"
+            if ! git cat-file -e "${cached_sha}^{commit}" 2>/dev/null \
+              || ! git merge-base --is-ancestor "$cached_sha" "$GITHUB_SHA"; then
+              echo "Cached Windows build tree belongs to an incompatible revision; rebuilding it safely."
+              rm -rf MSVC2022_64_Ninja
+              cached_sha=""
+            fi
+          fi
+
+          if [[ -n "$cached_sha" ]]; then
+            python CI/restore-git-mtime.py --touch-changed-since "$cached_sha"
+          else
+            python CI/restore-git-mtime.py
+          fi
+
+      - name: Identify Windows vcpkg binary cache
+        id: vcpkg-cache-id
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vsRoot) { throw 'MSVC installation not found' }
+          $toolset = (Get-Content (Join-Path $vsRoot 'VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt')).Trim()
+          $compiler = Join-Path $vsRoot "VC/Tools/MSVC/$toolset/bin/Hostx64/x64/cl.exe"
+          $kitsRoot = (Get-ItemProperty 'HKLM:/SOFTWARE/Microsoft/Windows Kits/Installed Roots').KitsRoot10
+          $sdk = (Get-ChildItem (Join-Path $kitsRoot 'Include') -Directory |
+            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.Name } | Select-Object -Last 1).Name
+          if (-not $sdk) { throw 'Windows SDK version not found' }
+          $identity = & python CI/vcpkg_cache_identity.py --vcpkg-root C:/vcpkg --compiler "$compiler" --sdk "$sdk" --toolset "$toolset"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compute vcpkg cache identity' }
+          "key=windows-vcpkg-crypto-v1-$identity" >> $env:GITHUB_OUTPUT
+
+      - name: Restore compiled Windows crypto packages
+        id: vcpkg-binary-cache
+        if: inputs.clear_build_cache != true
+        uses: actions/cache/restore@v5
+        with:
+          path: .cache/vcpkg-binaries
+          key: ${{ steps.vcpkg-cache-id.outputs.key }}
+
+      - name: Prepare native publisher crypto dependency
+        id: publisher-crypto
+        shell: pwsh
+        run: |
+          # vcpkg validates package ABI before restoring a compiled package.
+          $binaryCache = (Join-Path $env:GITHUB_WORKSPACE '.cache/vcpkg-binaries').Replace('\', '/')
+          New-Item -ItemType Directory -Force $binaryCache | Out-Null
+          $cacheMode = if ('${{ inputs.clear_build_cache }}' -eq 'true') { 'write' } else { 'readwrite' }
+          $binarySource = 'files,' + $binaryCache + ',' + $cacheMode
+          if ($cacheMode -eq 'write') {
+            $env:VCPKG_BINARY_SOURCES = 'clear;' + $binarySource
+          } elseif ($env:VCPKG_BINARY_SOURCES) {
+            $env:VCPKG_BINARY_SOURCES += ';' + $binarySource
+          } else {
+            $env:VCPKG_BINARY_SOURCES = 'clear;' + $binarySource
+          }
+          # vcpkg launches CMake/port builds with a sanitized environment.
+          # On windows-2022 the suitable Ninja (1.13.2+) is already installed,
+          # but vcpkg's nested `fetch ninja` cannot see it without keeping PATH.
+          # Avoid downloading ninja-win.zip from GitHub (intermittent HTTP 504).
+          $ninja = (Get-Command ninja.exe -ErrorAction Stop).Source
+          $ninjaVersion = (& $ninja --version).Trim()
+          if ($LASTEXITCODE -ne 0 -or [version]$ninjaVersion -lt [version]'1.13.2') {
+            throw "Ninja >= 1.13.2 is required for the vcpkg compiler probe; found: $ninjaVersion"
+          }
+          $ninjaDir = Split-Path -Parent $ninja
+          $env:PATH = "$ninjaDir;$env:PATH"
+          # Existing values may include other explicitly retained variables.
+          $keptVars = @($env:VCPKG_KEEP_ENV_VARS -split ';' |
+            ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ine 'PATH' })
+          $env:VCPKG_KEEP_ENV_VARS = (@($keptVars) + 'PATH') -join ';'
+          Remove-Item Env:VCPKG_FORCE_DOWNLOADED_BINARIES -ErrorAction SilentlyContinue
+          Write-Host "Using local Ninja $ninjaVersion ($ninja) in vcpkg port builds"
+          # Preserve vcpkg's exact requested tool version and SHA512. Try the
+          # official CMake mirror if GitHub release delivery is unavailable.
+          $pythonExe = (Get-Command python -ErrorAction Stop).Source
+          $provider = Join-Path $env:GITHUB_WORKSPACE 'CI/vcpkg_asset_download.py'
+          $command = '"' + $pythonExe + '" "' + $provider + '" --url "{url}" --sha512 "{sha512}" --output "{dst}"'
+          $command = $command.Replace('`', '``').Replace(',', '`,').Replace(';', '`;')
+          $assetSource = 'x-script,' + $command
+          if ($env:X_VCPKG_ASSET_SOURCES) {
+            $env:X_VCPKG_ASSET_SOURCES += ';' + $assetSource
+          } else {
+            $env:X_VCPKG_ASSET_SOURCES = $assetSource
+          }
+          & C:/vcpkg/vcpkg.exe install --classic openssl:x64-windows
+          if ($LASTEXITCODE -ne 0) { throw 'Publisher OpenSSL/vcpkg preparation failed; inspect the download or port error above.' }
+          'OPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows' >> $env:GITHUB_ENV
+
+      # Save immediately after vcpkg succeeds, even if a later app build fails.
+      - name: Save compiled Windows crypto packages
+        if: always() && inputs.clear_build_cache != true && steps.publisher-crypto.outcome == 'success' && steps.vcpkg-binary-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/vcpkg-binaries
+          key: ${{ steps.vcpkg-cache-id.outputs.key }}
+
+      - name: Configure dependencies and project
+        run: |
+          set -euxo pipefail
+          args=(
+            -c Release
+            -p x64
+            -v 2022
+            -N
+            -V
+            -i "$GITHUB_WORKSPACE/install"
+          )
+
+          if [[ "${ARENA_USE_CCACHE:-0}" == "1" ]]; then
+            args+=( -C )
+          fi
+
+          # Branch pushes and manual builds reuse the CMake/Ninja tree. CMake refreshes
+          # changed project files and Ninja rebuilds only affected targets.
+          if [[ "$GITHUB_REF" != refs/tags/* && "${{ inputs.clear_build_cache }}" != "true" ]]; then
+            args+=( -k )
+          fi
+
+          bash CI/before_script.msvc.sh "${args[@]}"
+
+      - name: Build
+        run: |
+          set -euxo pipefail
+
+          # before_script.msvc.sh activates VsDevCmd only inside its own shell.
+          # Ninja stores the absolute cl.exe path, but the next Actions step still
+          # needs INCLUDE/LIB/LIBPATH from the Visual Studio developer environment.
+          source MSVC2022_64_Ninja/activate_msvc.sh
+          test -n "${INCLUDE:-}"
+          test -n "${LIB:-}"
+
+          # Continue independent translation units after the first compiler error,
+          # so one CI run reports several actionable failures.
+          cmake --build MSVC2022_64_Ninja --config Release --parallel 2 -- -k 20
+          cmake --install MSVC2022_64_Ninja --config Release
+          printf '%s\n' "$GITHUB_SHA" > MSVC2022_64_Ninja/.arenamp-cache-sha
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats || true
+          fi
+
+      # H022: arena-relay-agent is now a normal native Qt/C++ target and is
+      # built/installed together with the rest of ArenaMP. No Python/PyInstaller.
+      # The current launcher SDK is Qt 5.15.2, whose SSL loader expects OpenSSL 1.1.
+      # These compatibility DLLs are separate from the publisher's OpenSSL 3 crypto DLL.
+      - name: Supply HTTPS runtime for existing Qt 5 launcher
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'arena-qt5-openssl'
+          git clone --depth 1 --branch OpenSSL_1_1_1w https://github.com/openssl/openssl.git $source
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch Qt 5 TLS compatibility source' }
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
+          $build = Join-Path $env:RUNNER_TEMP 'arena-build-tls.cmd'
+          @"
+          @echo off
+          call "$vcvars"
+          if errorlevel 1 exit /b 1
+          cd /d "$source"
+          perl Configure VC-WIN64A no-asm no-tests shared
+          if errorlevel 1 exit /b 1
+          nmake
+          "@ | Set-Content $build
+          & cmd /c $build
+          if ($LASTEXITCODE -ne 0) { throw 'Qt 5 TLS compatibility build failed' }
+          Copy-Item "$source/libssl-1_1-x64.dll","$source/libcrypto-1_1-x64.dll" install/
+          Copy-Item 'C:/vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll' install/
+          Copy-Item "$source/LICENSE" install/OpenSSL-1.1-LICENSE.txt
+          & ./install/arena-server-agent.exe --check-tls
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged HTTPS runtime is unusable' }
+
+      - name: Verify native ArenaMP UDP relay agent
+        shell: pwsh
+        run: |
+          if (!(Test-Path "install/arena-relay-agent.exe")) { throw "Native ArenaMP UDP relay agent missing" }
+
+      - name: Verify native Qt Windows updater
+        shell: pwsh
+        run: |
+          if (!(Test-Path "install/arena-updater.exe")) { throw "Native updater was not installed" }
+          $process = Start-Process -FilePath "install/arena-updater.exe" -ArgumentList "--self-test" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Native updater self-test failed with code $($process.ExitCode)" }
+
+      - name: Verify Windows install tree
+        shell: pwsh
+        run: |
+          $requiredFiles = @(
+            "install\arenamp-launcher.exe",
+            "install\arena-updater.exe",
+            "install\arena-relay-agent.exe",
+            "install\arena-server-agent.exe",
+            "install\tes3mp.exe",
+            "install\tes3mp-server.exe",
+            "install\tes3mp-server-default.cfg",
+            "install\server\scripts\serverCore.lua",
+            "install\server\scripts\config.lua",
+            "install\server\data\banlist.json",
+            "install\server\data\requiredDataFiles.json",
+            "install\server\data\custom\quests\index.json",
+            "install\server\data\custom\quests\_TEMPLATE.json",
+            "install\server\data\custom\quests\arena_caius_drink.json",
+            "install\resources\mygui\arenamp_serverquesteditor.layout",
+            "install\server\ARENAMP_CORE_VERSION.txt",
+            "install\server\lib\cjson.dll",
+            "install\server\lib\io2.dll"
+          )
+
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Required file is missing from the final install tree: $file"
+            }
+          }
+
+          if (Test-Path "install\tes3mp-browser.exe") { throw "TES3MP browser must not be shipped by ArenaMP" }
+          Get-Item $requiredFiles | Format-Table Name, Length, LastWriteTime
+
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          $name = "ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}"
+          Compress-Archive -Path "install\*" -DestinationPath "$name.zip" -Force
+
+      - name: Collect Windows diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p actions-artifacts/windows-x64
+          [[ -f MSVC2022_64_Ninja/CMakeCache.txt ]] \
+            && cp MSVC2022_64_Ninja/CMakeCache.txt actions-artifacts/windows-x64/
+          ccache --show-stats > actions-artifacts/windows-x64/ccache-stats.txt 2>&1 || true
+          find MSVC2022_64_Ninja -maxdepth 3 -type f 2>/dev/null | sort \
+            > actions-artifacts/windows-x64/build-files.txt || true
+          printf 'workflow=%s\nrun_id=%s\nref=%s\ncommit=%s\nrunner_arch=%s\nrunner_os=%s\n' \
+            "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_REF" "$GITHUB_SHA" "$RUNNER_ARCH" "$RUNNER_OS" \
+            > actions-artifacts/windows-x64/BUILD_INFO.txt
+
+      - name: Publish ready Windows ZIP
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}
+          path: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload Windows diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}-diagnostics
+          path: actions-artifacts/windows-x64/
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux-steamdeck-x64:
+    if: github.event_name == 'push' || inputs.build_linux
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.cache/ccache
+      CCACHE_MAXSIZE: 2G
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify vendored Rubic0n LuaJIT source (Linux)
+        run: python3 CI/verify-rubic0n-vendor.py
+
+      - name: Restore Linux downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            apt-cache
+            ~/.cache/apt
+          key: ${{ env.CACHE_EPOCH }}-linux-jammy-apt-${{ hashFiles('CI/install_debian_deps.sh', '.github/workflows/release-builds.yml') }}
+          restore-keys: |
+            ${{ env.CACHE_EPOCH }}-linux-jammy-apt-
+
+      - name: Restore Linux compiler and fetched-source cache
+        if: (github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')) && inputs.clear_build_cache != true
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cache/ccache
+            build/extern/fetched
+            ${{ runner.temp }}/CrabNet
+          key: ${{ env.CACHE_EPOCH }}-linux-x64-build-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'components/**/CMakeLists.txt', 'apps/**/CMakeLists.txt', 'extern/**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_EPOCH }}-linux-x64-build-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'components/**/CMakeLists.txt', 'apps/**/CMakeLists.txt', 'extern/**/CMakeLists.txt') }}-
+            ${{ env.CACHE_EPOCH }}-linux-x64-build-
+
+      - name: Restore Linux ccache for Release tags
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || inputs.clear_build_cache == true
+        uses: actions/cache@v5
+        with:
+          path: .cache/ccache
+          key: ${{ env.CACHE_EPOCH }}-linux-x64-ccache-release-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_EPOCH }}-linux-x64-ccache-release-
+            ${{ env.CACHE_EPOCH }}-linux-x64-build-
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo bash CI/install_debian_deps.sh gcc openmw-deps openmw-deps-dynamic
+          sudo apt-get update -yq
+          # Y079: portable Qt deliberately uses XCB/Xwayland. Do not install
+          # qtwayland5 into the packaging host, otherwise a partial Wayland
+          # backend can leak into the archive without its helper integrations.
+          sudo apt-get install -y --no-install-recommends libluajit-5.1-dev ninja-build patchelf binutils
+
+      - name: Build vendored Rubic0n LuaJIT (Linux)
+        run: bash CI/build-rubic0n-posix.sh
+
+      - name: Check updater Qt dialog lifecycle
+        run: |
+          cmake -S apps/launcher/updater/qt-tests -B "$RUNNER_TEMP/arena-updater-ui" -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/arena-updater-ui" --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/arena-updater-ui" --output-on-failure
+
+      - name: Check built-in glass windows and updater close guards
+        run: |
+          cmake -S components/misc/arena-ui-tests -B "$RUNNER_TEMP/arena-glass-ui" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/arena-glass-ui" --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/arena-glass-ui" --output-on-failure
+
+      - name: Prepare clean Release tree
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || inputs.clear_build_cache == true
+        run: rm -rf build stage package actions-artifacts
+
+      - name: Build CrabNet
+        run: |
+          set -euxo pipefail
+          CRABNET_DIR="$RUNNER_TEMP/CrabNet"
+          if [ ! -d "$CRABNET_DIR/.git" ]; then
+            git clone --depth 1 https://github.com/TES3MP/CrabNet "$CRABNET_DIR"
+          else
+            git -C "$CRABNET_DIR" fetch --depth 1 origin
+            git -C "$CRABNET_DIR" reset --hard FETCH_HEAD
+          fi
+          cmake -S "$CRABNET_DIR" -B "$CRABNET_DIR/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCRABNET_ENABLE_DLL=OFF \
+            -DCRABNET_ENABLE_SAMPLES=OFF
+          cmake --build "$CRABNET_DIR/build" --parallel 2
+
+          # TES3MP 0.8.x ignores the externally supplied RakNet variables in
+          # parts of the build and expects this legacy tree unconditionally.
+          rm -rf "$GITHUB_WORKSPACE/extern/raknet"
+          mkdir -p "$GITHUB_WORKSPACE/extern/raknet/include" "$GITHUB_WORKSPACE/extern/raknet/lib"
+          cp -a "$CRABNET_DIR/include/." "$GITHUB_WORKSPACE/extern/raknet/include/"
+          cp "$CRABNET_DIR/build/lib/libRakNetLibStatic.a" \
+            "$GITHUB_WORKSPACE/extern/raknet/lib/libRakNetLibStatic.a"
+          cp "$CRABNET_DIR/build/lib/libRakNetLibStatic.a" \
+            "$GITHUB_WORKSPACE/extern/raknet/lib/libRakNetLibStaticd.a"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/stage" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DUSE_SYSTEM_TINYXML=ON \
+            -DOPENMW_USE_SYSTEM_MYGUI=ON \
+            -DOPENMW_USE_SYSTEM_OSG=ON \
+            -DOPENMW_USE_SYSTEM_BULLET=ON \
+            -DMORROWIND_DATA_FILES=data \
+            -DOPENMW_RESOURCE_FILES=resources \
+            -DBUILD_BROWSER=OFF \
+            -DRakNet_LIBRARY_RELEASE="$RUNNER_TEMP/CrabNet/build/lib/libRakNetLibStatic.a" \
+            -DRakNet_LIBRARY_DEBUG="$RUNNER_TEMP/CrabNet/build/lib/libRakNetLibStatic.a" \
+            -DRakNet_INCLUDE_DIR="$RUNNER_TEMP/CrabNet/include/raknet" \
+            -DLuaJit_INCLUDE_DIR="$RUNNER_TEMP/arenamp-rubic0n/include/luajit-2.1" \
+            -DLuaJit_LIBRARY="$RUNNER_TEMP/arenamp-rubic0n/lib/libluajit-5.1.so"
+
+      - name: Build and install
+        run: |
+          cmake --build build --parallel 2
+          cmake --install build
+          ccache --show-stats || true
+
+      - name: Verify native Qt Linux updater
+        run: |
+          test -x stage/bin/arena-updater
+          QT_QPA_PLATFORM=offscreen stage/bin/arena-updater --self-test
+
+      - name: Verify native agents and Linux entry point
+        run: |
+          python3 tests/launcher/native_agents_test.py stage/bin
+          python3 tests/launcher/linux_start_test.py
+
+      - name: Create portable Steam Deck archive
+        run: |
+          set -euxo pipefail
+          name="ArenaMP-Linux-x86_64-SteamDeck-${BUILD_LABEL}"
+          bash CI/linux/package-portable.sh \
+            "$GITHUB_WORKSPACE/stage" \
+            "$GITHUB_WORKSPACE/package" \
+            "$GITHUB_WORKSPACE/${name}.tar.gz"
+          test -f "$GITHUB_WORKSPACE/package/server/scripts/serverCore.lua"
+          test -f "$GITHUB_WORKSPACE/package/server/scripts/config.lua"
+          test -f "$GITHUB_WORKSPACE/package/server/data/banlist.json"
+          test -f "$GITHUB_WORKSPACE/package/server/data/requiredDataFiles.json"
+          test -f "$GITHUB_WORKSPACE/package/server/data/custom/quests/index.json"
+          test -f "$GITHUB_WORKSPACE/package/server/data/custom/quests/arena_caius_drink.json"
+          test -f "$GITHUB_WORKSPACE/package/resources/mygui/arenamp_serverquesteditor.layout"
+          test -f "$GITHUB_WORKSPACE/package/server/ARENAMP_CORE_VERSION.txt"
+          # The xcb plugin uses Qt private ABI.  Shipping the plugin without the
+          # matching helper is exactly what breaks on rolling distributions.
+          test -f "$GITHUB_WORKSPACE/package/lib/qt5/plugins/platforms/libqxcb.so"
+          for qtlib in libQt5Core.so.5 libQt5Gui.so.5 libQt5Widgets.so.5 libQt5Network.so.5 libQt5DBus.so.5 libQt5XcbQpa.so.5; do
+            test -e "$GITHUB_WORKSPACE/package/lib/$qtlib"
+          done
+          test -f "$GITHUB_WORKSPACE/package/qt.conf"
+          # Y078: these were the concrete Arch failures reported from the old
+          # portable build. Require the portable artifact to carry them rather
+          # than relying on target distro package versions.
+          for depglob in \
+              'libboost_filesystem.so*' 'libboost_program_options.so*' 'libboost_iostreams.so*' \
+              'libMyGUIEngine.so*' 'libLinearMath*.so*' 'libBulletCollision*.so*' \
+              'libtheoraenc.so*'; do
+            compgen -G "$GITHUB_WORKSPACE/package/lib/$depglob" >/dev/null || {
+              echo "Portable dependency missing: $depglob" >&2
+              exit 1
+            }
+          done
+          if ldd "$GITHUB_WORKSPACE/package/tes3mp.x86_64" | grep -q 'not found'; then
+            echo 'tes3mp still has unresolved runtime dependencies on the build host' >&2
+            ldd "$GITHUB_WORKSPACE/package/tes3mp.x86_64" >&2 || true
+            exit 1
+          fi
+          grep -Fxq 'resources=resources' "$GITHUB_WORKSPACE/package/openmw.cfg"
+          if grep -Eq '/home/runner/work/|/stage/(share|etc)/' "$GITHUB_WORKSPACE/package/openmw.cfg"; then
+            echo "CI-only path leaked into portable openmw.cfg" >&2
+            exit 1
+          fi
+          # Driver-facing libraries must come from the target host.  Shipping
+          # Ubuntu GLVND/libstdc++ beside Arch/SteamOS Mesa is not portable.
+          if find "$GITHUB_WORKSPACE/package/lib" \
+              \( -name 'libstdc++.so*' -o -name 'libGL.so*' -o -name 'libGLX.so*' \
+                 -o -name 'libGLdispatch.so*' -o -name 'libdrm.so*' -o -name 'libgbm.so*' \
+                 -o -name 'libEGL.so*' -o -name 'libvulkan.so*' \) -print -quit | grep -q .; then
+            echo "Host graphics/C++ runtime leaked into portable lib/" >&2
+            exit 1
+          fi
+          test "$(patchelf --print-rpath "$GITHUB_WORKSPACE/package/arenamp-launcher.x86_64")" = '$ORIGIN/lib'
+          if grep -q '^export LD_LIBRARY_PATH=' "$GITHUB_WORKSPACE/package/arenamp-launcher" \
+              "$GITHUB_WORKSPACE/package/arena_mp_start.sh"; then
+            echo "Portable wrappers still export LD_LIBRARY_PATH" >&2
+            exit 1
+          fi
+          # Y079: the supported portable Qt path is XCB/Xwayland. Native
+          # Wayland plugins are intentionally absent unless a future release
+          # ships the entire matching shell/client-buffer integration stack.
+          if compgen -G "$GITHUB_WORKSPACE/package/lib/qt5/plugins/platforms/libqwayland*.so" >/dev/null; then
+            echo "Partial Qt Wayland platform plugin leaked into portable package" >&2
+            exit 1
+          fi
+          grep -Fq 'QT_QPA_PLATFORM="${ARENAMP_QT_PLATFORM:-xcb}"' \
+            "$GITHUB_WORKSPACE/package/arenamp-launcher"
+          if find "$GITHUB_WORKSPACE/package/lib" -name 'libfontconfig.so*' -print -quit | grep -q .; then
+            echo "Bundled fontconfig would parse target distro /etc/fonts with the wrong version" >&2
+            exit 1
+          fi
+          if find "$GITHUB_WORKSPACE/package/server" -type f -iname '*.dll' -print -quit | grep -q .; then
+            echo "Windows-only Lua modules were packaged into Linux artifact" >&2
+            exit 1
+          fi
+
+      - name: Verify portable runtime on clean Arch Linux
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          mkdir -p actions-artifacts/linux-steamdeck
+          # Deliberately do not install Qt, Boost, OSG, Bullet or multimedia
+          # libraries: all application dependencies must come from the package.
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/package:/package:ro" \
+            -v "$GITHUB_WORKSPACE/CI/linux:/checks:ro" \
+            archlinux:base bash -c '
+              set -euo pipefail
+              pacman -Syu --noconfirm --needed file gcc-libs libglvnd mesa fontconfig xorg-server-xvfb xorg-xauth
+              cp -a /package /tmp/arenamp
+              bash /checks/check-portable-runtime.sh /tmp/arenamp
+            ' 2>&1 | tee actions-artifacts/linux-steamdeck/arch-runtime.log
+
+      - name: Collect Linux package and diagnostics
+        if: always()
+        run: |
+          set +e
+          mkdir -p actions-artifacts/linux-steamdeck
+          [ -f build/CMakeCache.txt ] && cp build/CMakeCache.txt actions-artifacts/linux-steamdeck/
+          ccache --show-stats > actions-artifacts/linux-steamdeck/ccache-stats.txt 2>&1 || true
+          find build -maxdepth 3 -type f 2>/dev/null | sort > actions-artifacts/linux-steamdeck/build-files.txt || true
+          printf 'workflow=%s\nrun_id=%s\nref=%s\ncommit=%s\nrunner_arch=%s\nrunner_os=%s\n' \
+            "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_REF" "$GITHUB_SHA" "$RUNNER_ARCH" "$RUNNER_OS" \
+            > actions-artifacts/linux-steamdeck/BUILD_INFO.txt
+
+      - name: Publish ready Linux tar.gz
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}
+          path: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload Linux diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}-diagnostics
+          path: actions-artifacts/linux-steamdeck/
+          if-no-files-found: warn
+          retention-days: 14
+  publish-release:
+    name: Publish GitHub Release
+    needs: [windows-x64, linux-steamdeck-x64]
+    if: >-
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      contains(needs.*.result, 'success')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      WINDOWS_RESULT: ${{ needs.windows-x64.result }}
+      LINUX_RESULT: ${{ needs.linux-steamdeck-x64.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check release preparation and refusal cases
+        run: python3 tests/release/test_prepare_release.py
+      - name: Download Windows package
+        if: needs.windows-x64.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}
+          path: release-artifacts
+      - name: Download Linux package
+        if: needs.linux-steamdeck-x64.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}
+          path: release-artifacts
+      - name: Prepare binaries, matching sources and checksums
+        shell: bash
+        run: python3 CI/prepare-release.py
+      - name: Publish completed release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+            title="ArenaMP $tag"
+          else
+            tag="build-${BUILD_LABEL}"
+            title="ArenaMP — public build ${BUILD_LABEL}"
+          fi
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$title" \
+            --notes-file release-notes.md --draft
+          gh release upload "$tag" release-assets/*
+          gh release edit "$tag" --draft=false --latest

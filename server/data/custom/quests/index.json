@@ -1,0 +1,33 @@
+{
+  "updatedAt":1788131557,
+  "quests":[{
+      "id":"arena_caius_drink",
+      "updatedAt":1788131557,
+      "author":"ArenaMP X037 built-in example",
+      "status":"published",
+      "name":"Выпивка для Кая",
+      "version":3
+    },{
+      "id":"arena_example_missing_ring",
+      "updatedAt":1788131557,
+      "author":"ArenaMP X035",
+      "status":"draft",
+      "name":"Пропавшее кольцо (пример)",
+      "version":1
+    },{
+      "id":"arena_eydis_fireeye_dues",
+      "updatedAt":1788131557,
+      "author":"ArenaMP X048",
+      "status":"published",
+      "name":"Взнос Гильдии бойцов",
+      "version":1
+    },{
+      "id":"arena_sellus_gravius_report",
+      "updatedAt":1788131557,
+      "author":"ArenaMP X048",
+      "status":"published",
+      "name":"Отчёт для Селлуса Гравиуса",
+      "version":1
+    }],
+  "schemaVersion":1
+}

@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+  <!-- X049: the chat stays lightweight in HUD mode. When text input is opened,
+       C++ reveals the framed player-menu shell and mouse-oriented controls.
+       X052: every button row below is only a starting rectangle. GUIChat
+       re-measures the captions at runtime and lays the rows out so that
+       localized text always fits, whatever the panel width or language. -->
+  <Widget type="Window" skin="" position="0 0 720 470" layer="Chat" name="_Main">
+    <Property key="Caption" value="ArenaMP"/>
+    <Property key="MinSize" value="40 40"/>
+    <Property key="Visible" value="false"/>
+    <Property key="NeedMouse" value="false"/>
+    <Property key="NeedKey" value="false"/>
+
+    <!-- Dark framed shell; hidden while the chat is only a HUD overlay. -->
+    <Widget type="Widget" skin="FullBlackBG" position="0 0 720 470" align="Stretch" name="PanelBackground">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="false"/>
+      <Property key="Alpha" value="0.92"/>
+      <Widget type="Widget" skin="MW_Box" position="0 0 720 470" align="Stretch" name="PanelBorder">
+        <Property key="NeedMouse" value="false"/>
+      </Widget>
+    </Widget>
+
+    <!-- Drag strip. It is deliberately separate from buttons, so the player can
+         grab empty title-bar space without accidentally switching tabs. -->
+    <Widget type="Widget" skin="MW_Box" position="6 6 708 32" align="HStretch Top" name="DragHandle">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="true"/>
+      <Widget type="TextBox" skin="SandBrightText" position="10 5 170 22" name="PlayerMenuTitle">
+        <Property key="TextAlign" value="Left VCenter"/>
+      </Widget>
+      <Widget type="Button" skin="MW_Button" position="190 4 100 24" name="TabChat"/>
+      <Widget type="Button" skin="MW_Button" position="294 4 100 24" name="TabGroup"/>
+      <Widget type="Button" skin="MW_Button" position="398 4 100 24" name="TabPlayers"/>
+      <Widget type="Button" skin="MW_Button" position="502 4 100 24" name="TabStats"/>
+      <Widget type="Button" skin="MW_Button" position="606 4 100 24" name="TabHome"/>
+      <Widget type="Button" skin="MW_Button" position="606 4 100 24" name="TabDecor"/>
+      <Widget type="Button" skin="MW_Button" position="670 4 30 24" name="ReturnButton"/>
+    </Widget>
+
+    <Widget type="Widget" skin="" position="10 44 700 30" align="HStretch Top" name="ChatToolbar">
+      <Property key="Visible" value="false"/>
+      <Widget type="Button" skin="MW_Button" position="0 2 52 26" name="ModeOoc"/>
+      <Widget type="Button" skin="MW_Button" position="56 2 52 26" name="ModeRp"/>
+      <Widget type="Button" skin="MW_Button" position="112 2 80 26" name="ChannelDefault"/>
+      <Widget type="Button" skin="MW_Button" position="196 2 80 26" name="ChannelLocal"/>
+      <Widget type="Button" skin="MW_Button" position="280 2 86 26" name="ChannelGlobal"/>
+      <Widget type="Button" skin="MW_Button" position="370 2 64 26" name="StylePlain"/>
+      <Widget type="Button" skin="MW_Button" position="438 2 52 26" name="StyleMe"/>
+      <Widget type="Button" skin="MW_Button" position="494 2 52 26" name="StyleDo"/>
+      <Widget type="Button" skin="MW_Button" position="550 2 70 26" name="EmojiToggle"/>
+      <Widget type="Button" skin="MW_Button" position="624 2 74 26" name="ColorToggle"/>
+    </Widget>
+
+    <!-- X052: two rows of ten quick-insert symbols. GUIChat decides at runtime
+         whether the Unicode palette or the always-renderable ASCII palette is
+         used, so a missing glyph can never turn into an empty box. -->
+    <Widget type="Widget" skin="MW_Box" position="10 78 700 68" align="HStretch Top" name="EmojiBar">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="true"/>
+      <Widget type="Button" skin="MW_Button" position="6 6 62 26" name="Emoji1"/>
+      <Widget type="Button" skin="MW_Button" position="72 6 62 26" name="Emoji2"/>
+      <Widget type="Button" skin="MW_Button" position="138 6 62 26" name="Emoji3"/>
+      <Widget type="Button" skin="MW_Button" position="204 6 62 26" name="Emoji4"/>
+      <Widget type="Button" skin="MW_Button" position="270 6 62 26" name="Emoji5"/>
+      <Widget type="Button" skin="MW_Button" position="336 6 62 26" name="Emoji6"/>
+      <Widget type="Button" skin="MW_Button" position="402 6 62 26" name="Emoji7"/>
+      <Widget type="Button" skin="MW_Button" position="468 6 62 26" name="Emoji8"/>
+      <Widget type="Button" skin="MW_Button" position="534 6 62 26" name="Emoji9"/>
+      <Widget type="Button" skin="MW_Button" position="600 6 62 26" name="Emoji10"/>
+      <Widget type="Button" skin="MW_Button" position="6 36 62 26" name="Emoji11"/>
+      <Widget type="Button" skin="MW_Button" position="72 36 62 26" name="Emoji12"/>
+      <Widget type="Button" skin="MW_Button" position="138 36 62 26" name="Emoji13"/>
+      <Widget type="Button" skin="MW_Button" position="204 36 62 26" name="Emoji14"/>
+      <Widget type="Button" skin="MW_Button" position="270 36 62 26" name="Emoji15"/>
+      <Widget type="Button" skin="MW_Button" position="336 36 62 26" name="Emoji16"/>
+      <Widget type="Button" skin="MW_Button" position="402 36 62 26" name="Emoji17"/>
+      <Widget type="Button" skin="MW_Button" position="468 36 62 26" name="Emoji18"/>
+      <Widget type="Button" skin="MW_Button" position="534 36 62 26" name="Emoji19"/>
+      <Widget type="Button" skin="MW_Button" position="600 36 62 26" name="Emoji20"/>
+    </Widget>
+
+    <!-- X052: nickname colour picker. Swatch captions are drawn with
+         setTextColour, so no special font or glyph is required. -->
+    <Widget type="Widget" skin="MW_Box" position="10 78 700 68" align="HStretch Top" name="ColorBar">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="true"/>
+      <Widget type="TextBox" skin="SandText" position="8 4 684 20" name="ColorBarLabel">
+        <Property key="TextAlign" value="Left VCenter"/>
+      </Widget>
+      <Widget type="Button" skin="MW_Button" position="6 28 38 26" name="Color1"/>
+      <Widget type="Button" skin="MW_Button" position="48 28 38 26" name="Color2"/>
+      <Widget type="Button" skin="MW_Button" position="90 28 38 26" name="Color3"/>
+      <Widget type="Button" skin="MW_Button" position="132 28 38 26" name="Color4"/>
+      <Widget type="Button" skin="MW_Button" position="174 28 38 26" name="Color5"/>
+      <Widget type="Button" skin="MW_Button" position="216 28 38 26" name="Color6"/>
+      <Widget type="Button" skin="MW_Button" position="258 28 38 26" name="Color7"/>
+      <Widget type="Button" skin="MW_Button" position="300 28 38 26" name="Color8"/>
+      <Widget type="Button" skin="MW_Button" position="342 28 38 26" name="Color9"/>
+      <Widget type="Button" skin="MW_Button" position="384 28 38 26" name="Color10"/>
+      <Widget type="Button" skin="MW_Button" position="426 28 38 26" name="Color11"/>
+      <Widget type="Button" skin="MW_Button" position="468 28 38 26" name="Color12"/>
+      <Widget type="Button" skin="MW_Button" position="510 28 38 26" name="Color13"/>
+      <Widget type="Button" skin="MW_Button" position="552 28 38 26" name="Color14"/>
+      <Widget type="Button" skin="MW_Button" position="594 28 38 26" name="Color15"/>
+      <Widget type="Button" skin="MW_Button" position="636 28 38 26" name="Color16"/>
+    </Widget>
+
+    <!-- H012: one list for categories and entries, like the animation picker. -->
+    <Widget type="Widget" skin="MW_Box" position="10 46 700 416" name="DecorPane">
+      <Property key="Visible" value="false"/>
+      <Widget type="TextBox" skin="SandBrightText" position="14 8 670 24" name="DecorTitle"/>
+      <Widget type="TextBox" skin="SandText" position="14 34 670 20" name="DecorHint"/>
+      <Widget type="ListBox" skin="MW_List" position="14 58 670 280" name="DecorList"/>
+      <Widget type="Button" skin="MW_Button" position="14 344 331 28" name="DecorBack"/>
+      <Widget type="Button" skin="MW_Button" position="353 344 331 28" name="DecorOpen"/>
+      <Widget type="Button" skin="MW_Button" position="14 376 331 28" name="DecorCapture"/>
+      <Widget type="Button" skin="MW_Button" position="353 376 331 28" name="DecorRefresh"/>
+    </Widget>
+
+    <!-- History is the only widget visible in passive HUD mode. -->
+    <Widget type="EditBox" skin="TES3MP_ChatHistory" position="8 8 704 300" align="Stretch" name="list_History">
+      <Property key="MultiLine" value="1"/>
+      <Property key="ReadOnly" value="true"/>
+      <Property key="NeedMouse" value="false"/>
+      <Property key="NeedKey" value="false"/>
+      <Property key="FontName" value="Russo"/>
+      <Property key="TextAlign" value="Left Top"/>
+      <Property key="TextColour" value="1 1 1"/>
+      <Property key="InvertSelected" value="true"/>
+      <Property key="WordWrap" value="true"/>
+    </Widget>
+
+    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="10 340 700 54" align="HStretch Bottom" name="edit_Command">
+      <Property key="InvertSelected" value="false"/>
+      <Property key="MultiLine" value="true"/>
+      <Property key="WordWrap" value="true"/>
+      <Property key="TextAlign" value="Left Top"/>
+      <Property key="FontName" value="DejaVuLGCSansMono"/>
+      <UserString key="AcceptTab" value="true"/>
+    </Widget>
+
+    <Widget type="Button" skin="MW_Button" position="10 434 280 28" align="Left Bottom" name="StayOpenButton">
+      <Property key="Visible" value="false"/>
+    </Widget>
+    <Widget type="Button" skin="MW_Button" position="590 434 120 28" align="Right Bottom" name="SendButton">
+      <Property key="Visible" value="false"/>
+    </Widget>
+
+    <!-- X050: server-backed group page. The controls send /groupui actions
+         through the existing chat packet; state comes back as hidden control text.
+         X052: the online roster on the right removes the need to type names. -->
+    <Widget type="Widget" skin="MW_Box" position="10 46 700 416" align="Stretch" name="GroupPane">
+      <Property key="Visible" value="false"/>
+      <Widget type="TextBox" skin="SandBrightText" position="14 8 420 24" name="GroupTitle"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="14 36 420 180" name="GroupInfo">
+        <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
+        <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+
+      <Widget type="TextBox" skin="SandBrightText" position="444 8 242 24" name="GroupRosterLabel"/>
+      <Widget type="ListBox" skin="MW_List" position="444 36 242 180" name="GroupRoster"/>
+
+      <Widget type="TextBox" skin="SandText" position="14 226 110 24" name="GroupNameLabel"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="128 224 280 28" name="GroupNameEdit">
+        <Property key="MultiLine" value="false"/><Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+      <Widget type="Button" skin="MW_Button" position="416 224 120 28" name="GroupCreateButton"/>
+
+      <Widget type="TextBox" skin="SandText" position="14 262 110 24" name="GroupTargetLabel"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="128 260 280 28" name="GroupTargetEdit">
+        <Property key="MultiLine" value="false"/><Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+
+      <Widget type="Widget" skin="" position="14 296 672 30" name="GroupActionRow1">
+        <Widget type="Button" skin="MW_Button" position="0 2 200 26" name="GroupInviteButton"/>
+        <Widget type="Button" skin="MW_Button" position="206 2 200 26" name="GroupKickButton"/>
+        <Widget type="Button" skin="MW_Button" position="412 2 200 26" name="GroupLeaderButton"/>
+      </Widget>
+
+      <Widget type="Widget" skin="" position="14 330 672 30" name="GroupActionRow2">
+        <Widget type="Button" skin="MW_Button" position="0 2 220 26" name="GroupJournalButton"/>
+        <Widget type="Button" skin="MW_Button" position="226 2 220 26" name="GroupTopicsButton"/>
+        <Widget type="Button" skin="MW_Button" position="452 2 100 26" name="GroupLeaveButton"/>
+        <Widget type="Button" skin="MW_Button" position="558 2 110 26" name="GroupDisbandButton"/>
+      </Widget>
+
+      <Widget type="Widget" skin="" position="14 364 672 30" name="GroupActionRow3">
+        <Widget type="Button" skin="MW_Button" position="0 2 200 26" name="GroupAcceptButton"/>
+        <Widget type="Button" skin="MW_Button" position="206 2 200 26" name="GroupDeclineButton"/>
+        <Widget type="Button" skin="MW_Button" position="412 2 120 26" name="GroupRefreshButton"/>
+        <Widget type="Button" skin="MW_Button" position="538 2 130 26" name="GroupVoiceButton"/>
+      </Widget>
+    </Widget>
+
+    <!-- X052: server player list, the same roster /list reports. -->
+    <Widget type="Widget" skin="MW_Box" position="10 46 700 416" align="Stretch" name="PlayersPane">
+      <Property key="Visible" value="false"/>
+      <Widget type="TextBox" skin="SandBrightText" position="14 8 672 24" name="PlayersTitle"/>
+      <Widget type="ListBox" skin="MW_List" position="14 36 672 218" name="PlayersList"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="14 262 672 110" name="PlayersInfo">
+        <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
+        <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 378 672 30" name="PlayersActionRow">
+        <Widget type="Button" skin="MW_Button" position="0 2 160 26" name="PlayersRefreshButton"/>
+        <Widget type="Button" skin="MW_Button" position="166 2 200 26" name="PlayersOpenListButton"/>
+        <Widget type="Button" skin="MW_Button" position="372 2 200 26" name="PlayersInviteButton"/>
+      </Widget>
+    </Widget>
+
+    <!-- Z005: "My home" is a real Player Menu page now, not a server list box. -->
+    <Widget type="Widget" skin="MW_Box" position="10 46 700 416" align="Stretch" name="HomePane">
+      <Property key="Visible" value="false"/>
+      <Widget type="TextBox" skin="SandBrightText" position="14 8 672 24" name="HomeTitle"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="14 36 672 184" name="HomeInfo">
+        <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
+        <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 227 672 46" name="HomeActionRow1">
+        <Widget type="TextBox" skin="SandText" position="2 0 668 16" name="HomeSettingsLabel"/>
+        <Widget type="Button" skin="MW_Button" position="0 18 200 26" name="HomeRenameButton"/>
+        <Widget type="Button" skin="MW_Button" position="206 18 200 26" name="HomeLockButton"/>
+        <Widget type="Button" skin="MW_Button" position="412 18 200 26" name="HomeTakeButton"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 273 672 46" name="HomeActionRow2">
+        <Widget type="TextBox" skin="SandText" position="2 0 668 16" name="HomeTypeLabel"/>
+        <Widget type="Button" skin="MW_Button" position="0 18 160 26" name="HomeKindHouseButton"/>
+        <Widget type="Button" skin="MW_Button" position="166 18 160 26" name="HomeKindTavernButton"/>
+        <Widget type="Button" skin="MW_Button" position="332 18 160 26" name="HomeKindShopButton"/>
+        <Widget type="Button" skin="MW_Button" position="498 18 160 26" name="HomeKindGuildButton"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 319 672 46" name="HomeActionRow3">
+        <Widget type="TextBox" skin="SandText" position="2 0 668 16" name="HomeAccessLabel"/>
+        <Widget type="Button" skin="MW_Button" position="0 18 200 26" name="HomeCoownerButton"/>
+        <Widget type="Button" skin="MW_Button" position="206 18 200 26" name="HomeFriendButton"/>
+        <Widget type="Button" skin="MW_Button" position="412 18 200 26" name="HomeRevokeButton"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 365 672 46" name="HomeActionRow4">
+        <Widget type="TextBox" skin="SandText" position="2 0 668 16" name="HomeManageLabel"/>
+        <Widget type="Button" skin="MW_Button" position="0 18 200 26" name="HomeResetButton"/>
+        <Widget type="Button" skin="MW_Button" position="206 18 200 26" name="HomeGiftButton"/>
+        <Widget type="Button" skin="MW_Button" position="412 18 200 26" name="HomeSellButton"/>
+        <Widget type="Button" skin="MW_Button" position="618 18 50 26" name="HomeMarketButton"/>
+      </Widget>
+    </Widget>
+
+    <!-- Y052: profile/statistics integrated into the Player Menu. -->
+    <Widget type="Widget" skin="MW_Box" position="10 46 700 416" align="Stretch" name="ProfilePane">
+      <Property key="Visible" value="false"/>
+      <Widget type="TextBox" skin="SandBrightText" position="14 8 672 24" name="ProfileTitle"/>
+      <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="14 36 672 302" name="ProfileInfo">
+        <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
+        <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Property key="FontName" value="DejaVuLGCSansMono"/>
+      </Widget>
+      <!-- Z001: the four profile actions are split over two rows. In a single
+           row the widest caption ("Delete profile" / "Удалить профиль") pushed
+           the button past the right edge of the pane on narrow panel widths,
+           where it could not be clicked at all. -->
+      <Widget type="Widget" skin="" position="14 344 672 30" name="ProfileActionRow">
+        <Widget type="Button" skin="MW_Button" position="0 2 330 26" name="ProfileRefreshButton"/>
+        <Widget type="Button" skin="MW_Button" position="336 2 330 26" name="ProfileFixButton"/>
+      </Widget>
+      <Widget type="Widget" skin="" position="14 378 672 30" name="ProfileActionRow2">
+        <Widget type="Button" skin="MW_Button" position="0 2 330 26" name="ProfileReturnsButton"/>
+        <Widget type="Button" skin="MW_Button" position="336 2 330 26" name="ProfileDeleteButton"/>
+      </Widget>
+    </Widget>
+
+    <!-- U024e: classic F2 editor. The outer frame stays mouse-enabled so MyGUI
+         can traverse to its child controls; the wide MW_Button title bar is the
+         dedicated move surface and the bottom-right MW_Button is the resize grip. -->
+    <Widget type="Widget" skin="MW_Box" position="0 0 720 470" align="Stretch" name="LayoutFrame">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="true"/>
+      <Property key="Alpha" value="1.0"/>
+      <Widget type="Widget" skin="FullBlackBG" position="5 5 710 460" align="Stretch">
+        <Property key="NeedMouse" value="false"/>
+        <Property key="Alpha" value="0.45"/>
+      </Widget>
+      <Widget type="Widget" skin="MW_Box" position="2 2 716 466" align="Stretch">
+        <Property key="NeedMouse" value="false"/>
+        <Property key="Alpha" value="0.9"/>
+      </Widget>
+      <Widget type="Button" skin="MW_Button" position="5 5 710 34" align="HStretch Top" name="LayoutDrag">
+        <Property key="NeedMouse" value="true"/>
+        <Property key="Alpha" value="1.0"/>
+        <Widget type="TextBox" skin="SandBrightText" position="8 5 694 24" align="Stretch" name="LayoutTitle">
+          <Property key="NeedMouse" value="false"/>
+          <Property key="TextAlign" value="Left VCenter"/>
+        </Widget>
+      </Widget>
+      <Widget type="Button" skin="MW_Button" position="684 434 31 31" align="Right Bottom" name="LayoutResize">
+        <Property key="NeedMouse" value="true"/>
+        <Property key="Alpha" value="1.0"/>
+        <Widget type="TextBox" skin="SandBrightText" position="2 2 27 27">
+          <Property key="NeedMouse" value="false"/>
+          <Property key="Caption" value="+"/>
+          <Property key="TextAlign" value="Center"/>
+        </Widget>
+      </Widget>
+    </Widget>
+  </Widget>
+</MyGUI>
