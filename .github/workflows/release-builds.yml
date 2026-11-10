@@ -271,6 +271,28 @@ jobs:
 
           bash CI/before_script.msvc.sh "${args[@]}"
 
+      # Qt 5.15.2 on Windows requires the OpenSSL 1.1 DLL ABI for HTTPS.
+      # Cache the compiled compatibility DLLs independently of the large C++ build.
+      - name: Restore Qt 5 HTTPS compatibility runtime
+        id: qt5-tls-cache
+        if: inputs.clear_build_cache != true
+        uses: actions/cache/restore@v5
+        with:
+          path: .cache/qt5-openssl-1.1.1w
+          key: qt5-openssl-1.1.1w-msvc2022-x64-v1
+
+      - name: Prepare Qt 5 HTTPS compatibility runtime
+        shell: pwsh
+        run: |
+          ./CI/windows/prepare-qt5-tls.ps1 -Destination '.cache/qt5-openssl-1.1.1w'
+
+      - name: Cache Qt 5 HTTPS compatibility runtime
+        if: inputs.clear_build_cache != true && steps.qt5-tls-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/qt5-openssl-1.1.1w
+          key: qt5-openssl-1.1.1w-msvc2022-x64-v1
+
       - name: Build
         run: |
           set -euxo pipefail
@@ -291,34 +313,17 @@ jobs:
             ccache --show-stats || true
           fi
 
-      # H022: arena-relay-agent is now a normal native Qt/C++ target and is
-      # built/installed together with the rest of ArenaMP. No Python/PyInstaller.
-      # The current launcher SDK is Qt 5.15.2, whose SSL loader expects OpenSSL 1.1.
-      # These compatibility DLLs are separate from the publisher's OpenSSL 3 crypto DLL.
-      - name: Supply HTTPS runtime for existing Qt 5 launcher
+      - name: Install and validate cached Qt 5 HTTPS runtime
         shell: pwsh
         run: |
-          $source = Join-Path $env:RUNNER_TEMP 'arena-qt5-openssl'
-          git clone --depth 1 --branch OpenSSL_1_1_1w https://github.com/openssl/openssl.git $source
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch Qt 5 TLS compatibility source' }
-          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
-          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
-          $build = Join-Path $env:RUNNER_TEMP 'arena-build-tls.cmd'
-          @"
-          @echo off
-          call "$vcvars"
-          if errorlevel 1 exit /b 1
-          cd /d "$source"
-          perl Configure VC-WIN64A no-asm no-tests shared
-          if errorlevel 1 exit /b 1
-          nmake
-          "@ | Set-Content $build
-          & cmd /c $build
-          if ($LASTEXITCODE -ne 0) { throw 'Qt 5 TLS compatibility build failed' }
-          Copy-Item "$source/libssl-1_1-x64.dll","$source/libcrypto-1_1-x64.dll" install/
-          Copy-Item 'C:/vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll' install/
-          Copy-Item "$source/LICENSE" install/OpenSSL-1.1-LICENSE.txt
+          $ErrorActionPreference = 'Stop'
+          $tls = '.cache/qt5-openssl-1.1.1w'
+          foreach ($file in @('libssl-1_1-x64.dll', 'libcrypto-1_1-x64.dll', 'LICENSE')) {
+            if (-not (Test-Path (Join-Path $tls $file))) { throw "Missing Qt 5 TLS package file: $file" }
+          }
+          Copy-Item "$tls/libssl-1_1-x64.dll", "$tls/libcrypto-1_1-x64.dll" install/ -ErrorAction Stop
+          Copy-Item 'C:/vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll' install/ -ErrorAction Stop
+          Copy-Item "$tls/LICENSE" install/OpenSSL-1.1-LICENSE.txt -ErrorAction Stop
           & ./install/arena-server-agent.exe --check-tls
           if ($LASTEXITCODE -ne 0) { throw 'Packaged HTTPS runtime is unusable' }
 
