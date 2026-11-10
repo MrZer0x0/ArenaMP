@@ -1,7 +1,4 @@
 #include "actor.hpp"
-#include "actorbodyrules.hpp"
-#include "playerbodyshape.hpp"
-#include <BulletCollision/CollisionShapes/btCylinderShape.h>
 
 /*
     Start of tes3mp addition
@@ -12,7 +9,6 @@
 #include "../mwmp/Main.hpp"
 #include "../mwmp/Networking.hpp"
 #include "../mwmp/PlayerList.hpp"
-#include "../mwmp/MechanicsHelper.hpp"
 /*
     End of tes3mp addition
 */
@@ -29,6 +25,10 @@
 
 #include "collisiontype.hpp"
 #include "mtphysics.hpp"
+#include "npccollisionfootprint.hpp"
+
+#include "../mwbase/environment.hpp"
+#include "../mwbase/world.hpp"
 
 #include <cmath>
 
@@ -46,6 +46,13 @@ Actor::Actor(const MWWorld::Ptr& ptr, const Resource::BulletShape* shape, Physic
   , mTaskScheduler(scheduler)
 {
     mPtr = ptr;
+
+    // Apply the permanent compact footprint only to ordinary NPCs. The local
+    // player and all remote multiplayer player actors keep their full shape.
+    const MWWorld::Ptr localPlayer = MWBase::Environment::get().getWorld()->getPlayerPtr();
+    mUseReducedNpcCollision = ptr.getClass().isNpc()
+        && ptr != localPlayer
+        && !mwmp::PlayerList::isDedicatedPlayer(ptr);
 
     // We can not create actor without collisions - he will fall through the ground.
     // In this case we should autogenerate collision box based on mesh shape
@@ -71,36 +78,8 @@ Actor::Actor(const MWWorld::Ptr& ptr, const Resource::BulletShape* shape, Physic
             Log(Debug::Error) << "Error: Failed to calculate bounding box for actor \"" << ptr.getCellRef().getRefId() << "\".";
     }
 
-    // Keep a stable locomotion body: no weapon, wing or animated frame-by-frame
-    // bound is allowed to make the actor suddenly grow in a doorway.
-    if (!ptr.getClass().isNpc() && shape->mHasModelCollisionBox)
-    {
-        const auto visual = shape->mModelCollisionBox.extents;
-        mHalfExtents.x() = ActorBodyRules::fit(mHalfExtents.x(), visual.x());
-        mHalfExtents.y() = ActorBodyRules::fit(mHalfExtents.y(), visual.y());
-        // Preserve authored feet and height for swimming/stairs; visible extremities
-        // in a bind pose are not a reliable animation-independent head position.
-    }
-    // Start from the V18 round footprint before reducing X only. Applying the
-    // old min(X,Y) rounding afterwards would also shrink chest-to-back depth.
-    const bool roundBody = ActorBodyRules::roundFootprint(mHalfExtents.x(), mHalfExtents.y());
-    if (roundBody)
-        mHalfExtents.x() = mHalfExtents.y() = std::min(mHalfExtents.x(), mHalfExtents.y());
-    mPlayerBody = MechanicsHelper::isPlayerPtr(ptr);
-    mRenderingHalfHeight = mHalfExtents.z();
-    mRenderingHalfWidth = mHalfExtents.x();
-    ActorBodyRules::reducePlayerWidth(mPlayerBody, mHalfExtents.x());
-    ActorBodyRules::reducePlayerHeight(mPlayerBody,
-        mHalfExtents.z(), mMeshTranslation.z());
-    if (mPlayerBody)
-        mShape = makePlayerBodyShape(Misc::Convert::toBullet(mHalfExtents));
-    else if (roundBody)
-    {
-        mShape.reset(new btCylinderShapeZ(Misc::Convert::toBullet(mHalfExtents)));
-    }
-    else mShape.reset(new btBoxShape(Misc::Convert::toBullet(mHalfExtents)));
-
-    mRotationallyInvariant = !mPlayerBody && (mMeshTranslation.x() == 0.0 && mMeshTranslation.y() == 0.0) && std::fabs(mHalfExtents.x() - mHalfExtents.y()) < 2.2;
+    mShape.reset(new btBoxShape(Misc::Convert::toBullet(mHalfExtents)));
+    mRotationallyInvariant = (mMeshTranslation.x() == 0.0 && mMeshTranslation.y() == 0.0) && std::fabs(mHalfExtents.x() - mHalfExtents.y()) < 2.2;
 
     mConvexShape = static_cast<btConvexShape*>(mShape.get());
 
@@ -213,7 +192,9 @@ osg::Vec3f Actor::getScaledMeshTranslation() const
 void Actor::updateCollisionObjectPosition()
 {
     std::scoped_lock lock(mPositionMutex);
-    mShape->setLocalScaling(Misc::Convert::toBullet(mScale));
+    const osg::Vec3f collisionScale = NpcCollisionFootprint::applyHorizontalScale(
+        mScale, mUseReducedNpcCollision);
+    mShape->setLocalScaling(Misc::Convert::toBullet(collisionScale));
     osg::Vec3f newPosition = getScaledMeshTranslation() + mPosition;
 
     auto& trans = mCollisionObject->getWorldTransform();
@@ -296,30 +277,19 @@ void Actor::updateScale()
 osg::Vec3f Actor::getHalfExtents() const
 {
     std::scoped_lock lock(mPositionMutex);
-    return osg::componentMultiply(mHalfExtents, mScale);
+    return NpcCollisionFootprint::applyHorizontalScale(
+        osg::componentMultiply(mHalfExtents, mScale), mUseReducedNpcCollision);
 }
 
 osg::Vec3f Actor::getOriginalHalfExtents() const
 {
-    return mHalfExtents;
-}
-
-osg::Vec3f Actor::getMovementOffset() const
-{
-    // Player step/unstuck sweeps must use the same center as the registered
-    // collision object, including an authored feet offset. Preserve vanilla's
-    // half-height convention for other actors and custom creature models.
-    std::scoped_lock lock(mPositionMutex);
-    return mPlayerBody ? getScaledMeshTranslation() : osg::Vec3f(0.f, 0.f, mHalfExtents.z() * mScale.z());
+    return NpcCollisionFootprint::applyHorizontalScale(mHalfExtents, mUseReducedNpcCollision);
 }
 
 osg::Vec3f Actor::getRenderingHalfExtents() const
 {
     std::scoped_lock lock(mPositionMutex);
-    osg::Vec3f extents = mHalfExtents;
-    extents.x() = mRenderingHalfWidth;
-    extents.z() = mRenderingHalfHeight;
-    return osg::componentMultiply(extents, mRenderingScale);
+    return osg::componentMultiply(mHalfExtents, mRenderingScale);
 }
 
 void Actor::setInertialForce(const osg::Vec3f &force)

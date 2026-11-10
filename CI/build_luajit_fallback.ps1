@@ -60,11 +60,8 @@ $tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
 $batchFile = Join-Path $tempRoot 'arenamp-build-luajit-official.cmd'
 @(
     '@echo off',
-    # vcvars64.bat does not accept VsDevCmd.bat's -no_logo option.
     "call `"$vcvars`"",
     'if errorlevel 1 exit /b 1',
-    'where cl.exe >nul 2>nul',
-    'if errorlevel 1 (echo ERROR: MSVC compiler is not available after vcvars64.bat & exit /b 1)',
     "cd /d `"$srcdir`"",
     'if errorlevel 1 exit /b 1',
     'call msvcbuild.bat',

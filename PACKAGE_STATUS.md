@@ -1,19 +1,14 @@
-# First public source release: validation status
+# ArenaMP — public Windows/Linux source package status
 
-This distribution contains the ArenaMP source tree for Windows x64 and Linux x86_64 / Steam Deck. It includes the launcher, updater, server, CoreScripts, resources and vendored Rubic0n LuaJIT.
+This archive is a **public source repository**, not precompiled binaries. It contains the Windows x64 and Linux x86_64 / Steam Deck build workflows and the complete vendored Rubic0n LuaJIT 2.1 source.
 
-## Preparation checks
+## Source checks
 
-- Source archive integrity, required build files and vendored LuaJIT Git inclusion.
-- English/Russian documentation structure and local file links.
-- Workflow structure and shell syntax.
-- Release asset selection, exact-commit source packaging, metadata and SHA-256 generation in a local rehearsal without contacting GitHub.
-- Existing isolated gameplay checks described in [VALIDATION.md](docs/guide/VALIDATION.md).
+- Complete Windows/Linux GitHub Actions jobs, Release packaging and GitHub Releases publication path.
+- Release-only Windows OpenSSL vcpkg triplet and Rubic0n source verification.
+- The Android application, its private APK signing key, macOS/Android build jobs and platform packaging scripts are excluded.
+- Repository-local syntax and source integrity tests are performed when preparing this source ZIP; they **do not prove** successful Windows/Linux compilation or gameplay.
 
-## Runtime status
+## Before distributing binaries
 
-Full Windows and Linux engine builds and a multiplayer gameplay session have not been run during archive preparation. The included workflow performs platform build/package checks before automatic publication; the maintainer must inspect the successful run and exercise the resulting packages.
-
-The reported chair-sitting height problem remains open. See [known issues](docs/guide/09-troubleshooting.md) and [component notices](docs/guide/07-credits-licenses.md) for the remaining runtime and distribution questions.
-
-[Build and publish](docs/BUILDING.md) · [Русское руководство](docs/BUILDING_RU.md)
+Run the Windows and Linux workflows on GitHub-hosted runners and inspect both generated packages. Test launcher startup, game data selection, server login/reconnect, cell changes, house ownership, furniture persistence, voice and NPC interactions before promoting binaries to production. Do not commit production saves or credentials.

@@ -15,6 +15,14 @@ on:
         description: Ignore/refresh compiled build caches
         type: boolean
         default: false
+      publish_release:
+        description: Publish selected successful Release packages to GitHub Releases
+        type: boolean
+        default: false
+      release_tag:
+        description: Release tag for manual publication (e.g. v24.0.0); blank means build-<run>-<attempt>
+        type: string
+        default: ''
   push:
     branches:
       - main
@@ -31,7 +39,6 @@ concurrency:
 
 env:
   BUILD_TYPE: Release
-  BUILD_LABEL: ${{ github.run_number }}-${{ github.run_attempt }}
   CACHE_EPOCH: v3
 
 jobs:
@@ -44,7 +51,7 @@ jobs:
       CCACHE_MAXSIZE: 3G
       CCACHE_COMPRESS: "true"
       CCACHE_BASEDIR: ${{ github.workspace }}
-      WINDOWS_CACHE_EPOCH: v2
+      WINDOWS_CACHE_EPOCH: v3-release-only-ssl
     defaults:
       run:
         shell: bash
@@ -54,6 +61,9 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Verify public repository has no mobile jobs or private keys
+        run: python3 CI/verify-public-repository.py
 
       - name: Verify vendored Rubic0n LuaJIT source (Windows)
         run: python CI/verify-rubic0n-vendor.py
@@ -180,7 +190,7 @@ jobs:
           if (-not $sdk) { throw 'Windows SDK version not found' }
           $identity = & python CI/vcpkg_cache_identity.py --vcpkg-root C:/vcpkg --compiler "$compiler" --sdk "$sdk" --toolset "$toolset"
           if ($LASTEXITCODE -ne 0) { throw 'Could not compute vcpkg cache identity' }
-          "key=windows-vcpkg-crypto-v1-$identity" >> $env:GITHUB_OUTPUT
+          "key=windows-vcpkg-crypto-release-v2-$identity" >> $env:GITHUB_OUTPUT
 
       - name: Restore compiled Windows crypto packages
         id: vcpkg-binary-cache
@@ -188,7 +198,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: .cache/vcpkg-binaries
-          key: ${{ steps.vcpkg-cache-id.outputs.key }}
+          key: ${{ steps.vcpkg-cache-id.outputs.key }}-${{ hashFiles('CI/vcpkg-triplets/x64-windows-release.cmake') }}
 
       - name: Prepare native publisher crypto dependency
         id: publisher-crypto
@@ -235,9 +245,10 @@ jobs:
           } else {
             $env:X_VCPKG_ASSET_SOURCES = $assetSource
           }
-          & C:/vcpkg/vcpkg.exe install --classic openssl:x64-windows
+          $tripletDir = Join-Path $env:GITHUB_WORKSPACE 'CI/vcpkg-triplets'
+          & C:/vcpkg/vcpkg.exe install --classic openssl:x64-windows-release --overlay-triplets="$tripletDir"
           if ($LASTEXITCODE -ne 0) { throw 'Publisher OpenSSL/vcpkg preparation failed; inspect the download or port error above.' }
-          'OPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows' >> $env:GITHUB_ENV
+          'OPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-release' >> $env:GITHUB_ENV
 
       # Save immediately after vcpkg succeeds, even if a later app build fails.
       - name: Save compiled Windows crypto packages
@@ -245,7 +256,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: .cache/vcpkg-binaries
-          key: ${{ steps.vcpkg-cache-id.outputs.key }}
+          key: ${{ steps.vcpkg-cache-id.outputs.key }}-${{ hashFiles('CI/vcpkg-triplets/x64-windows-release.cmake') }}
 
       - name: Configure dependencies and project
         run: |
@@ -271,28 +282,6 @@ jobs:
 
           bash CI/before_script.msvc.sh "${args[@]}"
 
-      # Qt 5.15.2 on Windows requires the OpenSSL 1.1 DLL ABI for HTTPS.
-      # Cache the compiled compatibility DLLs independently of the large C++ build.
-      - name: Restore Qt 5 HTTPS compatibility runtime
-        id: qt5-tls-cache
-        if: inputs.clear_build_cache != true
-        uses: actions/cache/restore@v5
-        with:
-          path: .cache/qt5-openssl-1.1.1w
-          key: qt5-openssl-1.1.1w-msvc2022-x64-v1
-
-      - name: Prepare Qt 5 HTTPS compatibility runtime
-        shell: pwsh
-        run: |
-          ./CI/windows/prepare-qt5-tls.ps1 -Destination '.cache/qt5-openssl-1.1.1w'
-
-      - name: Cache Qt 5 HTTPS compatibility runtime
-        if: inputs.clear_build_cache != true && steps.qt5-tls-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: .cache/qt5-openssl-1.1.1w
-          key: qt5-openssl-1.1.1w-msvc2022-x64-v1
-
       - name: Build
         run: |
           set -euxo pipefail
@@ -313,17 +302,34 @@ jobs:
             ccache --show-stats || true
           fi
 
-      - name: Install and validate cached Qt 5 HTTPS runtime
+      # H022: arena-relay-agent is now a normal native Qt/C++ target and is
+      # built/installed together with the rest of ArenaMP. No Python/PyInstaller.
+      # The current launcher SDK is Qt 5.15.2, whose SSL loader expects OpenSSL 1.1.
+      # These compatibility DLLs are separate from the publisher's OpenSSL 3 crypto DLL.
+      - name: Supply HTTPS runtime for existing Qt 5 launcher
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          $tls = '.cache/qt5-openssl-1.1.1w'
-          foreach ($file in @('libssl-1_1-x64.dll', 'libcrypto-1_1-x64.dll', 'LICENSE')) {
-            if (-not (Test-Path (Join-Path $tls $file))) { throw "Missing Qt 5 TLS package file: $file" }
-          }
-          Copy-Item "$tls/libssl-1_1-x64.dll", "$tls/libcrypto-1_1-x64.dll" install/ -ErrorAction Stop
-          Copy-Item 'C:/vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll' install/ -ErrorAction Stop
-          Copy-Item "$tls/LICENSE" install/OpenSSL-1.1-LICENSE.txt -ErrorAction Stop
+          $source = Join-Path $env:RUNNER_TEMP 'arena-qt5-openssl'
+          git clone --depth 1 --branch OpenSSL_1_1_1w https://github.com/openssl/openssl.git $source
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch Qt 5 TLS compatibility source' }
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
+          $build = Join-Path $env:RUNNER_TEMP 'arena-build-tls.cmd'
+          @"
+          @echo off
+          call "$vcvars"
+          if errorlevel 1 exit /b 1
+          cd /d "$source"
+          perl Configure VC-WIN64A no-asm no-tests shared
+          if errorlevel 1 exit /b 1
+          nmake
+          "@ | Set-Content $build
+          & cmd /c $build
+          if ($LASTEXITCODE -ne 0) { throw 'Qt 5 TLS compatibility build failed' }
+          Copy-Item "$source/libssl-1_1-x64.dll","$source/libcrypto-1_1-x64.dll" install/
+          Copy-Item 'C:/vcpkg/installed/x64-windows-release/bin/libcrypto-3-x64.dll' install/
+          Copy-Item "$source/LICENSE" install/OpenSSL-1.1-LICENSE.txt
           & ./install/arena-server-agent.exe --check-tls
           if ($LASTEXITCODE -ne 0) { throw 'Packaged HTTPS runtime is unusable' }
 
@@ -375,7 +381,7 @@ jobs:
       - name: Create ZIP
         shell: pwsh
         run: |
-          $name = "ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}"
+          $name = "ArenaMP-Windows-x64-${{ github.ref_name }}"
           Compress-Archive -Path "install\*" -DestinationPath "$name.zip" -Force
 
       - name: Collect Windows diagnostics
@@ -397,8 +403,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}
-          path: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}.zip
+          name: ArenaMP-Windows-x64-${{ github.ref_name }}
+          path: ArenaMP-Windows-x64-${{ github.ref_name }}.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
@@ -407,7 +413,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}-diagnostics
+          name: ArenaMP-Windows-x64-${{ github.ref_name }}-diagnostics
           path: actions-artifacts/windows-x64/
           if-no-files-found: warn
           retention-days: 14
@@ -425,6 +431,9 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Verify public repository has no mobile jobs or private keys
+        run: python3 CI/verify-public-repository.py
 
       - name: Verify vendored Rubic0n LuaJIT source (Linux)
         run: python3 CI/verify-rubic0n-vendor.py
@@ -559,7 +568,7 @@ jobs:
       - name: Create portable Steam Deck archive
         run: |
           set -euxo pipefail
-          name="ArenaMP-Linux-x86_64-SteamDeck-${BUILD_LABEL}"
+          name="ArenaMP-Linux-x86_64-SteamDeck-${GITHUB_REF_NAME}"
           bash CI/linux/package-portable.sh \
             "$GITHUB_WORKSPACE/stage" \
             "$GITHUB_WORKSPACE/package" \
@@ -667,8 +676,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}
-          path: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}.tar.gz
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ github.ref_name }}
+          path: ArenaMP-Linux-x86_64-SteamDeck-${{ github.ref_name }}.tar.gz
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
@@ -677,60 +686,76 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}-diagnostics
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ github.ref_name }}-diagnostics
           path: actions-artifacts/linux-steamdeck/
           if-no-files-found: warn
           retention-days: 14
   publish-release:
-    name: Publish GitHub Release
+    name: Publish verified Release packages
     needs: [windows-x64, linux-steamdeck-x64]
     if: >-
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      contains(needs.*.result, 'success')
+      always() &&
+      ((github.event_name == 'workflow_dispatch' && inputs.publish_release == true) ||
+       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))) &&
+      (needs.windows-x64.result == 'success' || needs.windows-x64.result == 'skipped') &&
+      (needs.linux-steamdeck-x64.result == 'success' || needs.linux-steamdeck-x64.result == 'skipped') &&
+      (needs.windows-x64.result == 'success' || needs.linux-steamdeck-x64.result == 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write
-      actions: read
-    env:
-      WINDOWS_RESULT: ${{ needs.windows-x64.result }}
-      LINUX_RESULT: ${{ needs.linux-steamdeck-x64.result }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact source revision
+        uses: actions/checkout@v4
         with:
-          persist-credentials: false
-      - name: Check release preparation and refusal cases
-        run: python3 tests/release/test_prepare_release.py
-      - name: Download Windows package
+          fetch-depth: 0
+
+      - name: Fetch Windows package
         if: needs.windows-x64.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: ArenaMP-Windows-x64-${{ env.BUILD_LABEL }}
-          path: release-artifacts
-      - name: Download Linux package
+          name: ArenaMP-Windows-x64-${{ github.ref_name }}
+          path: release-input/windows
+
+      - name: Fetch Linux package
         if: needs.linux-steamdeck-x64.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: ArenaMP-Linux-x86_64-SteamDeck-${{ env.BUILD_LABEL }}
-          path: release-artifacts
-      - name: Prepare binaries, matching sources and checksums
-        shell: bash
-        run: python3 CI/prepare-release.py
-      - name: Publish completed release
-        shell: bash
+          name: ArenaMP-Linux-x86_64-SteamDeck-${{ github.ref_name }}
+          path: release-input/linux
+
+      - name: Prepare and validate distributable files
+        id: prep
         env:
-          GH_TOKEN: ${{ github.token }}
+          WINDOWS_RESULT: ${{ needs.windows-x64.result }}
+          LINUX_RESULT: ${{ needs.linux-steamdeck-x64.result }}
+          MANUAL_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            tag="$GITHUB_REF_NAME"
-            title="ArenaMP $tag"
+            tag="${GITHUB_REF#refs/tags/}"
           else
-            tag="build-${BUILD_LABEL}"
-            title="ArenaMP — public build ${BUILD_LABEL}"
+            tag="${MANUAL_TAG:-build-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}}"
           fi
-          gh release create "$tag" --target "$GITHUB_SHA" --title "$title" \
-            --notes-file release-notes.md --draft
-          gh release upload "$tag" release-assets/*
-          gh release edit "$tag" --draft=false --latest
+          if [[ ! "$tag" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,100}$ ]]; then
+            echo '::error::Release tag contains invalid characters.'
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          python3 CI/prepare-release.py --source release-input --destination release-assets --tag "$tag"
+
+      - name: Create GitHub Release after successful package validation
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.prep.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ArenaMP ${{ steps.prep.outputs.tag }}
+          body_path: release-assets/RELEASE_NOTES.md
+          files: |
+            release-assets/*.zip
+            release-assets/*.tar.gz
+            release-assets/BUILD_INFO.json
+            release-assets/SHA256SUMS.txt
+          fail_on_unmatched_files: false
+          draft: false
+          prerelease: false
+          make_latest: true

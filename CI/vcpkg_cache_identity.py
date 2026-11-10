@@ -1,39 +1,55 @@
 #!/usr/bin/env python3
-"""Stable dependency-cache identity: excludes game sources and commit SHA."""
+"""Compute a stable Windows vcpkg cache identity for ArenaMP's CI workflow.
+
+The workflow appends the overlay triplet hash to this identity. The value is
+stable across runner restarts yet changes when the compiler, SDK, toolset or
+vcpkg executable changes. Print only the identity to stdout for PowerShell.
+"""
+
+from __future__ import annotations
+
 import argparse
 import hashlib
-import json
 from pathlib import Path
+import sys
 
-def sha(path):
-    h=hashlib.sha256()
-    with path.open('rb') as f:
-        for chunk in iter(lambda:f.read(1024*1024),b''):h.update(chunk)
-    return h.hexdigest()
 
-def identity(root, compiler, sdk, toolset):
-    root,compiler=Path(root),Path(compiler)
-    # New GitHub Windows runner images may omit the legacy vcpkgTools.xml.
-    # Validate build-critical files, but only hash optional metadata when present.
-    required=['vcpkg.exe','triplets/x64-windows.cmake',
-              'ports/openssl/portfile.cmake','ports/openssl/vcpkg.json']
-    optional=['scripts/vcpkgTools.xml','scripts/vcpkgTools.json',
-              'scripts/buildsystems/vcpkg.cmake']
-    for name in required:
-        if not (root/name).is_file():raise ValueError('vcpkg cache input is missing: '+name)
-    if not compiler.is_file() or not sdk or not toolset:raise ValueError('MSVC compiler, SDK and toolset are required')
-    files={root/p for p in required}
-    files.update(root/p for p in optional if (root/p).is_file())
-    for name in ['scripts/cmake','ports/openssl','ports/vcpkg-cmake','ports/vcpkg-cmake-config','ports/vcpkg-cmake-get-vars']:
-        files.update(p for p in (root/name).rglob('*') if p.is_file())
-    inputs={p.relative_to(root).as_posix():sha(p) for p in sorted(files)}
-    compilers={name:sha(compiler.parent/name) for name in [compiler.name,'c1xx.dll','c2.dll'] if (compiler.parent/name).is_file()}
-    payload={'schema':1,'triplet':'x64-windows','sdk':sdk,'toolset':toolset,
-             'compiler':compilers,'vcpkg':inputs,'identity_script':sha(Path(__file__))}
-    return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open('rb') as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
 
-def main():
-    p=argparse.ArgumentParser();p.add_argument('--vcpkg-root',required=True);p.add_argument('--compiler',required=True)
-    p.add_argument('--sdk',required=True);p.add_argument('--toolset',required=True);a=p.parse_args()
-    print(identity(a.vcpkg_root,a.compiler,a.sdk,a.toolset))
-if __name__=='__main__':main()
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--vcpkg-root', type=Path, required=True)
+    parser.add_argument('--compiler', type=Path, required=True)
+    parser.add_argument('--sdk', required=True)
+    parser.add_argument('--toolset', required=True)
+    args = parser.parse_args()
+
+    vcpkg_exe = args.vcpkg_root / 'vcpkg.exe'
+    if not vcpkg_exe.is_file():
+        parser.error(f'vcpkg executable missing: {vcpkg_exe}')
+    if not args.compiler.is_file():
+        parser.error(f'MSVC compiler missing: {args.compiler}')
+
+    metadata = '\n'.join([
+        'arenamp-vcpkg-cache-identity-v1',
+        f'vcpkg-sha256={file_sha256(vcpkg_exe)}',
+        f'compiler-sha256={file_sha256(args.compiler)}',
+        f'sdk={args.sdk.strip()}',
+        f'toolset={args.toolset.strip()}',
+    ])
+    print(hashlib.sha256(metadata.encode('utf-8')).hexdigest()[:32])
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except OSError as error:
+        print(f'vcpkg cache identity: {error}', file=sys.stderr)
+        sys.exit(1)

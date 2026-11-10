@@ -120,7 +120,7 @@ IF(NOT WIN32 AND NOT APPLE)
 ENDIF()
 
 add_component_dir (files
-    linuxpath windowspath macospath fixedpath multidircollection collections configurationmanager escape
+    linuxpath androidpath windowspath macospath fixedpath multidircollection collections configurationmanager escape
     lowlevelfile constrainedfilestream memorystream
     )
 

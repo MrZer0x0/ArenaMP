@@ -52,8 +52,6 @@ public:
     osg::ref_ptr<Resource::BulletShape> load(const Nif::File& file);
 
 private:
-    void collectModelBounds(const Nif::Node* node, osg::BoundingBoxf& bounds);
-
     bool findBoundingBox(const Nif::Node* node, const std::string& filename);
 
     void handleNode(const std::string& fileName, Nif::Node const *node, int flags, bool isCollisionNode,

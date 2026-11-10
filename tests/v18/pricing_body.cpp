@@ -1,5 +1,4 @@
 #include <components/misc/economypricing.hpp>
-#include <apps/openmw/mwphysics/actorbodyrules.hpp>
 #include <apps/openmw/mwmechanics/approachrules.hpp>
 #include <cassert>
 #include <limits>
@@ -18,15 +17,11 @@ int main() {
  assert(coefficient(Value(std::numeric_limits<double>::quiet_NaN()))==1);
  assert(coefficient(Value(-4))==0.01);
  assert(price(99,Value{},"trade","",true)==99);
- using namespace MWPhysics::ActorBodyRules;
- assert(fit(50,20)==25);assert(fit(50,40)==40);assert(fit(50,100)==50);
- assert(fit(50,0)==50);assert(fit(50,std::numeric_limits<float>::quiet_NaN())==50);
- assert(roundFootprint(20,21));assert(!roundFootprint(20,50));assert(!roundFootprint(0,20));
  using MWMechanics::ApproachRules::collisionTime;
  assert(std::abs(collisionTime(0,200,0,-200,40,2)-.8f)<1e-6);
  assert(std::abs(collisionTime(0,-200,0,200,40,2)-.8f)<1e-6); // running at an NPC from behind
  assert(collisionTime(0,200,0,200,40,2)==2); // moving away
  assert(collisionTime(0,200,200,0,40,2)==2); // crossing safely
  assert(collisionTime(0,200,0,0,40,2)==2);
- std::cout<<"pricing/body rules passed\n";
+ std::cout<<"pricing and approach rules passed\n";
 }

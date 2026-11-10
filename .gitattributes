@@ -1,2 +1,9 @@
-# Auto detect text files and perform LF normalization
+# Auto-detect text files and normalize LF on export.
 * text=auto
+
+# Defense in depth: do not archive signing keys if inadvertently added.
+*.jks export-ignore
+*.keystore export-ignore
+*.p12 export-ignore
+*.pfx export-ignore
+**/signing.properties export-ignore

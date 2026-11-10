@@ -1,6 +1,7 @@
 local localization = {}
 
 local dictionaries = {}
+local automaticCache = {}
 local native = {}
 local wrappersInstalled = false
 
@@ -268,21 +269,47 @@ local function normalizeLegacyStartupText(language, text)
     return text
 end
 
+-- Protocol payloads contain stable IDs, JSON and already localized display fields.
+-- Running phrase replacement over them corrupts data and stalls the login loop.
+local function isControlMessage(text)
+    return type(text) == "string" and
+        (text:match("^@@AMP_[A-Z0-9_]+@@") ~= nil or
+         text:match("^@@ARENA_[A-Z0-9_]+@@") ~= nil)
+end
+
+local function automaticRules(language)
+    if automaticCache[language] then return automaticCache[language] end
+    local rules = {exact = getAutomaticTable(language, "exact"),
+        patterns = getAutomaticList(language, "patterns"), phrases = {}}
+    for source, replacement in pairs(getAutomaticTable(language, "phrases")) do
+        rules.phrases[#rules.phrases + 1] = {source = source,
+            pattern = source:gsub("([^%w])", "%%%1"), replacement = replacement}
+    end
+    table.sort(rules.phrases, function(left, right)
+        if #left.source == #right.source then return left.source < right.source end
+        return #left.source > #right.source
+    end)
+    automaticCache[language] = rules
+    return rules
+end
+
 local function translateAutomatic(language, text)
+    if isControlMessage(text) then return text end
     text = normalizeLegacyStartupText(language, text)
 
     if language == "EN" or type(text) ~= "string" or text == "" then
         return text
     end
 
-    local exact = getAutomaticTable(language, "exact")
+    local rules = automaticRules(language)
+    local exact = rules.exact
     if exact[text] ~= nil then
         return exact[text]
     end
 
     local translated = text
 
-    for _, rule in ipairs(getAutomaticList(language, "patterns")) do
+    for _, rule in ipairs(rules.patterns) do
         if type(rule) == "table" and type(rule.pattern) == "string" and rule.replacement ~= nil then
             local updated, count = translated:gsub(rule.pattern, rule.replacement)
             if count > 0 then
@@ -291,17 +318,8 @@ local function translateAutomatic(language, text)
         end
     end
 
-    local phrases = getAutomaticTable(language, "phrases")
-    local ordered = {}
-    for source, replacement in pairs(phrases) do
-        table.insert(ordered, {source = source, replacement = replacement})
-    end
-    table.sort(ordered, function(left, right)
-        return #left.source > #right.source
-    end)
-
-    for _, entry in ipairs(ordered) do
-        translated = translated:gsub(entry.source:gsub("([^%w])", "%%%1"), function()
+    for _, entry in ipairs(rules.phrases) do
+        translated = translated:gsub(entry.pattern, function()
             return entry.replacement
         end)
     end
@@ -322,6 +340,7 @@ function localization.RegisterDictionary(namespace, dictionary)
     end
 
     dictionaries[namespace] = dictionary
+    automaticCache = {} -- dictionary replacement/hot reload must invalidate derived rules
     return true
 end
 
@@ -434,6 +453,7 @@ function localization.Get(pidOrLanguage, namespace, key, variables)
 end
 
 function localization.TranslateText(pidOrLanguage, text)
+    if isControlMessage(text) then return text end
     return translateAutomatic(resolveLanguage(pidOrLanguage), text)
 end
 
@@ -532,7 +552,11 @@ function localization.InstallWrappers()
         sendToOtherPlayers = sendToOtherPlayers == true
         skipAttachedPlayer = skipAttachedPlayer == true
 
-        if sendToOtherPlayers then
+        if isControlMessage(message) then
+            if sendToOtherPlayers or not skipAttachedPlayer then
+                native.SendMessage(pid, message, sendToOtherPlayers, skipAttachedPlayer)
+            end
+        elseif sendToOtherPlayers then
             sendLocalizedBroadcast(pid, message, skipAttachedPlayer)
         elseif not skipAttachedPlayer then
             native.SendMessage(pid, localization.TranslateText(pid, message), false, false)

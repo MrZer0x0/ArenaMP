@@ -40,6 +40,30 @@ assert(names.furn_chair_test.price>=25 and names.furn_chair_test.price<=5000)
 assert(names.furn_chest_test and names.furn_chest_test.category=="Контейнеры")
 assert(not names.furn_chair_wall and not names.furn_chair_scripted and not names.furn_door and not names.furn_chest_loot)
 assert(names.furn_chest_test.name=="А", "legacy CP1251 name must be converted into UTF-8")
+local safeMiscBed=auto.referenceBedCandidate({
+    kind="MISC",refId="furn_bed_test",model="f\\furn_bed_test.nif",name="Test bed",value=50
+})
+assert(safeMiscBed and safeMiscBed.category=="Кровати",
+    "curated bed MISC records with a safe model must be accepted")
+assert(auto.referenceBedCandidate({
+    kind="MISC",refId="furn_bed_scripted",model="f\\furn_bed_test.nif",
+    name="Scripted bed",script="bed_sleep_script",value=50
+}), "curated scripted MISC bed must be accepted with its sleep script")
+assert(auto.referenceBedCandidate({
+    kind="ACTI",refId="active_de_r_bed_17",model="f\\furn_bed_01.nif",
+    name="Dunmer bed",script="bed_sleep_script"
+}), "curated scripted ACTI bed must be accepted with its sleep script")
+assert(not auto.referenceBedCandidate({
+    kind="ACTI",refId="furn_quest",model="f\\quest_switch.nif",
+    name="Quest lever",script="quest_script"
+}), "non-bed scripted activators must remain excluded")
+assert(not auto.manualCandidate({
+    kind="ACTI",refId="furn_quest",model="f\\quest_switch.nif",
+    name="Quest lever",script="quest_script"
+}), "ordinary manual capture must still reject scripted quest objects")
+assert(not auto.referenceBedCandidate({
+    kind="MISC",refId="misc_gold_001",model="m\\gold_001.nif",name="Gold",value=1
+}), "ordinary MISC loot must not become a bed")
 local second=auto.build(config,{load=function(filename)
     if filename=="requiredDataFiles.json" then
         return {content={{["H003_TEST.esm"]={"0x0"}},{["H003_OVERRIDE.esp"]={"0x0"}}}}

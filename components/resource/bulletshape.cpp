@@ -22,8 +22,6 @@ BulletShape::BulletShape(const BulletShape &copy, const osg::CopyOp &copyop)
     : mCollisionShape(duplicateCollisionShape(copy.mCollisionShape))
     , mAvoidCollisionShape(duplicateCollisionShape(copy.mAvoidCollisionShape))
     , mCollisionBox(copy.mCollisionBox)
-    , mModelCollisionBox(copy.mModelCollisionBox)
-    , mHasModelCollisionBox(copy.mHasModelCollisionBox)
     , mAnimatedShapes(copy.mAnimatedShapes)
 {
 }

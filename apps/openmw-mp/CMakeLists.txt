@@ -160,11 +160,22 @@ include_directories(${CMAKE_SOURCE_DIR}/extern)
 
 # Main executable
 
+# libarenamp_server Android host: Y103 keeps this conditional in the canonical
+# source so the final Android parity stage cannot restore a desktop executable.
+if(ANDROID)
+    add_library(tes3mp-server SHARED
+        ${SERVER} ${SERVER_HEADER}
+        ${PROCESSORS_ACTOR} ${PROCESSORS_PLAYER} ${PROCESSORS_OBJECT} ${PROCESSORS_WORLDSTATE} ${PROCESSORS}
+        ${APPLE_BUNDLE_RESOURCES}
+        android_server_jni.cpp
+        )
+else()
     add_executable(tes3mp-server
         ${SERVER} ${SERVER_HEADER}
         ${PROCESSORS_ACTOR} ${PROCESSORS_PLAYER} ${PROCESSORS_OBJECT} ${PROCESSORS_WORLDSTATE} ${PROCESSORS}
         ${APPLE_BUNDLE_RESOURCES}
         )
+endif()
 
 target_compile_options(tes3mp-server PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/permissive->)
 
@@ -178,7 +189,9 @@ set_target_properties(tes3mp-server PROPERTIES
     CXX_EXTENSIONS YES
 )
 
-
+if(ANDROID)
+    set_target_properties(tes3mp-server PROPERTIES OUTPUT_NAME "arenamp_server")
+endif()
 
 if (UNIX)
 	target_compile_options(tes3mp-server PRIVATE -Wno-ignored-qualifiers)

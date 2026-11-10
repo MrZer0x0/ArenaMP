@@ -1,4 +1,3 @@
-#include <cmath>
 #include "bulletnifloader.hpp"
 
 #include <vector>
@@ -144,16 +143,6 @@ osg::ref_ptr<Resource::BulletShape> BulletNifLoader::load(const Nif::File& nif)
     {
         if (findBoundingBox(node, filename))
         {
-            osg::BoundingBoxf visual;
-            for (const Nif::Node* root : roots) collectModelBounds(root, visual);
-            if (visual.valid())
-            {
-                mShape->mModelCollisionBox.center = visual.center();
-                mShape->mModelCollisionBox.extents = osg::Vec3f(visual.xMax()-visual.xMin(),
-                    visual.yMax()-visual.yMin(), visual.zMax()-visual.zMin()) * 0.5f;
-                mShape->mHasModelCollisionBox = true;
-            }
-
             const btVector3 extents = Misc::Convert::toBullet(mShape->mCollisionBox.extents);
             const btVector3 center = Misc::Convert::toBullet(mShape->mCollisionBox.center);
             std::unique_ptr<btCompoundShape> compound (new btCompoundShape);
@@ -205,32 +194,6 @@ osg::ref_ptr<Resource::BulletShape> BulletNifLoader::load(const Nif::File& nif)
     }
 
     return mShape;
-}
-
-// Visible geometry only: markers, authored collision and particles must not
-// inflate creature bodies. NIF transforms preserve model-specific proportions.
-void BulletNifLoader::collectModelBounds(const Nif::Node* node, osg::BoundingBoxf& bounds)
-{
-    if (!node || (node->flags & 1) || node->recType == Nif::RC_RootCollisionNode
-        || node->recType == Nif::RC_AvoidNode) return;
-    if (node->recType == Nif::RC_NiTriShape || node->recType == Nif::RC_NiTriStrips
-        || node->recType == Nif::RC_BSLODTriShape)
-    {
-        const auto* geometry = static_cast<const Nif::NiGeometry*>(node);
-        if (!geometry->data.empty())
-        {
-            const auto transform = getWorldTransform(node);
-            for (const auto& vertex : geometry->data->vertices)
-            {
-                const osg::Vec3f v = vertex * transform;
-                if (std::isfinite(v.x()) && std::isfinite(v.y()) && std::isfinite(v.z())) bounds.expandBy(v);
-            }
-        }
-    }
-    const auto* branch = dynamic_cast<const Nif::NiNode*>(node);
-    if (branch)
-        for (size_t i=0; i<branch->children.length(); ++i)
-            if (!branch->children[i].empty()) collectModelBounds(branch->children[i].getPtr(), bounds);
 }
 
 // Find a boundingBox in the node hierarchy.

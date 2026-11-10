@@ -248,6 +248,30 @@ function M.manualCandidate(record)
     return {refId=record.refId,name=safeName(record.name,record.refId),
         category="Декор",price=200}
 end
+
+-- Only beds explicitly present in the curated reference catalogue reach
+-- this helper (from arenaFurniture.lua). Scripted ACTI beds are intentional:
+-- their sleeping/bed recognition logic lives in SCRI. Do NOT strip scripts or
+-- reject these beds. Non-bed scripts and arbitrary MISC loot remain excluded.
+-- Never accept respawning/filled containers or records deleted by later mods.
+function M.referenceBedCandidate(record)
+    if type(record)~="table" or record.deleted or
+       (record.kind~="ACTI" and record.kind~="STAT" and record.kind~="MISC") or
+       type(record.refId)~="string" or type(record.model)~="string" then return nil end
+    local id,model=lower(record.refId),lower(record.model):gsub("/","\\")
+    if #id>120 or #model>250 or not id:match("^[%w_%.%- ]+$") or
+       not model:match("%.nif$") or record.hasContents then return nil end
+    -- The word "script" in a curated bed ID/model is expected; unlike a quest
+    -- activator it is not itself grounds to discard the bed. Keep every other
+    -- geometry/quest/door exclusion, and require the bed name/model/ID below.
+    local identity=id.." "..model
+    for _,token in ipairs(deny) do
+        if token~="script" and identity:find(token,1,true) then return nil end
+    end
+    local hay=id.." "..model.." "..lower(record.name)
+    if not has(hay,{"bed","bunk","cot","mattress","кроват"}) then return nil end
+    return {refId=record.refId,name=safeName(record.name,record.refId),category="Кровати"}
+end
 local function sourceDirs(cfg)
     local dirs={}
     local function add(v) if type(v)=="string" and #v>0 and #v<1024 then dirs[#dirs+1]=v end end

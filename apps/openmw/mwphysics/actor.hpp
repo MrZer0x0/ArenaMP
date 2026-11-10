@@ -69,11 +69,9 @@ namespace MWPhysics
          */
         osg::Vec3f getHalfExtents() const;
 
-        // Offset from the actor reference to the center used by movement sweeps.
-        osg::Vec3f getMovementOffset() const;
-
         /**
-         * Returns the half extents of the collision body (not scaled)
+         * Returns the physical half extents before actor scaling. Ordinary NPCs
+         * include the permanent 95% horizontal collision footprint.
          */
         osg::Vec3f getOriginalHalfExtents() const;
 
@@ -188,6 +186,7 @@ namespace MWPhysics
         std::atomic<bool> mWalkingOnWater;
 
         bool mRotationallyInvariant;
+        bool mUseReducedNpcCollision = false;
 
         std::unique_ptr<btCollisionShape> mShape;
         btConvexShape* mConvexShape;
@@ -196,9 +195,6 @@ namespace MWPhysics
 
         osg::Vec3f mMeshTranslation;
         osg::Vec3f mHalfExtents;
-        float mRenderingHalfHeight = 0.f;
-        float mRenderingHalfWidth = 0.f;
-        bool mPlayerBody = false;
         osg::Quat mRotation;
 
         osg::Vec3f mScale;

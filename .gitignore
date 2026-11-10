@@ -95,9 +95,6 @@ venv/
 # directory so its seed files and empty runtime folders are committed.
 !/server/data/
 
-# This source edition excludes the mobile project.
-/android/
-/signing-local/
 
 # ArenaMP: vendored Rubic0n LuaJIT 2.1 is REAL SOURCE, not build output.
 # The generic Makefile/build*/*.a patterns above must not drop its sources.
@@ -105,8 +102,28 @@ venv/
 !/extern/LuaJIT/
 !/extern/LuaJIT/**
 
-# Local toolchain staging and release preparation outputs.
-/.build-tools/
-/release-artifacts/
+# Private signing and local secrets must never be committed.
+*.jks
+*.keystore
+*.p12
+*.pfx
+**/signing.properties
+.env
+.env.*
+
+# Generated packaging outputs (not source).
+/release-input/
 /release-assets/
-/release-notes.md
+
+# Rubic0n uses authored Makefiles (not build outputs).
+!/extern/LuaJIT/Makefile
+!/extern/LuaJIT/src/Makefile
+!/extern/LuaJIT/src/Makefile.dep
+
+# Public source repository contains no mobile build tree.
+/android/
+
+# Breakpad carries authored `build/` GYP recipes and vendored fixtures.
+# Those source files must not be silently omitted by generic build/binary rules.
+!/extern/breakpad/
+!/extern/breakpad/**

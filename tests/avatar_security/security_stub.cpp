@@ -8,7 +8,6 @@
 #include <vector>
 #include <iostream>
 #include <typeinfo>
-#include <apps/openmw/mwphysics/actorbodyrules.hpp>
 #include <apps/openmw/mwmechanics/drawstate.hpp>
 namespace ESM {struct Probe {}; struct Lockpick {}; struct Weapon {enum {None, PickProbe, Spell};};}
 namespace MWWorld {
@@ -95,9 +94,7 @@ struct CharacterController {
 }
 MWWorld::Ptr item(int type=0,int health=10){return {std::make_shared<MWWorld::Row>(MWWorld::Row{1,health,type}),nullptr};}
 int main(){
- using namespace MWMechanics;using namespace MWPhysics::ActorBodyRules;
- for(float scale:{0.75f,1.f,1.3f}){float z=64*scale,c=64*scale,bottom=c-z;reducePlayerHeight(true,z,c);assert(std::abs(z-64*scale*.85f)<1e-5);assert(std::abs(c-z-bottom)<1e-5);assert(z*2<128*scale);}
- float npcZ=64,npcC=64;reducePlayerHeight(false,npcZ,npcC);assert(npcZ==64&&npcC==64);
+ using namespace MWMechanics;
  auto weapon=item(2),tool=item(),target=item(),enchantment=item(3),merged=item(4);
  MWWorld::CellStore cell,other;player=item();player.cell=&cell;
  MWRender::Animation anim;CharacterController c;c.mPtr=player;c.mAnimation=&anim;
@@ -124,5 +121,5 @@ int main(){
  reset();window.selected.clear();window.enchanted=weapon;inv.enchanted=weapon;inv.mergePrevious=true;assert(c.startSecurityAction(target,tool,""));use();complete();assert(inv.right==merged&&inv.enchanted==merged&&window.enchanted==merged);
  reset();assert(c.startSecurityAction(target,{},"open"));window.selected="old";c.updateSecurityAction(.016f);assert(window.selected=="old");
  reset();assert(c.startSecurityAction(target,tool,""));c.updateSecurityAction(9);assert(inv.right==weapon&&attempts==0);
- std::cout<<"PASS actual security controller methods, native tool branch, equipment restore and player height\n";
+ std::cout<<"PASS actual security controller methods, native tool branch, equipment restore\n";
 }

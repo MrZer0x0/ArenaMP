@@ -795,7 +795,9 @@ namespace mwmp
                     lower(item.nameRu).find(filter)==std::string::npos &&
                     lower(item.nameEn).find(filter)==std::string::npos) continue;
                 mVisibleIds.push_back(item.id);
-                mItemList->addItem(item.name+"   ["+std::to_string(item.price)+" "+furnitureText("gold.short")+"]");
+                const std::string unavailable=hasLocalFurnitureRecord(item.id)
+                    ? std::string() : " ["+furnitureText("unavailable")+"]";
+                mItemList->addItem(item.name+"   ["+std::to_string(item.price)+" "+furnitureText("gold.short")+"]"+unavailable);
             }
             mPageLabel->setCaption(std::to_string(mPage)+" / "+std::to_string(mPages));
         }

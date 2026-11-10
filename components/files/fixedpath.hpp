@@ -5,8 +5,13 @@
 #include <boost/filesystem.hpp>
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__OpenBSD__)
+#ifndef ANDROID
     #include <components/files/linuxpath.hpp>
     namespace Files { typedef LinuxPath TargetPathType; }
+#else
+    #include <components/files/androidpath.hpp>
+    namespace Files { typedef AndroidPath TargetPathType; }
+#endif
 #elif defined(__WIN32) || defined(__WINDOWS__) || defined(_WIN32)
     #include <components/files/windowspath.hpp>
     namespace Files { typedef WindowsPath TargetPathType; }

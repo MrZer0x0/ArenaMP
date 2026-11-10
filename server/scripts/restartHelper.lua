@@ -6,6 +6,12 @@
 -- its own replacement process. The last 30 seconds are sent to clients through
 -- a hidden ChatMessage control envelope, so no packet id is added or reordered.
 local restartHelper = {}
+local function tr(pid, ru, en)
+    local locale = package.loaded.localization
+    local language = locale and locale.GetLanguage(pid) or
+        (Players[pid] and Players[pid].language or "EN")
+    return tostring(language):upper() == "RU" and ru or en
+end
 
 local PREFIX = "@@AMP_RESTART@@"
 local DEFAULT_EXIT_CODE = 42
@@ -204,7 +210,8 @@ function restartHelper.Initialize()
         if Players[pid] == nil then return end
         local rank = tonumber(Players[pid].data.settings.staffRank) or 0
         if rank < cfg.requiredRank then
-            tes3mp.SendMessage(pid, "[#FF0000Система#FFFFFF]: Недостаточно прав.\n", false)
+            tes3mp.SendMessage(pid, tr(pid, "[#FF0000Система#FFFFFF]: Недостаточно прав.\n",
+                "[#FF0000System#FFFFFF]: Insufficient permissions.\n"), false)
             return
         end
 
@@ -213,7 +220,8 @@ function restartHelper.Initialize()
             restartHelper.Cancel()
             restartHelper.Schedule()
             tes3mp.SendMessage(pid,
-                "[#FF0000Система#FFFFFF]: Перезапуск отменён, расписание сброшено.\n", false)
+                tr(pid, "[#FF0000Система#FFFFFF]: Перезапуск отменён, расписание сброшено.\n",
+                    "[#FF0000System#FFFFFF]: Restart cancelled; schedule reset.\n"), false)
             return
         end
 
@@ -227,7 +235,9 @@ function restartHelper.Initialize()
         local delayToCountdown = math.max(0, minutes * 60 - cfg.countdownSeconds)
         restartHelper.Schedule(delayToCountdown)
         tes3mp.SendMessage(pid,
-            "[#FF0000Система#FFFFFF]: Перезапуск запланирован через " .. tostring(minutes) .. " мин.\n", false)
+            tr(pid, "[#FF0000Система#FFFFFF]: Перезапуск запланирован через ",
+                "[#FF0000System#FFFFFF]: Restart scheduled in ") .. tostring(minutes) ..
+                tr(pid, " мин.\n", " min.\n"), false)
     end)
 end
 

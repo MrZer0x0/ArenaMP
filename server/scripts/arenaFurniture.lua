@@ -25,6 +25,12 @@ local catalog, byId, categories = {items={}, categories={}}, {}, {}
 -- Per-player language matches the ArenaHousing/player profile setting.
 -- Keep stable category/refId/index values in storage and protocol; localize only display text.
 local function tr(pid, ru, en)
+    -- Refresh from the client's actual UI language; the server's forced chat
+    -- language must not select the furniture catalogue language.
+    local locale = package.loaded.localization
+    if locale and type(locale.GetClientLanguage) == "function" then
+        return locale.GetClientLanguage(pid) == "RU" and ru or en
+    end
     local player=Players and Players[pid]
     local language=player and tostring(player.language or "EN"):lower() or "en"
     return (language=="ru" or language=="ru-ru" or language=="russian") and ru or en
@@ -53,15 +59,16 @@ local function cleanLine(text)
     return tostring(text or ""):gsub("[\\\r\n\t;]", " ")
 end
 
--- H015: the supplied reference is an allow-list, NOT a replacement for
--- the loaded ESM/ESP. The server intersects both before advertising stock.
+-- H015: the supplied reference is a curated allow-list. Most stock is
+-- intersected with active server ESM/ESP records; curated beds may remain
+-- available when their plugin is client-side only, with local model checks.
 local referencePath="custom/arenaFurnitureReference.json"
 local manualPath="custom/arenaFurnitureManual.json"
 local snapshotPath="custom/arenaFurnitureGenerated.json"
 local manualEntries={}
 local validCategories={}
 local defaultCategoryEnglish={
-    ["Мебель"]="Furniture",["Контейнеры"]="Containers",["Декор"]="Decor",
+    ["Мебель"]="Furniture",["Кровати"]="Beds",["Контейнеры"]="Containers",["Декор"]="Decor",
     ["Освещение"]="Lighting",["Камины"]="Fireplaces",["Растения"]="Plants",
     ["Ковры и текстиль"]="Rugs and textiles",["Торговля"]="Trading"
 }
@@ -88,13 +95,17 @@ local function textValid(value)
     return type(value)=="string" and #value>=1 and #value<=190 and
         not value:find("[\\\r\n\t;|%c]")
 end
-local function isReferenceCandidate(record)
+local function isReferenceCandidate(record, category)
     -- Preserve the old anti-duplication protections for base containers, and
-    -- do not sell a door or a scripted quest object just because it is in JSON.
+    -- do not sell a door or an arbitrary scripted quest object just because it is in JSON.
+    -- Curated scripted beds are intentionally permitted by referenceBedCandidate().
     if not record or not record.refId then return false end
     local id=record.refId:lower()
     if id:find("door",1,true) or id:find("portal",1,true) then return false end
-    return autoCatalog.manualCandidate(record)~=nil
+    if autoCatalog.manualCandidate(record)~=nil then return true end
+    -- Some curated beds are scripted ACTI/MISC records rather than plain STAT.
+    -- Allow these exact model-backed beds without removing their sleep scripts.
+    return category=="Кровати" and autoCatalog.referenceBedCandidate(record)~=nil
 end
 
 -- A private price=0 preset is created only after the server has verified the
@@ -103,13 +114,13 @@ end
 -- emptied they must remain packable and placeable. Revalidate the active record
 -- while ignoring only the base-content marker; scripts, doors, organic/respawn
 -- flags, invalid models and every other manualCandidate deny rule stay intact.
-local function isPrivateReferenceCandidate(record)
-    if isReferenceCandidate(record) then return true end
+local function isPrivateReferenceCandidate(record, category)
+    if isReferenceCandidate(record,category) then return true end
     if type(record)~="table" or record.kind~="CONT" or not record.hasContents then return false end
     local copy={}
     for key,value in pairs(record) do copy[key]=value end
     copy.hasContents=false
-    return autoCatalog.manualCandidate(copy)~=nil
+    return isReferenceCandidate(copy,category)
 end
 local function styleFor(name)
     local n=tostring(name or ""):lower()
@@ -119,6 +130,19 @@ local function styleFor(name)
     if n:find("Импер",1,true) or n:find("импер",1,true) then return "imperial" end
     if n:find("Норд",1,true) or n:find("норд",1,true) then return "nordic" end
     return "other"
+end
+-- A single localized ESM name is not a bilingual translation. Use the curated
+-- pair where available, otherwise retain the authored name and an honest refId
+-- fallback for a missing English label. Never write these fallbacks over edits.
+local function catalogNames(item, reference)
+    local ru = item.nameRu or item.name or (reference and reference.nameRu) or item.refId
+    local en = item.nameEn or (reference and reference.nameEn) or item.name or item.refId
+    if not textValid(ru) then ru = (reference and reference.nameRu) or item.refId end
+    if not textValid(en) or en:find("[\208\209][\128-\191]") then
+        local fallback = reference and reference.nameEn
+        en = textValid(fallback) and not fallback:find("[\208\209][\128-\191]") and fallback or item.refId
+    end
+    return ru, en
 end
 local function localName(pid,item)
     return tr(pid,item.nameRu or item.name or item.refId,item.nameEn or item.name or item.refId)
@@ -131,7 +155,7 @@ local function loadCatalog()
         -- is a safe recovery source until the packaged JSON is copied in place.
         local snapshotOk,snapshot=pcall(jsonInterface.load,snapshotPath)
         if snapshotOk and type(snapshot)=="table" and type(snapshot.items)=="table" and #snapshot.items>0 then
-            reference={version=snapshot.version or 4,categories={},items=snapshot.items}
+            reference={version=snapshot.version or 4,categories={},items=snapshot.items,categoryLabels=snapshot.categoryLabels}
             for _,entry in ipairs(snapshot.items) do
                 if type(entry)=="table" and type(entry.category)=="string" then
                     reference.categories[#reference.categories+1]=entry.category
@@ -143,6 +167,12 @@ local function loadCatalog()
             tes3mp.LogMessage(enumerations.log.ERROR,
                 "[ArenaFurniture] reference catalogue missing or invalid: "..referencePath)
             return false
+        end
+    end
+    for id, labels in pairs(reference.categoryLabels or {}) do
+        if type(id)=="string" and type(labels)=="table" then
+            if textValid(labels.nameEn) then categoryEnglish[id]=labels.nameEn end
+            if type(labels.key)=="string" and labels.key:match("^[a-z]+$") then categoryKeys[id]=labels.key end
         end
     end
     validCategories={}
@@ -167,12 +197,10 @@ local function loadCatalog()
     end
     for key in pairs(manualEntries) do requested[tostring(key):lower()]=true end
 
-    -- Prefer an active-ESM intersection. On Android and portable Windows hosts
-    -- the server data directory can become available before the external Data
-    -- Files directory is readable. In that case keep the curated, packaged
-    -- reference catalogue usable instead of presenting an empty shop. The client
-    -- still rejects entries that do not exist in its local load order, and world
-    -- packing is independently checked against the home/cell reference.
+    -- Prefer an active-ESM intersection for ordinary furniture. Some curated bed
+    -- plugins are intentionally client-side and are not part of the server's
+    -- requiredDataFiles manifest; those exact allow-listed beds are retained
+    -- below. The client rejects records absent from its local load order.
     local parsed,reason,raw=autoCatalog.build(config,jsonInterface,requested)
     local verified=type(parsed)=="table" and type(raw)=="table"
     if not verified then
@@ -182,6 +210,7 @@ local function loadCatalog()
     end
 
     local items,present={},{}
+    local curatedBedFallbackCount=0
     local function append(original)
         if type(original)~="table" or type(original.refId)~="string" then return end
         local key=original.refId:lower()
@@ -190,11 +219,17 @@ local function loadCatalog()
         local record=raw[key]
         local override=manualEntries[key]
         local privatePreset=type(override)=="table" and tonumber(override.price)==0
-        if verified and not ((privatePreset and isPrivateReferenceCandidate(record))
-            or (not privatePreset and isReferenceCandidate(record))) then return end
+        -- The reference file is a curated allow-list. A nil raw record means its
+        -- plugin is not part of the server's requiredDataFiles manifest; false
+        -- means an active plugin explicitly deleted the record. Keep curated
+        -- beds in the first case so clients with the model loaded can use them.
+        -- The client checks its own active ESM/ESP before enabling purchase/place.
+        local curatedBedFallback=not privatePreset and original.category=="Кровати" and record==nil
+        if verified and not ((privatePreset and isPrivateReferenceCandidate(record,original.category))
+            or (not privatePreset and (isReferenceCandidate(record,original.category) or curatedBedFallback))) then return end
+        if verified and curatedBedFallback then curatedBedFallbackCount=curatedBedFallbackCount+1 end
         local category=(type(override)=="table" and override.category) or original.category
-        local ru=(type(override)=="table" and override.nameRu) or original.nameRu or original.name
-        local en=(type(override)=="table" and override.nameEn) or original.nameEn or original.name
+        local ru,en=catalogNames(type(override)=="table" and override or original, original)
         local price=(type(override)=="table" and override.price) or original.price
         if not validCategories[category] or not textValid(ru) or not textValid(en) or
             type(price)~="number" or price<0 or price>10000000 or price~=math.floor(price) then return end
@@ -215,15 +250,17 @@ local function loadCatalog()
     table.sort(names)
     for _,list in pairs(grouped) do table.sort(list,function(a,b)return a.nameRu<b.nameRu end) end
 
-    local source=verified and "reference-intersection" or "curated-reference-fallback"
-    local saved,err=pcall(jsonInterface.saveAtomic or jsonInterface.save,snapshotPath,{version=5,source=source,items=items})
+    local source=verified and (curatedBedFallbackCount>0 and "reference-intersection+curated-beds" or "reference-intersection")
+        or "curated-reference-fallback"
+    local saved,err=pcall(jsonInterface.saveAtomic or jsonInterface.save,snapshotPath,{version=6,source=source,categoryLabels=reference.categoryLabels,items=items})
     if not saved or err==false then
         tes3mp.LogMessage(enumerations.log.ERROR,"[ArenaFurniture] could not write catalogue snapshot: "..tostring(err))
     end
     catalog,byId,categories=grouped,fresh,names
     tes3mp.LogMessage(enumerations.log.INFO or enumerations.log.ERROR,
         "[ArenaFurniture] reference "..tostring(#reference.items)..", available "..tostring(#items)..
-        (verified and " (ESM verified)" or " (fallback; client filters local records)"))
+        (verified and " (ESM verified; curated beds without server records: "..tostring(curatedBedFallbackCount)..")"
+            or " (fallback; client filters local records)"))
     return #items>0
 end
 
@@ -474,7 +511,7 @@ function marketplace.RegisterPresetName(pid, refId, name)
     end
     local key=refId:lower()
     manualEntries[key]={refId=safe.refId,category=safe.category or "Растения",price=0,
-        nameRu=name,nameEn=name,style=styleFor(name)}
+        nameRu=name,nameEn=select(2,catalogNames({name=name,refId=safe.refId})),style=styleFor(name)}
     if not saveManual() or not loadCatalog() or not byId[key] then
         manualEntries[key]=nil
         saveManual()
@@ -530,7 +567,7 @@ function marketplace.RegisterPrivate(pid, refId, uniqueIndex, name)
     local existing=byId[key]
     if not existing then
         local category=safe.category or "Мебель"
-        manualEntries[key]={refId=safe.refId,category=category,price=0,nameRu=name,nameEn=name,style=styleFor(name)}
+        manualEntries[key]={refId=safe.refId,category=category,price=0,nameRu=name,nameEn=select(2,catalogNames({name=name,refId=safe.refId})),style=styleFor(name)}
         if not saveManual() or not loadCatalog() or not byId[key] then
             manualEntries[key]=nil
             saveManual()
@@ -623,7 +660,7 @@ local function ensureOriginalPreset(pid, refId, candidate)
     local safe=candidate and candidate.safe
     if not safe then return nil end
     manualEntries[key]={refId=safe.refId,category=safe.category or "Декор",price=0,
-        nameRu=safe.name or safe.refId,nameEn=safe.name or safe.refId,style=styleFor(safe.name or safe.refId)}
+        nameRu=safe.name or safe.refId,nameEn=select(2,catalogNames(safe)),style=styleFor(safe.name or safe.refId)}
     if not saveManual() or not loadCatalog() then
         manualEntries[key]=nil;saveManual();return nil
     end
@@ -924,7 +961,7 @@ function marketplace.Capture(pid, refId, uniqueIndex)
     if not safe then return false,tr(pid,"Это не разрешённая мебель (скрипт, архитектура, контейнер с вещами или мод недоступен).",
         "Not eligible furniture (script, architecture, non-empty base container, or missing mod).") end
     if byId[refId:lower()] then return true,tr(pid,"Мебель уже в каталоге. Выберите её и измените свойства.","Already in catalog. Select it to edit its properties.") end
-    safe.nameRu=safe.name;safe.nameEn=safe.name;safe.style=styleFor(safe.name)
+    safe.nameRu,safe.nameEn=catalogNames(safe);safe.style=styleFor(safe.name)
     manualEntries[refId:lower()]=safe
     if not saveManual() then
         manualEntries[refId:lower()]=nil

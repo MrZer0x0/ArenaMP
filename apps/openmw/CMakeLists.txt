@@ -7,6 +7,9 @@ set(GAME
     ${CMAKE_SOURCE_DIR}/files/tes3mp/tes3mp.exe.manifest
 )
 
+if (ANDROID)
+    set(GAME ${GAME} android_main.cpp)
+endif()
 
 # UI dictionaries and wire identifiers contain UTF-8 literals. MSVC otherwise
 # converts them through the build machine's code page and breaks category lookup.

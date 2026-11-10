@@ -35,8 +35,6 @@ namespace Resource
         // Used for actors and projectiles. mCollisionShape is used for actors only when we need to autogenerate collision box for creatures.
         // For now, use one file <-> one resource for simplicity.
         CollisionBox mCollisionBox;
-        CollisionBox mModelCollisionBox;
-        bool mHasModelCollisionBox = false;
 
         // Stores animated collision shapes. If any collision nodes in the NIF are animated, then mCollisionShape
         // will be a btCompoundShape (which consists of one or more child shapes).

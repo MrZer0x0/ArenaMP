@@ -26,11 +26,6 @@ for name in ['armor','clothing']:
     equip=block((ROOT/f'apps/openmw/mwclass/{name}.cpp').read_text(),f'    std::pair<int, std::string> {name.title()}::canBeEquipped(')
     assert 'sNotifyMessage13' not in equip
     assert 'ESM::PRT_LFoot' in equip and 'ESM::PRT_RFoot' in equip
-# Check local/remote player gating and visual-height separation at the integration site.
-body=(ROOT/'apps/openmw/mwphysics/actor.cpp').read_text()
-assert 'mPlayerBody = MechanicsHelper::isPlayerPtr(ptr);' in body
-assert 'ActorBodyRules::reducePlayerHeight(mPlayerBody,' in body
-assert 'extents.z() = mRenderingHalfHeight;' in body
 security=(ROOT/'apps/openmw/mwmechanics/security.cpp').read_text()
 assert 'mechanics->startSecurityAction(actor, target, tool, std::string())' in security
 assert 'if (!trapped && locked && spell' in security

@@ -143,14 +143,13 @@ namespace MWPhysics
 
         // Adjust for collision mesh offset relative to actor's "location"
         // (doTrace doesn't take local/interior collision shape translation into account, so we have to do it on our own)
-        // Players use the registered shape center for consistent stair/ground traces.
-        // Other actors retain the vanilla half-height compatibility convention.
+        // for compatibility with vanilla assets, we have to derive this from the vertical half extent instead of from internal hull translation
+        // if not for this hack, the "correct" collision hull position would be physicActor->getScaledMeshTranslation()
         osg::Vec3f halfExtents = physicActor->getHalfExtents();
-        const osg::Vec3f collisionOffset = physicActor->getMovementOffset();
-        actor.mPosition += collisionOffset;
+        actor.mPosition.z() += halfExtents.z(); // vanilla-accurate
 
         static const float fSwimHeightScale = MWBase::Environment::get().getWorld()->getStore().get<ESM::GameSetting>().find("fSwimHeightScale")->mValue.getFloat();
-        float swimlevel = actor.mWaterlevel + collisionOffset.z() - (physicActor->getRenderingHalfExtents().z() * 2 * fSwimHeightScale);
+        float swimlevel = actor.mWaterlevel + halfExtents.z() - (physicActor->getRenderingHalfExtents().z() * 2 * fSwimHeightScale);
 
         ActorTracer tracer;
 
@@ -421,7 +420,7 @@ namespace MWPhysics
 
         actor.mPosition = newPosition;
         // remove what was added earlier in compensating for doTrace not taking interior transformation into account
-        actor.mPosition -= collisionOffset;
+        actor.mPosition.z() -= halfExtents.z(); // vanilla-accurate
     }
 
     btVector3 addMarginToDelta(btVector3 delta)
@@ -455,8 +454,9 @@ namespace MWPhysics
             }
         }
 
-        // Use exactly the same center as movement/ground sweeps.
-        const auto collisionOffset = physicActor->getMovementOffset();
+        // use vanilla-accurate collision hull position hack (do same hitbox offset hack as movement solver)
+        // if vanilla compatibility didn't matter, the "correct" collision hull position would be physicActor->getScaledMeshTranslation()
+        const auto verticalHalfExtent = osg::Vec3f(0.0, 0.0, physicActor->getHalfExtents().z());
 
         // use a 3d approximation of the movement vector to better judge player intent
         auto velocity = (osg::Quat(actor.mRefpos.rot[0], osg::Vec3f(-1, 0, 0)) * osg::Quat(actor.mRefpos.rot[2], osg::Vec3f(0, 0, -1))) * actor.mMovement;
@@ -466,7 +466,7 @@ namespace MWPhysics
 
         // because of the internal collision box offset hack, and the fact that we're moving the collision box manually,
         // we need to replicate part of the collision box's transform process from scratch
-        osg::Vec3f refPosition = tempPosition + collisionOffset;
+        osg::Vec3f refPosition = tempPosition + verticalHalfExtent;
         osg::Vec3f goodPosition = refPosition;
         const btTransform oldTransform = collisionObject->getWorldTransform();
         btTransform newTransform = oldTransform;
@@ -501,7 +501,7 @@ namespace MWPhysics
             auto contactCallback2 = gatherContacts(positionDelta);
             // successfully moved further out from contact (does not have to be in open space, just less inside of things)
             if(contactCallback2.mDistance > contactCallback.mDistance)
-                tempPosition = goodPosition - collisionOffset;
+                tempPosition = goodPosition - verticalHalfExtent;
             // try again but only upwards (fixes some bad coc floors)
             else
             {
@@ -509,14 +509,14 @@ namespace MWPhysics
                 auto contactCallback3 = gatherContacts({0.0, 0.0, std::abs(positionDelta.z())});
                 // success
                 if(contactCallback3.mDistance > contactCallback.mDistance)
-                    tempPosition = goodPosition - collisionOffset;
+                    tempPosition = goodPosition - verticalHalfExtent;
                 else
                 // try again but fixed distance up
                 {
                     auto contactCallback4 = gatherContacts({0.0, 0.0, 10.0});
                     // success
                     if(contactCallback4.mDistance > contactCallback.mDistance)
-                        tempPosition = goodPosition - collisionOffset;
+                        tempPosition = goodPosition - verticalHalfExtent;
                 }
             }
         }

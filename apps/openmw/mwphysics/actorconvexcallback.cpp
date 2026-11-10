@@ -1,124 +1,15 @@
 #include "actorconvexcallback.hpp"
+#include "actor.hpp"
 #include "collisiontype.hpp"
 #include "contacttestwrapper.h"
+#include "projectile.hpp"
 
 #include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 
 #include <components/misc/convert.hpp>
-#include <components/settings/settings.hpp>
-
-#include "../mwbase/environment.hpp"
-#include "../mwbase/world.hpp"
-#include "../mwworld/class.hpp"
-
-#include "actor.hpp"
-#include "actorbodyrules.hpp"
-#include "../mwmp/PlayerList.hpp"
-#include "projectile.hpp"
-
-#include <algorithm>
-#include <cmath>
 
 namespace MWPhysics
 {
-    namespace
-    {
-        float clampPassScale(float value)
-        {
-            // Values below this start to feel like actors can walk through each other,
-            // while values above 1 would make the passage problem worse.
-            return std::clamp(value, 0.35f, 1.0f);
-        }
-
-        float getActorPassScale(const Actor* actorA, const Actor* actorB)
-        {
-            if (actorA == nullptr || actorB == nullptr)
-                return 1.f;
-
-            const MWWorld::ConstPtr ptrA = actorA->getPtr();
-            const MWWorld::ConstPtr ptrB = actorB->getPtr();
-
-            const MWWorld::ConstPtr player = MWBase::Environment::get().getWorld()->getPlayerPtr();
-            const bool involvesPlayer = ptrA == player || ptrB == player
-                || mwmp::PlayerList::isDedicatedPlayer(ptrA) || mwmp::PlayerList::isDedicatedPlayer(ptrB);
-            static const float playerNpcScale
-                = clampPassScale(Settings::Manager::getFloat("npc pass collision scale", "Game"));
-            static const float npcNpcScale
-                = clampPassScale(Settings::Manager::getFloat("npc to npc collision scale", "Game"));
-            return involvesPlayer ? playerNpcScale : npcNpcScale;
-        }
-
-        bool compactActorSweep(const Actor* actorA, const Actor* actorB, const btCollisionObject* objectA,
-            const btCollisionObject* objectB, const btVector3& invertedMotion, float scale,
-            btScalar& hitFraction, btVector3& hitNormal)
-        {
-            if (actorA == nullptr || actorB == nullptr || scale >= 0.999f)
-                return false;
-
-            // Actor-vs-actor passage uses a cylinder-like horizontal footprint while
-            // keeping the original collision boxes registered in Bullet. As a result,
-            // melee/projectile/raycast hit detection and world collision remain unchanged.
-            const osg::Vec3f halfA = actorA->getHalfExtents();
-            const osg::Vec3f halfB = actorB->getHalfExtents();
-            // Long creatures keep their oriented fitted box. Enclosing them in
-            // a circle would create exactly the oversized invisible barrier we avoid.
-            if (!ActorBodyRules::roundFootprint(halfA.x(), halfA.y())
-                || !ActorBodyRules::roundFootprint(halfB.x(), halfB.y())) return false;
-            const btScalar radiusA = std::max(halfA.x(), halfA.y()) * scale;
-            const btScalar radiusB = std::max(halfB.x(), halfB.y()) * scale;
-            const btScalar combinedRadius = radiusA + radiusB;
-
-            const btVector3 start = objectA->getWorldTransform().getOrigin();
-            const btVector3 end = start - invertedMotion;
-            const btVector3 other = objectB->getWorldTransform().getOrigin();
-
-            btVector3 relative = start - other;
-            btVector3 movement = end - start;
-            relative.setZ(0);
-            movement.setZ(0);
-
-            const btScalar a = movement.length2();
-            const btScalar c = relative.length2() - combinedRadius * combinedRadius;
-            btScalar fraction = 0;
-
-            if (c > 0)
-            {
-                if (a <= SIMD_EPSILON)
-                    return false;
-
-                const btScalar b = 2 * relative.dot(movement);
-                const btScalar discriminant = b * b - 4 * a * c;
-                if (discriminant < 0)
-                    return false;
-
-                fraction = (-b - btSqrt(discriminant)) / (2 * a);
-                if (fraction < 0 || fraction > 1)
-                    return false;
-            }
-
-            // Do not make actors on different vertical levels block each other.
-            const btScalar zAtHit = start.z() + (end.z() - start.z()) * fraction;
-            const btScalar verticalReach = halfA.z() + halfB.z();
-            if (btFabs(zAtHit - other.z()) > verticalReach)
-                return false;
-
-            btVector3 normal = relative + movement * fraction;
-            normal.setZ(0);
-            if (normal.length2() <= SIMD_EPSILON)
-            {
-                normal = -movement;
-                normal.setZ(0);
-            }
-            if (normal.length2() <= SIMD_EPSILON)
-                return false;
-
-            normal.normalize();
-            hitFraction = fraction;
-            hitNormal = normal;
-            return true;
-        }
-    }
-
     class ActorOverlapTester : public btCollisionWorld::ContactResultCallback
     {
     public:
@@ -154,34 +45,9 @@ namespace MWPhysics
         // For some reason this doesn't work as well as it should when using capsules, but it still helps a lot.
         if(convexResult.m_hitCollisionObject->getBroadphaseHandle()->m_collisionFilterGroup == CollisionType_Actor)
         {
-            const auto* meActor = static_cast<const Actor*>(mMe->getUserPointer());
-            const auto* hitActor = static_cast<const Actor*>(convexResult.m_hitCollisionObject->getUserPointer());
-            const float passScale = getActorPassScale(meActor, hitActor);
-
-            if (meActor && hitActor && passScale < 0.999f
-                && ActorBodyRules::roundFootprint(meActor->getHalfExtents().x(), meActor->getHalfExtents().y())
-                && ActorBodyRules::roundFootprint(hitActor->getHalfExtents().x(), hitActor->getHalfExtents().y()))
-            {
-                btScalar compactFraction = 1;
-                btVector3 compactNormal(0, 0, 0);
-                if (!compactActorSweep(meActor, hitActor, mMe, convexResult.m_hitCollisionObject, mMotion,
-                        passScale, compactFraction, compactNormal))
-                    return btScalar(1);
-
-                // If another obstacle is already closer, this actor must not replace it.
-                if (compactFraction >= m_closestHitFraction)
-                    return btScalar(1);
-
-                // The motion vector is intentionally inverted in ActorTracer.
-                if (compactNormal.dot(mMotion) > 0.0f)
-                {
-                    convexResult.m_hitFraction = compactFraction;
-                    convexResult.m_hitNormalLocal = compactNormal;
-                    return ClosestConvexResultCallback::addSingleResult(convexResult, true);
-                }
-                return btScalar(1);
-            }
-
+            // Use the actor's real Bullet collision shape. NPC shapes already
+            // carry the permanent 95% width/depth footprint; there is no
+            // movement-only passage override.
             // Original OpenMW/vanilla-compatible actor collision path.
             ActorOverlapTester isOverlapping;
             // FIXME: This is absolutely terrible and bullet should feel terrible for not making contactPairTest const-correct.
@@ -234,7 +100,7 @@ namespace MWPhysics
 
         // dot product of the motion vector against the collision contact normal
         btScalar dotCollision = mMotion.dot(hitNormalWorld);
-        if (!ActorBodyRules::blocksMotion(dotCollision, mMotion.length(), mMinCollisionDot))
+        if (dotCollision <= mMinCollisionDot)
             return btScalar(1);
 
         return ClosestConvexResultCallback::addSingleResult(convexResult, normalInWorldSpace);

@@ -1422,6 +1422,10 @@ houseHelper.IsStaff = isStaff
 -- ЛОКАЛИЗАЦИЯ СООБЩЕНИЙ
 -- ===========================================================================
 local function isRu(pid)
+    local locale = package.loaded.localization
+    if locale and type(locale.GetClientLanguage) == "function" then
+        return locale.GetClientLanguage(pid) == "RU"
+    end
     return Players[pid] ~= nil and tostring(Players[pid].language or "EN"):upper() == "RU"
 end
 
@@ -1525,7 +1529,8 @@ function houseHelper.ListOwnedBy(ownerName)
     if type(ownerName) ~= "string" or ownerName == "" then return owned end
     local target = lower(ownerName)
     for cellDescription, property in pairs(loadStore().properties) do
-        if type(property) == "table" and lower(property.owner or "") == target then
+        if type(property) == "table" and type(property.owner) == "string" and
+            property.owner ~= "" and lower(property.owner) == target then
             table.insert(owned, normalizeProperty(cellDescription, property))
         end
     end
@@ -2438,9 +2443,9 @@ function houseHelper.SendClientState(pid)
             -- Y070: beds/containers are trusted utilities. Friends may use them
             -- even when ordinary visitors are not allowed to take loose items.
             local utility = bookTake
+            local title = displayHomeName(pid, property)
             for _, member in ipairs(property.cells) do
                 local instance = houseHelper.GetInstanceDescription(member, property.owner)
-                local title = displayHomeName(pid, property)
                 tes3mp.SendMessage(pid, CONTROL_PREFIX .. "ROOM\t" .. escapeField(instance) .. "\t" ..
                     escapeField(title) .. "\t" .. (take and "1" or "0") .. "\t" ..
                     (mine and "1" or "0") .. "\t" .. (bookTake and "1" or "0") .. "\t" ..

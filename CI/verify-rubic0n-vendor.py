@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail fast when the pinned Rubic0n LuaJIT sources were not committed to Git.
 
-src/luajit.h is a GENERATED header and need not exist before building.
+src/luajit.h is a GENERATED header and must not exist before building.
 This check runs immediately after checkout on each platform.
 """
 from __future__ import annotations
@@ -42,7 +42,7 @@ def main() -> int:
         error("Rubic0n source tree is incomplete after checkout.")
         for path in missing:
             print("  Missing:", path, file=sys.stderr)
-        print("  Restore the complete extern/LuaJIT directory from this repository, then", file=sys.stderr)
+        print("  Reinstall the FULL extern/LuaJIT directory from the v7 overlay, then", file=sys.stderr)
         print("  run: git add -A .gitignore extern/LuaJIT CI .github/workflows/release-builds.yml", file=sys.stderr)
         return 1
 

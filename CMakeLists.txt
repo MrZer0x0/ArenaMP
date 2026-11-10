@@ -15,10 +15,6 @@ endif()
 
 project(OpenMW LANGUAGES C CXX)
 
-# This source edition intentionally does not contain the Android application.
-if(ANDROID)
-    message(FATAL_ERROR "This source package supports Windows and Linux; use the all-platform source package for Android.")
-endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
