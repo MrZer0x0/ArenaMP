@@ -969,9 +969,8 @@ function BaseCell:SaveObjectStates(objects)
         self:InitializeObjectData(uniqueIndex, refId)
         self.data.objectData[uniqueIndex].state = state
 
-        tes3mp.LogAppend(enumerations.log.INFO, "- " .. uniqueIndex .. ", refId: " .. refId ..
-            ", state: " .. tostring(state))
-
+        -- Changes are replicated as before, but avoid an INFO disk log for
+        -- every CharGen collision/object state at player login.
         tableHelper.insertValueIfMissing(self.data.packets.state, uniqueIndex)
     end
 end
@@ -1064,10 +1063,12 @@ function BaseCell:SaveContainers(pid)
     -- player. Re-copying the received packet later would silently undo them.
     tes3mp.CopyReceivedObjectListToStore()
 
-    tes3mp.LogMessage(enumerations.log.INFO, "Saving Container from " .. logicHandler.GetChatName(pid) ..
-        " about " .. self.description)
-
     local packetOrigin = tes3mp.GetObjectListOrigin()
+    local logDetails = packetOrigin ~= enumerations.packetOrigin.CLIENT_SCRIPT_GLOBAL
+    if logDetails then
+        tes3mp.LogMessage(enumerations.log.INFO, "Saving Container from " .. logicHandler.GetChatName(pid) ..
+            " about " .. self.description)
+    end
     local action = tes3mp.GetObjectListAction()
     local subAction = tes3mp.GetObjectListContainerSubAction()
     local affectedContainers = {}
@@ -1112,7 +1113,9 @@ function BaseCell:SaveContainers(pid)
         local uniqueIndex = tes3mp.GetObjectRefNum(objectIndex) .. "-" .. tes3mp.GetObjectMpNum(objectIndex)
         local refId = tes3mp.GetObjectRefId(objectIndex)
 
-        tes3mp.LogAppend(enumerations.log.INFO, "- " .. uniqueIndex .. ", refId: " .. refId)
+        if logDetails then
+            tes3mp.LogAppend(enumerations.log.INFO, "- " .. uniqueIndex .. ", refId: " .. refId)
+        end
 
         self:InitializeObjectData(uniqueIndex, refId)
         tableHelper.insertValueIfMissing(self.data.packets.container, uniqueIndex)

@@ -1779,8 +1779,10 @@ eventHandler.OnGenericObjectEvent = function(pid, cellDescription, packetType)
         tes3mp.ReadReceivedObjectList()
         local packetOrigin = tes3mp.GetObjectListOrigin()
         local clientScript
-        tes3mp.LogAppend(enumerations.log.INFO, "- packetOrigin was " ..
-            tableHelper.getIndexByValue(enumerations.packetOrigin, packetOrigin))
+        if packetType ~= "ObjectState" then
+            tes3mp.LogAppend(enumerations.log.INFO, "- packetOrigin was " ..
+                tableHelper.getIndexByValue(enumerations.packetOrigin, packetOrigin))
+        end
 
         if logicHandler.IsPacketFromConsole(packetOrigin) and not logicHandler.IsPlayerAllowedConsole(pid) then
             tes3mp.Kick(pid)
@@ -1788,7 +1790,9 @@ eventHandler.OnGenericObjectEvent = function(pid, cellDescription, packetType)
             return
         elseif logicHandler.IsPacketFromClientScript(packetOrigin) then
             clientScript = tes3mp.GetObjectListClientScript()
-            tes3mp.LogAppend(enumerations.log.INFO, "- clientScript was " .. clientScript)
+            if packetType ~= "ObjectState" then
+                tes3mp.LogAppend(enumerations.log.INFO, "- clientScript was " .. clientScript)
+            end
         end
 
         local isCellLoaded = LoadedCells[cellDescription] ~= nil
@@ -1838,8 +1842,15 @@ eventHandler.OnGenericObjectEvent = function(pid, cellDescription, packetType)
 
         if not tableHelper.isEmpty(objects) or not tableHelper.isEmpty(targetPlayers) then
 
+            local useCellBatch = config.batchRemoteCellWrites ~= false and
+                not isCellLoaded and packetType == "ObjectState" and
+                logicHandler.IsPacketFromClientScript(packetOrigin)
             if not isCellLoaded then
-                logicHandler.LoadCell(cellDescription)
+                if useCellBatch then
+                    logicHandler.LoadCellForBatchEvent(cellDescription)
+                else
+                    logicHandler.LoadCell(cellDescription)
+                end
             end
 
             local eventStatus = customEventHooks.triggerValidators("On" .. packetType,
@@ -1847,27 +1858,30 @@ eventHandler.OnGenericObjectEvent = function(pid, cellDescription, packetType)
 
             if eventStatus.validDefaultHandler then
 
-                local debugMessage = "Accepted " .. packetType .. " from " .. logicHandler.GetChatName(pid) ..
-                    " about " .. cellDescription .. " for "
+                -- ObjectState may arrive hundreds of times during CharGen;
+                -- keep validation and replication, but skip formatting and
+                -- writing an expensive INFO entry for each state packet.
+                if packetType ~= "ObjectState" then
+                    local debugMessage = "Accepted " .. packetType .. " from " .. logicHandler.GetChatName(pid) ..
+                        " about " .. cellDescription .. " for "
 
-                if not tableHelper.isEmpty(objects) then
-                    debugMessage = debugMessage .. "objects: "
-                    local includeComma = false
-
-                    for uniqueIndex, object in pairs(objects) do
-                        if includeComma then debugMessage = debugMessage .. ", " end
-                        debugMessage = debugMessage .. object.refId .. " " .. uniqueIndex
-                        includeComma = true
+                    if not tableHelper.isEmpty(objects) then
+                        debugMessage = debugMessage .. "objects: "
+                        local includeComma = false
+                        for uniqueIndex, object in pairs(objects) do
+                            if includeComma then debugMessage = debugMessage .. ", " end
+                            debugMessage = debugMessage .. object.refId .. " " .. uniqueIndex
+                            includeComma = true
+                        end
                     end
+
+                    if not tableHelper.isEmpty(targetPlayers) then
+                        local chatNames = logicHandler.GetChatNames(tableHelper.getArrayFromIndexes(targetPlayers))
+                        debugMessage = debugMessage .. "players: " .. tableHelper.concatenateArrayValues(chatNames, 1, ", ")
+                    end
+                    tes3mp.LogMessage(enumerations.log.INFO, debugMessage)
                 end
 
-                if not tableHelper.isEmpty(targetPlayers) then
-                    local chatNames = logicHandler.GetChatNames(tableHelper.getArrayFromIndexes(targetPlayers))
-                    debugMessage = debugMessage .. "players: " .. tableHelper.concatenateArrayValues(chatNames, 1, ", ")
-                end
-
-                tes3mp.LogMessage(enumerations.log.INFO, debugMessage)
-                
                 LoadedCells[cellDescription]:SaveObjectsByPacketType(packetType, objects)
                 -- Gameplay placement is already applied locally every frame.
                 -- Echoing its 20 Hz transform back to the editor rewinds the
@@ -1885,7 +1899,11 @@ eventHandler.OnGenericObjectEvent = function(pid, cellDescription, packetType)
                 {pid, cellDescription, objects, targetPlayers})
 
             if not isCellLoaded then
-                logicHandler.UnloadCell(cellDescription)
+                if useCellBatch then
+                    logicHandler.ReleaseCellForBatchEvent(cellDescription)
+                else
+                    logicHandler.UnloadCell(cellDescription)
+                end
             end
         end
     else
@@ -2127,8 +2145,10 @@ eventHandler.OnContainer = function(pid, cellDescription)
 
         tes3mp.ReadReceivedObjectList()
         local packetOrigin = tes3mp.GetObjectListOrigin()
-        tes3mp.LogAppend(enumerations.log.INFO, "- packetOrigin was " ..
-            tableHelper.getIndexByValue(enumerations.packetOrigin, packetOrigin))
+        if packetOrigin ~= enumerations.packetOrigin.CLIENT_SCRIPT_GLOBAL then
+            tes3mp.LogAppend(enumerations.log.INFO, "- packetOrigin was " ..
+                tableHelper.getIndexByValue(enumerations.packetOrigin, packetOrigin))
+        end
 
         if logicHandler.IsPacketFromConsole(packetOrigin) and not logicHandler.IsPlayerAllowedConsole(pid) then
             tes3mp.Kick(pid)
@@ -2223,9 +2243,21 @@ eventHandler.OnContainer = function(pid, cellDescription)
             local eventStatus = customEventHooks.triggerValidators("OnContainer", {pid, cellDescription, objects})
             if eventStatus.validDefaultHandler then
                 local useTemporaryLoad = false
+                -- Only script-driven ADDs in currently unvisited cells are
+                -- batched. Real gameplay takes, trading, SET snapshots and
+                -- requests keep their original immediate persistence path.
+                local useCellBatch = config.batchRemoteCellWrites ~= false and
+                    not isCellLoaded and
+                    packetOrigin == enumerations.packetOrigin.CLIENT_SCRIPT_GLOBAL and
+                    tes3mp.GetObjectListAction() == enumerations.container.ADD and
+                    subAction ~= enumerations.containerSub.REPLY_TO_REQUEST
 
                 if not isCellLoaded then
-                    logicHandler.LoadCell(cellDescription)
+                    if useCellBatch then
+                        logicHandler.LoadCellForBatchEvent(cellDescription)
+                    else
+                        logicHandler.LoadCell(cellDescription)
+                    end
                     useTemporaryLoad = true
                 end
 
@@ -2234,7 +2266,11 @@ eventHandler.OnContainer = function(pid, cellDescription)
                 LoadedCells[cellDescription]:SaveContainers(pid)
 
                 if useTemporaryLoad then
-                    logicHandler.UnloadCell(cellDescription)
+                    if useCellBatch then
+                        logicHandler.ReleaseCellForBatchEvent(cellDescription)
+                    else
+                        logicHandler.UnloadCell(cellDescription)
+                    end
                 end
             end
             customEventHooks.triggerHandlers("OnContainer", eventStatus, {pid, cellDescription, objects})

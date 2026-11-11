@@ -40,9 +40,14 @@ function Cell:SaveToDrive()
 end
 
 function Cell:QuicksaveToDrive()
+    -- ArenaMP: inactive cells touched by client scripts are committed together
+    -- by logicHandler's short-lived write batch. Normal loaded cells and all
+    -- real player inventory interactions still save immediately.
+    if self.ampDeferredCellWrite then return true end
     if self.hasEntry then
-        jsonInterface.quicksave("cell/" .. self.entryFile, self.data)
+        return jsonInterface.quicksave("cell/" .. self.entryFile, self.data)
     end
+    return false
 end
 
 function Cell:LoadFromDrive()

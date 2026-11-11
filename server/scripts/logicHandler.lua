@@ -957,10 +957,83 @@ logicHandler.LoadRecordStore = function(storeType)
     end
 end
 
+-- ArenaMP inactive-cell write batching.  CLIENT_SCRIPT_GLOBAL merchant restocks
+-- can send hundreds of separate Container ADD packets to remote cells. Reading,
+-- writing and closing the same JSON file per packet blocks the server thread.
+-- The cache is never exposed in LoadedCells between callbacks, so "loaded cell"
+-- checks, visitation and authority continue to work exactly as before.
+local pendingCellWrites = {}
+local pendingCellCount = 0
+local cellFlushTimerId
+local CELL_BATCH_IDLE_MS = 350
+local CELL_BATCH_MAX_AGE_MS = 1500
+local CELL_BATCH_TICK_MS = 200
+local CELL_BATCH_MAX_CELLS = 24
+
+local function cellBatchNow()
+    if type(tes3mp.GetMillisecondsSinceServerStart) == "function" then
+        return tes3mp.GetMillisecondsSinceServerStart()
+    end
+    return os.time() * 1000
+end
+
+local function savePendingCell(cellDescription, entry)
+    -- Do not remove an entry on failed writes: retry it in the next tick.
+    local cell = entry.cell
+    cell.ampDeferredCellWrite = false
+    -- Fast CJSON flush: final human-readable SaveToDrive still runs normally
+    -- when a player leaves the cell or the server saves active cells.
+    local saved = cell:QuicksaveToDrive()
+    if saved == false then
+        cell.ampDeferredCellWrite = true
+        tes3mp.LogMessage(enumerations.log.ERROR,
+            "[CellBatch] Could not save cell " .. tostring(cellDescription) .. "; retrying")
+        return false
+    end
+    cell.ampBatchStarted = nil
+    pendingCellWrites[cellDescription] = nil
+    pendingCellCount = pendingCellCount - 1
+    return true
+end
+
+local function flushPendingCells(force)
+    local now = cellBatchNow()
+    for description, entry in pairs(pendingCellWrites) do
+        if force or now >= entry.deadline or now - entry.started >= CELL_BATCH_MAX_AGE_MS then
+            savePendingCell(description, entry)
+        end
+    end
+end
+
+function ArenaMP_FlushInactiveCellWrites()
+    cellFlushTimerId = nil
+    flushPendingCells(false)
+    if pendingCellCount > 0 then
+        cellFlushTimerId = tes3mp.CreateTimer("ArenaMP_FlushInactiveCellWrites", CELL_BATCH_TICK_MS)
+        tes3mp.StartTimer(cellFlushTimerId)
+    end
+end
+
+local function armCellBatchTimer()
+    if cellFlushTimerId == nil then
+        cellFlushTimerId = tes3mp.CreateTimer("ArenaMP_FlushInactiveCellWrites", CELL_BATCH_TICK_MS)
+        tes3mp.StartTimer(cellFlushTimerId)
+    end
+end
+
 logicHandler.LoadCell = function(cellDescription)
 
     -- If this cell isn't loaded at all, load it
     if LoadedCells[cellDescription] == nil then
+
+        local cached = pendingCellWrites[cellDescription]
+        if cached then
+            pendingCellWrites[cellDescription] = nil
+            pendingCellCount = pendingCellCount - 1
+            cached.cell.ampDeferredCellWrite = false
+            LoadedCells[cellDescription] = cached.cell
+            return
+        end
 
         LoadedCells[cellDescription] = Cell(cellDescription)
 
@@ -978,6 +1051,62 @@ logicHandler.LoadCell = function(cellDescription)
         LoadedCells[cellDescription]:SaveActorStatsDynamic()
     end
 end
+
+-- Only call for a previously unloaded cell and an accepted script-origin
+-- ObjectState/Container ADD. While the event runs, validators and handlers see
+-- exactly the same LoadedCells entry that the unbatched path would expose.
+logicHandler.LoadCellForBatchEvent = function(cellDescription)
+    logicHandler.LoadCell(cellDescription)
+    local cell = LoadedCells[cellDescription]
+    if cell then cell.ampDeferredCellWrite = true end
+end
+
+logicHandler.ReleaseCellForBatchEvent = function(cellDescription)
+    local cell = LoadedCells[cellDescription]
+    if not cell or not cell.ampDeferredCellWrite then return end
+
+    -- Visitor membership must always take precedence over caching. This is a
+    -- defensive guard for scripts that add a visitor during a custom callback.
+    if next(cell.visitors or {}) ~= nil then
+        cell.ampDeferredCellWrite = false
+        cell:QuicksaveToDrive()
+        return
+    end
+
+    local now = cellBatchNow()
+    -- The first packet in a continuous burst sets the maximum dirty age;
+    -- reopening the cached cell must not reset that deadline.
+    cell.ampBatchStarted = cell.ampBatchStarted or now
+    local entry = pendingCellWrites[cellDescription]
+    if entry == nil then
+        entry = { cell = cell, started = cell.ampBatchStarted }
+        pendingCellWrites[cellDescription] = entry
+        pendingCellCount = pendingCellCount + 1
+    end
+    entry.cell = cell
+    entry.deadline = now + CELL_BATCH_IDLE_MS
+    LoadedCells[cellDescription] = nil
+
+    -- Bound the number of unsaved, unvisited cells (large world restock bursts).
+    if pendingCellCount > CELL_BATCH_MAX_CELLS then
+        local oldestDescription, oldestEntry
+        for description, candidate in pairs(pendingCellWrites) do
+            if oldestEntry == nil or candidate.started < oldestEntry.started then
+                oldestDescription, oldestEntry = description, candidate
+            end
+        end
+        if oldestEntry then savePendingCell(oldestDescription, oldestEntry) end
+    end
+    armCellBatchTimer()
+end
+
+customEventHooks.registerHandler("OnServerExit", function()
+    if cellFlushTimerId then
+        tes3mp.StopTimer(cellFlushTimerId)
+        cellFlushTimerId = nil
+    end
+    flushPendingCells(true)
+end)
 
 logicHandler.LoadCellForPlayer = function(pid, cellDescription)
 
