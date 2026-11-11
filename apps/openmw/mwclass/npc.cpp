@@ -1764,7 +1764,10 @@ namespace MWClass
 
     void Npc::adjustScale(const MWWorld::ConstPtr &ptr, osg::Vec3f&scale, bool rendering) const
     {
-        // V18: physical body proportions follow the third-person model in every camera.
+        // OpenMW player collision extents do not depend on race height or weight.
+        // Keep the reference scale, and apply race proportions only to rendering.
+        if (!rendering && (ptr == MWMechanics::getPlayer() || mwmp::PlayerList::isDedicatedPlayer(ptr)))
+            return;
 
         const MWWorld::LiveCellRef<ESM::NPC> *ref = ptr.get<ESM::NPC>();
 

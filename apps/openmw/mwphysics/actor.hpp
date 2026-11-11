@@ -71,7 +71,8 @@ namespace MWPhysics
 
         /**
          * Returns the physical half extents before actor scaling. Ordinary NPCs
-         * include the permanent 95% horizontal collision footprint.
+         * include the permanent 95% horizontal collision footprint, while
+         * player actors retain the native OpenMW extents.
          */
         osg::Vec3f getOriginalHalfExtents() const;
 
@@ -186,7 +187,7 @@ namespace MWPhysics
         std::atomic<bool> mWalkingOnWater;
 
         bool mRotationallyInvariant;
-        bool mUseReducedNpcCollision = false;
+        float mHorizontalCollisionScale = 1.f;
 
         std::unique_ptr<btCollisionShape> mShape;
         btConvexShape* mConvexShape;

@@ -47,12 +47,15 @@ Actor::Actor(const MWWorld::Ptr& ptr, const Resource::BulletShape* shape, Physic
 {
     mPtr = ptr;
 
-    // Apply the permanent compact footprint only to ordinary NPCs. The local
-    // player and all remote multiplayer player actors keep their full shape.
+    // Ordinary NPCs retain their 95% width/depth footprint. Local and remote
+    // players use the native OpenMW collision extents without compression.
+    // Height is intentionally left unchanged.
     const MWWorld::Ptr localPlayer = MWBase::Environment::get().getWorld()->getPlayerPtr();
-    mUseReducedNpcCollision = ptr.getClass().isNpc()
-        && ptr != localPlayer
-        && !mwmp::PlayerList::isDedicatedPlayer(ptr);
+    const bool isPlayerActor = ptr == localPlayer || mwmp::PlayerList::isDedicatedPlayer(ptr);
+    const bool isOrdinaryNpc = ptr.getClass().isNpc() && !isPlayerActor;
+    mHorizontalCollisionScale = isOrdinaryNpc
+        ? NpcCollisionFootprint::NpcHorizontalScale
+        : (isPlayerActor ? NpcCollisionFootprint::PlayerHorizontalScale : 1.f);
 
     // We can not create actor without collisions - he will fall through the ground.
     // In this case we should autogenerate collision box based on mesh shape
@@ -193,7 +196,7 @@ void Actor::updateCollisionObjectPosition()
 {
     std::scoped_lock lock(mPositionMutex);
     const osg::Vec3f collisionScale = NpcCollisionFootprint::applyHorizontalScale(
-        mScale, mUseReducedNpcCollision);
+        mScale, mHorizontalCollisionScale);
     mShape->setLocalScaling(Misc::Convert::toBullet(collisionScale));
     osg::Vec3f newPosition = getScaledMeshTranslation() + mPosition;
 
@@ -278,12 +281,12 @@ osg::Vec3f Actor::getHalfExtents() const
 {
     std::scoped_lock lock(mPositionMutex);
     return NpcCollisionFootprint::applyHorizontalScale(
-        osg::componentMultiply(mHalfExtents, mScale), mUseReducedNpcCollision);
+        osg::componentMultiply(mHalfExtents, mScale), mHorizontalCollisionScale);
 }
 
 osg::Vec3f Actor::getOriginalHalfExtents() const
 {
-    return NpcCollisionFootprint::applyHorizontalScale(mHalfExtents, mUseReducedNpcCollision);
+    return NpcCollisionFootprint::applyHorizontalScale(mHalfExtents, mHorizontalCollisionScale);
 }
 
 osg::Vec3f Actor::getRenderingHalfExtents() const
