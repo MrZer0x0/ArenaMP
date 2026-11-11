@@ -70,9 +70,9 @@ namespace MWPhysics
         osg::Vec3f getHalfExtents() const;
 
         /**
-         * Returns the physical half extents before actor scaling. Ordinary NPCs
-         * include the permanent 95% horizontal collision footprint, while
-         * player actors retain the native OpenMW extents.
+         * Returns the physical half extents before actor scaling. NPCs and players
+         * include the permanent 90% horizontal collision footprint.
+         * The vertical extent retains its native OpenMW value.
          */
         osg::Vec3f getOriginalHalfExtents() const;
 

@@ -5,6 +5,7 @@
 #include <components/esm/loadmgef.hpp>
 #include <components/esm/loadspel.hpp>
 #include "../mwworld/inventorystore.hpp"
+#include "../mwworld/actiontrap.hpp"
 #include "../mwbase/windowmanager.hpp"
 #include "../mwbase/soundmanager.hpp"
 #include "spells.hpp"
@@ -142,7 +143,20 @@ namespace MWMechanics
             }
         }
         if (tool.isEmpty())
-        { wm->messageBox(trapped ? "#{sTrapImpossible}" : "#{sLockImpossible}"); return true; }
+        {
+            if (trapped)
+            {
+                // No usable probe: activate the trap instead of blocking the door.
+                // ActionTrap applies the spell to the player and sends the trap packet
+                // to the server, which clears it. The lock (if any) stays locked.
+                MWWorld::ActionTrap trapAction(target.getCellRef().getTrap(), target);
+                trapAction.setSound("Disarm Trap Fail");
+                trapAction.execute(actor);
+                return true;
+            }
+            wm->messageBox("#{sLockImpossible}");
+            return true;
+        }
         mechanics->startSecurityAction(actor, target, tool, std::string());
         // Even success waits for the server lock/trap packet. A second activation
         // opens the now-safe object; never open it optimistically in this frame.

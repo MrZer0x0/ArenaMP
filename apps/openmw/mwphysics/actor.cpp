@@ -47,8 +47,8 @@ Actor::Actor(const MWWorld::Ptr& ptr, const Resource::BulletShape* shape, Physic
 {
     mPtr = ptr;
 
-    // Ordinary NPCs retain their 95% width/depth footprint. Local and remote
-    // players use the native OpenMW collision extents without compression.
+    // Ordinary NPCs and local/remote players use 90% of the native OpenMW
+    // collision width and depth.
     // Height is intentionally left unchanged.
     const MWWorld::Ptr localPlayer = MWBase::Environment::get().getWorld()->getPlayerPtr();
     const bool isPlayerActor = ptr == localPlayer || mwmp::PlayerList::isDedicatedPlayer(ptr);

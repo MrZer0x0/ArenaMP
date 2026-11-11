@@ -700,7 +700,7 @@ void Launcher::MainDialog::createPages()
         if(auto* label=mPlayPage->findChild<QLabel*>("arenaMasterPublishStatus")){label->setText(status);label->setToolTip(status);}
     });
     connect(publisher,&QProcess::errorOccurred,this,[this,publisher](QProcess::ProcessError){
-        if(auto* label=mPlayPage->findChild<QLabel*>("arenaMasterPublishStatus"))label->setText(tr("Публикация: ")+publisher->errorString());
+        if(auto* label=mPlayPage->findChild<QLabel*>("arenaMasterPublishStatus"))label->setText(tr("Publishing: ")+publisher->errorString());
     });
     auto* publishTimer = new QTimer(this);
     publishTimer->setInterval(3000);
@@ -739,7 +739,7 @@ void Launcher::MainDialog::createPages()
         if(!enabled){
             if(publisher->state()!=QProcess::NotRunning)publisher->kill();
             if(auto* label=mPlayPage->findChild<QLabel*>("arenaMasterPublishStatus"))
-                label->setText(owner.value("enabled").toBool(true)?tr("Публикация включена. Запустите сервер."):tr("Размещение выключено"));
+                label->setText(owner.value("enabled").toBool(true)?tr("Publishing enabled. Start the server."):tr("Publishing disabled"));
             return;
         }
         if(publisher->state()!=QProcess::NotRunning)return;

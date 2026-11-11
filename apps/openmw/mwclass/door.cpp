@@ -169,8 +169,10 @@ namespace MWClass
         }
 
         // Z010: ask the housing server before the authored lock rejects activation.
+        // A live trap must resolve first, even for a managed house door: without
+        // a probe, ordinary activation triggers it rather than bypassing it.
         // This never unlocks the physical door or sends an ObjectLock packet.
-        if (isLocked && actor == MWMechanics::getPlayer()
+        if (isLocked && !isTrapped && actor == MWMechanics::getPlayer()
             && (!hasKey || mwmp::ArenaHousing::get().canBypassDoorLock(ptr))
             && mwmp::ArenaHousing::get().isManagedDoor(ptr)
             && mwmp::ArenaHousing::get().requestForDoor(ptr, false))

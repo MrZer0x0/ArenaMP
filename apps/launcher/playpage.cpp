@@ -269,7 +269,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
     remoteLayout->addWidget(mRemotePlayers, 2, 1, 1, 3);
     remoteLayout->addWidget(uptimeLabel, 3, 0);
     remoteLayout->addWidget(mRemoteUptime, 3, 1, 1, 3);
-    auto* selectedWebsite=new QPushButton(tr("Сайт выбранного сервера"),remoteCard);
+    auto* selectedWebsite=new QPushButton(tr("Selected server website"),remoteCard);
     selectedWebsite->setObjectName(QStringLiteral("arenaSelectedWebsite"));selectedWebsite->hide();
     remoteLayout->addWidget(selectedWebsite,4,0,1,4);
     connect(selectedWebsite,&QPushButton::clicked,this,[this](){
@@ -289,10 +289,10 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         QVector<QJsonObject> servers;
         QSettings settings;
         explicit DirectoryPage(QWidget* parent) : QWidget(parent), layout(this),
-            endpoint(this), inviteId(this), inviteButton(tr("Найти по ID"),this),
-            refreshButton(tr("Обновить"),this), filesButton(tr("Файлы"),this),
-            directButton(tr("Напрямую"),this), relayButton(tr("Выбрать"),this),
-            table(this), status(tr("Нажмите Обновить"),this), net(this),
+            endpoint(this), inviteId(this), inviteButton(tr("Find by ID"),this),
+            refreshButton(tr("Refresh"),this), filesButton(tr("Files"),this),
+            directButton(tr("Direct connect"),this), relayButton(tr("Select"),this),
+            table(this), status(tr("Click Refresh"),this), net(this),
             settings(QStringLiteral("ArenaMP"),QStringLiteral("Launcher")) {}
     };
     auto* d = new DirectoryPage(pageTabs);
@@ -307,13 +307,13 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         }
         updateStatusPanel();
     });
-    pageTabs->addTab(d,tr("Серверы"));
+    pageTabs->addTab(d,tr("Servers"));
     {
         d->layout.setContentsMargins(12,10,12,10);
-        auto* heading=new QLabel(tr("Серверы ArenaMP"),d);
+        auto* heading=new QLabel(tr("ArenaMP servers"),d);
         heading->setProperty("arenaSectionTitle",true);
         d->layout.addWidget(heading);
-        auto* clearSelection=new QPushButton(tr("Сбросить выбор"),d);
+        auto* clearSelection=new QPushButton(tr("Clear selection"),d);
         connect(clearSelection,&QPushButton::clicked,this,[this](){
             mSelectedMasterServer=QJsonObject();mMasterPassword.clear();
             QSettings("ArenaMP","Launcher").remove("master/selected");mAlternativeServer->setChecked(false);
@@ -324,11 +324,11 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         // Master URL remains configurable through master/url in QSettings only.
         d->endpoint.hide();
         auto* inviteRow=new QHBoxLayout();
-        d->inviteId.setPlaceholderText(tr("ID приватного сервера"));
+        d->inviteId.setPlaceholderText(tr("Private server ID"));
         inviteRow->addWidget(&d->inviteId,1);inviteRow->addWidget(&d->inviteButton);inviteRow->addWidget(clearSelection);
         d->layout.addLayout(inviteRow);
         d->table.setColumnCount(5);
-        d->table.setHorizontalHeaderLabels({tr("Название"), tr("Сборка"), tr("Режим"), tr("Игроки"), tr("Соединение")});
+        d->table.setHorizontalHeaderLabels({tr("Name"), tr("Build"), tr("Mode"), tr("Players"), tr("Connection")});
         d->table.horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         d->table.verticalHeader()->hide();
         d->table.setSelectionMode(QAbstractItemView::SingleSelection);
@@ -345,12 +345,12 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         auto* actions = new QHBoxLayout();
         actions->addWidget(&d->refreshButton);
         actions->addWidget(&d->filesButton);
-        auto* websiteButton=new QPushButton(tr("Сайт"),d);actions->addWidget(websiteButton);
+        auto* websiteButton=new QPushButton(tr("Website"),d);actions->addWidget(websiteButton);
         connect(websiteButton,&QPushButton::clicked,d,[d](){
             const int row=d->table.currentRow();if(row<0 || row>=d->servers.size())return;
             const QUrl url(d->servers[row].value("website").toString());
             if(url.isValid() && (url.scheme()=="https" || url.scheme()=="http") && !url.host().isEmpty() && url.userInfo().isEmpty())QDesktopServices::openUrl(url);
-            else d->status.setText(QObject::tr("Владелец не указал ссылку"));
+            else d->status.setText(QObject::tr("The owner has not provided a website link"));
         });
         actions->addWidget(&d->relayButton);
         actions->addWidget(&d->directButton);
@@ -367,22 +367,22 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         mPrepareMaster=[this,d,get](){
             mMasterPreparing=true;
             d->setEnabled(false);
-            mRemoteStatus->setText(tr("Подключение…"));
+            mRemoteStatus->setText(tr("Connecting..."));
             const QString base=mSelectedMasterServer.value("master_url").toString();
             const QString id=mSelectedMasterServer.value("id").toString();
             const bool direct=mSelectedMasterServer.value("launcher_direct").toBool();
             auto fail=[this,d](const QString& message){
-                mMasterPreparing=false;d->setEnabled(true);d->setEnabled(true);mRemoteStatus->setText(tr("Нет подключения"));
-                QMessageBox::warning(this,tr("Выбранный сервер"),message);
+                mMasterPreparing=false;d->setEnabled(true);d->setEnabled(true);mRemoteStatus->setText(tr("Not connected"));
+                QMessageBox::warning(this,tr("Selected server"),message);
             };
             get(base+QStringLiteral("/v1/servers/")+id,[this,d,get,base,id,direct,fail](QNetworkReply* reply){
                 if(reply->error()!=QNetworkReply::NoError){fail(reply->errorString());return;}
                 QJsonObject live=QJsonDocument::fromJson(reply->readAll()).object();
-                if(live.isEmpty()){fail(tr("Мастер вернул пустой сервер"));return;}live["id"]=id;
+                if(live.isEmpty()){fail(tr("The master server returned an empty server entry"));return;}live["id"]=id;
                 get(base+QStringLiteral("/v1/servers/")+id+QStringLiteral("/manifest"),[this,d,base,direct,fail,live](QNetworkReply* manifestReply) mutable {
                     if(manifestReply->error()!=QNetworkReply::NoError){fail(manifestReply->errorString());return;}
                     const auto manifest=QJsonDocument::fromJson(manifestReply->readAll()).object();
-                    if(!manifest.value("files").isArray()){fail(tr("Мастер вернул неправильный список файлов"));return;}
+                    if(!manifest.value("files").isArray()){fail(tr("The master server returned an invalid file list"));return;}
                     live["files"]=manifest.value("files");
                     d->servers={live};d->table.setRowCount(1);
                     d->table.setItem(0,0,new QTableWidgetItem(live.value("name").toString()));
@@ -398,18 +398,18 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
             const bool localOnly=serviceUrl.host()==QStringLiteral("127.0.0.1") || serviceUrl.host()==QStringLiteral("localhost") || serviceUrl.host()==QStringLiteral("::1");
             if (!serviceUrl.isValid() || !(serviceUrl.scheme()==QStringLiteral("https") ||
                 (serviceUrl.scheme()==QStringLiteral("http") && localOnly))) {
-                d->status.setText(tr("Внешний мастер-сервер требует HTTPS"));return;
+                d->status.setText(tr("Remote master servers require HTTPS"));return;
             }
             d->settings.setValue(QStringLiteral("master/url"),base);
             d->refreshButton.setEnabled(false);
-            d->status.setText(tr("Получение списка серверов…"));
+            d->status.setText(tr("Fetching the server list..."));
             get(base+QStringLiteral("/v1/servers"),[this,d,get,selected](QNetworkReply* reply){
                 d->refreshButton.setEnabled(true);
-                if(reply->error()!=QNetworkReply::NoError){d->servers.clear();d->table.setRowCount(0);d->status.setText(tr("Мастер недоступен: %1. Проверьте HTTPS, TCP 17777 и дату устройства.").arg(reply->errorString()));return;}
+                if(reply->error()!=QNetworkReply::NoError){d->servers.clear();d->table.setRowCount(0);d->status.setText(tr("Master server unavailable: %1. Check HTTPS, TCP port 17777 and your device date.").arg(reply->errorString()));return;}
                 QJsonParseError error;
                 const QJsonDocument doc=QJsonDocument::fromJson(reply->readAll(),&error);
                 if(error.error!=QJsonParseError::NoError || !doc.isObject()){
-                    d->status.setText(tr("Неверный ответ мастер-сервера"));return;
+                    d->status.setText(tr("Invalid response from the master server"));return;
                 }
                 d->servers.clear();d->table.setRowCount(0);
                 const QJsonArray array=doc.object().value(QStringLiteral("servers")).toArray();
@@ -425,16 +425,16 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                     for(int c=0;c<cols.size();++c)d->table.setItem(row,c,new QTableWidgetItem(cols[c]));
                 }
                 if(!d->servers.isEmpty())d->table.selectRow(0);
-                d->status.setText(d->servers.isEmpty()?tr("Мастер доступен. Пока нет опубликованных серверов. Размещение включается в карточке «Локальный сервер»."):tr("Активных серверов: %1. Выберите сервер и нажмите «Выбрать», затем «Играть».").arg(d->servers.size()));
+                d->status.setText(d->servers.isEmpty()?tr("The master server is available, but no servers are published yet. Enable publishing in the Local Server card."):tr("Active servers: %1. Choose a server, click Select, then Play.").arg(d->servers.size()));
             });
         });
         QObject::connect(&d->inviteButton,&QPushButton::clicked,d,[this,d,get,selected]() {
             const QString id=d->inviteId.text().trimmed();
             if(!QRegularExpression(QStringLiteral("^[A-Za-z0-9_-]{1,80}$")).match(id).hasMatch()) {
-                d->status.setText(tr("Некорректный ID сервера"));return;
+                d->status.setText(tr("Invalid server ID"));return;
             }
             get(d->endpoint.text().trimmed()+QStringLiteral("/v1/servers/")+id,[this,d,get,selected,id](QNetworkReply* reply){
-                if(reply->error()!=QNetworkReply::NoError){d->status.setText(tr("Сервер недоступен или не найден"));return;}
+                if(reply->error()!=QNetworkReply::NoError){d->status.setText(tr("Server unavailable or not found"));return;}
                 const auto obj=QJsonDocument::fromJson(reply->readAll()).object();
                 if(obj.isEmpty())return;
                 QJsonObject selectedServer=obj;selectedServer.insert(QStringLiteral("id"),id);
@@ -445,7 +445,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 d->table.setItem(0,3,new QTableWidgetItem(QStringLiteral("%1/%2").arg(selectedServer.value(QStringLiteral("players")).toInt()).arg(selectedServer.value(QStringLiteral("max_players")).toInt())));
                 d->table.setItem(0,4,new QTableWidgetItem(selectedServer.value(QStringLiteral("connection")).toString()));
                 d->table.selectRow(0);
-                d->status.setText(tr("Требования: %1").arg(selectedServer.value(QStringLiteral("requirements")).toString()));
+                d->status.setText(tr("Requirements: %1").arg(selectedServer.value(QStringLiteral("requirements")).toString()));
             });
         });
         QObject::connect(&d->filesButton,&QPushButton::clicked,d,[this,d,get,selected]() {
@@ -455,7 +455,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 const QJsonArray arr=QJsonDocument::fromJson(reply->readAll()).object().value(QStringLiteral("files")).toArray();
                 QStringList lines;
                 for(const QJsonValue& v:arr){const auto f=v.toObject();lines<<f.value(QStringLiteral("name")).toString()+QStringLiteral(" · ")+f.value(QStringLiteral("hash")).toString();}
-                QMessageBox::information(d,tr("Требования и файлы"),
+                QMessageBox::information(d,tr("Requirements and files"),
                     obj.value(QStringLiteral("requirements")).toString()+QStringLiteral("\n\n")+lines.join(QStringLiteral("\n")));
             });
         });
@@ -466,13 +466,13 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 pageTabs->setCurrentWidget(playTab);return;
             }
             if(obj.value(QStringLiteral("players")).toInt()>=obj.value(QStringLiteral("max_players")).toInt() && obj.value(QStringLiteral("max_players")).toInt()>0) {
-                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Сервер заполнен"));return;
+                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Server is full"));return;
             }
             QString pass;
             if(obj.value(QStringLiteral("password_required")).toBool()) {
                 bool accepted=false;
-                pass=QInputDialog::getText(d,tr("Пароль игрового сервера"),
-                    tr("Пароль (проверяется игровым сервером):"),QLineEdit::Password,QString(),&accepted);
+                pass=QInputDialog::getText(d,tr("Game server password"),
+                    tr("Password (verified by the game server):"),QLineEdit::Password,QString(),&accepted);
                 if(!accepted||pass.isEmpty()){mMasterPreparing=false;d->setEnabled(true);return;}
             }
             auto chosen=obj;chosen["launcher_direct"]=true;rememberMasterServer(chosen,d->endpoint.text().trimmed());
@@ -489,45 +489,45 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 pageTabs->setCurrentWidget(playTab);return;
             }
             if(obj.value(QStringLiteral("connection")).toString()==QStringLiteral("direct")){d->directButton.click();return;}
-            if(obj.value(QStringLiteral("max_players")).toInt()>0 && obj.value(QStringLiteral("players")).toInt()>=obj.value(QStringLiteral("max_players")).toInt()){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Сервер заполнен"));return;}
+            if(obj.value(QStringLiteral("max_players")).toInt()>0 && obj.value(QStringLiteral("players")).toInt()>=obj.value(QStringLiteral("max_players")).toInt()){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Server is full"));return;}
 
             QString pass;
             if(obj.value(QStringLiteral("password_required")).toBool()) {
                 bool accepted=false;
-                pass=QInputDialog::getText(d,tr("Пароль игрового сервера"),
-                    tr("Пароль (проверяется игровым сервером):"),QLineEdit::Password,QString(),&accepted);
+                pass=QInputDialog::getText(d,tr("Game server password"),
+                    tr("Password (verified by the game server):"),QLineEdit::Password,QString(),&accepted);
                 if(!accepted||pass.isEmpty()){mMasterPreparing=false;d->setEnabled(true);return;}
             }
             const QString base=d->endpoint.text().trimmed().remove(QRegularExpression(QStringLiteral("/+$")));
             const QUrl url(base);
             if (url.scheme()!=QStringLiteral("https") && url.host()!=QStringLiteral("127.0.0.1") && url.host()!=QStringLiteral("localhost")) {
-                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Туннель требует HTTPS (кроме локального теста)."));return;
+                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("The tunnel requires HTTPS, except for local testing."));return;
             }
             QString exe=QDir(QApplication::applicationDirPath()).filePath(QStringLiteral("arena-relay-agent"));
 #ifdef Q_OS_WIN
             exe+=QStringLiteral(".exe");
 #endif
             if (!QFileInfo::exists(exe)) {
-                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Не найден агент туннеля рядом с лаунчером. Переустановите полный пакет."));return;
+                mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("The tunnel agent is missing from the launcher folder. Reinstall the complete package."));return;
             }
             const QString id=obj.value(QStringLiteral("id")).toString();
             QNetworkRequest req=ArenaMasterDefaults::request(QUrl(base+QStringLiteral("/v1/sessions/")+id));
             req.setHeader(QNetworkRequest::ContentTypeHeader,QStringLiteral("application/json"));
             QNetworkReply* reply=d->net.post(req,QByteArray("{}"));
             QTimer::singleShot(6000,reply,[reply](){if(reply->isRunning())reply->abort();});
-            d->status.setText(tr("Выделение туннеля…"));
+            d->status.setText(tr("Allocating a tunnel..."));
             QObject::connect(reply,&QNetworkReply::finished,d,[this,d,get,selected,reply,pass,base,id,url,exe,obj](){
-                if(reply->error()!=QNetworkReply::NoError){mMasterPreparing=false;d->setEnabled(true);QMessageBox::warning(this,tr("Подключение"),reply->errorString());d->status.setText(reply->errorString());reply->deleteLater();return;}
+                if(reply->error()!=QNetworkReply::NoError){mMasterPreparing=false;d->setEnabled(true);QMessageBox::warning(this,tr("Connection"),reply->errorString());d->status.setText(reply->errorString());reply->deleteLater();return;}
                 const QJsonDocument session=QJsonDocument::fromJson(reply->readAll());reply->deleteLater();
-                if(!session.isObject() || !session.object().contains(QStringLiteral("key"))){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Неправильный ответ ретранслятора"));return;}
+                if(!session.isObject() || !session.object().contains(QStringLiteral("key"))){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Invalid response from the relay"));return;}
                 const QString directory=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
                 QDir().mkpath(directory);
                 const QString sessionId=session.object().value(QStringLiteral("id")).toString();
-                if(sessionId.isEmpty()){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Не указан ID туннеля"));return;}
+                if(sessionId.isEmpty()){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Missing tunnel ID"));return;}
                 const QString sessionPath=QDir(directory).filePath(QStringLiteral("arena-master-session-%1.json").arg(sessionId));
                 QSaveFile file(sessionPath);
                 if(!file.open(QIODevice::WriteOnly) || file.write(session.toJson(QJsonDocument::Compact))<0 || !file.commit()){
-                    mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Не удалось сохранить временный сеанс"));return;
+                    mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Could not save the temporary session"));return;
                 }
                 QFile::setPermissions(sessionPath,QFile::ReadOwner|QFile::WriteOwner);
                 const QString readyPath=QDir(directory).filePath(QStringLiteral("arena-master-ready-%1.txt").arg(sessionId));
@@ -535,7 +535,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 // An ephemeral loopback port prevents a stale agent from capturing new sessions.
                 QUdpSocket portProbe;
                 if(!portProbe.bind(QHostAddress(QHostAddress::LocalHost), quint16(0))){
-                    mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Невозможно выделить локальный UDP-порт"));return;
+                    mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Could not allocate a local UDP port"));return;
                 }
                 const quint16 selectedPort=portProbe.localPort();
                 portProbe.close();
@@ -545,9 +545,9 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                     QStringLiteral("--relay-port"),QString::number(session.object().value(QStringLiteral("relay_port")).toInt(17778)),
                     QStringLiteral("--local-port"),QString::number(selectedPort),
                     QStringLiteral("--ready-file"),readyPath};
-                if(!QProcess::startDetached(exe,args)) {mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Не удалось запустить UDP-агент"));return;}
+                if(!QProcess::startDetached(exe,args)) {mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Could not start the UDP agent"));return;}
                 d->relayButton.setEnabled(false);
-                d->status.setText(tr("Ожидание готовности локального UDP-агента…"));
+                d->status.setText(tr("Waiting for the local UDP agent to become ready..."));
                 auto* readyCheck=new QTimer(d);
                 readyCheck->setInterval(100);
                 QObject::connect(readyCheck,&QTimer::timeout,d,[this,d,get,selected,readyCheck,selectedPort,readyPath,pass,obj,base](){
@@ -556,7 +556,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                     const quint16 actual=readyFile.readAll().trimmed().toUShort();
                     readyFile.close();QFile::remove(readyPath);
                     readyCheck->stop();d->relayButton.setEnabled(true);
-                    if(actual != selectedPort){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Агент запустился на другом порту"));d->relayButton.setEnabled(true);return;}
+                    if(actual != selectedPort){mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("The agent started on a different port"));d->relayButton.setEnabled(true);return;}
                     rememberMasterServer(obj,base);
                     mMasterPassword=pass;
                     setAlternativeServer(QStringLiteral("127.0.0.1"),QString::number(selectedPort),true);
@@ -566,7 +566,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
                 QTimer::singleShot(16000,d,[this,d,get,selected,readyCheck](){
                     if(readyCheck->isActive()){
                         readyCheck->stop();d->relayButton.setEnabled(true);
-                        mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("Агент не подтвердил готовность. Проверьте его запуск."));
+                        mMasterPreparing=false;d->setEnabled(true);d->status.setText(tr("The agent did not report readiness. Check that it started correctly."));
                     }
                 });
                 readyCheck->start();
@@ -697,14 +697,14 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
     auto* publicationLayout = new QVBoxLayout(publication);
     publicationLayout->setContentsMargins(0,0,0,0);
     publicationLayout->setSpacing(4);
-    auto* publishCheck = new QCheckBox(tr("Показывать в списке серверов"),publication);
+    auto* publishCheck = new QCheckBox(tr("Show in the server list"),publication);
     auto* passwordEdit = new QLineEdit(publication);
     passwordEdit->setObjectName(QStringLiteral("arenaLocalServerPassword"));
     passwordEdit->setMaximumHeight(30);
     passwordEdit->setEchoMode(QLineEdit::Password);
-    passwordEdit->setPlaceholderText(tr("Пароль сервера (пусто — без пароля)"));
-    passwordEdit->setToolTip(tr("Сохраняется перед запуском. Для смены пароля остановите сервер."));
-    auto* publishInfo = new QLabel(tr("Размещение выключено"),publication);
+    passwordEdit->setPlaceholderText(tr("Server password (leave blank for no password)"));
+    passwordEdit->setToolTip(tr("Saved before startup. Stop the server to change its password."));
+    auto* publishInfo = new QLabel(tr("Publishing disabled"),publication);
     publishInfo->setWordWrap(true);
     publishInfo->setTextFormat(Qt::PlainText);
     publishInfo->setObjectName(QStringLiteral("arenaMasterPublishStatus"));
@@ -722,23 +722,23 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
     auto* websiteEdit=new QLineEdit(publication);
     websiteEdit->setObjectName(QStringLiteral("arenaLocalServerWebsite"));
     websiteEdit->setMaximumHeight(30);
-    websiteEdit->setPlaceholderText(tr("Ссылка на сайт или сборку (https://…)"));
+    websiteEdit->setPlaceholderText(tr("Website or build link (https://...)"));
     websiteEdit->setText(owner.value("website").toString());
     publicationLayout->insertWidget(2,websiteEdit);
     connect(websiteEdit,&QLineEdit::editingFinished,this,[ownerPath,websiteEdit,publishInfo](){
         const QString value=websiteEdit->text().trimmed();const QUrl url(value);
         if(!value.isEmpty() && (value.size()>2048 || !url.isValid() || (url.scheme()!=QStringLiteral("https") && url.scheme()!=QStringLiteral("http")) || url.host().isEmpty() || !url.userInfo().isEmpty())) {
-            publishInfo->setText(QObject::tr("Ссылка не сохранена: укажите полный http:// или https:// адрес."));return;
+            publishInfo->setText(QObject::tr("Link not saved: enter a complete http:// or https:// address."));return;
         }
         QFile file(ownerPath);QJsonObject config;
         if(file.open(QIODevice::ReadOnly))config=QJsonDocument::fromJson(file.readAll()).object();
         file.close();config["website"]=value;
         QDir().mkpath(QFileInfo(ownerPath).absolutePath());QSaveFile output(ownerPath);
         const QByteArray data=QJsonDocument(config).toJson();
-        if(!output.open(QIODevice::WriteOnly) || output.write(data)!=data.size() || !output.commit())publishInfo->setText(QObject::tr("Не удалось сохранить ссылку"));
+        if(!output.open(QIODevice::WriteOnly) || output.write(data)!=data.size() || !output.commit())publishInfo->setText(QObject::tr("Could not save the link"));
     });
     publishCheck->setChecked(owner.value("enabled").toBool(true));
-    if(publishCheck->isChecked())publishInfo->setText(tr("Публикация включена. Запустите сервер."));
+    if(publishCheck->isChecked())publishInfo->setText(tr("Publishing enabled. Start the server."));
     connect(publishCheck,&QCheckBox::toggled,this,[ownerPath,publishCheck,publishInfo](bool enabled){
         QFile file(ownerPath);QJsonObject config;
         if(file.open(QIODevice::ReadOnly))config=QJsonDocument::fromJson(file.readAll()).object();
@@ -749,7 +749,7 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         bool saved=output.open(QIODevice::WriteOnly);
         if(saved){output.setPermissions(QFile::ReadOwner|QFile::WriteOwner);const auto bytes=QJsonDocument(config).toJson();saved=output.write(bytes)==bytes.size()&&output.commit();}
         if(!saved){QSignalBlocker blocker(publishCheck);publishCheck->setChecked(!enabled);}
-        publishInfo->setText(!saved?QObject::tr("Не удалось сохранить публикацию"):enabled?QObject::tr("Публикация включена. Запустите сервер."):QObject::tr("Размещение выключено. Запись исчезнет в течение 50 с."));
+        publishInfo->setText(!saved?QObject::tr("Could not save publishing settings"):enabled?QObject::tr("Publishing enabled. Start the server."):QObject::tr("Publishing disabled. The listing will disappear within 50 seconds."));
     });
 
     // The status column belongs to the overview only. Console and server
@@ -949,31 +949,31 @@ Launcher::PlayPage::PlayPage(QWidget *parent)
         categoryTabs->addTab(page, title);
     };
 
-    auto* housingGroup = new QGroupBox(QString::fromUtf8("Дома / Housing"), serverSettingsTab);
+    auto* housingGroup = new QGroupBox(tr("Housing"), serverSettingsTab);
     auto* housingForm = new QFormLayout(housingGroup);
-    auto* housingEnabled = new QCheckBox(QString::fromUtf8("Включить дома / Enable housing"), housingGroup);
+    auto* housingEnabled = new QCheckBox(tr("Enable housing"), housingGroup);
     housingEnabled->setObjectName(QStringLiteral("housingEnabled"));
     housingEnabled->setChecked(true);
     housingForm->addRow(housingEnabled);
     auto* housingGeneration = new QComboBox(housingGroup);
     housingGeneration->setObjectName(QStringLiteral("housingGeneration"));
-    housingGeneration->addItem(QString::fromUtf8("Игроки / Players"), QStringLiteral("players"));
-    housingGeneration->addItem(QString::fromUtf8("Администраторы / Admins"), QStringLiteral("admins"));
-    housingGeneration->addItem(QString::fromUtf8("Выключено / Manual only"), QStringLiteral("off"));
-    housingForm->addRow(QString::fromUtf8("Автогенерация / Generation"), housingGeneration);
-    auto* housingHouses = new QCheckBox(QString::fromUtf8("Дома / Houses"), housingGroup);
+    housingGeneration->addItem(tr("Players"), QStringLiteral("players"));
+    housingGeneration->addItem(tr("Admins"), QStringLiteral("admins"));
+    housingGeneration->addItem(tr("Manual only"), QStringLiteral("off"));
+    housingForm->addRow(tr("Generation"), housingGeneration);
+    auto* housingHouses = new QCheckBox(tr("Houses"), housingGroup);
     housingHouses->setObjectName(QStringLiteral("housingHouses"));
     housingHouses->setChecked(true);
     housingForm->addRow(housingHouses);
-    auto* housingTaverns = new QCheckBox(QString::fromUtf8("Таверны / Taverns"), housingGroup);
+    auto* housingTaverns = new QCheckBox(tr("Taverns"), housingGroup);
     housingTaverns->setObjectName(QStringLiteral("housingTaverns"));
     housingTaverns->setChecked(false);
     housingForm->addRow(housingTaverns);
-    auto* housingGuilds = new QCheckBox(QString::fromUtf8("Гильдии / Guilds"), housingGroup);
+    auto* housingGuilds = new QCheckBox(tr("Guilds"), housingGroup);
     housingGuilds->setObjectName(QStringLiteral("housingGuilds"));
     housingGuilds->setChecked(false);
     housingForm->addRow(housingGuilds);
-    auto* housingShops = new QCheckBox(QString::fromUtf8("Магазины / Shops"), housingGroup);
+    auto* housingShops = new QCheckBox(tr("Shops"), housingGroup);
     housingShops->setObjectName(QStringLiteral("housingShops"));
     housingShops->setChecked(false);
     housingForm->addRow(housingShops);
@@ -1142,9 +1142,9 @@ void Launcher::PlayPage::updateStatusPanel()
         if(mSelectedMasterServer.isEmpty())mStatusQuery->setEndpoint(address, valid && port > 0 && port <= 65535 ? static_cast<quint16>(port) : 0);
         else {
             mStatusQuery->setEndpoint(QString(),0);
-            mRemoteStatus->setText(mMasterPreparing?tr("Подключение…"):tr("Выбран"));
+            mRemoteStatus->setText(mMasterPreparing?tr("Connecting..."):tr("Selected"));
             mRemotePlayers->setText(QStringLiteral("%1 / %2").arg(mSelectedMasterServer.value("players").toInt()).arg(mSelectedMasterServer.value("max_players").toInt()));
-            mRemotePlayers->setToolTip(tr("Данные последнего запроса к мастеру; обновляются перед запуском."));
+            mRemotePlayers->setToolTip(tr("Results of the last master server query; refreshed before launch."));
             mRemoteUptime->setText(QStringLiteral("—"));
         }
     }

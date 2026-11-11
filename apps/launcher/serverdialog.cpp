@@ -535,7 +535,7 @@ QString Launcher::ServerDialog::configuredPort() const
 bool Launcher::ServerDialog::setConfiguredPassword(const QString& password, QString* errorMessage)
 {
     if (password.contains('\n') || password.contains('\r') || password.contains(QChar(0))) {
-        if(errorMessage)*errorMessage=tr("Пароль должен быть одной строкой.");
+        if(errorMessage)*errorMessage=tr("The password must be on a single line.");
         return false;
     }
     if(!preparePortableServer(errorMessage))return false;

@@ -45,8 +45,8 @@ namespace MWPhysics
         // For some reason this doesn't work as well as it should when using capsules, but it still helps a lot.
         if(convexResult.m_hitCollisionObject->getBroadphaseHandle()->m_collisionFilterGroup == CollisionType_Actor)
         {
-            // Use the actor's real Bullet collision shape. NPC shapes already
-            // carry the permanent 95% width/depth footprint; there is no
+            // Use the actor's real Bullet collision shape. NPC and player shapes
+            // carry the permanent 90% width/depth footprint; there is no
             // movement-only passage override.
             // Original OpenMW/vanilla-compatible actor collision path.
             ActorOverlapTester isOverlapping;

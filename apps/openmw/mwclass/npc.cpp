@@ -1764,9 +1764,10 @@ namespace MWClass
 
     void Npc::adjustScale(const MWWorld::ConstPtr &ptr, osg::Vec3f&scale, bool rendering) const
     {
-        // OpenMW player collision extents do not depend on race height or weight.
-        // Keep the reference scale, and apply race proportions only to rendering.
-        if (!rendering && (ptr == MWMechanics::getPlayer() || mwmp::PlayerList::isDedicatedPlayer(ptr)))
+        // Native OpenMW: NPC and player collision extents do not depend on race.
+        // Keep the reference scale; race height and weight affect rendering only.
+        // The 10% horizontal reduction for NPCs and players is applied by MWPhysics::Actor.
+        if (!rendering)
             return;
 
         const MWWorld::LiveCellRef<ESM::NPC> *ref = ptr.get<ESM::NPC>();
