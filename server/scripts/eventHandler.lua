@@ -11,6 +11,16 @@ local arenaAntiCheat = require("arenaAntiCheat")
 
 local consoleKickMessage = " has been kicked for using the console despite not having the permission to do so.\n"
 
+-- Relay connections are forwarded through the host's loopback socket. They can
+-- all have the same IP even though they belong to unrelated remote players.
+-- Do not apply the per-IP connection cap to these local relay endpoints.
+local function isLoopbackIpAddress(ipAddress)
+    if type(ipAddress) ~= "string" then return false end
+    local ip = ipAddress:lower()
+    return ip == "127.0.0.1" or ip == "::1" or
+        ip == "0:0:0:0:0:0:0:1" or ip == "::ffff:127.0.0.1"
+end
+
 eventHandler.InitializeDefaultValidators = function()
     require("arenaSummonRules").Register()
 
@@ -546,29 +556,34 @@ eventHandler.OnPlayerConnect = function(pid, playerName)
         local ipAddress = tes3mp.GetIP(pid)
         Players[pid].ipAddress = ipAddress
 
-        if pidsByIpAddress[ipAddress] == nil then pidsByIpAddress[ipAddress] = {} end
+        -- Keep the anti-multiclient limit for real external IPs. Do not count
+        -- 127.0.0.1 / IPv6 loopback: many relay clients share that address.
+        -- Loopback sessions also do not need the duplicate-IP warning or tracker.
+        if not isLoopbackIpAddress(ipAddress) then
+            if pidsByIpAddress[ipAddress] == nil then pidsByIpAddress[ipAddress] = {} end
 
-        if not tableHelper.isEmpty(pidsByIpAddress[ipAddress]) then
-            local otherPlayerNames = {}
+            if not tableHelper.isEmpty(pidsByIpAddress[ipAddress]) then
+                local otherPlayerNames = {}
 
-            for _, otherPid in pairs(pidsByIpAddress[ipAddress]) do
-                table.insert(otherPlayerNames, logicHandler.GetChatName(otherPid))
+                for _, otherPid in pairs(pidsByIpAddress[ipAddress]) do
+                    table.insert(otherPlayerNames, logicHandler.GetChatName(otherPid))
+                end
+
+                local sameIpNote = color.Grey .. "[IP] " .. tableHelper.concatenateArrayValues(otherPlayerNames, 1, ", ") .. color.Default .. "\n"
+                tes3mp.SendMessage(pid, sameIpNote, false)
             end
 
-            local sameIpNote = color.Grey .. "[IP] " .. tableHelper.concatenateArrayValues(otherPlayerNames, 1, ", ") .. color.Default .. "\n"
-            tes3mp.SendMessage(pid, sameIpNote, false)
-        end
-
-        if tableHelper.getCount(pidsByIpAddress[ipAddress]) + 1 > config.maxClientsPerIP then
-            message = localization.Get(pid, "core", "max_ip_clients", {
-                name = logicHandler.GetChatName(pid), max = config.maxClientsPerIP
-            })
-            tes3mp.SendMessage(pid, message, false)
-            tes3mp.Kick(pid)
-            Players[pid] = nil
-            return
-        else
-            table.insert(pidsByIpAddress[ipAddress], pid)
+            if tableHelper.getCount(pidsByIpAddress[ipAddress]) + 1 > config.maxClientsPerIP then
+                message = localization.Get(pid, "core", "max_ip_clients", {
+                    name = logicHandler.GetChatName(pid), max = config.maxClientsPerIP
+                })
+                tes3mp.SendMessage(pid, message, false)
+                tes3mp.Kick(pid)
+                Players[pid] = nil
+                return
+            else
+                table.insert(pidsByIpAddress[ipAddress], pid)
+            end
         end
 
         if Players[pid]:HasAccount() then
