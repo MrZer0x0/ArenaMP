@@ -1,5 +1,6 @@
 #include "../mwmp/ArenaHousing.hpp"
 #include "hud.hpp"
+#include "arenawaypoint.hpp"
 
 #include <MyGUI_RenderManager.h>
 #include <MyGUI_ProgressBar.h>
@@ -718,6 +719,13 @@ namespace MWGui
             mHorizontalCompassMarkers.push_back(state);
         }
 
+        // WF1: dedicated widget for the gold flag, above the pooled markers.
+        mHorizontalCompassFlag = mHorizontalCompass->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(0, 3, 20, 20), MyGUI::Align::Default);
+        mHorizontalCompassFlag->setImageTexture("textures/ui/arenamw/map_flag.png");
+        mHorizontalCompassFlag->setNeedMouseFocus(false);
+        mHorizontalCompassFlag->setVisible(false);
+
         getWidget(mCrosshair, "Crosshair");
 
         LocalMapBase::init(mMinimap, mCompass);
@@ -1398,6 +1406,67 @@ namespace MWGui
         mHorizontalCompassDirty = false;
     }
 
+    void HUD::updateHorizontalCompassFlag(bool enabled, float dt)
+    {
+        if (!mHorizontalCompassFlag)
+            return;
+
+        bool show = enabled && ArenaWaypoint::has();
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        MWWorld::Ptr player = world ? world->getPlayerPtr() : MWWorld::Ptr();
+        // The flag is in exterior world coordinates; inside an interior cell
+        // those numbers point nowhere, so the flag waits until you are outside.
+        if (show && (player.isEmpty() || !player.isInCell() || !player.getCell()->getCell()->isExterior()))
+            show = false;
+
+        float left = 0.f;
+        if (show)
+        {
+            const osg::Vec3f position = player.getRefData().getPosition().asVec3();
+            const float dx = ArenaWaypoint::x() - position.x();
+            const float dy = ArenaWaypoint::y() - position.y();
+            // Hide it once you are standing on it (about 2 m) instead of letting
+            // the bearing spin around under your feet.
+            if (dx * dx + dy * dy < 140.f * 140.f)
+                show = false;
+            else
+            {
+                // Same projection as the other compass markers: 4 px per degree,
+                // pinned to the nearest edge when the flag is behind you.
+                constexpr float pixelsPerDegree = 4.f;
+                constexpr int compassInnerPadding = 10;
+                const int flagWidth = mHorizontalCompassFlag->getWidth();
+                const float compassCenter = mHorizontalCompass->getWidth() * 0.5f;
+                const float maximumOffset = std::max(1.f, compassCenter - compassInnerPadding - flagWidth * 0.5f);
+                float relativeAngle = std::atan2(dx, dy) - player.getRefData().getPosition().rot[2];
+                while (relativeAngle > osg::PI)
+                    relativeAngle -= osg::PI * 2.f;
+                while (relativeAngle < -osg::PI)
+                    relativeAngle += osg::PI * 2.f;
+                const float degrees = std::max(-maximumOffset / pixelsPerDegree,
+                    std::min(maximumOffset / pixelsPerDegree, osg::RadiansToDegrees(relativeAngle)));
+                left = compassCenter + degrees * pixelsPerDegree - flagWidth * 0.5f;
+            }
+        }
+
+        if (!show)
+        {
+            mHorizontalCompassFlag->setVisible(false);
+            mHorizontalCompassFlagShown = false;
+            return;
+        }
+        // Light smoothing like the other markers, but snap on first show and
+        // when the flag jumps from one edge to the other behind the player.
+        if (!mHorizontalCompassFlagShown
+            || std::abs(left - mHorizontalCompassFlagLeft) > mHorizontalCompass->getWidth() * 0.65f)
+            mHorizontalCompassFlagLeft = left;
+        else
+            mHorizontalCompassFlagLeft += (left - mHorizontalCompassFlagLeft) * (1.f - std::exp(-14.f * dt));
+        mHorizontalCompassFlagShown = true;
+        mHorizontalCompassFlag->setPosition(static_cast<int>(std::lround(mHorizontalCompassFlagLeft)), 3);
+        mHorizontalCompassFlag->setVisible(true);
+    }
+
     void HUD::updateHorizontalCompassMarkers(float dt)
     {
         if (!mHorizontalCompass)
@@ -1406,6 +1475,7 @@ namespace MWGui
         dt = std::max(0.f, dt);
         const bool enabled = Settings::Manager::getBool("horizontal compass", "HUD")
             && mGameplayHud && mGameplayHud->getVisible();
+        updateHorizontalCompassFlag(enabled, dt);
         if (!enabled)
         {
             for (HorizontalCompassMarkerState& state : mHorizontalCompassMarkers)

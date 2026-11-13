@@ -436,7 +436,8 @@ namespace MWMechanics
                 hitchanceholder += 20;
             }
 
-            if (Misc::Rng::roll0to99() >= hitchanceholder)
+            // CB1: Light/Sanctuary dodge also works against arrows and bolts.
+            if (Misc::Rng::roll0to99() >= hitchanceholder || ActiveGuard::evaded(attacker, victim))
             {
                 /*
                     Start of tes3mp addition

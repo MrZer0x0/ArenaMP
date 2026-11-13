@@ -139,7 +139,15 @@ namespace mwmp
     {
         if (!mCaptureFurniturePending) return false;
         if (target.isEmpty() || !target.isInCell() || target.getClass().isDoor()
-            || target.getClass().isActor()) return true; // keep armed
+            || target.getClass().isActor())
+        {
+            // Y111: keep capture armed, but say why nothing was selected. The
+            // silent retry made the mode look broken when the crosshair was on
+            // empty space, a door, an NPC, or the object was out of reach.
+            MWBase::Environment::get().getWindowManager()->messageBox(
+                "#{arenamp=furniture.capture.retry}");
+            return true;
+        }
         mCaptureFurniturePending = false;
         // Use the Ptr that triggered THIS Activate event. Re-querying the faced
         // object here races the GUI close / crosshair update on Android and was
@@ -150,6 +158,15 @@ namespace mwmp
             +"-"+std::to_string(target.getCellRef().getMpNum());
         sendFurnitureAction("CAPTURE",refId+"|"+index);
         return true;
+    }
+
+    MWWorld::Ptr ArenaHousing::findFurnitureCaptureTarget() const
+    {
+        // Four times the activation distance (about 11 m with the default
+        // 192 units): enough for a big statue, column or wall screen, still
+        // short enough that the crosshair clearly points at one object.
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        return world->getFacedObjectWithin(world->getMaxActivationDistance() * 4.f);
     }
 
     void ArenaHousing::captureFacedFurniture() const

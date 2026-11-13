@@ -1189,6 +1189,8 @@ config.customMenuIds = { menuHelper = 9001, confiscate = 9002, recordPrint = 900
     -- перепутал два окна разных подсистем.
     profileMain = 9040, profileReturns = 9041, profileDeletePassword = 9042, profileDeleteConfirm = 9043,
     houseDoorChoice = 9060, houseBuyConfirm = 9061,
+    -- HS1: подтверждение продажи/очистки дома и предложение сундука.
+    houseDangerConfirm = 9062, houseStorageOffer = 9063,
     adminMain = 9070, adminHouses = 9071, adminHouseList = 9072, adminHouseDetail = 9073,
     adminHouseInput = 9074, adminHouseKind = 9075, adminPlayers = 9076, adminServer = 9077,
     adminResets = 9078, adminConfirm = 9079,

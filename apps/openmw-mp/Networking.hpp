@@ -8,7 +8,10 @@
 #include <components/openmw-mp/Controllers/WorldstatePacketController.hpp>
 #include <components/openmw-mp/Packets/PacketPreInit.hpp>
 #include <chrono>
+#include <cstdint>
+#include <deque>
 #include <map>
+#include <unordered_map>
 #include "Player.hpp"
 
 class MasterClient;
@@ -102,6 +105,10 @@ namespace  mwmp
         bool preInit(RakNet::Packet *packet, RakNet::BitStream &bsIn);
         std::string generateResumeToken() const;
         void expireSuspendedPlayers();
+        // ArenaMP Y111: fair per-connection packet scheduling (see mainLoop).
+        void processIncomingPacket(RakNet::Packet *packet);
+        void reportSlowPacket(unsigned char packetId, RakNet::RakNetGUID guid,
+            std::chrono::steady_clock::duration elapsed);
         std::string serverPassword;
         std::string startLocation;
         bool voiceEnabled = true;
@@ -132,6 +139,17 @@ namespace  mwmp
         std::map<RakNet::RakNetGUID, ResumeSession> resumeSessions;
         std::map<RakNet::RakNetGUID, ResumeSession> suspendedSessions;
         std::map<RakNet::RakNetGUID, std::chrono::steady_clock::time_point> awaitingResumeAcks;
+
+        // ArenaMP Y111: packets fetched from RakNet, one FIFO per transport GUID,
+        // served round-robin so one client's burst cannot starve the others.
+        static constexpr std::size_t MAX_LOCAL_PACKET_BACKLOG = 8192;
+        static constexpr long long SLOW_PACKET_WARN_MS = 50;
+        std::unordered_map<std::uint64_t, std::deque<RakNet::Packet*>> packetQueues;
+        std::deque<std::uint64_t> packetSchedule;
+        std::size_t queuedPackets = 0;
+        unsigned slowPacketsSinceReport = 0;
+        long long slowPacketMsSinceReport = 0;
+        std::chrono::steady_clock::time_point nextSlowPacketReport{};
     };
 }
 

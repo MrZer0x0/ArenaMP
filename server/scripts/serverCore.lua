@@ -67,6 +67,8 @@ groupRecall = require("groupRecall")
 arenaFurniture = require("arenaFurniture")
 playerVitrines = require("playerVitrines")
 houseItemMarket = require("houseItemMarket")
+-- HS1: belongings of a sold/cleared home, delivered to the first chest of the next home.
+houseStorage = require("houseStorage")
 -- Z002: подмена игровых MWScript файлами из server/data/custom/MWScripts.
 -- Загружается до adminInterface: у панели администратора есть вкладка,
 -- работающая с этим модулем.

@@ -33,6 +33,7 @@ namespace mwmp
     class GUIChat;
     class ServerQuestEditorWindow;
     class FurnitureStoreWindow;
+    class QuestWizardWindow;
     class GUIController
     {
     public:
@@ -43,7 +44,8 @@ namespace mwmp
             GM_TES3MP_ListBox,
             GM_ARENAMP_QuestEditor,
             GM_ARENAMP_PlayerMenu,
-            GM_ARENAMP_Furniture
+            GM_ARENAMP_Furniture,
+            GM_ARENAMP_QuestWizard // QW1: beginner quest wizard
 
         };
         GUIController();
@@ -71,6 +73,10 @@ namespace mwmp
         void beginFurnitureCapture();
         void openFurniturePlayerMenu();
         void refreshServerQuestEditor();
+        // QW1: beginner quest wizard. showQuestWizard() is called after an editor
+        // sync in the "wizard" view; receiveWizardPick() after a world pick.
+        void showQuestWizard();
+        void receiveWizardPick();
 
         /// Returns 0 if there was no events
         bool pressedKey(int key);
@@ -139,6 +145,7 @@ namespace mwmp
         GUIDialogList *mListBox;
         ServerQuestEditorWindow *mServerQuestEditor;
         FurnitureStoreWindow* mFurnitureStore;
+        QuestWizardWindow* mQuestWizard = nullptr;
         bool mFurnitureCaptureReturnPending = false;
         bool mPreLoginPasswordAutoSubmitted;
 

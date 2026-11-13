@@ -541,6 +541,11 @@ namespace MWGui
             // INI translations can contain literal escape sequences.
             for (std::size_t pos = 0; (pos = caption.find("\\n", pos)) != std::string::npos; ++pos)
                 caption.replace(pos, 2, "\n");
+            // MyGUI EditBox silently truncates captions to 2048 characters by
+            // default. The full tutorial is far longer (~12k RU / ~10.6k EN), so
+            // the text was cut off in the "Combat balance" section. The byte
+            // size is always >= the character count, so it is a safe limit.
+            text->setMaxTextLength(caption.size());
             text->setCaption(caption);
             text->setTextCursor(0);
             text->setVScrollPosition(0);

@@ -109,7 +109,7 @@ add_openmw_dir (mwmp Main Networking LocalSystem LocalPlayer DedicatedPlayer Pla
     ObjectList QuestItemIndex ServerQuestRegistry Worldstate Cell CellController GUIController MechanicsHelper RecordHelper ScriptController InteractionAnimationSync VoiceChat VoiceProcessor ArenaHousing CraftEconomic
     )
 
-add_openmw_dir (mwmp/GUI GUIChat GUILogin PlayerMarkerCollection GUIDialogList TextInputDialog ServerQuestEditor FurnitureStoreWindow
+add_openmw_dir (mwmp/GUI GUIChat GUILogin PlayerMarkerCollection GUIDialogList TextInputDialog ServerQuestEditor FurnitureStoreWindow QuestWizardWindow
     )
 
 add_openmw_dir(mwmp/processors BaseClientPacketProcessor SystemProcessor PlayerProcessor ObjectProcessor ActorProcessor

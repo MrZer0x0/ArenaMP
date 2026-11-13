@@ -4,6 +4,31 @@
 
 The **first public source release** consolidates the previously developed ArenaMP engine, multiplayer systems, launcher, dedicated server and tools into a single coherent repository. Historical internal cumulative archives and migration notes are not individual releases and are not listed here. This document describes included functionality and noteworthy integration changes rather than promising that every platform has already been successfully compiled or play-tested.
 
+## ArenaMP RC2 — cumulative update (Windows / Linux)
+
+This cumulative source update combines Y111, Quest Wizard (QW1), Player Menu (PM1), furniture/inventory/waypoint improvements (FC1, IF1, WF1), combat balance (CB1) and housing safeguards (HS1). It is an update to an existing ArenaMP source tree, **not a standalone game or prebuilt release**.
+
+### Multiplayer, moderation and quests
+
+- Reworked sequential player-packet processing and optimized cell-file lookup and merchant-cell saves to reduce server interaction pauses when players connect.
+- Added the **seven-step Quest Wizard** (`/quest`) with item collection, kill, location and dialogue-choice templates, in-world target selection, rewards, drafts and publishing. The advanced editor remains available via `/quest studio`.
+- Unified staff permissions for furniture administration, cell management, quest editing and admin commands.
+
+### Homes and furniture
+
+- Added safe storage of owned items when a home is sold or reset, with restoration in a chest in the next home; purchased furniture is returned to the owner's furniture inventory. Added an optional first-home chest offer.
+- Added confirmations for house sale/reset, furniture deletion/sale and major group actions.
+- Improved staff capture of large decorative objects, catalogue retention and protection against taking original building structures.
+
+### Interface, map and gameplay
+
+- Redesigned the player menu with a compact icon sidebar; added golden action icons to Chat, Group and Home controls, and icon-based inventory filters.
+- Added a personal persistent world-map waypoint shown on the map and outdoor compass. The map now uses a **32 px gold flag icon** instead of long Set Flag / Remove Flag labels, with contextual tooltips.
+- Added passive blocking, physical hit evasion from Light/Sanctuary effects and level-scaled creature attack speeds with configurable limits.
+- Expanded RU/EN interface strings, added custom icons and improved the sizing of quest-editing windows.
+
+**Package scope:** Windows/Linux client source, server source/scripts, shared assets and documentation only. Updated source components require recompilation; in-game Release testing is still recommended.
+
 ## First public release — ArenaMP v24 source
 
 ### Client, launcher, server and network
@@ -20,7 +45,7 @@ The **first public source release** consolidates the previously developed ArenaM
 - Groups, eligible travel destinations, markers, player-owned homes and persistent private interiors.
 - Furniture placement, decorative objects, priced vitrines and access/read/take permissions, supported by server-side state management.
 - Trade coefficients, economic and crafting modules, alchemy/enchantment support and operator configuration.
-- Baseline V17 player/world collision geometry and configurable NPC/player movement separation. `npc player passage scale = 0.2` means 20% of original horizontal spacing; combat hit geometry remains separate.
+- Ordinary NPC physical collision bodies use a permanent 95% horizontal footprint (width and depth); vertical height, rendered model size and player collision remain unchanged. The former movement-only NPC passage scaling has been removed.
 
 ### Rubic0n LuaJIT 2.1 (Windows and Linux)
 
@@ -30,7 +55,7 @@ The **first public source release** consolidates the previously developed ArenaM
 
 ### Build and GitHub Releases
 
-- Windows x64 and Linux x86_64 / Steam Deck CI build in **Release** mode. Android and macOS build jobs are not included in this public repository.
+- Windows x64 and Linux x86_64 / Steam Deck CI build in **Release** mode.
 - Windows publisher OpenSSL uses a dedicated **release-only vcpkg triplet** to avoid compiling and caching a separate Debug variant.
 - The workflow has an explicit **`publish_release`** checkbox and **`release_tag`** input. A tagged `v*` build can also trigger release publication; normal branch pushes still produce downloadable Actions artifacts.
 - After all selected jobs succeed, publish verified platform packages, a source archive, `BUILD_INFO.json` and `SHA256SUMS.txt` through GitHub Releases.

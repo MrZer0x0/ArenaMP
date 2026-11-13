@@ -214,12 +214,11 @@ namespace MWInput
                     housing.sendFurnitureAction("TAKE_WORLD",target.getCellRef().getRefId()+"|"+index);
                 break;
             case 2:
-                // Optimistic local hide: deleting furniture should feel immediate.
-                // The authoritative server command is sent first; successful
-                // ObjectDelete sync then confirms the same state for everyone.
+                // HS1: deleting is permanent, so the server first asks "Delete
+                // for good?" and only then deletes; the ObjectDelete it sends
+                // removes the object here and for everyone. No optimistic local
+                // hide any more - a cancelled dialog must leave the object be.
                 housing.sendFurnitureAction("DELETE_WORLD",target.getCellRef().getRefId()+"|"+index);
-                if (housing.ownsPlace(target))
-                    MWBase::Environment::get().getWorld()->deleteObject(target);
                 break;
             default:break;
         }
@@ -780,6 +779,10 @@ namespace MWInput
                 }
 
                 MWWorld::Ptr faced = world->getFacedObject();
+                // FC1: large or distant decorative pieces are out of ordinary
+                // activation reach; capture mode looks further.
+                if (faced.isEmpty() && mwmp::ArenaHousing::get().isFurnitureCapturePending())
+                    faced = mwmp::ArenaHousing::get().findFurnitureCaptureTarget();
                 // Only after a deliberate Admin > Decoration > Capture action.
                 // Server independently checks staff rank and real active record.
                 if (mwmp::ArenaHousing::get().consumeFurnitureCapture(faced)) break;

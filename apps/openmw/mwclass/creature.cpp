@@ -433,7 +433,8 @@ namespace MWClass
             End of tes3mp addition
         */
 
-        if(Misc::Rng::roll0to99() >= hitchance)
+        // CB1: Light/Sanctuary dodge, published as a miss.
+        if(Misc::Rng::roll0to99() >= hitchance || MWMechanics::ActiveGuard::evaded(ptr, victim))
         {
             /*
                 Start of tes3mp addition

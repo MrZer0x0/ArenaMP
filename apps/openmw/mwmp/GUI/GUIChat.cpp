@@ -20,6 +20,7 @@
 #include <MyGUI_Button.h>
 #include <MyGUI_EditBox.h>
 #include <MyGUI_FontManager.h>
+#include <MyGUI_ImageBox.h>
 #include <MyGUI_InputManager.h>
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_ListBox.h>
@@ -33,6 +34,7 @@
 #include "apps/openmw/mwbase/environment.hpp"
 #include "apps/openmw/mwbase/world.hpp"
 #include "apps/openmw/mwgui/windowmanagerimp.hpp"
+#include "apps/openmw/mwgui/confirmationdialog.hpp"
 #include "apps/openmw/mwgui/trainingwindow.hpp"
 #include "apps/openmw/mwinput/inputmanagerimp.hpp"
 #include "apps/openmw/mwmechanics/xpserverbridge.hpp"
@@ -70,6 +72,24 @@ namespace
     constexpr int sDrawerHeight = 68;
     constexpr int sColorDrawerHeight = 96;
     constexpr int sSideMargin = 10;
+
+    // PM1: compact section column on the left of the Player Menu: icons only,
+    // the section name is in the title strip and in a hover tooltip. Keeping
+    // the column narrow leaves the pages (e.g. the furniture catalogue) the
+    // most room on every screen.
+    constexpr int sSidebarWidth = 64;
+    constexpr int sSidebarTop = 44;
+    constexpr int sSidebarPadding = 6;
+    constexpr int sSidebarTabGap = 4;
+    constexpr int sSidebarTabMaxHeight = 52;
+    constexpr int sSidebarTabMinHeight = 30;
+    constexpr int sSidebarIconMaxSize = 36;
+    constexpr int sSidebarReturnHeight = 40;
+    // Indexed by GUIChat::PlayerMenuTab. Drawn by tools/arenamp_make_menu_icons.py.
+    const char* const sTabIconTextures[] = {
+        "textures/ui/arenamw/menu_chat.png", "textures/ui/arenamw/menu_group.png",
+        "textures/ui/arenamw/menu_players.png", "textures/ui/arenamw/menu_stats.png",
+        "textures/ui/arenamw/menu_home.png", "textures/ui/arenamw/menu_decor.png" };
     constexpr const char* sHudFont = "Russo";
     constexpr const char* sMenuFont = "DejaVuLGCSansMono";
     constexpr const char* sChatFontResource = "ArenaMPChatColor.xml";
@@ -158,6 +178,43 @@ namespace
         }
         if (MyGUI::EditBox* edit = widget->castType<MyGUI::EditBox>(false))
             edit->setCaption(caption);
+    }
+
+    // HS1: button icons. Shown left of the caption at 14-20 px.
+    int buttonIconSize(MyGUI::Widget* widget)
+    {
+        return std::max(14, std::min(20, widget->getHeight() - 8));
+    }
+
+    // How many spaces open a gap of `room` pixels in front of the caption.
+    // Measured once per font: the caption stays centred by the skin, and the
+    // icon is then drawn into that gap, so icon and text move as one group.
+    int iconPrefixSpaces(MyGUI::Widget* widget, int room)
+    {
+        static std::map<std::string, int> spaceWidths;
+        MyGUI::TextBox* text = widget->castType<MyGUI::TextBox>(false);
+        if (text == nullptr)
+            return 0;
+        const std::string key = text->getFontName() + "|" + std::to_string(text->getFontHeight());
+        int spaceWidth = 0;
+        const std::map<std::string, int>::const_iterator cached = spaceWidths.find(key);
+        if (cached != spaceWidths.end())
+            spaceWidth = cached->second;
+        else
+        {
+            const MyGUI::UString previous = text->getCaption();
+            text->setCaption("x");
+            const int one = text->getTextSize().width;
+            text->setCaption("        x");
+            const int nine = text->getTextSize().width;
+            text->setCaption(previous);
+            spaceWidth = (nine - one) / 8;
+            if (one > 0 && spaceWidth > 0)
+                spaceWidths[key] = spaceWidth; // only cache a real measurement
+        }
+        if (spaceWidth <= 0)
+            spaceWidth = 4;
+        return std::max(1, std::min(12, (room + spaceWidth - 1) / spaceWidth));
     }
 
     // "#RRGGBB" as used by the server's color table.
@@ -505,6 +562,7 @@ namespace mwmp
         getWidget(mTabStats, "TabStats");
         getWidget(mTabHome, "TabHome");
         getWidget(mTabDecor, "TabDecor");
+        setupSidebar();
         getWidget(mDecorPane, "DecorPane");
         getWidget(mDecorTitle, "DecorTitle");
         getWidget(mDecorList, "DecorList");
@@ -582,10 +640,11 @@ namespace mwmp
         getWidget(profileTitle, "ProfileTitle");
 
         title->setCaption(localizeArena("chat.menu.title"));
-        setMenuCaption(mTabChat, localizeArena("chat.tab.chat"));
-        setMenuCaption(mTabGroup, localizeArena("chat.tab.group"));
-        setMenuCaption(mTabPlayers, localizeArena("chat.tab.players"));
-        setMenuCaption(mTabStats, localizeArena("chat.tab.stats"));
+        setTabLabel(mTabChat, localizeArena("chat.tab.chat"));
+        setTabLabel(mTabGroup, localizeArena("chat.tab.group"));
+        setTabLabel(mTabPlayers, localizeArena("chat.tab.players"));
+        setTabLabel(mTabStats, localizeArena("chat.tab.stats"));
+        setupButtonIcons();
         setMenuCaption(mReturnButton, "X");
         mReturnButton->setTextColour(MyGUI::Colour(1.f, 0.15f, 0.15f));
         setMenuCaption(mModeOoc, "OOC");
@@ -656,12 +715,12 @@ namespace mwmp
         mDecorOpen->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onDecorOpen);
         mDecorRefresh->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onDecorRefresh);
         mDecorCapture->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onDecorCapture);
-        setMenuCaption(mTabDecor, localizeArena("furniture.decorate"));
+        setTabLabel(mTabDecor, localizeArena("furniture.decorate"));
         setMenuCaption(mDecorBack, localizeArena("furniture.back"));
         setMenuCaption(mDecorOpen, localizeArena("furniture.shop"));
         setMenuCaption(mDecorCapture, localizeArena("furniture.capture"));
         setMenuCaption(mDecorRefresh, localizeArena("furniture.refresh"));
-        setMenuCaption(mTabHome, MWBase::Environment::get().getWindowManager()->getArenaLanguage() == "ru"
+        setTabLabel(mTabHome, MWBase::Environment::get().getWindowManager()->getArenaLanguage() == "ru"
             ? "Мой дом" : "My home");
         mModeOoc->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onModeClicked);
         mModeRp->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onModeClicked);
@@ -1691,15 +1750,16 @@ namespace mwmp
         const int commandBottom = std::max(historyTop + 80, mainHeight - bottomFooterHeight);
         const int commandTop = std::max(historyTop + 40, commandBottom - commandHeight);
 
-        mCommandLine->setCoord(sideMargin, commandTop,
-            std::max(32, mainWidth - sideMargin * 2), std::max(28, commandBottom - commandTop));
+        // PM1: the chat page sits right of the section column.
+        const int contentLeft = menuContentLeft();
+        const int contentWidth = std::max(32, mainWidth - contentLeft - sideMargin);
+        mCommandLine->setCoord(contentLeft, commandTop, contentWidth, std::max(28, commandBottom - commandTop));
         mCommandLine->setEditMultiLine(true);
         mCommandLine->setEditWordWrap(true);
         mCommandLine->setOverflowToTheLeft(false);
 
         const int historyHeight = std::max(40, commandTop - gap - historyTop);
-        mHistory->setCoord(sideMargin, historyTop,
-            std::max(32, mainWidth - sideMargin * 2), historyHeight);
+        mHistory->setCoord(contentLeft, historyTop, contentWidth, historyHeight);
 
         if (mCommandScroll)
         {
@@ -2075,6 +2135,8 @@ namespace mwmp
         mLayoutResize->setNeedMouseFocus(layoutVisible);
         mPanelBackground->setVisible(menuVisible);
         mDragHandle->setVisible(menuVisible);
+        if (mMenuSidebar != nullptr)
+            mMenuSidebar->setVisible(menuVisible);
         mTabHome->setVisible(ArenaHousing::get().ownsHome() || ArenaHousing::get().hasItemWallet());
         mTabDecor->setVisible(mDecorAllowed);
         mChatToolbar->setVisible(chatVisible);
@@ -2175,6 +2237,20 @@ namespace mwmp
         mTabStats->setStateSelected(activeTab == TAB_STATS);
         mTabHome->setStateSelected(activeTab == TAB_HOME);
         mTabDecor->setStateSelected(activeTab == TAB_DECOR);
+        // PM1: the active section gets a full-strength icon and its name in
+        // the title strip, since the compact column has no labels.
+        for (int i = 0; i < sTabCount; ++i)
+        {
+            if (mTabIcons[i] != nullptr)
+                mTabIcons[i]->setAlpha(static_cast<int>(activeTab) == i ? 1.f : 0.6f);
+        }
+        if (mMenuTitle != nullptr)
+        {
+            const int active = static_cast<int>(activeTab);
+            const std::string& section = active >= 0 && active < sTabCount ? mTabLabelTexts[active] : std::string();
+            mMenuTitle->setCaption(section.empty() ? localizeArena("chat.menu.title")
+                : localizeArena("chat.menu.title") + "  -  " + section);
+        }
         mModeOoc->setStateSelected(!rpMode);
         mModeRp->setStateSelected(rpMode);
         mChannelSay->setStateSelected(chatChannel == CHANNEL_SAY);
@@ -2340,9 +2416,9 @@ namespace mwmp
 
         mGroupJournalButton->setStateSelected(groupJournalSync);
         mGroupTopicsButton->setStateSelected(groupTopicSync);
-        mGroupJournalButton->setCaption(localizeArena("chat.group.sync_journal") + ": "
+        setMenuCaption(mGroupJournalButton, localizeArena("chat.group.sync_journal") + ": "
             + localizeArena(groupJournalSync ? "chat.group.on" : "chat.group.off"));
-        mGroupTopicsButton->setCaption(localizeArena("chat.group.sync_topics") + ": "
+        setMenuCaption(mGroupTopicsButton, localizeArena("chat.group.sync_topics") + ": "
             + localizeArena(groupTopicSync ? "chat.group.on" : "chat.group.off"));
 
         // Z006: this function is also called on its own - when the server's
@@ -2635,7 +2711,7 @@ namespace mwmp
             if (sender == mGroupInviteButton)
                 sendGroupAction("invite", target);
             else if (sender == mGroupKickButton)
-                sendGroupAction("kick", target);
+                askGroupConfirmation("kick", target);
             else
                 sendGroupAction("leader", target);
         }
@@ -2644,13 +2720,43 @@ namespace mwmp
         else if (sender == mGroupTopicsButton)
             sendGroupAction("topics");
         else if (sender == mGroupLeaveButton)
-            sendGroupAction("leave");
+            askGroupConfirmation("leave", std::string());
         else if (sender == mGroupDisbandButton)
-            sendGroupAction("disband");
+            askGroupConfirmation("disband", std::string());
         else if (sender == mGroupAcceptButton)
             sendGroupAction("accept");
         else if (sender == mGroupDeclineButton)
             sendGroupAction("decline");
+    }
+
+    // HS1: the engine's own confirmation dialog sits on top of the Player
+    // Menu, so the menu stays where it is and the answer is handled here.
+    void GUIChat::askGroupConfirmation(const std::string& action, const std::string& argument)
+    {
+        pendingGroupAction = action;
+        pendingGroupArgument = argument;
+
+        std::string question = localizeArena("chat.group.confirm." + action);
+        const std::string::size_type slot = question.find("%s");
+        if (slot != std::string::npos)
+            question.replace(slot, 2, argument);
+
+        MWGui::ConfirmationDialog* dialog = MWBase::Environment::get().getWindowManager()->getConfirmationDialog();
+        dialog->askForConfirmation(question);
+        dialog->eventOkClicked.clear();
+        dialog->eventOkClicked += MyGUI::newDelegate(this, &GUIChat::onGroupConfirmAccepted);
+        dialog->eventCancelClicked.clear();
+    }
+
+    void GUIChat::onGroupConfirmAccepted()
+    {
+        const std::string action = pendingGroupAction;
+        const std::string argument = pendingGroupArgument;
+        pendingGroupAction.clear();
+        pendingGroupArgument.clear();
+        if (action.empty())
+            return;
+        sendGroupAction(action, argument);
     }
 
     void GUIChat::onDragStart(MyGUI::Widget* sender, int, int, MyGUI::MouseButton id)
@@ -3039,12 +3145,230 @@ namespace mwmp
     // and a short English one does not leave a hole in the row.
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // PM1: section column
+    // ------------------------------------------------------------------
+
+    MyGUI::Button* GUIChat::tabButton(int index) const
+    {
+        switch (index)
+        {
+            case TAB_CHAT: return mTabChat;
+            case TAB_GROUP: return mTabGroup;
+            case TAB_PLAYERS: return mTabPlayers;
+            case TAB_STATS: return mTabStats;
+            case TAB_HOME: return mTabHome;
+            case TAB_DECOR: return mTabDecor;
+            default: return nullptr;
+        }
+    }
+
+    int GUIChat::menuContentLeft() const
+    {
+        if (mMenuSidebar == nullptr)
+            return sSideMargin;
+        return 6 + sSidebarWidth + 6;
+    }
+
+    void GUIChat::setupSidebar()
+    {
+        getWidget(mMenuSidebar, "MenuSidebar");
+        getWidget(mMenuTitle, "PlayerMenuTitle");
+        for (int i = 0; i < sTabCount; ++i)
+        {
+            MyGUI::Button* tab = tabButton(i);
+            if (tab == nullptr)
+                continue;
+            // Icon-only button: the name is shown as a tooltip and in the title.
+            tab->setCaption("");
+            mTabIcons[i] = tab->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(8, 8, sSidebarIconMaxSize, sSidebarIconMaxSize), MyGUI::Align::Default);
+            mTabIcons[i]->setImageTexture(sTabIconTextures[i]);
+            mTabIcons[i]->setNeedMouseFocus(false);
+        }
+
+        // A large "back to game" button at the bottom of the column: easier to
+        // hit than the small red X, especially on a touch screen.
+        mSidebarReturn = mMenuSidebar->createWidget<MyGUI::Button>("MW_Button",
+            MyGUI::IntCoord(sSidebarPadding, 300, sSidebarWidth - 2 * sSidebarPadding, sSidebarReturnHeight),
+            MyGUI::Align::Default);
+        mSidebarReturn->setCaption("X");
+        mSidebarReturn->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onReturnClicked);
+    }
+
+    void GUIChat::setTabLabel(MyGUI::Button* tab, const std::string& text)
+    {
+        for (int i = 0; i < sTabCount; ++i)
+        {
+            if (tabButton(i) != tab)
+                continue;
+            mTabLabelTexts[i] = text;
+            // OpenMW's own tooltip system (mwgui/tooltips.cpp) shows this on hover.
+            tab->setUserString("ToolTipType", "Layout");
+            tab->setUserString("ToolTipLayout", "TextToolTipOneLine");
+            tab->setUserString("Caption_TextOneLine", text);
+            return;
+        }
+    }
+
+    void GUIChat::layoutSidebar()
+    {
+        if (mMenuSidebar == nullptr || !mMainWidget)
+            return;
+
+        const int height = std::max(120, mMainWidget->getHeight() - sSidebarTop - 6);
+        mMenuSidebar->setCoord(6, sSidebarTop, sSidebarWidth, height);
+
+        int visibleTabs = 0;
+        for (int i = 0; i < sTabCount; ++i)
+            if (tabButton(i) != nullptr && tabButton(i)->getVisible())
+                ++visibleTabs;
+        visibleTabs = std::max(1, visibleTabs);
+
+        // Every section must stay reachable on a short (landscape phone) screen:
+        // shrink the buttons first, and drop the bottom "back" button - the red X
+        // in the title strip does the same - before a tab could fall off.
+        auto tabHeightFor = [&](bool withReturn) {
+            const int reserved = withReturn ? sSidebarReturnHeight + sSidebarTabGap : 0;
+            const int available = height - 2 * sSidebarPadding - reserved - (visibleTabs - 1) * sSidebarTabGap;
+            return std::min(sSidebarTabMaxHeight, available / visibleTabs);
+        };
+        bool withReturn = mSidebarReturn != nullptr;
+        int tabHeight = tabHeightFor(withReturn);
+        if (withReturn && tabHeight < 40)
+        {
+            withReturn = false;
+            tabHeight = tabHeightFor(false);
+        }
+        tabHeight = std::max(sSidebarTabMinHeight, tabHeight);
+
+        const int buttonWidth = sSidebarWidth - sSidebarPadding * 2;
+        const int iconSize = std::max(20, std::min(sSidebarIconMaxSize, std::min(buttonWidth, tabHeight) - 12));
+        int top = sSidebarPadding;
+        for (int i = 0; i < sTabCount; ++i)
+        {
+            MyGUI::Button* tab = tabButton(i);
+            if (tab == nullptr || !tab->getVisible())
+                continue;
+            tab->setCoord(sSidebarPadding, top, buttonWidth, tabHeight);
+            if (mTabIcons[i] != nullptr)
+                mTabIcons[i]->setCoord((buttonWidth - iconSize) / 2, (tabHeight - iconSize) / 2, iconSize, iconSize);
+            top += tabHeight + sSidebarTabGap;
+        }
+
+        if (mSidebarReturn != nullptr)
+        {
+            mSidebarReturn->setVisible(withReturn);
+            mSidebarReturn->setCoord(sSidebarPadding, height - sSidebarPadding - sSidebarReturnHeight,
+                buttonWidth, sSidebarReturnHeight);
+            mSidebarReturn->setTextColour(MyGUI::Colour(1.f, 0.15f, 0.15f));
+            mSidebarReturn->setUserString("ToolTipType", "Layout");
+            mSidebarReturn->setUserString("ToolTipLayout", "TextToolTipOneLine");
+            mSidebarReturn->setUserString("Caption_TextOneLine", localizeArena("chat.menu.back_to_game"));
+        }
+    }
+
     void GUIChat::setMenuCaption(MyGUI::Widget* widget, const std::string& caption)
     {
         if (widget == nullptr)
             return;
         menuCaptions[widget] = caption;
-        setWidgetCaption(widget, caption);
+        setWidgetCaption(widget, iconCaption(widget, caption));
+        if (menuIcons.count(widget) != 0)
+        {
+            // The full name stays reachable even when a narrow row shortens
+            // the caption or leaves the icon alone.
+            widget->setUserString("ToolTipType", "Layout");
+            widget->setUserString("ToolTipLayout", "TextToolTipOneLine");
+            widget->setUserString("Caption_TextOneLine", caption);
+            placeButtonIcon(widget);
+        }
+    }
+
+    void GUIChat::setButtonIcon(MyGUI::Widget* button, const char* name)
+    {
+        if (button == nullptr || menuIcons.count(button) != 0)
+            return;
+        const int size = buttonIconSize(button);
+        MyGUI::ImageBox* icon = button->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(4, (button->getHeight() - size) / 2, size, size), MyGUI::Align::Default);
+        icon->setImageTexture(std::string("textures/ui/arenamw/btn_") + name + ".png");
+        icon->setNeedMouseFocus(false);
+        menuIcons[button] = icon;
+    }
+
+    void GUIChat::setupButtonIcons()
+    {
+        // Chat: speech mode, channels, roleplay styles, drawers and the footer.
+        setButtonIcon(mModeOoc, "ooc");
+        setButtonIcon(mModeRp, "rp");
+        setButtonIcon(mChannelSay, "say");
+        setButtonIcon(mChannelWhisper, "whisper");
+        setButtonIcon(mChannelShout, "shout");
+        setButtonIcon(mChannelLocalOoc, "local");
+        setButtonIcon(mChannelGlobalOoc, "global");
+        setButtonIcon(mStylePlain, "plain");
+        setButtonIcon(mStyleMe, "me");
+        setButtonIcon(mStyleDo, "do");
+        setButtonIcon(mStyleTry, "try");
+        setButtonIcon(mEmojiToggleButton, "emoji");
+        setButtonIcon(mColorToggleButton, "color");
+        setButtonIcon(mStayOpenButton, "pin");
+        setButtonIcon(mSendButton, "send");
+
+        // Group (and the two shared actions of the Players page).
+        setButtonIcon(mGroupCreateButton, "create");
+        setButtonIcon(mGroupRefreshButton, "refresh");
+        setButtonIcon(mGroupInviteButton, "invite");
+        setButtonIcon(mGroupKickButton, "kick");
+        setButtonIcon(mGroupLeaderButton, "leader");
+        setButtonIcon(mGroupJournalButton, "journal");
+        setButtonIcon(mGroupTopicsButton, "topics");
+        setButtonIcon(mGroupLeaveButton, "leave");
+        setButtonIcon(mGroupDisbandButton, "disband");
+        setButtonIcon(mGroupAcceptButton, "accept");
+        setButtonIcon(mGroupDeclineButton, "decline");
+        setButtonIcon(mGroupVoiceButton, "voice");
+        setButtonIcon(mPlayersRefreshButton, "refresh");
+        setButtonIcon(mPlayersInviteButton, "invite");
+
+        // Home.
+        setButtonIcon(mHomeRenameButton, "rename");
+        setButtonIcon(mHomeLockButton, "lock");
+        setButtonIcon(mHomeTakeButton, "take");
+        setButtonIcon(mHomeKindHouseButton, "house");
+        setButtonIcon(mHomeKindTavernButton, "tavern");
+        setButtonIcon(mHomeKindShopButton, "shop");
+        setButtonIcon(mHomeKindGuildButton, "guild");
+        setButtonIcon(mHomeCoownerButton, "coowner");
+        setButtonIcon(mHomeFriendButton, "friend");
+        setButtonIcon(mHomeRevokeButton, "revoke");
+        setButtonIcon(mHomeResetButton, "reset");
+        setButtonIcon(mHomeGiftButton, "gift");
+        setButtonIcon(mHomeSellButton, "sell");
+        setButtonIcon(mHomeMarketButton, "proceeds");
+    }
+
+    std::string GUIChat::iconCaption(MyGUI::Widget* widget, const std::string& caption)
+    {
+        if (caption.empty() || menuIcons.count(widget) == 0)
+            return caption;
+        const int room = buttonIconSize(widget) + 5;
+        return std::string(static_cast<std::size_t>(iconPrefixSpaces(widget, room)), ' ') + caption;
+    }
+
+    void GUIChat::placeButtonIcon(MyGUI::Widget* widget)
+    {
+        const std::map<MyGUI::Widget*, MyGUI::ImageBox*>::const_iterator entry = menuIcons.find(widget);
+        if (entry == menuIcons.end() || entry->second == nullptr)
+            return;
+        const int size = buttonIconSize(widget);
+        const int textWidth = measuredCaptionWidth(widget);
+        // The skin centres the caption; its leading spaces are the icon's slot.
+        // With no caption left (very narrow row) the icon sits in the middle.
+        const int x = textWidth > 0 ? std::max(3, (widget->getWidth() - textWidth) / 2 + 1)
+                                    : (widget->getWidth() - size) / 2;
+        entry->second->setCoord(x, (widget->getHeight() - size) / 2, size, size);
     }
 
     void GUIChat::refitCaption(MyGUI::Widget* widget)
@@ -3057,23 +3381,36 @@ namespace mwmp
             return;
 
         const std::string& full = entry->second;
-        setWidgetCaption(widget, full);
+        setWidgetCaption(widget, iconCaption(widget, full));
 
         const int available = widget->getWidth() - 10;
         if (available <= 0 || measuredCaptionWidth(widget) <= available)
+        {
+            placeButtonIcon(widget);
             return;
+        }
 
         // Only reached when even the proportional row pass could not give the
         // button enough room. Cut on a UTF-8 boundary so a multi-byte Cyrillic
         // character is never split into an invalid sequence.
+        // HS1: a button with an icon keeps at least two letters; below that
+        // the icon alone (with the full name as its tooltip) reads better.
+        const bool hasIcon = menuIcons.count(widget) != 0;
         std::size_t length = utf8Length(full);
-        while (length > 1)
+        const std::size_t shortest = hasIcon ? 3 : 1;
+        while (length > shortest)
         {
             --length;
-            setWidgetCaption(widget, utf8Truncate(full, length) + "...");
+            setWidgetCaption(widget, iconCaption(widget, utf8Truncate(full, length) + "..."));
             if (measuredCaptionWidth(widget) <= available)
+            {
+                placeButtonIcon(widget);
                 return;
+            }
         }
+        if (hasIcon)
+            setWidgetCaption(widget, std::string());
+        placeButtonIcon(widget);
     }
 
     void GUIChat::layoutRow(const std::vector<MyGUI::Widget*>& row, int left, int top, int width,
@@ -3095,7 +3432,7 @@ namespace mwmp
         {
             const std::map<MyGUI::Widget*, std::string>::const_iterator entry = menuCaptions.find(visible[i]);
             if (entry != menuCaptions.end())
-                setWidgetCaption(visible[i], entry->second);
+                setWidgetCaption(visible[i], iconCaption(visible[i], entry->second));
 
             int wanted = measuredCaptionWidth(visible[i]) + sButtonPadding;
             if (wanted < sMinimumButtonWidth)
@@ -3167,33 +3504,23 @@ namespace mwmp
 
         const int mainWidth = mMainWidget->getWidth();
         const int mainHeight = mMainWidget->getHeight();
-        const int inner = std::max(120, mainWidth - sSideMargin * 2);
+        // PM1: every page starts right of the section column.
+        const int contentLeft = menuContentLeft();
+        const int inner = std::max(120, mainWidth - contentLeft - sSideMargin);
 
-        // Title strip: the label keeps a fixed share, the tabs and the
-        // "back to game" button share the rest.
+        // Title strip: the title on the left, the red X on the right. The
+        // section tabs moved into the column below (layoutSidebar).
         mDragHandle->setCoord(6, 6, std::max(80, mainWidth - 12), 32);
-        const int titleWidth = std::max(90, std::min(190, mainWidth / 5));
-        getWidget("PlayerMenuTitle")->setCoord(10, 5, titleWidth - 14, 22);
-
-        // Y052: keep the close button compact and unmistakable. The four tabs
-        // share the remaining title strip, while the red X always stays square.
         const int closeWidth = 30;
-        const int tabsWidth = std::max(160, mDragHandle->getWidth() - titleWidth - closeWidth - sRowGap - 10);
-        std::vector<MyGUI::Widget*> tabs;
-        tabs.push_back(mTabChat);
-        tabs.push_back(mTabGroup);
-        tabs.push_back(mTabPlayers);
-        tabs.push_back(mTabStats);
-        if (ArenaHousing::get().ownsHome()) tabs.push_back(mTabHome);
-        if (mDecorAllowed) tabs.push_back(mTabDecor);
-        layoutRow(tabs, titleWidth, 4, tabsWidth, 24, sRowGap);
-        mReturnButton->setCoord(titleWidth + tabsWidth + sRowGap, 4, closeWidth, 24);
+        getWidget("PlayerMenuTitle")->setCoord(10, 5, std::max(60, mDragHandle->getWidth() - closeWidth - 24), 22);
+        mReturnButton->setCoord(mDragHandle->getWidth() - closeWidth - 4, 4, closeWidth, 24);
+        layoutSidebar();
 
         // X054: one container, two rows. Row 1 is the RP switch plus coreChat's
         // five speech channels; row 2 is the roleplay action styles and the two
         // drawers. Nine buttons on one line was already tight in RU, and
         // thirteen simply do not fit.
-        mChatToolbar->setCoord(sSideMargin, sToolbarTop, inner, sToolbarHeight * sToolbarRows);
+        mChatToolbar->setCoord(contentLeft, sToolbarTop, inner, sToolbarHeight * sToolbarRows);
         std::vector<MyGUI::Widget*> toolbar;
         toolbar.push_back(mModeOoc);
         toolbar.push_back(mModeRp);
@@ -3213,14 +3540,14 @@ namespace mwmp
         toolbar2.push_back(mColorToggleButton);
         layoutRow(toolbar2, 0, sToolbarHeight + 2, inner, 26, sRowGap);
 
-        mEmojiBar->setCoord(sSideMargin, sDrawerTop, inner, sDrawerHeight);
+        mEmojiBar->setCoord(contentLeft, sDrawerTop, inner, sDrawerHeight);
         std::vector<MyGUI::Widget*> emoji;
         for (int i = 0; i < sEmojiSlotCount; ++i)
             emoji.push_back(mEmojiButtons[i]);
         layoutGrid(emoji, 6, 6, inner - 12, 26, 10, 4);
 
         // 40 swatches over two rows of 20.
-        mColorBar->setCoord(sSideMargin, sDrawerTop, inner, sColorDrawerHeight);
+        mColorBar->setCoord(contentLeft, sDrawerTop, inner, sColorDrawerHeight);
         mColorBarLabel->setCoord(8, 4, inner - 16, 20);
         std::vector<MyGUI::Widget*> swatches;
         for (int i = 0; i < sColorSlotCount; ++i)
@@ -3229,15 +3556,15 @@ namespace mwmp
 
         const int footerTop = std::max(120, mainHeight - 36);
         const int sendWidth = std::max(90, std::min(160, inner / 5));
-        mStayOpenButton->setCoord(sSideMargin, footerTop, std::max(120, inner - sendWidth - sRowGap), 28);
-        mSendButton->setCoord(sSideMargin + inner - sendWidth, footerTop, sendWidth, 28);
+        mStayOpenButton->setCoord(contentLeft, footerTop, std::max(120, inner - sendWidth - sRowGap), 28);
+        mSendButton->setCoord(contentLeft + inner - sendWidth, footerTop, sendWidth, 28);
         refitCaption(mStayOpenButton);
         refitCaption(mSendButton);
 
         const int paneTop = 46;
         const int paneHeight = std::max(200, mainHeight - paneTop - sSideMargin);
-        mGroupPane->setCoord(sSideMargin, paneTop, inner, paneHeight);
-        mPlayersPane->setCoord(sSideMargin, paneTop, inner, paneHeight);
+        mGroupPane->setCoord(contentLeft, paneTop, inner, paneHeight);
+        mPlayersPane->setCoord(contentLeft, paneTop, inner, paneHeight);
 
         // Group page: info on the left, live roster on the right, three
         // action rows pinned to the bottom.
@@ -3310,6 +3637,9 @@ namespace mwmp
         // Reserve the bottom rows first so even a small menu cannot clip Sell.
         if (mHomePane != nullptr)
         {
+            // PM1: placed explicitly like the other pages (it used to rely on
+            // the layout's Stretch, which would now run under the section column).
+            mHomePane->setCoord(contentLeft, paneTop, inner, paneHeight);
             const int homeRows = 4;
             const int sectionHeight = 46;
             const int homeInfoHeight = std::max(72, paneHeight - 36 - homeRows * sectionHeight - 12);
@@ -3337,7 +3667,7 @@ namespace mwmp
 
         // Decorations: concise hint, tall list, and full-width two-button rows.
         // Admin actions get a separate row instead of four squeezed captions.
-        mDecorPane->setCoord(sSideMargin,paneTop,inner,paneHeight);
+        mDecorPane->setCoord(contentLeft,paneTop,inner,paneHeight);
         mDecorTitle->setCoord(14,8,paneInner,24);
         MyGUI::TextBox* hint = nullptr;
         getWidget(hint, "DecorHint");
@@ -3363,7 +3693,7 @@ namespace mwmp
             refitCaption(button);
 
         // Y052 profile/statistics page.
-        mProfilePane->setCoord(sSideMargin, paneTop, inner, paneHeight);
+        mProfilePane->setCoord(contentLeft, paneTop, inner, paneHeight);
         getWidget("ProfileTitle")->setCoord(14, 8, paneInner, 24);
         // Z001: the four profile actions used to share one row. layoutRow only
         // guarantees a minimum width per button, so on a narrow panel the row
@@ -3751,9 +4081,13 @@ namespace mwmp
         // The ones that ask for a name or a title open a server input dialog,
         // which needs the menu out of the way first - exactly like profile
         // deletion does.
+        // HS1: selling and clearing the home are answered by a server
+        // confirmation (with the refund and what happens to the items), so
+        // they need the menu out of the way too.
         const bool opensDialog = sender == mHomeRenameButton || sender == mHomeCoownerButton
             || sender == mHomeFriendButton || sender == mHomeRevokeButton
-            || sender == mHomeGiftButton;
+            || sender == mHomeGiftButton || sender == mHomeResetButton
+            || sender == mHomeSellButton;
         if (opensDialog)
             closeForServerDialog();
 

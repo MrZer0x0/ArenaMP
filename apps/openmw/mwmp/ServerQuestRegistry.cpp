@@ -184,6 +184,45 @@ namespace mwmp
             mEditor.selectedQuestId = fields[3];
             if (fields.size() >= 5)
                 mEditor.notice = fields[4];
+            if (fields.size() >= 6)
+                mEditor.view = fields[5] == "wizard" ? "wizard" : "studio";
+            return TransportEvent::None;
+        }
+        if (fields[0] == "EDITOR_WIZARD" && fields.size() >= 3)
+        {
+            ServerQuestEditorQuest* quest = findEditorQuest(fields[1]);
+            if (quest != nullptr)
+            {
+                quest->hasWizard = true;
+                quest->wizardDetached = toBool(fields[2]);
+                quest->wizardFields.clear();
+                for (std::size_t i = 3; i + 1 < fields.size(); i += 2)
+                    quest->wizardFields.emplace_back(fields[i], fields[i + 1]);
+            }
+            return TransportEvent::None;
+        }
+        if (fields[0] == "WIZARD_PICK" && fields.size() >= 8)
+        {
+            ServerQuestWizardPick pick;
+            pick.serial = mWizardPick.serial + 1;
+            pick.kind = fields[1];
+            pick.refId = fields[2];
+            pick.cell = fields[3];
+            pick.uniqueIndex = fields[4];
+            pick.x = static_cast<float>(std::atof(fields[5].c_str()));
+            pick.y = static_cast<float>(std::atof(fields[6].c_str()));
+            pick.z = static_cast<float>(std::atof(fields[7].c_str()));
+            mWizardPick = pick;
+            return TransportEvent::WizardPick;
+        }
+        if (fields[0] == "WIZARD_RESULT" && fields.size() >= 4)
+        {
+            ServerQuestWizardResult result;
+            result.serial = mWizardResult.serial + 1;
+            result.ok = toBool(fields[1]);
+            result.questId = fields[2];
+            result.message = fields[3];
+            mWizardResult = result;
             return TransportEvent::None;
         }
         if (fields[0] == "EDITOR_QUEST" && fields.size() >= 12)

@@ -321,13 +321,14 @@ namespace mwmp
             return;
 
         // Leave a small margin so the window never touches the screen edge.
+        // QW1: on large screens the studio may also grow up to 20% (fonts keep
+        // their size, so the fields and lists simply get more room).
         const float marginated = 0.98f;
-        float scale = 1.0f;
-        if (mBaseSize.width > view.width * marginated || mBaseSize.height > view.height * marginated)
-        {
-            scale = std::min(view.width * marginated / static_cast<float>(mBaseSize.width),
-                view.height * marginated / static_cast<float>(mBaseSize.height));
-        }
+        float scale = std::min(view.width * marginated / static_cast<float>(mBaseSize.width),
+            view.height * marginated / static_cast<float>(mBaseSize.height));
+        if (scale > 1.0f)
+            scale = std::max(1.0f, std::min(1.2f, std::min(view.width * 0.92f / static_cast<float>(mBaseSize.width),
+                view.height * 0.92f / static_cast<float>(mBaseSize.height))));
 
         // Below this the bitmap font stops fitting into the controls and the studio
         // becomes unusable in a different way, so we stop shrinking and accept that

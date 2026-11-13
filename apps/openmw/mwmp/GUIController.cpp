@@ -42,6 +42,7 @@
 #include "GUI/GUIChat.hpp"
 #include "GUI/ServerQuestEditor.hpp"
 #include "GUI/FurnitureStoreWindow.hpp"
+#include "GUI/QuestWizardWindow.hpp"
 #include "LocalPlayer.hpp"
 #include "DedicatedPlayer.hpp"
 #include "PlayerList.hpp"
@@ -90,6 +91,9 @@ void mwmp::GUIController::cleanUp()
     if (mServerQuestEditor != nullptr)
         delete mServerQuestEditor;
     mServerQuestEditor = nullptr;
+    if (mQuestWizard != nullptr)
+        delete mQuestWizard;
+    mQuestWizard = nullptr;
     if (mFurnitureStore != nullptr)
     {
         mFurnitureStore->reset();
@@ -533,6 +537,17 @@ void mwmp::GUIController::receiveFurnitureMessage(const std::string& payload)
 
 void mwmp::GUIController::showServerQuestEditor()
 {
+    // QW1: the advanced studio replaces the wizard (the wizard keeps its draft).
+    {
+        MWBase::WindowManager* wm = MWBase::Environment::get().getWindowManager();
+        const MWGui::GuiMode wizardMode = static_cast<MWGui::GuiMode>(GM_ARENAMP_QuestWizard);
+        if (wm->containsMode(wizardMode))
+        {
+            if (mQuestWizard != nullptr)
+                mQuestWizard->setVisible(false);
+            wm->removeGuiMode(wizardMode);
+        }
+    }
     if (mServerQuestEditor == nullptr)
         mServerQuestEditor = new ServerQuestEditorWindow();
     else
@@ -544,6 +559,43 @@ void mwmp::GUIController::showServerQuestEditor()
         windowManager->pushGuiMode(mode);
     else
         mServerQuestEditor->setVisible(true);
+}
+
+void mwmp::GUIController::showQuestWizard()
+{
+    // Only one quest window at a time: the wizard replaces the advanced studio.
+    MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+    const MWGui::GuiMode studioMode = static_cast<MWGui::GuiMode>(GM_ARENAMP_QuestEditor);
+    if (windowManager->containsMode(studioMode))
+    {
+        if (mServerQuestEditor != nullptr)
+            mServerQuestEditor->setVisible(false);
+        windowManager->removeGuiMode(studioMode);
+    }
+
+    if (mQuestWizard == nullptr)
+        mQuestWizard = new QuestWizardWindow();
+    mQuestWizard->refreshFromRegistry();
+
+    const MWGui::GuiMode mode = static_cast<MWGui::GuiMode>(GM_ARENAMP_QuestWizard);
+    if (!windowManager->containsMode(mode))
+        windowManager->pushGuiMode(mode);
+    else
+        mQuestWizard->setVisible(true);
+}
+
+void mwmp::GUIController::receiveWizardPick()
+{
+    if (mQuestWizard == nullptr)
+        mQuestWizard = new QuestWizardWindow();
+    mQuestWizard->applyPick();
+
+    MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+    const MWGui::GuiMode mode = static_cast<MWGui::GuiMode>(GM_ARENAMP_QuestWizard);
+    if (!windowManager->containsMode(mode))
+        windowManager->pushGuiMode(mode);
+    else
+        mQuestWizard->setVisible(true);
 }
 
 void mwmp::GUIController::refreshServerQuestEditor()
@@ -928,6 +980,9 @@ void mwmp::GUIController::WM_UpdateVisible(MWGui::GuiMode mode)
         }
         case GM_ARENAMP_Furniture:
             if (mFurnitureStore) mFurnitureStore->setVisible(true);
+            break;
+        case GM_ARENAMP_QuestWizard:
+            if (mQuestWizard) mQuestWizard->setVisible(true);
             break;
         case GM_ARENAMP_PlayerMenu:
             // GUIChat owns its widgets. The mode exists so the core WindowManager

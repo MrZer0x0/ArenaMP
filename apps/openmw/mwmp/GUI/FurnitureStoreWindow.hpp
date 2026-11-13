@@ -72,6 +72,7 @@ namespace mwmp
         void onNext(MyGUI::Widget*);
         void onPrimary(MyGUI::Widget*);
         void onSecondary(MyGUI::Widget*);
+        void onSellConfirmed();
         void onPreviewPressed(MyGUI::Widget*, int, int, MyGUI::MouseButton);
         void onPreviewDrag(MyGUI::Widget*, int, int, MyGUI::MouseButton);
         void onPreviewWheel(MyGUI::Widget*, int);
@@ -120,6 +121,7 @@ namespace mwmp
         int mPreviousDragY=0;
         Tab mTab=Shop;
         std::string mCategory, mSubcategory, mSelected;
+        std::string mPendingSell;
         int mPage=1, mPages=1;
     };
 }

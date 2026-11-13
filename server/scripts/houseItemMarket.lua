@@ -45,6 +45,16 @@ local function record(id)
     if r.kind=='LIGH' and math.floor((r.flags or 0)/2)%2~=1 then return nil end
     return r
 end
+-- HS1: is this a real inventory item (for houseStorage, when a home is sold)?
+-- true = item, false = not an item, nil = unknown (active plugins unreadable).
+function M.IsPortable(id)
+    if type(id)~='string' or id=='' then return false end
+    local ok,rec=pcall(record,id)
+    if not ok then return nil end
+    if rec then return true end
+    if not recordsLoaded and not logicHandler.GetRecordStoreByRecordId(id) then return nil end
+    return false
+end
 local function isBookRecord(rec,store)
     return (store and store.storeType=='book') or (rec and rec.kind=='BOOK')
 end

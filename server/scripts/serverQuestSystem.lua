@@ -7,6 +7,8 @@
 
 local serverQuestSystem = {}
 local privateCellInstances = require("privateCellInstances")
+-- QW1: beginner-friendly Quest Studio wizard (templates, plain-language checks).
+local questWizard = require("questWizard")
 local unpackValues = table.unpack or unpack
 
 local INDEX_PATH = "custom/quests/index.json"
@@ -52,8 +54,10 @@ local function isStaff(pid)
     return Players[pid] ~= nil and Players[pid]:IsServerStaff()
 end
 
+-- Y111: Quest Studio and quest editing use config.staffPermissions.questStudio
+-- (default 1 = moderators and admins); see staffPermissions.lua.
 local function isModerator(pid)
-    return Players[pid] ~= nil and (Players[pid]:IsModerator() or Players[pid]:IsAdmin() or Players[pid]:IsServerOwner())
+    return require("staffPermissions").Has(pid, "questStudio")
 end
 
 local function isAdmin(pid)
@@ -659,6 +663,35 @@ function serverQuestSystem.ValidateQuest(quest)
 
         validateRequirements(stage.requirements, "Stage " .. tostring(index))
         validateChoices(stage.choices, "Stage " .. tostring(index), stage)
+
+        -- QW1: automatic stage objectives (kill N actors / reach a place).
+        if stage.objective ~= nil then
+            local objective = stage.objective
+            local context = "Stage " .. tostring(index) .. " objective"
+            if type(objective) ~= "table" then
+                table.insert(errors, context .. " is not a table")
+            else
+                local kind = tostring(objective.type or "")
+                if kind == "kill" then
+                    if trim(objective.refId) == "" then table.insert(errors, context .. " kill has no refId") end
+                    if (tonumber(objective.count) or 0) < 1 then table.insert(errors, context .. " kill count must be at least 1") end
+                elseif kind == "visit" then
+                    if trim(objective.cell) == "" then table.insert(errors, context .. " visit has no cell") end
+                else
+                    table.insert(errors, context .. " has unknown type " .. kind)
+                end
+                local target = tonumber(objective.nextStage)
+                if target == nil or findStage(quest, target) == nil then
+                    table.insert(errors, context .. " points to missing stage " .. tostring(objective.nextStage))
+                elseif #(stage.next or {}) > 0 then
+                    local allowed = false
+                    for _, nextStage in ipairs(stage.next) do
+                        if tonumber(nextStage) == target then allowed = true break end
+                    end
+                    if not allowed then table.insert(errors, context .. " target is not listed in stage.next") end
+                end
+            end
+        end
 
         for _, reward in ipairs(stage.rewards or {}) do
             local kind = tostring(reward.type or "")
@@ -1488,13 +1521,26 @@ function serverQuestSystem.SyncEditor(pid, selectedId, notice)
 
     local canPublish = isAdmin(pid) or config.serverQuests == nil or config.serverQuests.moderatorsCanPublish ~= false
     sendTransport(pid, "EDITOR_CLEAR")
-    sendTransport(pid, transportLine("EDITOR_META", canPublish and 1 or 0, isAdmin(pid) and 1 or 0, selectedId, notice or ""))
+    -- QW1: the 6th field tells the client which window to show (wizard or
+    -- the advanced studio). Older clients read only the first five.
+    sendTransport(pid, transportLine("EDITOR_META", canPublish and 1 or 0, isAdmin(pid) and 1 or 0, selectedId, notice or "",
+        state.view == "wizard" and "wizard" or "studio"))
 
     for _, id in ipairs(ids) do
         local q = serverQuestSystem.quests[id]
         sendTransport(pid, transportLine("EDITOR_QUEST", q.id, q.name, q.status, q.author, q.progressMode,
             q.version, q.giver.refId, q.giver.cell, q.giver.uniqueIndex or "", q.initialStage or 0,
             id == selectedId and (q.offer and q.offer.dialogue or "") or ""))
+    end
+
+    -- QW1: wizard parameters of every wizard-built quest, so the wizard home
+    -- page can reopen any of them without another round trip.
+    for _, id in ipairs(ids) do
+        local q = serverQuestSystem.quests[id]
+        if type(q.wizard) == "table" then
+            sendTransport(pid, transportLine("EDITOR_WIZARD", q.id, q.wizard.detached and 1 or 0,
+                unpackValues(questWizard.Serialize(questWizard.Normalize(copy(q.wizard))))))
+        end
     end
 
     local q = serverQuestSystem.quests[selectedId]
@@ -2333,6 +2379,10 @@ local function getEditable(pid, id)
 end
 
 local function markEdited(pid, q, action)
+    -- QW1: an advanced-editor change makes the wizard parameters stale. The
+    -- wizard can still reopen the quest, but warns that saving there replaces
+    -- those manual changes.
+    if type(q.wizard) == "table" then q.wizard.detached = true end
     q.version = (tonumber(q.version) or 1) + 1
     if q.status == "published" then q.status = "draft" end
     -- Any edit invalidates a previous administrator approval of dangerous
@@ -2343,8 +2393,11 @@ end
 
 local function processCommand(pid, cmd)
     local sub = tostring(cmd[2] or ""):lower()
-    if sub == "" or sub == "studio" or sub == "editor" then
+    if sub == "" or sub == "studio" or sub == "editor" or sub == "wizard" or sub == "master" then
         if isModerator(pid) then
+            -- QW1: plain /quest opens the beginner wizard; /quest studio (and
+            -- /queststudio) keep opening the advanced editor.
+            editorState(pid).view = (sub == "" or sub == "wizard" or sub == "master") and "wizard" or "studio"
             local rank = tonumber(Players[pid].data.settings.staffRank) or 0
             log(enumerations.log.INFO, "Opening MyGUI Quest Studio for pid " .. tostring(pid) ..
                 " (staffRank=" .. tostring(rank) .. ")")
@@ -2353,7 +2406,7 @@ local function processCommand(pid, cmd)
         else
             local rank = Players[pid] ~= nil and Players[pid].data ~= nil and Players[pid].data.settings ~= nil
                 and tonumber(Players[pid].data.settings.staffRank) or 0
-            send(pid, "Quest Studio requires Moderator/Admin (staffRank >= 1). Your staffRank=" ..
+            send(pid, "Quest Studio requires staffRank >= " .. tostring(require("staffPermissions").Required("questStudio")) .. ". Your staffRank=" ..
                 tostring(rank) .. ". Server owner can use /addmoderator " .. tostring(pid) ..
                 ". Use /quests to view your player quests.")
         end
@@ -2753,11 +2806,178 @@ local function removeStageReferences(quest, removedIndex)
     end
 end
 
+-- QW1 ----------------------------------------------------------------------
+-- Quest Studio wizard commands. They arrive through the same EDITOR_CMD
+-- transport as the advanced editor (action prefix "wizard_") and are fully
+-- revalidated here; the client never supplies stage numbers, requirements or
+-- rewards directly, only the wizard parameters.
+local WIZARD_PICK_TIMEOUT = 180
+
+local function wizardIsRu(pid)
+    local language = nil
+    if type(localization) == "table" and type(localization.GetClientLanguage) == "function" then
+        local ok, value = pcall(localization.GetClientLanguage, pid)
+        if ok then language = value end
+    end
+    if language == nil and Players[pid] ~= nil then language = Players[pid].language end
+    return tostring(language or ""):upper():sub(1, 2) == "RU"
+end
+
+local function wizardResult(pid, ok, questId, message)
+    sendTransport(pid, transportLine("WIZARD_RESULT", ok and 1 or 0, questId or "", message or ""))
+end
+
+local function newWizardQuestId()
+    local base = "wq_" .. os.date("%Y%m%d_%H%M%S")
+    local id, suffix = base, 1
+    while serverQuestSystem.quests[id] ~= nil do
+        suffix = suffix + 1
+        id = base .. "_" .. suffix
+    end
+    return id
+end
+
+-- Same rules as the advanced editor's Publish button.
+local function publishQuest(pid, q, ru)
+    local approvalOk, approvalWhy = prepareQuestForPublish(pid, q)
+    if not approvalOk then return false, approvalWhy end
+    local errors, warnings = serverQuestSystem.ValidateQuest(q)
+    serverQuestSystem.validation[q.id] = { errors = errors, warnings = warnings }
+    if #errors > 0 then
+        return false, (ru and "в квесте есть ошибки: " or "the quest has errors: ") .. tostring(errors[1])
+    end
+    if not isAdmin(pid) and config.serverQuests ~= nil and config.serverQuests.moderatorsCanPublish == false then
+        return false, ru and "публиковать может только администратор" or "only an administrator can publish"
+    end
+    q.status = "published"
+    q.version = (tonumber(q.version) or 1) + 1
+    serverQuestSystem.SaveQuest(q, getAccountName(pid), "published from wizard")
+    return true
+end
+
+local function handleWizardCommand(pid, action, parts)
+    local ru = wizardIsRu(pid)
+    local state = editorState(pid)
+    local function sync(selected, notice) serverQuestSystem.SyncEditor(pid, selected, notice) end
+    local function tr(r, e) return ru and r or e end
+
+    if action == "wizard_home" then
+        sync(parts[3], "")
+        return true
+    elseif action == "wizard_open_studio" then
+        state.view = "studio"
+        sync(parts[3], "")
+        return true
+    elseif action == "wizard_pick" then
+        local kind = tostring(parts[3] or "")
+        if kind ~= "giver" and kind ~= "fetch" and kind ~= "reward" and kind ~= "kill" then return true end
+        state.wizardPick = kind
+        state.wizardPickAt = os.time()
+        send(pid, tr("Режим выбора: подойдите к объекту и нажмите E. Объект не будет использован.",
+            "Pick mode: walk up to the object and press E. The object will not be used."))
+        return true
+    elseif action == "wizard_pick_cancel" then
+        state.wizardPick = nil
+        return true
+    elseif action == "wizard_here" then
+        local cell = trim(tes3mp.GetCell(pid))
+        sendTransport(pid, transportLine("WIZARD_PICK", "visit", "", cell, "",
+            tes3mp.GetPosX(pid) or 0, tes3mp.GetPosY(pid) or 0, tes3mp.GetPosZ(pid) or 0))
+        return true
+    elseif action == "wizard_save" then
+        local questId = normalizeId(parts[3])
+        local publish = tostring(parts[4] or "0") == "1"
+        local w = questWizard.Parse(parts, 5)
+        local errors = questWizard.Validate(w, ru)
+        if #errors > 0 then
+            wizardResult(pid, false, questId, table.concat(errors, "\n"))
+            sync(questId ~= "" and questId or nil, errors[1])
+            return true
+        end
+        local existing = questId ~= "" and serverQuestSystem.quests[questId] or nil
+        if questId ~= "" and existing == nil then
+            local message = tr("Квест не найден: возможно, его удалили.", "Quest not found; it may have been removed.")
+            wizardResult(pid, false, questId, message)
+            sync(nil, message)
+            return true
+        end
+        if existing ~= nil and type(existing.wizard) ~= "table" then
+            local message = tr("Этот квест создан в расширенном редакторе. Меняйте его там.",
+                "This quest was made in the advanced editor. Edit it there.")
+            wizardResult(pid, false, questId, message)
+            sync(questId, message)
+            return true
+        end
+
+        local q = existing or normalizeQuest({
+            id = newWizardQuestId(), author = getAccountName(pid), status = "draft", version = 0,
+            giver = { refId = "", cell = "" }, topics = {}, stages = {}, audit = {}
+        })
+        local built = questWizard.Build(w)
+        q.name = built.name
+        q.progressMode = built.progressMode
+        q.giver = built.giver
+        q.topics = built.topics
+        q.offer = built.offer
+        q.stages = built.stages
+        q.initialStage = built.initialStage
+        w.detached = nil
+        q.wizard = w
+        q.version = (tonumber(q.version) or 0) + 1
+        if q.status == "published" then q.status = "draft" end
+        q.adminApprovedDangerousRewards = nil
+        local saved, err = serverQuestSystem.SaveQuest(q, getAccountName(pid),
+            existing ~= nil and "rebuilt in wizard" or "created in wizard")
+        if not saved then
+            local message = tr("Не удалось сохранить квест: ", "Could not save the quest: ") .. tostring(err)
+            wizardResult(pid, false, q.id, message)
+            sync(q.id, message)
+            return true
+        end
+        local message = tr("Квест сохранён как черновик. Его видят только модераторы.",
+            "Quest saved as a draft. Only staff can see it.")
+        if publish then
+            local published, why = publishQuest(pid, q, ru)
+            if published then
+                message = tr("Квест сохранён и опубликован. Игроки уже могут его взять.",
+                    "Quest saved and published. Players can take it now.")
+            else
+                message = tr("Квест сохранён, но не опубликован: ", "Quest saved, but not published: ") .. tostring(why)
+            end
+        end
+        log(enumerations.log.INFO, "Quest wizard saved " .. q.id .. " (" .. w.type .. ") by pid " .. tostring(pid))
+        wizardResult(pid, true, q.id, message)
+        sync(q.id, message)
+        return true
+    elseif action == "wizard_publish" or action == "wizard_disable" then
+        local q = serverQuestSystem.quests[normalizeId(parts[3])]
+        if q == nil then sync(nil, tr("Квест не найден.", "Quest not found.")) return true end
+        if action == "wizard_publish" then
+            local ok, why = publishQuest(pid, q, ru)
+            sync(q.id, ok and tr("Квест опубликован.", "Quest published.") or
+                (tr("Не опубликован: ", "Not published: ") .. tostring(why)))
+        else
+            q.status = "disabled"
+            q.version = (tonumber(q.version) or 1) + 1
+            serverQuestSystem.SaveQuest(q, getAccountName(pid), "disabled from wizard")
+            sync(q.id, tr("Квест снят с публикации.", "Quest unpublished."))
+        end
+        return true
+    end
+    sync(nil, "Unknown wizard command: " .. tostring(action))
+    return true
+end
+-- End of QW1 wizard commands -------------------------------------------------
+
 local function handleMyGuiEditorCommand(pid, data)
     if not isModerator(pid) then return true end
     local parts = splitTabsDecoded(data)
     if parts[1] ~= "EDITOR_CMD" then return false end
     local action = tostring(parts[2] or "")
+    -- QW1: remember which window sent the command, so the following sync
+    -- reopens the same window (wizard or advanced studio).
+    editorState(pid).view = action:sub(1, 7) == "wizard_" and "wizard" or "studio"
+    if action:sub(1, 7) == "wizard_" then return handleWizardCommand(pid, action, parts) end
     local function sync(selected, notice) serverQuestSystem.SyncEditor(pid, selected, notice) end
 
     if action == "select" or action == "refresh" then
@@ -3221,6 +3441,162 @@ local function onGuiAction(eventStatus, pid, idGui, data)
 end
 
 
+-- QW1 ----------------------------------------------------------------------
+-- World picking for the wizard: the next activation of a moderator with an
+-- armed pick is captured and NOT performed (no pickup, no dialogue, no door).
+local function validateWizardPick(eventStatus, pid, cellDescription, objects)
+    local state = serverQuestSystem.editor[pid]
+    if state == nil or state.wizardPick == nil then return end
+    if not isModerator(pid) or os.time() - (tonumber(state.wizardPickAt) or 0) > WIZARD_PICK_TIMEOUT then
+        state.wizardPick = nil
+        return
+    end
+    for uniqueIndex, object in pairs(objects or {}) do
+        if type(object) == "table" and trim(object.refId) ~= "" then
+            local kind = state.wizardPick
+            state.wizardPick = nil
+            sendTransport(pid, transportLine("WIZARD_PICK", kind, trim(object.refId), trim(cellDescription),
+                tostring(uniqueIndex), tes3mp.GetPosX(pid) or 0, tes3mp.GetPosY(pid) or 0, tes3mp.GetPosZ(pid) or 0))
+            log(enumerations.log.INFO, "Quest wizard pick (" .. tostring(kind) .. ") by pid " .. tostring(pid) ..
+                ": " .. trim(object.refId) .. " in " .. trim(cellDescription))
+            return customEventHooks.makeEventStatus(false, false)
+        end
+    end
+end
+
+-- Automatic stage objectives emitted by the wizard (stage.objective).
+local function runtimeQuestUsable(questId)
+    local quest = serverQuestSystem.quests[questId]
+    if quest == nil or quest.status ~= "published" then return nil end
+    local validation = serverQuestSystem.validation[questId]
+    if validation ~= nil and #validation.errors > 0 then return nil end
+    return quest
+end
+
+local function completeObjective(pid, quest, objective)
+    local ok, why = serverQuestSystem.AdvanceQuest(pid, quest.id, objective.nextStage, false, true)
+    if ok then
+        notifyJournalUpdate(pid, quest, findStage(quest, objective.nextStage))
+    else
+        log(enumerations.log.WARN, "Objective transition failed for " .. quest.id .. ": " .. tostring(why))
+    end
+    return ok
+end
+
+-- Several clients can report the same death; count each corpse once.
+local recentObjectiveKills = {}
+local RECENT_KILL_SECONDS = 30
+
+local function alreadyCountedKill(cellDescription, uniqueIndex)
+    local now = os.time()
+    for key, at in pairs(recentObjectiveKills) do
+        if now - at > RECENT_KILL_SECONDS then recentObjectiveKills[key] = nil end
+    end
+    local key = tostring(cellDescription) .. "|" .. tostring(uniqueIndex)
+    if recentObjectiveKills[key] ~= nil then return true end
+    recentObjectiveKills[key] = now
+    return false
+end
+
+local function onActorDeathObjectives(eventStatus, pid, cellDescription, actors)
+    if not enabled() then return end
+    for uniqueIndex, actor in pairs(actors or {}) do
+        local killer = type(actor) == "table" and actor.killer or nil
+        local killerPid = type(killer) == "table" and killer.pid or nil
+        local refId = type(actor) == "table" and trim(actor.refId):lower() or ""
+        if killerPid ~= nil and refId ~= "" and Players[killerPid] ~= nil and Players[killerPid]:IsLoggedIn()
+            and not alreadyCountedKill(cellDescription, uniqueIndex) then
+            local cv = ensurePlayerData(killerPid)
+            for questId, state in pairs(cv and cv.serverQuests or {}) do
+                local quest = type(state) == "table" and state.state == "active" and runtimeQuestUsable(questId) or nil
+                local stage = quest and findStage(quest, state.stage) or nil
+                local objective = stage and stage.objective or nil
+                if type(objective) == "table" and objective.type == "kill" and trim(objective.refId):lower() == refId then
+                    state.objectiveProgress = type(state.objectiveProgress) == "table" and state.objectiveProgress or {}
+                    local key = tostring(stage.index)
+                    local done = (tonumber(state.objectiveProgress[key]) or 0) + 1
+                    local need = math.max(1, math.floor(tonumber(objective.count) or 1))
+                    state.objectiveProgress[key] = done
+                    if done >= need then
+                        completeObjective(killerPid, quest, objective)
+                    else
+                        Players[killerPid]:QuicksaveToDrive()
+                        local view = serverQuestSystem.GetLocalizedQuest(killerPid, quest)
+                        callIfPresent("MessageBox", killerPid, -1, tostring(view.name) .. ": " .. done .. " / " .. need)
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function isExteriorCell(cell)
+    return trim(cell):match("^%-?%d+%s*,%s*%-?%d+$") ~= nil
+end
+
+local function checkVisitObjectives(pid)
+    if Players[pid] == nil or not Players[pid]:IsLoggedIn() then return end
+    local cv = ensurePlayerData(pid)
+    if cv == nil then return end
+    local cell = tes3mp.GetCell(pid)
+    for questId, state in pairs(cv.serverQuests or {}) do
+        local quest = type(state) == "table" and state.state == "active" and runtimeQuestUsable(questId) or nil
+        local stage = quest and findStage(quest, state.stage) or nil
+        local objective = stage and stage.objective or nil
+        if type(objective) == "table" and objective.type == "visit" then
+            local radius = tonumber(objective.radius) or 0
+            local reached
+            if radius > 0 then
+                local dx = (tonumber(tes3mp.GetPosX(pid)) or 0) - (tonumber(objective.posX) or 0)
+                local dy = (tonumber(tes3mp.GetPosY(pid)) or 0) - (tonumber(objective.posY) or 0)
+                local dz = (tonumber(tes3mp.GetPosZ(pid)) or 0) - (tonumber(objective.posZ) or 0)
+                local close = dx * dx + dy * dy + dz * dz <= radius * radius
+                -- Exterior coordinates are world coordinates: a radius may cross
+                -- a cell border. Interiors additionally need the same cell.
+                if isExteriorCell(objective.cell) then
+                    reached = close and isExteriorCell(cell)
+                else
+                    reached = close and questCellMatches(objective.cell, cell)
+                end
+            else
+                reached = questCellMatches(objective.cell, cell)
+            end
+            if reached then completeObjective(pid, quest, objective) end
+        end
+    end
+end
+
+local VISIT_TICK_MS = 1000
+local visitTimerId = nil
+local visitTickErrorLogged = false
+
+local function anyVisitObjective()
+    for _, quest in pairs(serverQuestSystem.quests) do
+        if quest.status == "published" then
+            for _, stage in ipairs(quest.stages or {}) do
+                if type(stage.objective) == "table" and stage.objective.type == "visit" then return true end
+            end
+        end
+    end
+    return false
+end
+
+function ArenaMP_ServerQuestVisitTick()
+    if enabled() and Players ~= nil and anyVisitObjective() then
+        for pid, player in pairs(Players) do
+            if player ~= nil and player:IsLoggedIn() then
+                local ok, err = pcall(checkVisitObjectives, pid)
+                if not ok and not visitTickErrorLogged then
+                    visitTickErrorLogged = true
+                    log(enumerations.log.ERROR, "Visit objective check failed: " .. tostring(err))
+                end
+            end
+        end
+    end
+    if visitTimerId ~= nil then tes3mp.RestartTimer(visitTimerId, VISIT_TICK_MS) end
+end
+-- End of QW1 runtime --------------------------------------------------------
+
 local function onObjectActivateQuestPicker(eventStatus, pid, cellDescription, objects, targetPlayers)
     if not enabled() or not isModerator(pid) then return end
     local state = serverQuestSystem.editor[pid]
@@ -3341,6 +3717,16 @@ function serverQuestSystem.Initialize()
     end)
     customEventHooks.registerHandler("OnGUIAction", onGuiAction)
     customEventHooks.registerHandler("OnObjectActivate", onObjectActivateQuestPicker)
+    -- QW1: wizard world picking, kill/visit objectives.
+    customEventHooks.registerValidator("OnObjectActivate", validateWizardPick)
+    customEventHooks.registerHandler("OnActorDeath", onActorDeathObjectives)
+    customEventHooks.registerHandler("OnPlayerCellChange", function(eventStatus, pid)
+        if enabled() then pcall(checkVisitObjectives, pid) end
+    end)
+    if visitTimerId == nil and type(tes3mp.CreateTimer) == "function" then
+        visitTimerId = tes3mp.CreateTimer("ArenaMP_ServerQuestVisitTick", VISIT_TICK_MS)
+        tes3mp.StartTimer(visitTimerId)
+    end
     customEventHooks.registerHandler("OnObjectActivate", onObjectActivateQuestResync)
     customEventHooks.registerHandler("OnPlayerAuthentified", onPlayerAuthentified)
     customEventHooks.registerHandler("OnPlayerFinishLogin", onPlayerFinishLogin)

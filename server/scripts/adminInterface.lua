@@ -55,7 +55,10 @@ local ID = {
 
 adminInterface.ID = ID
 
-local requiredRank = 2
+-- Y111: the minimum rank is config.staffPermissions.adminPanel (default 1:
+-- moderators and admins). It is read on every check, so hot reload applies.
+local staffPermissions = require("staffPermissions")
+local function requiredRank() return staffPermissions.Required("adminPanel") end
 
 -- Состояние навигации на игрока. Ключи:
 --   tab           — открытая вкладка
@@ -98,7 +101,7 @@ end
 local function hasAccess(pid)
     if Players[pid] == nil or not Players[pid]:IsLoggedIn() then return false end
     if Players[pid]:IsServerOwner() then return true end
-    return staffRank(pid) >= requiredRank
+    return staffRank(pid) >= requiredRank()
 end
 
 adminInterface.HasAccess = hasAccess
@@ -1085,7 +1088,9 @@ end
 
 customCommandHooks.registerCommand("admin", commandAdmin)
 customCommandHooks.registerCommand("panel", commandAdmin)
-customCommandHooks.setRankRequirement("admin", requiredRank)
-customCommandHooks.setRankRequirement("panel", requiredRank)
+-- The command hook only keeps ordinary players out (rank 1 = lowest staff);
+-- commandAdmin/hasAccess applies the configured adminPanel rank dynamically.
+customCommandHooks.setRankRequirement("admin", 1)
+customCommandHooks.setRankRequirement("panel", 1)
 
 return adminInterface

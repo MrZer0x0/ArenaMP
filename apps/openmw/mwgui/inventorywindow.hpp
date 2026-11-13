@@ -9,6 +9,7 @@
 
 namespace MyGUI
 {
+    class ImageBox;
     class ScrollView;
 }
 
@@ -165,6 +166,11 @@ namespace MWGui
 
             void onWindowResize(MyGUI::Window* _sender);
             void onFilterChanged(MyGUI::Widget* _sender);
+            // IF1: category filters are icon buttons with tooltips.
+            void setupFilterIcons();
+            void layoutFilterIcons(int rowWidth);
+            void refreshFilterIconStates();
+            MyGUI::ImageBox* mFilterIcons[6] = {};
             void onNameFilterChanged(MyGUI::EditBox* _sender);
             void onAvatarClicked(MyGUI::Widget* _sender);
             void onPaperDollClicked(MyGUI::Widget* _sender);

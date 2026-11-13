@@ -340,6 +340,13 @@ namespace MWGui
         void updatePinnedPresentation();
         void onMapDoubleClicked(MyGUI::Widget* sender);
         void onCustomMarkerDoubleClicked(MyGUI::Widget* sender);
+        // WF1: personal gold flag on the world map (also shown on the compass).
+        void onFlagButtonClicked(MyGUI::Widget* sender);
+        void onGlobalMapClicked(MyGUI::Widget* sender);
+        void onGlobalMapDoubleClicked(MyGUI::Widget* sender);
+        void placeFlagAtMouse();
+        void updateGlobalFlag();
+        void updateFlagButton();
         void onNoteEditOk();
         void onNoteEditDelete();
         void onNoteEditDeleteConfirm();
@@ -358,6 +365,10 @@ namespace MWGui
         MyGUI::Button* mButton;
         MyGUI::Button* mZoomInButton;
         MyGUI::Button* mZoomOutButton;
+        MyGUI::Button* mFlagButton = nullptr;
+        MyGUI::ImageBox* mGlobalFlag = nullptr;
+        bool mFlagArmed = false;
+        MyGUI::IntPoint mFlagPressPos;
         int mLocalZoomStep;
         int mGlobalZoomStep;
         float mLastGlobalPlayerX;

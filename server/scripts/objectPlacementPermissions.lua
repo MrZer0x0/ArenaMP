@@ -86,7 +86,8 @@ function placement.IsAllowed(pid, cellDescription, objects)
     if player == nil or not player:IsLoggedIn() then return false end
 
     local cfg = getConfig()
-    if player:IsModerator() then return true end
+    -- Y111: staff placement privilege comes from config.staffPermissions.
+    if require("staffPermissions").Has(pid, "placeAnywhere") then return true end
 
     -- The native E/Activate physics placement path publishes transforms as
     -- CLIENT_GAMEPLAY. Do not apply this anti-grief rule to script/server moves.

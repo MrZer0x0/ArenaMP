@@ -249,6 +249,28 @@ function M.manualCandidate(record)
         category="Декор",price=200}
 end
 
+-- FC1: staff capture (Admin > Decoration > Add furniture) may also add large
+-- decorative pieces whose IDs/models carry "geometry" words that the automatic
+-- catalogue rejects: wall screens, floor mats, columns, big rocks and statues,
+-- window frames, rocking chairs ("rock"), crockery ("rock"), and so on. A staff
+-- member picked the exact object, so only FUNCTIONAL objects stay excluded:
+-- doors/teleports, levers/switches/traps, quest/scripted objects, markers,
+-- invisible/collision helpers, spawners and loot-bearing containers.
+-- Do not use this for players: home pickup keeps manualCandidate().
+local functionalDeny = {"door","portal","teleport","lever","switch","trap","quest",
+    "script","marker","collision","invis","spawn","leveled","alchemy_app","ingredient"}
+function M.staffCaptureCandidate(record)
+    if not record or record.deleted or not record.refId or not record.model then return nil end
+    local id,model=lower(record.refId),lower(record.model):gsub("/","\\")
+    if #id>120 or #model>250 or not id:match("^[%w_%.%- ]+$") or
+       not model:match("%.nif$") or has(id.." "..model,functionalDeny) or
+       (record.script and record.script~="") or record.hasContents or
+       (record.kind~="STAT" and record.kind~="CONT" and record.kind~="ACTI" and record.kind~="LIGH") then return nil end
+    if record.kind=="CONT" and record.flags and record.flags%4~=0 then return nil end
+    return {refId=record.refId,name=safeName(record.name,record.refId),
+        category="Декор",price=200}
+end
+
 -- Only beds explicitly present in the curated reference catalogue reach
 -- this helper (from arenaFurniture.lua). Scripted ACTI beds are intentional:
 -- their sleeping/bed recognition logic lives in SCRI. Do NOT strip scripts or

@@ -15,6 +15,9 @@ namespace MWMechanics::ActiveGuard
     // Called once by the existing attack-owning client, before enchantments.
     bool resolve(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim,
         const MWWorld::Ptr& weapon, float& damage, bool ranged, mwmp::Attack* result);
+    // CB1: chance to dodge a physical hit completely (Light / Sanctuary).
+    // Rolled once by the attack-owning client; a dodge is sent as a miss.
+    bool evaded(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim);
     // Replays only the published costs/reactions. Never recalculates damage.
     void replay(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const mwmp::Attack& result);
 }

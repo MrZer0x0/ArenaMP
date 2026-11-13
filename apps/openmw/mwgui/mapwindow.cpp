@@ -52,6 +52,7 @@
 #include "exposedwindow.hpp"
 #include "tooltips.hpp"
 #include "mapmarkerstyle.hpp"
+#include "arenawaypoint.hpp"
 
 namespace
 {
@@ -888,6 +889,32 @@ namespace MWGui
         mEventBoxGlobal->eventMouseButtonPressed += MyGUI::newDelegate(this, &MapWindow::onDragStart);
         mEventBoxGlobal->setDepth(Global_ExploreOverlayLayer);
 
+        // WF1: gold flag. Desktop: double-click the world map. Touch: press the
+        // flag button, then tap the map. The same button removes the flag.
+        mEventBoxGlobal->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onGlobalMapClicked);
+        mEventBoxGlobal->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MapWindow::onGlobalMapDoubleClicked);
+        mGlobalFlag = mGlobalMap->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(0, 0, 24, 24), MyGUI::Align::Default);
+        mGlobalFlag->setImageTexture("textures/ui/arenamw/map_flag.png");
+        mGlobalFlag->setNeedMouseFocus(false);
+        mGlobalFlag->setDepth(Global_CompassLayer);
+        mGlobalFlag->setVisible(false);
+        // Compact icon-only button: leaves room for the other map controls,
+        // including on small Android map windows. Keep its full action text
+        // as a tooltip instead of rendering it inside the button.
+        mFlagButton = mMainWidget->createWidget<MyGUI::Button>("MW_Button",
+            MyGUI::IntCoord(70, 233, 32, 22), MyGUI::Align::Bottom | MyGUI::Align::Left, "ArenaFlagButton");
+        mFlagButton->setNeedKeyFocus(false);
+        mFlagButton->setCaption("");
+        mFlagButton->setUserString("ToolTipType", "Layout");
+        mFlagButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        MyGUI::ImageBox* flagButtonIcon = mFlagButton->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(7, 2, 18, 18), MyGUI::Align::Default);
+        flagButtonIcon->setImageTexture("textures/ui/arenamw/map_flag.png");
+        flagButtonIcon->setNeedMouseFocus(false);
+        mFlagButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onFlagButtonClicked);
+        updateFlagButton();
+
         getWidget(mEventBoxLocal, "EventBoxLocal");
         mEventBoxLocal->eventMouseDrag += MyGUI::newDelegate(this, &MapWindow::onMouseDrag);
         mEventBoxLocal->eventMouseButtonPressed += MyGUI::newDelegate(this, &MapWindow::onDragStart);
@@ -1188,6 +1215,107 @@ namespace MWGui
     {
         if (_id!=MyGUI::MouseButton::Left) return;
         mLastDragPos = MyGUI::IntPoint(_left, _top);
+        mFlagPressPos = MyGUI::IntPoint(_left, _top);
+    }
+
+    // ---------------------------------------------------------------- WF1 flag
+
+    void MapWindow::updateFlagButton()
+    {
+        if (!mFlagButton)
+            return;
+        const char* key = ArenaWaypoint::has() ? "#{arenamp=map.flag.remove}"
+            : (mFlagArmed ? "#{arenamp=map.flag.cancel}" : "#{arenamp=map.flag.set}");
+        mFlagButton->setUserString("Caption_TextOneLine",
+            MyGUI::LanguageManager::getInstance().replaceTags(key));
+        mFlagButton->setStateSelected(mFlagArmed || ArenaWaypoint::has());
+    }
+
+    void MapWindow::onFlagButtonClicked(MyGUI::Widget*)
+    {
+        if (ArenaWaypoint::has())
+        {
+            ArenaWaypoint::clear();
+            mFlagArmed = false;
+            MWBase::Environment::get().getWindowManager()->messageBox("#{arenamp=map.flag.removed}");
+        }
+        else
+        {
+            mFlagArmed = !mFlagArmed;
+            if (mFlagArmed)
+                MWBase::Environment::get().getWindowManager()->messageBox("#{arenamp=map.flag.prompt}");
+        }
+        updateFlagButton();
+        updateGlobalFlag();
+    }
+
+    void MapWindow::onGlobalMapClicked(MyGUI::Widget*)
+    {
+        if (!mFlagArmed)
+            return;
+        // A drag to pan the map also ends in a click: only a real tap places the flag.
+        const MyGUI::IntPoint mouse = MyGUI::InputManager::getInstance().getMousePosition();
+        if (std::abs(mouse.left - mFlagPressPos.left) > 8 || std::abs(mouse.top - mFlagPressPos.top) > 8)
+            return;
+        placeFlagAtMouse();
+    }
+
+    void MapWindow::onGlobalMapDoubleClicked(MyGUI::Widget*)
+    {
+        placeFlagAtMouse();
+    }
+
+    void MapWindow::placeFlagAtMouse()
+    {
+        if (!mGlobalMapRender || !mEventBoxGlobal)
+            return;
+        const float zoom = getGlobalZoomFactor();
+        const float width = mGlobalMapRender->getWidth() * zoom;
+        const float height = mGlobalMapRender->getHeight() * zoom;
+        if (width <= 0.f || height <= 0.f)
+            return;
+
+        const MyGUI::IntPoint local = MyGUI::InputManager::getInstance().getMousePosition()
+            - mEventBoxGlobal->getAbsolutePosition();
+        const float imageX = local.left / width;
+        const float imageY = local.top / height;
+
+        // worldPosToImageSpace is linear on each axis: invert it from two samples.
+        const float unit = static_cast<float>(Constants::CellSizeInUnits);
+        float x0 = 0.f, y0 = 0.f, x1 = 0.f, y1 = 0.f;
+        mGlobalMapRender->worldPosToImageSpace(0.f, 0.f, x0, y0);
+        mGlobalMapRender->worldPosToImageSpace(unit, unit, x1, y1);
+        if (std::abs(x1 - x0) < 1e-9f || std::abs(y1 - y0) < 1e-9f)
+            return;
+        const float worldX = (imageX - x0) / (x1 - x0) * unit;
+        const float worldY = (imageY - y0) / (y1 - y0) * unit;
+
+        ArenaWaypoint::set(worldX, worldY);
+        mFlagArmed = false;
+        updateFlagButton();
+        updateGlobalFlag();
+        MWBase::Environment::get().getWindowManager()->messageBox("#{arenamp=map.flag.placed}");
+    }
+
+    void MapWindow::updateGlobalFlag()
+    {
+        if (!mGlobalFlag || !mGlobalMapRender)
+            return;
+        if (!ArenaWaypoint::has())
+        {
+            mGlobalFlag->setVisible(false);
+            return;
+        }
+        float x = 0.f;
+        float y = 0.f;
+        mGlobalMapRender->worldPosToImageSpace(ArenaWaypoint::x(), ArenaWaypoint::y(), x, y);
+        const float zoom = getGlobalZoomFactor();
+        x *= mGlobalMapRender->getWidth() * zoom;
+        y *= mGlobalMapRender->getHeight() * zoom;
+        // The icon's pole foot (about 20% from the left, at the bottom) marks the spot.
+        mGlobalFlag->setPosition(MyGUI::IntPoint(static_cast<int>(std::lround(x)) - 5,
+            static_cast<int>(std::lround(y)) - 24));
+        mGlobalFlag->setVisible(true);
     }
 
     void MapWindow::onMouseDrag(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
@@ -1341,6 +1469,8 @@ namespace MWGui
                 static_cast<int>(std::lround(viewSize.height * 0.5f - oldCenterY * ratioY))));
         }
 
+        updateGlobalFlag();
+
         if (Settings::Manager::getInt("global map zoom step", "Map") != mGlobalZoomStep)
             Settings::Manager::setInt("global map zoom step", "Map", mGlobalZoomStep);
     }
@@ -1365,6 +1495,14 @@ namespace MWGui
             mZoomInButton->setVisible(normalControls);
         if (mZoomOutButton)
             mZoomOutButton->setVisible(normalControls);
+        // WF1: the flag button belongs to the world map view.
+        if (mFlagButton)
+            mFlagButton->setVisible(normalControls && mGlobal);
+        if (!(normalControls && mGlobal) && mFlagArmed)
+        {
+            mFlagArmed = false;
+            updateFlagButton();
+        }
 
         Window* window = mMainWidget->castType<Window>(false);
         if (!window)
@@ -1409,6 +1547,8 @@ namespace MWGui
         ensureGlobalMapLoaded();
 
         globalMapUpdatePlayer();
+        updateFlagButton();
+        updateGlobalFlag();
     }
 
     void MapWindow::globalMapUpdatePlayer ()

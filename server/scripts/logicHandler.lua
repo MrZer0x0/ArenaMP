@@ -968,7 +968,14 @@ local cellFlushTimerId
 local CELL_BATCH_IDLE_MS = 350
 local CELL_BATCH_MAX_AGE_MS = 1500
 local CELL_BATCH_TICK_MS = 200
-local CELL_BATCH_MAX_CELLS = 24
+-- ArenaMP Y111: one login restock touches ~30 merchant cells. With a limit of
+-- 24 every further cell forced a synchronous eviction save in the middle of the
+-- burst. 64 keeps the whole burst cached; each entry is a single cell table.
+local CELL_BATCH_MAX_CELLS = 64
+-- ArenaMP Y111: a timer tick used to save EVERY due cell at once (~30 JSON
+-- writes in one tick after a login). Save at most this much per tick; the
+-- remainder is picked up 200 ms later. At least one cell is always saved.
+local CELL_BATCH_FLUSH_BUDGET_MS = 8
 
 local function cellBatchNow()
     if type(tes3mp.GetMillisecondsSinceServerStart) == "function" then
@@ -998,9 +1005,26 @@ end
 
 local function flushPendingCells(force)
     local now = cellBatchNow()
+    -- Collect the due cells first so they can be saved oldest-first under a
+    -- per-tick time budget instead of all inside one timer callback.
+    local due = {}
     for description, entry in pairs(pendingCellWrites) do
         if force or now >= entry.deadline or now - entry.started >= CELL_BATCH_MAX_AGE_MS then
-            savePendingCell(description, entry)
+            due[#due + 1] = { description = description, entry = entry }
+        end
+    end
+    -- Oldest first, so the budget can never starve a cell indefinitely.
+    table.sort(due, function(a, b) return a.entry.started < b.entry.started end)
+
+    local started = cellBatchNow()
+    for index, item in ipairs(due) do
+        -- Skip entries that were reopened (LoadCell) while we were saving.
+        if pendingCellWrites[item.description] == item.entry then
+            savePendingCell(item.description, item.entry)
+        end
+        if not force and index < #due and
+            (cellBatchNow() - started) % 4294967296 >= CELL_BATCH_FLUSH_BUDGET_MS then
+            break
         end
     end
 end

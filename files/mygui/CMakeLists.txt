@@ -121,6 +121,7 @@ set(MYGUI_FILES
     tes3mp_text_input.layout
     arenamp_serverquesteditor.layout
     arenamp_furniture.layout
+    arenamp_questwizard.layout
 )
 
 

@@ -1,4 +1,5 @@
 #include "aicombat.hpp"
+#include "arenacombatbalance.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -2269,6 +2270,10 @@ namespace MWMechanics
                         combatSettings().mMeleeCooldownScale));
                     attackCooldown *= cooldownScale;
                 }
+                // CB1: faster (higher level) creatures also pause less between attacks.
+                if (!actor.getClass().isNpc())
+                    attackCooldown /= ArenaCombatBalance::creatureAttackSpeed(
+                        actor.getClass().getCreatureStats(actor).getLevel());
                 mAttackCooldown = std::max(0.05f, attackCooldown);
             }
             else

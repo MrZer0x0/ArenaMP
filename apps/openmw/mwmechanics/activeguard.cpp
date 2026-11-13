@@ -1,6 +1,7 @@
 #include "activeguard.hpp"
 #include "combat.hpp"
 #include "guardrules.hpp"
+#include "arenacombatbalance.hpp"
 #include "creaturestats.hpp"
 #include "npcstats.hpp"
 #include "actorutil.hpp"
@@ -20,6 +21,7 @@
 #include <components/esm/loadweap.hpp>
 #include <components/esm/attr.hpp>
 #include <components/esm/loadskil.hpp>
+#include <components/esm/loadmgef.hpp>
 #include <algorithm>
 #include <cmath>
 
@@ -182,38 +184,95 @@ void replay(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const mwmp
     }
     MWBase::Environment::get().getSoundManager()->playSound3D(victim, "Heavy Armor Hit", .8f, 1.f);
 }
+namespace
+{
+    // Shared tail of an active or passive block: publish and apply it once.
+    bool commitGuard(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const Tool& t,
+        const GuardRules::Result& outcome, float& damage, bool ranged, mwmp::Attack* packet)
+    {
+        mwmp::Attack result;
+        result.type = ranged ? mwmp::Attack::RANGED : mwmp::Attack::MELEE;
+        result.guardResult = outcome.kind;
+        result.guardFatigue = outcome.fatigue;
+        result.guardWear = outcome.wear;
+        if (!t.item.isEmpty()) result.guardItem = t.item.getCellRef().getRefId();
+        result.block = outcome.kind == 2;
+        damage = outcome.damage;
+        if (packet)
+        {
+            packet->guardResult = result.guardResult; packet->guardFatigue = result.guardFatigue;
+            packet->guardWear = result.guardWear; packet->guardItem = result.guardItem; packet->block = result.block;
+        }
+        replay(attacker, victim, result);
+        return true;
+    }
+
+    bool facing(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const Tool& t)
+    {
+        osg::Vec3f direction = attacker.getRefData().getPosition().asVec3() - victim.getRefData().getPosition().asVec3();
+        direction.z() = 0.f;
+        if (direction.normalize() == 0.f) return false;
+        const float yaw = victim.getRefData().getPosition().rot[2];
+        const osg::Vec3f forward(std::sin(yaw), std::cos(yaw), 0.f);
+        const float arcCos = t.shield ? .5f : (t.item.isEmpty() ? .766044f : .642788f);
+        return direction * forward >= arcCos;
+    }
+
+    float fatigueRatio(const CreatureStats& s)
+    {
+        const float maximum = s.getFatigue().getModified();
+        return maximum > 0.f ? std::clamp(s.getFatigue().getCurrent() / maximum, 0.f, 1.f) : 0.f;
+    }
+
+    // CB1: automatic block without a raised guard. Weaker than Active Guard:
+    // never a timed parry, never a guard break, absorbs 75% of a raised block.
+    bool resolvePassive(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const MWWorld::Ptr& weapon,
+        float& damage, bool ranged, mwmp::Attack* packet)
+    {
+        if (!available(victim)) return false; // weapon drawn, not staggered, has fatigue, usable tool
+        if (MWBase::Environment::get().getMechanicsManager()->isAttackingOrSpell(victim)) return false;
+        const auto t = tool(victim);
+        if (ranged && !t.shield) return false;            // only a shield catches arrows by itself
+        if (!weapon.isEmpty() && t.item.isEmpty()) return false; // bare hands never stop a blade passively
+        if (!facing(attacker, victim, t)) return false;
+        auto& s = victim.getClass().getCreatureStats(victim);
+        const float chance = ArenaCombatBalance::autoBlockChance(t.skill, victim.getClass().getArmorRating(victim),
+            t.shield, t.item.isEmpty(), fatigueRatio(s));
+        if (chance <= 0.f || Misc::Rng::rollProbability() >= chance) return false;
+        // Age far past the parry window: a passive block is never "perfect".
+        auto outcome = GuardRules::resolve(damage, s.getFatigue().getCurrent(), t.skill, 10.f, t.shield, ranged);
+        if (outcome.kind != 1) return false; // too tired to block: the hit lands normally
+        outcome.damage = damage - (damage - outcome.damage) * ArenaCombatBalance::autoBlockEfficiency;
+        return commitGuard(attacker, victim, t, outcome, damage, ranged, packet);
+    }
+}
+
+bool evaded(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim)
+{
+    if (attacker.isEmpty() || victim.isEmpty() || !victim.getClass().isActor()) return false;
+    const auto& s = victim.getClass().getCreatureStats(victim);
+    // Cannot sidestep while helpless.
+    if (s.isDead() || s.getKnockedDown() || s.isParalyzed() || s.getHitRecovery()) return false;
+    const auto& effects = s.getMagicEffects();
+    const float chance = ArenaCombatBalance::evasionChance(
+        effects.get(ESM::MagicEffect::Light).getMagnitude(),
+        effects.get(ESM::MagicEffect::Sanctuary).getMagnitude(), fatigueRatio(s));
+    return chance > 0.f && Misc::Rng::rollProbability() < chance;
+}
+
 bool resolve(const MWWorld::Ptr& attacker, const MWWorld::Ptr& victim, const MWWorld::Ptr& weapon,
     float& damage, bool ranged, mwmp::Attack* packet)
 {
     if (packet) { packet->guardResult = 0; packet->guardFatigue = 0; packet->guardWear = 0; packet->guardItem.clear(); packet->block = false; }
-    if (!raised(victim) || attacker.isEmpty() || !MechanicsHelper::isFriendlyFireAllowed(attacker, victim)) return false;
+    if (attacker.isEmpty() || !MechanicsHelper::isFriendlyFireAllowed(attacker, victim)) return false;
+    if (!raised(victim)) return resolvePassive(attacker, victim, weapon, damage, ranged, packet);
     const auto t = tool(victim);
     if (ranged && !t.shield && t.skill < 90.f) return false;
     if (!weapon.isEmpty() && t.item.isEmpty() && t.skill < 90.f) return false;
-    osg::Vec3f direction = attacker.getRefData().getPosition().asVec3() - victim.getRefData().getPosition().asVec3();
-    direction.z() = 0.f;
-    if (direction.normalize() == 0.f) return false;
-    const float yaw = victim.getRefData().getPosition().rot[2];
-    const osg::Vec3f forward(std::sin(yaw), std::cos(yaw), 0.f);
-    const float arcCos = t.shield ? .5f : (t.item.isEmpty() ? .766044f : .642788f);
-    if (direction * forward < arcCos) return false;
+    if (!facing(attacker, victim, t)) return false;
     auto& s = victim.getClass().getCreatureStats(victim);
     const auto outcome = GuardRules::resolve(damage, s.getFatigue().getCurrent(), t.skill, s.mGuard.age, t.shield, ranged);
     if (!outcome.kind) return false;
-    mwmp::Attack result;
-    result.type = ranged ? mwmp::Attack::RANGED : mwmp::Attack::MELEE;
-    result.guardResult = outcome.kind;
-    result.guardFatigue = outcome.fatigue;
-    result.guardWear = outcome.wear;
-    if (!t.item.isEmpty()) result.guardItem = t.item.getCellRef().getRefId();
-    result.block = outcome.kind == 2;
-    damage = outcome.damage;
-    if (packet)
-    {
-        packet->guardResult = result.guardResult; packet->guardFatigue = result.guardFatigue;
-        packet->guardWear = result.guardWear; packet->guardItem = result.guardItem; packet->block = result.block;
-    }
-    replay(attacker, victim, result);
-    return true;
+    return commitGuard(attacker, victim, t, outcome, damage, ranged, packet);
 }
 }

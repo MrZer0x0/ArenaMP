@@ -21,6 +21,7 @@
 #include "nativeanimation.hpp"
 #include "../mwrender/npcanimation.hpp"
 #include "activeguard.hpp"
+#include "arenacombatbalance.hpp"
 
 #include <iostream>
 
@@ -1957,6 +1958,12 @@ bool CharacterController::updateWeaponState(CharacterState& idle)
             mUpperBodyState = UpperCharState_WeapEquiped;
         }
     }
+
+    // CB1: creatures (not NPCs or players) swing at 0.5x..1.5x speed by level.
+    // Every client computes the same factor from the same level, so the
+    // animation stays in step with the attack-owning client.
+    if (cls.isActor() && !cls.isNpc())
+        weapSpeed *= ArenaCombatBalance::creatureAttackSpeed(cls.getCreatureStats(mPtr).getLevel());
 
     // Combat for actors with persistent animations obviously will be buggy
     if (isPersistentAnimPlaying())

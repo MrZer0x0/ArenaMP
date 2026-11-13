@@ -2,6 +2,7 @@
 #define OPENMW_MWMP_SERVERQUESTREGISTRY_HPP
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace mwmp
@@ -141,6 +142,14 @@ namespace mwmp
         std::vector<ServerQuestEditorStage> stages;
         std::vector<std::string> validationErrors;
         std::vector<std::string> validationWarnings;
+
+        // QW1: quests made in the wizard carry the wizard parameters (flat
+        // key/value pairs, see server/scripts/questWizard.lua) so they can be
+        // reopened in the wizard. wizardDetached means the advanced editor has
+        // changed the quest since, and saving in the wizard would overwrite that.
+        bool hasWizard = false;
+        bool wizardDetached = false;
+        std::vector<std::pair<std::string, std::string>> wizardFields;
     };
 
     struct ServerQuestEditorModel
@@ -150,7 +159,30 @@ namespace mwmp
         bool isAdmin = false;
         std::string selectedQuestId;
         std::string notice;
+        std::string view = "studio"; // QW1: "wizard" or "studio"
         std::vector<ServerQuestEditorQuest> quests;
+    };
+
+    // QW1: answer to a wizard "pick in the world" / "mark this place" request.
+    struct ServerQuestWizardPick
+    {
+        unsigned serial = 0;
+        std::string kind; // giver | fetch | reward | kill | visit
+        std::string refId;
+        std::string cell;
+        std::string uniqueIndex;
+        float x = 0.f;
+        float y = 0.f;
+        float z = 0.f;
+    };
+
+    // QW1: outcome of a wizard save, sent right before the editor resync.
+    struct ServerQuestWizardResult
+    {
+        unsigned serial = 0;
+        bool ok = false;
+        std::string questId;
+        std::string message;
     };
 
     class ServerQuestRegistry
@@ -161,7 +193,8 @@ namespace mwmp
             None,
             SyncComplete,
             Response,
-            EditorSyncComplete
+            EditorSyncComplete,
+            WizardPick
         };
 
         static constexpr int TransportGuiId = -35036;
@@ -173,6 +206,9 @@ namespace mwmp
         std::vector<ServerQuestTopic> getTopics(const std::string& giverRefId, const std::string& cell) const;
         const std::vector<ServerQuestState>& getQuestStates() const { return mQuestStates; }
         const ServerQuestEditorModel& getEditorModel() const { return mEditor; }
+        // Kept outside mEditor: EDITOR_CLEAR resets the model on every sync.
+        const ServerQuestWizardPick& getWizardPick() const { return mWizardPick; }
+        const ServerQuestWizardResult& getWizardResult() const { return mWizardResult; }
         void clear();
 
     private:
@@ -185,6 +221,8 @@ namespace mwmp
         std::vector<ServerQuestTopic> mTopics;
         std::vector<ServerQuestState> mQuestStates;
         ServerQuestEditorModel mEditor;
+        ServerQuestWizardPick mWizardPick;
+        ServerQuestWizardResult mWizardResult;
     };
 }
 

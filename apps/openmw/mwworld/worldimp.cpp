@@ -1595,6 +1595,11 @@ namespace MWWorld
         return facedObject;
     }
 
+    MWWorld::Ptr World::getFacedObjectWithin(float maxDistance)
+    {
+        return getFacedObject(maxDistance, true);
+    }
+
    float World::getDistanceToFacedObject()
    {
         return mDistanceToFacedObject;

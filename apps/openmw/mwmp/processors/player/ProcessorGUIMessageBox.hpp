@@ -62,7 +62,15 @@ namespace mwmp
                             dialogueWindow->refreshServerQuestTopics();
                     }
                     if (event == ServerQuestRegistry::TransportEvent::EditorSyncComplete)
-                        Main::get().getGUIController()->showServerQuestEditor();
+                    {
+                        // QW1: the server says which window sent the last command.
+                        if (ServerQuestRegistry::get().getEditorModel().view == "wizard")
+                            Main::get().getGUIController()->showQuestWizard();
+                        else
+                            Main::get().getGUIController()->showServerQuestEditor();
+                    }
+                    else if (event == ServerQuestRegistry::TransportEvent::WizardPick)
+                        Main::get().getGUIController()->receiveWizardPick();
                     return;
                 }
 

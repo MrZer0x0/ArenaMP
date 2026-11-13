@@ -956,18 +956,112 @@ int Networking::mainLoop()
         if (kbhit() && getch() == '\n')
             break;
 #endif
-        // Y098: sustained traffic must yield to timers and suspended sessions.
-        // Check the budget BEFORE Receive: never fetch a packet we cannot release.
-        const auto packetDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(4);
-        for (unsigned processed=0; processed<256 && (processed==0 || std::chrono::steady_clock::now()<packetDeadline)
-            && (packet=peer->Receive())!=nullptr; ++processed, peer->DeallocatePacket(packet))
+        // ArenaMP Y111: per-connection fair scheduling.
+        // RakNet delivers one global FIFO. A joining client fires a burst of
+        // ~100+ script packets (merchant restock Container ADDs, cell loads,
+        // map sync). Each of those can cost tens of milliseconds in Lua, and
+        // in a single FIFO every other player's ID_OBJECT_ACTIVATE waited
+        // behind the whole burst: doors, NPCs and containers "hung" for 3-5 s.
+        // Packets are now moved into per-GUID FIFOs and served round-robin.
+        // Order WITHIN one connection is unchanged (including connection
+        // lost/closed notifications, which carry the same GUID), so all
+        // existing per-player sequencing assumptions still hold.
+        // Pull only while the local backlog is bounded; the rest stays queued
+        // inside RakNet exactly as before.
+        while (queuedPackets < MAX_LOCAL_PACKET_BACKLOG && (packet = peer->Receive()) != nullptr)
         {
-            if (!packet->data || packet->length==0) continue;
+            std::deque<RakNet::Packet*>& queue = packetQueues[packet->guid.g];
+            if (queue.empty())
+                packetSchedule.push_back(packet->guid.g);
+            queue.push_back(packet);
+            ++queuedPackets;
+        }
+
+        // Y098: sustained traffic must yield to timers and suspended sessions.
+        // At least one packet is processed per loop, then up to a 4 ms budget.
+        const auto packetDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(4);
+        for (unsigned processed = 0; processed < 256 && !packetSchedule.empty()
+            && (processed == 0 || std::chrono::steady_clock::now() < packetDeadline); ++processed)
+        {
+            const std::uint64_t key = packetSchedule.front();
+            packetSchedule.pop_front();
+            auto queueIt = packetQueues.find(key);
+            if (queueIt == packetQueues.end() || queueIt->second.empty())
+            {
+                if (queueIt != packetQueues.end())
+                    packetQueues.erase(queueIt);
+                continue;
+            }
+
+            packet = queueIt->second.front();
+            queueIt->second.pop_front();
+            --queuedPackets;
+            // Another connection gets the next turn; this one goes to the back.
+            if (queueIt->second.empty())
+                packetQueues.erase(queueIt);
+            else
+                packetSchedule.push_back(key);
+
+            const auto packetStarted = std::chrono::steady_clock::now();
+            const unsigned char packetId = (packet->data && packet->length > 0) ? packet->data[0] : 0;
+            const RakNet::RakNetGUID packetGuid = packet->guid;
+            processIncomingPacket(packet);
+            peer->DeallocatePacket(packet);
+            packet = nullptr;
+            reportSlowPacket(packetId, packetGuid, std::chrono::steady_clock::now() - packetStarted);
+        }
+        expireSuspendedPlayers();
+        TimerAPI::Tick();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    // Release packets that were fetched from RakNet but never processed.
+    for (auto& entry : packetQueues)
+        for (RakNet::Packet* pending : entry.second)
+            peer->DeallocatePacket(pending);
+    packetQueues.clear();
+    packetSchedule.clear();
+    queuedPackets = 0;
+
+    TimerAPI::Terminate();
+    return exitCode;
+}
+
+void Networking::reportSlowPacket(unsigned char packetId, RakNet::RakNetGUID guid,
+    std::chrono::steady_clock::duration elapsed)
+{
+    // Y111 diagnostics: a single packet that blocks the server thread delays
+    // every other player's interaction. Report such packets, rate-limited, so
+    // remaining hitches can be attributed from tes3mp-server.log.
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    if (elapsedMs < SLOW_PACKET_WARN_MS)
+        return;
+
+    ++slowPacketsSinceReport;
+    slowPacketMsSinceReport += elapsedMs;
+    const auto now = std::chrono::steady_clock::now();
+    if (now < nextSlowPacketReport)
+        return;
+
+    Player* player = Players::getPlayer(guid);
+    LOG_MESSAGE_SIMPLE(TimedLog::LOG_WARN,
+        "[ServerTick] Slow packet id=%u from %s took %lld ms (%u slow packet(s), %lld ms total since last report)",
+        static_cast<unsigned>(packetId), player != nullptr ? player->npc.mName.c_str() : "<unknown>",
+        static_cast<long long>(elapsedMs), slowPacketsSinceReport, static_cast<long long>(slowPacketMsSinceReport));
+    slowPacketsSinceReport = 0;
+    slowPacketMsSinceReport = 0;
+    nextSlowPacketReport = now + std::chrono::seconds(2);
+}
+
+void Networking::processIncomingPacket(RakNet::Packet *packet)
+{
+        {
+            if (!packet->data || packet->length==0) return;
             // ArenaMP Y052: mclient only exists when [MasterServer] enabled is
             // true. The dedicated-server default ships with it disabled, so this
             // used to dereference a null pointer for every incoming packet.
             if (getMasterClient() != nullptr && getMasterClient()->Process(packet))
-                continue;
+                return;
 
             switch (packet->data[0])
             {
@@ -1036,13 +1130,6 @@ int Networking::mainLoop()
                 }
             }
         }
-        expireSuspendedPlayers();
-        TimerAPI::Tick();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    TimerAPI::Terminate();
-    return exitCode;
 }
 
 void Networking::kickPlayer(RakNet::RakNetGUID guid, bool sendNotification)

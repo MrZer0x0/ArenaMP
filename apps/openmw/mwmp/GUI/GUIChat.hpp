@@ -14,6 +14,7 @@
 namespace MyGUI
 {
     class Button;
+    class ImageBox;
     class ListBox;
     class ScrollBar;
     class TextBox;
@@ -176,10 +177,24 @@ namespace mwmp
         // EN text both fit and neither is clipped.
         void setMenuCaption(MyGUI::Widget* widget, const std::string& caption);
         void refitCaption(MyGUI::Widget* widget);
+        // HS1: small gold icons in front of the Chat, Group and Home captions.
+        void setupButtonIcons();
+        void setButtonIcon(MyGUI::Widget* button, const char* name);
+        std::string iconCaption(MyGUI::Widget* widget, const std::string& caption);
+        void placeButtonIcon(MyGUI::Widget* widget);
         void layoutRow(const std::vector<MyGUI::Widget*>& row, int left, int top, int width, int height, int gap);
         void layoutGrid(const std::vector<MyGUI::Widget*>& cells, int left, int top, int width,
             int rowHeight, int columns, int gap);
         void applyMenuLayout();
+
+        // PM1: the section tabs live in a column on the left, each with an icon
+        // and a label. The content area starts to the right of that column.
+        static const int sTabCount = 6;
+        void setupSidebar();
+        void setTabLabel(MyGUI::Button* tab, const std::string& text);
+        MyGUI::Button* tabButton(int index) const;
+        void layoutSidebar();
+        int menuContentLeft() const;
 
         // X049 player-menu shell.
         void setupPlayerMenu();
@@ -256,6 +271,9 @@ namespace mwmp
         void onEmojiClicked(MyGUI::Widget* sender);
         void onColorClicked(MyGUI::Widget* sender);
         void onGroupButtonClicked(MyGUI::Widget* sender);
+        // HS1: irreversible group actions (kick, leave, disband) ask first.
+        void askGroupConfirmation(const std::string& action, const std::string& argument);
+        void onGroupConfirmAccepted();
         void onRosterSelected(MyGUI::ListBox* sender, size_t index);
         void onRosterAccepted(MyGUI::ListBox* sender, size_t index);
         void onPlayersButtonClicked(MyGUI::Widget* sender);
@@ -277,6 +295,13 @@ namespace mwmp
         void persistGeometry();
 
         MyGUI::Widget* mPanelBackground;
+        // PM1: compact section column (icons, names in tooltips/title) and the
+        // "back to game" button.
+        MyGUI::Widget* mMenuSidebar = nullptr;
+        MyGUI::ImageBox* mTabIcons[sTabCount] = {};
+        std::string mTabLabelTexts[sTabCount];
+        MyGUI::TextBox* mMenuTitle = nullptr;
+        MyGUI::Button* mSidebarReturn = nullptr;
         MyGUI::Widget* mDragHandle;
         MyGUI::Widget* mLayoutFrame;
         MyGUI::Widget* mLayoutDrag;
@@ -408,12 +433,15 @@ namespace mwmp
         std::string emojiFontName;
         std::string menuFontName;
         std::vector<std::string> groupRosterNames;
+        std::string pendingGroupAction;
+        std::string pendingGroupArgument;
         std::vector<std::string> playerListNames;
         std::vector<std::string> playerListDetails;
         std::vector<std::pair<unsigned int, std::string>> colorPalette;
         std::vector<std::string> colorNames;
         int selectedColorIndex;
         std::map<MyGUI::Widget*, std::string> menuCaptions;
+        std::map<MyGUI::Widget*, MyGUI::ImageBox*> menuIcons;
         bool groupInGroup;
         bool groupIsLeader;
         bool groupJournalSync;

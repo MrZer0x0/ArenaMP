@@ -359,6 +359,11 @@ namespace MWBase
             virtual MWWorld::Ptr  getFacedObject() = 0;
             ///< Return pointer to the object the player is looking at, if it is within activation range
 
+            /// FC1: the object under the crosshair within a custom reach (game units).
+            /// Used by the staff furniture capture, so large or distant decorative
+            /// pieces can be selected without standing right next to them.
+            virtual MWWorld::Ptr getFacedObjectWithin(float maxDistance) = 0;
+
             /*
                 Start of tes3mp addition
 

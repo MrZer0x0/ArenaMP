@@ -1593,6 +1593,15 @@ end
 -- Очистка инстанса делегируется resetHelper: там уже есть эвакуация игроков,
 -- безопасная отправка пакетов и работа с бэкапами. Дублировать это здесь
 -- значило бы иметь две разные и расходящиеся реализации сброса ячейки.
+-- HS1: владелец личной копии (пока дом ещё за ним числится).
+local function instanceOwner(instanceCell)
+    local base = houseHelper.GetBaseCellForInstance(instanceCell)
+    local property = base and houseHelper.GetProperty(base)
+    if property == nil or type(property.owner) ~= "string" or property.owner == "" then return nil end
+    if houseHelper.GetInstanceDescription(base, property.owner) ~= instanceCell then return nil end
+    return property.owner
+end
+
 function houseHelper.ResetInstance(instanceCell)
     if not houseHelper.IsInstanceCell(instanceCell) then return false end
     if type(instanceCell) ~= "string" or instanceCell == "" then return false end
@@ -1602,6 +1611,27 @@ function houseHelper.ResetInstance(instanceCell)
         log(enumerations.log.WARN, "periodicCellResets недоступен; инстанс " ..
             instanceCell .. " не сброшен")
         return false
+    end
+
+    -- HS1: вещи владельца (содержимое контейнеров, выложенные предметы,
+    -- купленная мебель) сначала откладываются в отдельную базу. Своими они
+    -- становятся только после успешного сброса, иначе копия отбрасывается.
+    local storage = rawget(_G, "houseStorage")
+    local staged = nil
+    if type(storage) == "table" and type(storage.Stage) == "function" then
+        local owner = instanceOwner(instanceCell)
+        if owner ~= nil then
+            local stagedOk, bundle, why = pcall(storage.Stage, instanceCell, owner)
+            if not stagedOk then
+                log(enumerations.log.ERROR, "не удалось сохранить вещи из " .. instanceCell .. ": " .. tostring(bundle))
+                return false
+            end
+            if bundle == nil and why ~= nil then
+                log(enumerations.log.ERROR, "не удалось сохранить вещи из " .. instanceCell .. ": " .. tostring(why))
+                return false
+            end
+            staged = bundle
+        end
     end
 
     local ok, success, message
@@ -1616,8 +1646,10 @@ function houseHelper.ResetInstance(instanceCell)
 
     if not ok or success ~= true then
         log(enumerations.log.ERROR, "сброс инстанса " .. instanceCell .. " не удался: " .. tostring(message or success))
+        if staged ~= nil then pcall(storage.Discard, staged) end
         return false
     end
+    if staged ~= nil then pcall(storage.Commit, staged) end
     if playerVitrines and not playerVitrines.ClearHouseCell(instanceCell) then return false end
 
     -- Запись инстанса и файл ячейки убираются вместе с владельцем: иначе на
@@ -1731,8 +1763,7 @@ function houseHelper.Sell(pid, cellDescription)
         return false, tr(pid, "Продать может только владелец.", "Only the owner can sell.")
     end
 
-    local refund = math.floor((tonumber(property.paidPrice) or property.price) *
-        (tonumber(cfg().refundRatio) or 0.5))
+    local refund = houseHelper.SellRefund(property)
 
     local previousInventory = tableHelper.deepCopy(Players[pid].data.inventory)
     local previousProperty = tableHelper.deepCopy(property)
@@ -2205,6 +2236,46 @@ function houseHelper.CanBuy(pid, property)
     return houseHelper.BuyBlockReason(pid, property) == nil
 end
 
+-- HS1: подтверждение продажи и очистки дома.
+local DANGER_MENU_ID = 9062
+config.customMenuIds.houseDangerConfirm = config.customMenuIds.houseDangerConfirm or DANGER_MENU_ID
+DANGER_MENU_ID = config.customMenuIds.houseDangerConfirm
+
+function houseHelper.SellRefund(property)
+    return math.floor((tonumber(property.paidPrice) or tonumber(property.price) or 0) *
+        (tonumber(cfg().refundRatio) or 0.5))
+end
+
+function houseHelper.ShowDangerConfirmation(pid, action, property)
+    tes3mp.SendMessage(pid, CONTROL_PREFIX .. "CANCEL\n", false)
+    local storageNote = rawget(_G, "houseStorage") ~= nil and tr(pid,
+        "Ваши вещи из сундуков и выложенные предметы будут сохранены и появятся в первом сундуке вашего следующего дома. Купленная мебель вернётся в “Моя мебель”.",
+        "Items from your chests and the items you put down are saved and appear in the first chest of your next home. Bought furniture returns to \"My furniture\".")
+        or tr(pid, "Всё содержимое дома будет удалено.", "All contents of the home will be removed.")
+    local lines, buttons
+    if action == "sell" then
+        lines = {
+            tr(pid, "Продать дом?", "Sell the home?"), "",
+            property.cell,
+            tr(pid, "Вы получите: ", "You get: ") .. tostring(houseHelper.SellRefund(property)) .. tr(pid, " золота", " gold"),
+            "", storageNote, "",
+            tr(pid, "Это действие нельзя отменить.", "This cannot be undone.")
+        }
+        buttons = tr(pid, "Продать;Отмена", "Sell;Cancel")
+    else
+        lines = {
+            tr(pid, "Очистить дом?", "Clear the home?"), "",
+            tr(pid, "Дом вернётся в исходный вид; вы останетесь владельцем.",
+                "The home returns to its original state; you stay the owner."),
+            "", storageNote, "",
+            tr(pid, "Это действие нельзя отменить.", "This cannot be undone.")
+        }
+        buttons = tr(pid, "Очистить;Отмена", "Clear;Cancel")
+    end
+    pendingChoice[pid] = { danger = action, dangerCell = property.cell }
+    tes3mp.CustomMessageBox(pid, DANGER_MENU_ID, table.concat(lines, "\n"), buttons)
+end
+
 function houseHelper.ShowBuyConfirmation(pid, property)
     tes3mp.SendMessage(pid, CONTROL_PREFIX .. "CANCEL\n", false)
     if property == nil then return end
@@ -2310,8 +2381,8 @@ end
 function houseHelper.SendClientState(pid)
     if Players[pid] == nil or not Players[pid]:IsLoggedIn() then return end
     -- H019: server-supplied moderator/admin placement permission.
-    local settings = Players[pid].data.settings or {}
-    local staff = (tonumber(settings.staffRank) or 0) >= 1
+    -- Y111: same privilege the server checks for placement (staffPermissions).
+    local staff = require("staffPermissions").Has(pid, "placeAnywhere")
     tes3mp.SendMessage(pid, CONTROL_PREFIX .. "EDIT_ROLE\t" .. (staff and "1" or "0") .. "\n", false)
     if not cfg().enabled then return end
 
@@ -2572,7 +2643,7 @@ local function commandHouse(pid, cmd)
     if sub == "list" then
         local owned = houseHelper.ListOwnedBy(accountName(pid))
         if #owned == 0 then
-            say(pid, tr(pid, "У вас нет недвижимости. Подойдите к двери свободного дома и удерживайте «Взять».",
+            say(pid, tr(pid, "У вас нет недвижимости. Подойдите к двери свободного дома и удерживайте “Взять”.",
                 "You own no property. Walk up to a vacant house door and hold Take."))
             return
         end
@@ -2657,8 +2728,14 @@ local function commandHouse(pid, cmd)
                 "Stand inside the property you want to sell."))
             return
         end
-        local ok, message = houseHelper.Sell(pid, property.cell)
-        say(pid, message)
+        -- HS1: продажа необратима, поэтому всегда через подтверждение.
+        houseHelper.ShowDangerConfirmation(pid, "sell", property)
+        return
+    end
+
+    if sub == "chest" then
+        local storage = rawget(_G, "houseStorage")
+        if type(storage) == "table" then storage.CommandChest(pid) end
         return
     end
 
@@ -2677,6 +2754,10 @@ local function commandHouse(pid, cmd)
         local property = manageProperty(pid)
         if property == nil or houseHelper.GetAccessLevel(pid, property) ~= "owner" then
             say(pid, tr(pid, "Это может сделать только владелец.", "Only the owner can do this."))
+            return
+        end
+        if lower(cmd[3] or "") ~= "confirmed" then
+            houseHelper.ShowDangerConfirmation(pid, "reset", property)
             return
         end
         local success = true
@@ -2991,7 +3072,7 @@ function houseHelper.Gift(pid, property, targetPid)
     property.locked = true
     saveStore(true)
     houseHelper.RefreshAll()
-    say(targetPid, "Вам подарен дом «" .. property.title .. "».")
+    say(targetPid, "Вам подарен дом “" .. property.title .. "”.")
     return true, "Дом подарен игроку " .. name .. ". Содержимое помещений сохранено."
 end
 
@@ -3061,7 +3142,7 @@ customEventHooks.registerHandler("OnGUIAction", function(eventStatus, pid, id, d
                 if player:IsLoggedIn() and lower(accountName(targetPid)) == lower(name) then
                     session.targetPid, session.targetName = targetPid, accountName(targetPid)
                     tes3mp.CustomMessageBox(pid, HOME_GIFT,
-                        "Подарить «" .. property.title .. "» игроку " .. session.targetName ..
+                        "Подарить “" .. property.title .. "” игроку " .. session.targetName ..
                         "? Вы потеряете права владельца. Друзья и совладельцы будут удалены.", "Подарить;Отмена")
                     return
                 end
@@ -3487,6 +3568,25 @@ customEventHooks.registerHandler("OnGUIAction", function(eventStatus, pid, idGui
             local property = houseHelper.GetProperty(option.cell)
             houseHelper.ShowBuyConfirmation(pid, property)
         end
+
+    elseif idGui == DANGER_MENU_ID then
+        local choice = pendingChoice[pid]
+        pendingChoice[pid] = nil
+        if type(choice) ~= "table" or choice.danger == nil then return end
+        if (tonumber(data) or -1) ~= 0 then return end
+        local property = houseHelper.GetProperty(choice.dangerCell)
+        if property == nil or houseHelper.GetAccessLevel(pid, property) ~= "owner" then
+            say(pid, tr(pid, "Это может сделать только владелец.", "Only the owner can do this."))
+            return
+        end
+        if choice.danger == "sell" then
+            local ok, message = houseHelper.Sell(pid, property.cell)
+            say(pid, message)
+            if ok then tes3mp.MessageBox(pid, -1, message) end
+        else
+            commandHouse(pid, { "house", "reset", "confirmed" })
+        end
+        houseHelper.SendHomeState(pid)
 
     elseif idGui == BUY_MENU_ID then
         local choice = pendingChoice[pid]

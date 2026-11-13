@@ -164,6 +164,7 @@ namespace MWGui
         getWidget(mBottomBar, "BottomBar");
         getWidget(mArmorRating, "ArmorRating");
         getWidget(mFilterEdit, "FilterEdit");
+        setupFilterIcons();
 
         // The OpenMW 0.51 Inventory Extender has no vanilla character preview,
         // so its table can use the complete window width.  ArenaMW can render
@@ -272,6 +273,7 @@ namespace MWGui
         mFilterEdit->eventEditTextChange += MyGUI::newDelegate(this, &InventoryWindow::onNameFilterChanged);
 
         mFilterAll->setStateSelected(true);
+        refreshFilterIconStates();
 
         setGuiMode(mGuiMode);
 
@@ -318,7 +320,10 @@ namespace MWGui
         // sorting only. Search, used weight and view/paper-doll controls live
         // in the bottom strip.
         if (mCategories)
+        {
             mCategories->setCoord(0, 6, rightWidth, 28);
+            layoutFilterIcons(rightWidth);
+        }
 
         if (mPaperDollButton)
         {
@@ -363,6 +368,7 @@ namespace MWGui
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
         mFilterKeys->setStateSelected(false);
+        refreshFilterIconStates();
 
         mPreview->updatePtr(mPtr);
         mPreview->rebuild();
@@ -1100,6 +1106,69 @@ namespace MWGui
         mItemView->update();
 
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
+        refreshFilterIconStates();
+    }
+
+    // IF1: icon filter buttons, in the style of the Player Menu section column.
+    // The category name is shown as a tooltip (same localisation as before).
+    void InventoryWindow::setupFilterIcons()
+    {
+        MyGUI::Button* buttons[] = { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys };
+        static const char* const textures[] = {
+            "textures/ui/arenamw/inv_all.png", "textures/ui/arenamw/inv_weapon.png",
+            "textures/ui/arenamw/inv_apparel.png", "textures/ui/arenamw/inv_magic.png",
+            "textures/ui/arenamw/inv_misc.png", "textures/ui/arenamw/inv_keys.png" };
+        static const char* const names[] = { "#{sAllTab}", "#{sWeaponTab}", "#{sApparelTab}",
+            "#{sMagicTab}", "#{sMiscTab}", "#{arenamp=inventory.keys}" };
+        for (int i = 0; i < 6; ++i)
+        {
+            MyGUI::Button* button = buttons[i];
+            if (button == nullptr)
+                continue;
+            button->setCaption("");
+            button->setUserString("ToolTipType", "Layout");
+            button->setUserString("ToolTipLayout", "TextToolTipOneLine");
+            button->setUserString("Caption_TextOneLine", MyGUI::LanguageManager::getInstance().replaceTags(names[i]));
+            mFilterIcons[i] = button->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(8, 2, 24, 24), MyGUI::Align::Default);
+            mFilterIcons[i]->setImageTexture(textures[i]);
+            mFilterIcons[i]->setNeedMouseFocus(false);
+        }
+    }
+
+    void InventoryWindow::layoutFilterIcons(int rowWidth)
+    {
+        MyGUI::Button* buttons[] = { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys };
+        const int height = 28;
+        // 40 px buttons; on a narrow table the gaps shrink first, then the
+        // buttons, so all six always stay inside the row.
+        int gap = 4;
+        int width = (rowWidth - gap * 5) / 6;
+        if (width < 28)
+        {
+            gap = 2;
+            width = (rowWidth - gap * 5) / 6;
+        }
+        width = std::max(16, std::min(40, width));
+        const int iconSize = std::max(12, std::min(24, std::min(width, height) - 6));
+        int x = 0;
+        for (int i = 0; i < 6; ++i)
+        {
+            if (buttons[i] == nullptr)
+                continue;
+            buttons[i]->setCoord(x, 0, width, height);
+            if (mFilterIcons[i] != nullptr)
+                mFilterIcons[i]->setCoord((width - iconSize) / 2, (height - iconSize) / 2, iconSize, iconSize);
+            x += width + gap;
+        }
+    }
+
+    void InventoryWindow::refreshFilterIconStates()
+    {
+        MyGUI::Button* buttons[] = { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys };
+        for (int i = 0; i < 6; ++i)
+            if (buttons[i] != nullptr && mFilterIcons[i] != nullptr)
+                mFilterIcons[i]->setAlpha(buttons[i]->getStateSelected() ? 1.f : 0.6f);
     }
 
     void InventoryWindow::refreshPaperDollToggleVisual()

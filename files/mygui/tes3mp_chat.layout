@@ -30,13 +30,22 @@
       <Widget type="TextBox" skin="SandBrightText" position="10 5 170 22" name="PlayerMenuTitle">
         <Property key="TextAlign" value="Left VCenter"/>
       </Widget>
-      <Widget type="Button" skin="MW_Button" position="190 4 100 24" name="TabChat"/>
-      <Widget type="Button" skin="MW_Button" position="294 4 100 24" name="TabGroup"/>
-      <Widget type="Button" skin="MW_Button" position="398 4 100 24" name="TabPlayers"/>
-      <Widget type="Button" skin="MW_Button" position="502 4 100 24" name="TabStats"/>
-      <Widget type="Button" skin="MW_Button" position="606 4 100 24" name="TabHome"/>
-      <Widget type="Button" skin="MW_Button" position="606 4 100 24" name="TabDecor"/>
       <Widget type="Button" skin="MW_Button" position="670 4 30 24" name="ReturnButton"/>
+    </Widget>
+
+    <!-- PM1: compact section column on the left. Each tab button gets its icon
+         at runtime (GUIChat::setupSidebar); the section name is shown in the
+         title strip and as a hover tooltip. GUIChat::layoutSidebar resizes the
+         buttons so every section fits even on a short phone screen. -->
+    <Widget type="Widget" skin="MW_Box" position="6 44 64 420" align="Left VStretch" name="MenuSidebar">
+      <Property key="Visible" value="false"/>
+      <Property key="NeedMouse" value="true"/>
+      <Widget type="Button" skin="MW_Button" position="6 6 52 52" name="TabChat"/>
+      <Widget type="Button" skin="MW_Button" position="6 62 52 52" name="TabGroup"/>
+      <Widget type="Button" skin="MW_Button" position="6 118 52 52" name="TabPlayers"/>
+      <Widget type="Button" skin="MW_Button" position="6 174 52 52" name="TabStats"/>
+      <Widget type="Button" skin="MW_Button" position="6 230 52 52" name="TabHome"/>
+      <Widget type="Button" skin="MW_Button" position="6 286 52 52" name="TabDecor"/>
     </Widget>
 
     <Widget type="Widget" skin="" position="10 44 700 30" align="HStretch Top" name="ChatToolbar">

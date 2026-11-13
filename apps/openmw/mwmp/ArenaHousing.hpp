@@ -76,6 +76,10 @@ namespace mwmp
         void captureFacedFurniture() const;
         void armFurnitureCapture();
         bool consumeFurnitureCapture(const MWWorld::Ptr& target);
+        /// FC1: true while staff "Add furniture" waits for the next activation.
+        bool isFurnitureCapturePending() const { return mCaptureFurniturePending; }
+        /// FC1: the capture target with a longer reach than ordinary activation.
+        MWWorld::Ptr findFurnitureCaptureTarget() const;
         void sendFurnitureAction(const std::string& verb, const std::string& arg="", int page=1,
             const std::string& subcategory="") const;
         bool ownsHome() const { return mOwnsHome; }

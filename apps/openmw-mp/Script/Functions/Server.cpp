@@ -85,11 +85,39 @@ bool ServerFunctions::DoesFilePathExist(const char *filePath) noexcept
     return filePath && ArenaFileOps::status(filePath) == 1;
 }
 
+// ArenaMP Y111: GetCaseInsensitiveFilename is called by the CoreScripts for every
+// Cell() construction (cell/json.lua) and for account lookups. The previous
+// implementation always enumerated the WHOLE folder and converted/lower-cased
+// every name. data/cell grows with every visited cell, so on a populated world
+// each new Cell() cost tens of milliseconds on Windows. A login triggers a
+// restock burst of ~114 Container ADD packets into ~30 unloaded merchant cells,
+// which blocked the single server thread for 3-5 seconds and froze activation
+// round-trips for every other player. Resolve the exact name with one
+// filesystem query first; the full scan is kept only as a rare fallback.
+namespace
+{
+    bool isPlainFileName(const std::string& name) noexcept
+    {
+        return !name.empty() && name.find_first_of("/\\*?:<>|\"") == std::string::npos;
+    }
+
+#ifndef _WIN32
+    bool joinedPathExists(const std::string& folder, const std::string& name) noexcept
+    {
+        std::string full = folder;
+        if (!full.empty() && full.back() != '/') full += '/';
+        full += name;
+        return ArenaFileOps::status(full) == 1;
+    }
+#endif
+}
+
 const char *ServerFunctions::GetCaseInsensitiveFilename(const char *folderPath, const char *filename) noexcept
 {
     try
     {
         if (!folderPath || !filename) return "invalid";
+        const std::string requested(filename);
 #ifdef _WIN32
         std::wstring wide;
         if (!ArenaFileOps::widePath(folderPath, wide)) return "invalid";
@@ -98,7 +126,63 @@ const char *ServerFunctions::GetCaseInsensitiveFilename(const char *folderPath, 
         const boost::filesystem::path folder(folderPath);
 #endif
         if (!boost::filesystem::is_directory(folder)) return "invalid";
-        const auto wanted = Misc::StringUtils::lowerCaseUtf8(filename);
+        const auto wanted = Misc::StringUtils::lowerCaseUtf8(requested);
+
+        if (isPlainFileName(requested))
+        {
+#ifdef _WIN32
+            // NTFS lookups are case-insensitive. FindFirstFileW on an exact name
+            // (no wildcards) is a single directory-index lookup and returns the
+            // real on-disk spelling, which is exactly what the scan returned.
+            std::wstring wideName;
+            if (ArenaFileOps::widePath(requested, wideName))
+            {
+                std::wstring fullPath = wide;
+                if (!fullPath.empty() && fullPath.back() != L'\\' && fullPath.back() != L'/')
+                    fullPath += L'\\';
+                fullPath += wideName;
+
+                WIN32_FIND_DATAW found;
+                HANDLE handle = FindFirstFileW(fullPath.c_str(), &found);
+                if (handle != INVALID_HANDLE_VALUE)
+                {
+                    FindClose(handle);
+                    const std::wstring name(found.cFileName);
+                    const int size = WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast<int>(name.size()),
+                        nullptr, 0, nullptr, nullptr);
+                    if (size > 0)
+                    {
+                        std::string utf8(size, '\0');
+                        WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast<int>(name.size()), &utf8[0], size,
+                            nullptr, nullptr);
+                        // Guard against 8.3 short-name or trailing-dot matches:
+                        // only accept the same name, compared case-insensitively.
+                        if (Misc::StringUtils::lowerCaseUtf8(utf8) == wanted)
+                        {
+                            tempFilename = utf8; return tempFilename.c_str();
+                        }
+                    }
+                }
+                else
+                {
+                    const DWORD error = GetLastError();
+                    // The folder exists (checked above) and the case-insensitive
+                    // lookup found nothing: the file does not exist. Skip the scan.
+                    if (error == ERROR_FILE_NOT_FOUND)
+                        return "invalid";
+                }
+            }
+#else
+            // Files written by the server already use the requested spelling.
+            if (joinedPathExists(folderPath, requested))
+            {
+                tempFilename = requested; return tempFilename.c_str();
+            }
+#endif
+        }
+
+        // Fallback (unusual names, other filesystem errors, or a differently
+        // cased file on a case-sensitive filesystem): the original full scan.
         for (boost::filesystem::directory_iterator itr(folder), end; itr != end; ++itr)
         {
 #ifdef _WIN32

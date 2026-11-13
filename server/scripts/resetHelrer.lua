@@ -132,7 +132,10 @@ local exteriorCellResetTime = 3600
 local interiorCellResetTime = 3600
 local merchantDayRestock = 1
 local runStartupCommandsAutomatically = true
-local requiredStaffRank = 1
+-- Y111: /savecell, /clean, /clear and the other staff cell tools use
+-- config.staffPermissions.saveCell (default 1 = moderators and admins).
+local staffPermissions = require("staffPermissions")
+local function requiredStaffRank() return staffPermissions.Required("saveCell") end
 local viewResetsStaffRank = 2
 local viewResetSortTypeCellName = true
 local resetExteriorCellsOnly = false
@@ -1058,7 +1061,7 @@ local doCellReset = function(pid, cellDescription)
 end
 
 local pushForCellReset = function(pid, cmd)
-    if Players[pid].data.settings.staffRank >= requiredStaffRank then
+    if Players[pid].data.settings.staffRank >= requiredStaffRank() then
         if not cmd[2] then
             tes3mp.SendMessage(pid, 'Неверные данные! Используйте /resetcell "Название Ячейки"\n')
             return
@@ -1073,7 +1076,7 @@ customCommandHooks.registerCommand("reset", pushForCellReset)
 customCommandHooks.registerCommand("RESET", pushForCellReset)
 
 periodicCellResets.ResetThisCell = function(pid, cmd)
-    if Players[pid].data.settings.staffRank >= requiredStaffRank then
+    if Players[pid].data.settings.staffRank >= requiredStaffRank() then
         local cellDescription = tes3mp.GetCell(pid)
         doCellReset(pid, cellDescription)
         refreshCellThroughLas(cellDescription)
@@ -1177,7 +1180,7 @@ local pushCellResetsEarly = function(pid, cmd)
         tes3mp.SendMessage(pid, coopBlockedMessage())
         return
     end
-    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank then
+    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank() then
         local markTime = os.time()
         local doSave = false
         local txt = color.Error .. "Нет ячеек, готовых к сбросу."
@@ -1249,7 +1252,7 @@ local pushResetAllCells = function(pid, cmd)
         tes3mp.SendMessage(pid, coopBlockedMessage())
         return
     end
-    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank then
+    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank() then
         local doSave = false
         local txt = color.Error .. "Нет ячеек, готовых к сбросу."
         local cellsReset = 0
@@ -1886,7 +1889,7 @@ end
 -- КОМАНДЫ
 -- ===========================================================================================
 periodicCellResets.cleanCurrentCell = function(pid, cmd)
-    if Players[pid].data.settings.staffRank < requiredStaffRank then
+    if Players[pid].data.settings.staffRank < requiredStaffRank() then
         tes3mp.SendMessage(pid, color.Error .. "У вас нет доступа к этой команде.\n")
         return
     end
@@ -1905,7 +1908,7 @@ periodicCellResets.cleanCurrentCell = function(pid, cmd)
 end
 
 periodicCellResets.clearCurrentCell = function(pid, cmd)
-    if Players[pid].data.settings.staffRank < requiredStaffRank then
+    if Players[pid].data.settings.staffRank < requiredStaffRank() then
         tes3mp.SendMessage(pid, color.Error .. "У вас нет доступа к этой команде.\n")
         return
     end
@@ -1924,7 +1927,7 @@ periodicCellResets.clearCurrentCell = function(pid, cmd)
 end
 
 periodicCellResets.resetCurrentCell = function(pid, cmd)
-    if Players[pid].data.settings.staffRank < requiredStaffRank then
+    if Players[pid].data.settings.staffRank < requiredStaffRank() then
         tes3mp.SendMessage(pid, color.Error .. "У вас нет доступа к этой команде.\n")
         return
     end
@@ -1941,7 +1944,7 @@ end
 customCommandHooks.registerCommand("resets", periodicCellResets.viewResets)
 
 periodicCellResets.saveCell = function(pid, cmd)
-    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank then
+    if Players[pid] and Players[pid]:IsLoggedIn() and Players[pid].data.settings.staffRank >= requiredStaffRank() then
         showSaveCellMenu(pid)
     else
         tes3mp.SendMessage(pid, color.Error .. "У вас нет доступа к этой команде.\n")
@@ -1961,7 +1964,7 @@ end
 
 -- Команда администратора для ручной очистки пустых домов
 local function cmdCleanUnowned(pid, cmd)
-    if not Players[pid] or Players[pid].data.settings.staffRank < requiredStaffRank then
+    if not Players[pid] or Players[pid].data.settings.staffRank < requiredStaffRank() then
         tes3mp.SendMessage(pid, color.Error .. "У вас нет доступа к этой команде.\n")
         return
     end

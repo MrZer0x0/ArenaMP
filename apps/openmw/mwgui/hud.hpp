@@ -130,6 +130,9 @@ namespace MWGui
         };
 
         std::vector<HorizontalCompassMarkerState> mHorizontalCompassMarkers;
+        MyGUI::ImageBox* mHorizontalCompassFlag = nullptr;
+        float mHorizontalCompassFlagLeft = 0.f;
+        bool mHorizontalCompassFlagShown = false;
 
         struct CombatHealthBarState
         {
@@ -385,6 +388,8 @@ namespace MWGui
         void updateGameTimeAndCellName(float dt);
         void updateHorizontalCompass();
         void updateHorizontalCompassMarkers(float dt);
+        /// WF1: the player's gold flag (world map waypoint) on the horizontal compass.
+        void updateHorizontalCompassFlag(bool enabled, float dt);
     };
 }
 

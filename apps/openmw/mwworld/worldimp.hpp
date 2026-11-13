@@ -511,6 +511,7 @@ namespace MWWorld
             void markCellAsUnchanged() override;
 
             MWWorld::Ptr getFacedObject() override;
+            MWWorld::Ptr getFacedObjectWithin(float maxDistance) override;
             ///< Return pointer to the object the player is looking at, if it is within activation range
 
             float getDistanceToFacedObject() override;

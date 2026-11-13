@@ -43,6 +43,7 @@
 
 #include "apps/openmw/mwbase/world.hpp"
 #include "apps/openmw/mwgui/windowmanagerimp.hpp"
+#include "apps/openmw/mwgui/confirmationdialog.hpp"
 #include "apps/openmw/mwworld/esmstore.hpp"
 #include "apps/openmw/mwrender/vismask.hpp"
 
@@ -157,6 +158,8 @@ namespace
             {"next", {"Next", "Далее"}}, {"all", {"All", "Все"}},
             {"buy", {"Buy", "Купить"}}, {"place", {"Place", "Установить"}},
             {"take", {"Take", "Забрать"}}, {"sell", {"Sell", "Продать"}},
+            {"sell.confirm", {"Sell \"%s\"? It leaves \"My furniture\" for good.",
+                              "Продать “%s”? Предмет навсегда исчезнет из “Моя мебель”."}},
             {"select", {"Select an item", "Выберите предмет"}},
             {"select.preview", {"Select an item", "Выберите предмет"}},
             {"gold", {"gold", "золота"}}, {"gold.short", {"g", "зол."}},
@@ -1152,6 +1155,24 @@ namespace mwmp
     }
     void FurnitureStoreWindow::onSecondary(MyGUI::Widget*)
     {
-        if (mTab==Inventory && !mSelected.empty())send("SELL",mSelected);
+        if (mTab!=Inventory || mSelected.empty())return;
+        // HS1: selling is irreversible, so ask with the item's name first.
+        mPendingSell=mSelected;
+        const auto named=mItemNames.find(mSelected);
+        const std::string name=named!=mItemNames.end()&&!named->second.empty()?named->second:mSelected;
+        std::string question=furnitureText("sell.confirm");
+        const std::string::size_type slot=question.find("%s");
+        if (slot!=std::string::npos)question.replace(slot,2,name);
+        MWGui::ConfirmationDialog* dialog=MWBase::Environment::get().getWindowManager()->getConfirmationDialog();
+        dialog->askForConfirmation(question);
+        dialog->eventOkClicked.clear();
+        dialog->eventOkClicked+=MyGUI::newDelegate(this,&FurnitureStoreWindow::onSellConfirmed);
+        dialog->eventCancelClicked.clear();
+    }
+    void FurnitureStoreWindow::onSellConfirmed()
+    {
+        const std::string refId=mPendingSell;
+        mPendingSell.clear();
+        if (!refId.empty() && mTab==Inventory)send("SELL",refId);
     }
 }

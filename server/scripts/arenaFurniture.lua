@@ -18,6 +18,9 @@ local GUI_PLACE = 923414
 local GUI_PLACED = 923415
 local GUI_PLACED_ACTION = 923416
 local GUI_PRIVATE_NAME = 923417
+-- HS1: confirmation before permanently deleting a piece from the world.
+local GUI_DELETE_CONFIRM = 923418
+local pendingDeletes = {}
 local SELLBACK_RATIO = 0.75 -- same rule as old kanaFurniture, applied server-side only
 local selection = {}
 local catalog, byId, categories = {items={}, categories={}}, {}, {}
@@ -72,10 +75,14 @@ local defaultCategoryEnglish={
     ["Освещение"]="Lighting",["Камины"]="Fireplaces",["Растения"]="Plants",
     ["Ковры и текстиль"]="Rugs and textiles",["Торговля"]="Trading"
 }
-local function staff(pid)
-    local player=Players and Players[pid]
-    return player and player:IsLoggedIn() and tonumber(player.data.settings and player.data.settings.staffRank or 0)>=2
-end
+-- Y111: staff privileges come from config.staffPermissions (staffPermissions.lua).
+-- Previously the catalogue editor required rank 2 while the client-side
+-- placement role (EDIT_ROLE) was granted from rank 1, so moderators saw the
+-- tools but every server action was rejected.
+local staffPermissions=require("staffPermissions")
+local function staff(pid) return staffPermissions.Has(pid,"furnitureAdmin") end
+local function freeFurniture(pid) return staffPermissions.Has(pid,"freeFurniture") end
+local function placeAnywhere(pid) return staffPermissions.Has(pid,"placeAnywhere") end
 local function canDecorate(pid)
     if staff(pid) then return true end
     if not Players[pid] or not Players[pid]:IsLoggedIn() then return false end
@@ -147,7 +154,32 @@ end
 local function localName(pid,item)
     return tr(pid,item.nameRu or item.name or item.refId,item.nameEn or item.name or item.refId)
 end
-local function loadCatalog()
+-- Y111: records of the last full active-ESM scan, keyed by lowercase refId.
+-- autoCatalog reads EVERY active plugin from start to end (TR/Cyr/Sky are
+-- hundreds of MB). Capture, price edits and private presets used to trigger two
+-- such scans each (lookup + catalogue reload), freezing the server thread for
+-- every player. The cache holds only catalogue/manual IDs (a few hundred small
+-- tables). false = deleted by an active plugin, nil = not in active plugins.
+-- Only an explicit Refresh (or a key the cache has never seen) rescans.
+local rawCache,rawKnown=nil,{}
+local function rememberRecord(refId, record)
+    if not rawCache or type(refId)~="string" then return end
+    local key=refId:lower()
+    rawKnown[key]=true
+    if record==nil then rawCache[key]=nil else rawCache[key]=record end
+end
+local function findRecord(refId)
+    local key=type(refId)=="string" and refId:lower() or nil
+    if key and rawCache and rawKnown[key] then
+        local cached=rawCache[key]
+        if cached then return cached end
+        return nil,"record is not available in the active plugins"
+    end
+    local record,err=autoCatalog.findActiveRecord(config,jsonInterface,refId)
+    if key and err==nil then rememberRecord(refId,record) end
+    return record,err
+end
+local function loadCatalog(useCache)
     local ok,reference=pcall(jsonInterface.load,referencePath)
     if not ok or type(reference)~="table" or type(reference.items)~="table" or #reference.items==0 then
         -- Older/partial server updates sometimes preserved data/ while missing the
@@ -201,7 +233,27 @@ local function loadCatalog()
     -- plugins are intentionally client-side and are not part of the server's
     -- requiredDataFiles manifest; those exact allow-listed beds are retained
     -- below. The client rejects records absent from its local load order.
-    local parsed,reason,raw=autoCatalog.build(config,jsonInterface,requested)
+    local parsed,reason,raw
+    if useCache and rawCache then
+        local complete=true
+        for key in pairs(requested) do
+            if not rawKnown[key] then complete=false;break end
+        end
+        if complete then
+            parsed,raw={},{}
+            for key in pairs(requested) do raw[key]=rawCache[key] end
+        end
+    end
+    if not parsed then
+        parsed,reason,raw=autoCatalog.build(config,jsonInterface,requested)
+        if type(parsed)=="table" and type(raw)=="table" then
+            rawCache,rawKnown={},{}
+            for key in pairs(requested) do
+                rawKnown[key]=true
+                rawCache[key]=raw[key]
+            end
+        end
+    end
     local verified=type(parsed)=="table" and type(raw)=="table"
     if not verified then
         raw={}
@@ -225,8 +277,12 @@ local function loadCatalog()
         -- beds in the first case so clients with the model loaded can use them.
         -- The client checks its own active ESM/ESP before enabling purchase/place.
         local curatedBedFallback=not privatePreset and original.category=="Кровати" and record==nil
+        -- FC1: large pieces captured by staff pass a looser, staff-only check.
+        local staffCaptured=not privatePreset and type(override)=="table" and override.staffCaptured==true
+        local reference=record~=nil and record~=false and isReferenceCandidate(record,original.category)
         if verified and not ((privatePreset and isPrivateReferenceCandidate(record,original.category))
-            or (not privatePreset and (isReferenceCandidate(record,original.category) or curatedBedFallback))) then return end
+            or (not privatePreset and (reference or curatedBedFallback))
+            or (staffCaptured and record and autoCatalog.staffCaptureCandidate(record)~=nil)) then return end
         if verified and curatedBedFallback then curatedBedFallbackCount=curatedBedFallbackCount+1 end
         local category=(type(override)=="table" and override.category) or original.category
         local ru,en=catalogNames(type(override)=="table" and override or original, original)
@@ -235,7 +291,11 @@ local function loadCatalog()
             type(price)~="number" or price<0 or price>10000000 or price~=math.floor(price) then return end
         present[key]=true
         items[#items+1]={refId=(record and record.refId) or original.refId,name=ru,nameRu=ru,nameEn=en,
-            category=category,style=original.style or styleFor(ru),price=price}
+            category=category,style=original.style or styleFor(ru),price=price,
+            -- FC1: in the catalogue only thanks to staff capture. Such a piece can
+            -- be bought and placed, but its catalogue presence never authorises
+            -- packing up the ORIGINAL architecture of a player's home.
+            structural=(staffCaptured and not reference) or nil}
     end
     for _,entry in ipairs(reference.items) do append(entry) end
     for _,entry in pairs(manualEntries) do append(entry) end
@@ -304,6 +364,19 @@ function marketplace.Buy(pid, refId)
     local stock = inventory(pid)
     local item = type(refId)=="string" and byId[refId:lower()] or nil
     if not stock or not item or item.price<1 then return false, tr(pid,"Предмет не продаётся или не найден в каталоге.","This item is unavailable in the catalog.") end
+    -- Y111: staff receive catalogue furniture for free. Free stock is counted as
+    -- non-commercial, so it can be placed/packed like any other piece but can
+    -- never be sold back to the shop (otherwise free items would mint gold).
+    if freeFurniture(pid) then
+        local protectedStock=nonCommercial(pid)
+        stock[item.refId] = (tonumber(stock[item.refId]) or 0) + 1
+        protectedStock[item.refId] = (tonumber(protectedStock[item.refId]) or 0) + 1
+        Players[pid]:Save()
+        tes3mp.LogMessage(enumerations.log.INFO, "[ArenaFurniture] staff free purchase pid=" .. tostring(pid) ..
+            " account=" .. tostring(Players[pid].accountName) .. " refId=" .. tostring(item.refId))
+        return true, tr(pid,"Выдано бесплатно (персонал): ","Granted for free (staff): ") .. localName(pid,item) ..
+            tr(pid,". В мебельном инвентаре: ",". In furniture inventory: ") .. stock[item.refId]
+    end
     if goldCount(pid) < item.price then return false, tr(pid,"Недостаточно золота: ","Not enough gold: ") .. tostring(item.price) end
     -- Never trust price/quantity from GUI or client packets.
     inventoryHelper.removeClosestItem(Players[pid].data.inventory, GOLD, item.price)
@@ -338,13 +411,35 @@ local function ownedRoom(pid)
     return cell
 end
 
+-- Y111: placing shop furniture and packing it back. Staff with the
+-- placeAnywhere privilege may use their CURRENT cell (any interior or exterior);
+-- everyone else is limited to their own home instance exactly as before.
+-- A house that is still being purged stays blocked for staff too.
+local function placementRoom(pid)
+    if not placeAnywhere(pid) then return ownedRoom(pid) end
+    local cell = tes3mp.GetCell(pid)
+    if type(cell) ~= "string" or cell == "" or not LoadedCells[cell] then
+        return nil, tr(pid,"Не удалось определить помещение.","Could not determine the room.")
+    end
+    local blocked
+    if type(houseHelper.IsPurgeBlockingFurniture) == "function" then
+        blocked = houseHelper.IsPurgeBlockingFurniture(cell)
+    elseif type(houseHelper.IsPurgePending) == "function" then
+        blocked = houseHelper.IsPurgePending(cell)
+    end
+    if blocked then
+        return nil, tr(pid,"Подготовка дома не завершена. Повторите попытку после синхронизации.","The home is still being prepared. Try again after synchronization.")
+    end
+    return cell
+end
+
 function marketplace.Place(pid, refId)
     local stock = inventory(pid)
     local item = type(refId)=="string" and byId[refId:lower()] or nil
     if not stock or not item or (tonumber(stock[item.refId]) or 0) < 1 then
         return false, tr(pid,"Этого предмета нет в мебельном инвентаре.","This item is not in your furniture inventory.")
     end
-    local cell, why = ownedRoom(pid)
+    local cell, why = placementRoom(pid)
     if not cell then return false, why end
     local protectedStock=nonCommercial(pid)
     local useProtected=protectedStock and (tonumber(protectedStock[item.refId]) or 0)>0
@@ -393,7 +488,9 @@ local function ownedFurniture(pid, uniqueIndex)
     if type(uniqueIndex) ~= "string" or not uniqueIndex:match("^%d+%-%d+$") then
         return nil, nil, tr(pid,"Недопустимый идентификатор предмета.","Invalid item identifier.")
     end
-    local cell, reason = ownedRoom(pid)
+    -- Y111: staff may pack/remove their OWN placed pieces in any cell; the
+    -- arenaFurnitureOwner check below still applies to everyone.
+    local cell, reason = placementRoom(pid)
     if not cell then return nil, nil, reason end
     local room = LoadedCells[cell]
     local object = room and room.data and room.data.objectData and room.data.objectData[uniqueIndex]
@@ -466,8 +563,8 @@ function marketplace.SellPlaced(pid, uniqueIndex)
     if not room then return false, why end
     local item=byId[object.refId:lower()]
     if object.arenaFurnitureNonCommercial then
-        return false,tr(pid,"Эта мебель взята из исходной ячейки и не продаётся.",
-            "Furniture taken from the original cell cannot be sold.")
+        return false,tr(pid,"Эта мебель получена бесплатно (персонал) или взята из исходной ячейки и не продаётся.",
+            "Furniture granted for free (staff) or taken from the original cell cannot be sold.")
     end
     if not item or item.price<1 then
         return false,tr(pid,"Этот пресет не продаётся.","This preset cannot be sold.")
@@ -504,7 +601,7 @@ function marketplace.RegisterPresetName(pid, refId, name)
     if byId[refId:lower()] then
         return false,tr(pid,"Такой пресет уже существует.","Preset already exists.")
     end
-    local original=autoCatalog.findActiveRecord(config,jsonInterface,refId)
+    local original=findRecord(refId)
     local safe=original and autoCatalog.manualCandidate(original)
     if not safe then
         return false,tr(pid,"Неизвестная или небезопасная модель.","Unknown or unsafe model.")
@@ -512,7 +609,7 @@ function marketplace.RegisterPresetName(pid, refId, name)
     local key=refId:lower()
     manualEntries[key]={refId=safe.refId,category=safe.category or "Растения",price=0,
         nameRu=name,nameEn=select(2,catalogNames({name=name,refId=safe.refId})),style=styleFor(name)}
-    if not saveManual() or not loadCatalog() or not byId[key] then
+    if not saveManual() or not loadCatalog(true) or not byId[key] then
         manualEntries[key]=nil
         saveManual()
         return false,tr(pid,"Не удалось сохранить пресет.","Could not save preset.")
@@ -555,10 +652,10 @@ function marketplace.RegisterPrivate(pid, refId, uniqueIndex, name)
         end
     end
     if byId[refId:lower()] then
-        return false,tr(pid,"Пресет уже существует: используйте «Убрать в инвентарь».",
+        return false,tr(pid,"Пресет уже существует: используйте “Убрать в инвентарь”.",
             "Preset already exists: use Return to inventory.")
     end
-    local original,reason=autoCatalog.findActiveRecord(config,jsonInterface,refId)
+    local original,reason=findRecord(refId)
     local safe=original and autoCatalog.manualCandidate(original)
     if not safe then
         return false,tr(pid,"Пресет небезопасен или отсутствует в модах.","Unsafe or unloaded preset.")
@@ -568,7 +665,7 @@ function marketplace.RegisterPrivate(pid, refId, uniqueIndex, name)
     if not existing then
         local category=safe.category or "Мебель"
         manualEntries[key]={refId=safe.refId,category=category,price=0,nameRu=name,nameEn=select(2,catalogNames({name=name,refId=safe.refId})),style=styleFor(name)}
-        if not saveManual() or not loadCatalog() or not byId[key] then
+        if not saveManual() or not loadCatalog(true) or not byId[key] then
             manualEntries[key]=nil
             saveManual()
             return false,tr(pid,"Не удалось сохранить пресет.","Could not save the preset.")
@@ -620,10 +717,10 @@ local function originalFurniture(pid, refId, uniqueIndex, allowDestroyContents)
     end
     local item=byId[refId:lower()]
     local safe
-    if item then
+    if item and not item.structural then
         safe={refId=item.refId,name=localName(pid,item),category=item.category}
     else
-        local record=autoCatalog.findActiveRecord(config,jsonInterface,refId)
+        local record=findRecord(refId)
         safe=record and autoCatalog.manualCandidate(record) or nil
         -- A number of vanilla home sacks/chests have base contents, so the
         -- catalogue correctly refuses to sell them. Once the ACTUAL home
@@ -661,7 +758,7 @@ local function ensureOriginalPreset(pid, refId, candidate)
     if not safe then return nil end
     manualEntries[key]={refId=safe.refId,category=safe.category or "Декор",price=0,
         nameRu=safe.name or safe.refId,nameEn=select(2,catalogNames(safe)),style=styleFor(safe.name or safe.refId)}
-    if not saveManual() or not loadCatalog() then
+    if not saveManual() or not loadCatalog(true) then
         manualEntries[key]=nil;saveManual();return nil
     end
     return byId[key]
@@ -717,8 +814,8 @@ function marketplace.SellInventory(pid, refId)
     local protectedStock=nonCommercial(pid)
     local protectedCount=protectedStock and (tonumber(protectedStock[item.refId]) or 0) or 0
     if (tonumber(stock[item.refId]) or 0)-protectedCount<1 then
-        return false,tr(pid,"Эта мебель была взята из исходной ячейки и не продаётся.",
-            "This furniture was taken from the original cell and cannot be sold.")
+        return false,tr(pid,"Эта мебель получена бесплатно (персонал) или взята из исходной ячейки и не продаётся.",
+            "This furniture was granted for free (staff) or taken from the original cell and cannot be sold.")
     end
     local value = math.max(1, math.floor(item.price * SELLBACK_RATIO))
     stock[item.refId] = stock[item.refId]-1
@@ -784,7 +881,7 @@ end
 
 function marketplace.ShowPlaced(pid)
     if not inventory(pid) then return end
-    local cell=ownedRoom(pid)
+    local cell=placementRoom(pid)
     if not cell then say(pid,tr(pid,"Войдите в свой дом, чтобы управлять размещённой мебелью.","Enter your home to manage placed furniture."));return end
     local room=LoadedCells[cell]
     if not room or type(room.data)~="table" or type(room.data.objectData)~="table" then
@@ -852,7 +949,7 @@ local function sendInventory(pid)
 end
 
 local function sendPlaced(pid)
-    local cell=ownedRoom(pid)
+    local cell=placementRoom(pid)
     deliver(pid,"FS_PLACED_BEGIN")
     if cell then
         local room=LoadedCells[cell]
@@ -933,6 +1030,105 @@ end
 function marketplace.HasCatalogItem(refId)
     return type(refId)=="string" and byId[refId:lower()]~=nil
 end
+-- ---------------------------------------------------------------------------
+-- HS1: helpers for houseStorage (moving into / selling a home).
+-- ---------------------------------------------------------------------------
+local CONTAINER_CATEGORY = "Контейнеры"
+
+function marketplace.IsContainerItem(refId)
+    local item = type(refId) == "string" and byId[refId:lower()] or nil
+    return item ~= nil and item.category == CONTAINER_CATEGORY
+end
+
+-- The chest given for free / used for saved belongings: config.houseStorage.chestRefId
+-- if it is a catalogue container, otherwise the cheapest catalogue "chest".
+-- Catalogue containers never have base contents and are never organic or
+-- respawning (arenaFurnitureAutoCatalog rules), so this cannot mint loot.
+function marketplace.DefaultChest()
+    local configured = type(config.houseStorage) == "table" and config.houseStorage.chestRefId or nil
+    if type(configured) == "string" and marketplace.IsContainerItem(configured) then
+        return byId[configured:lower()].refId
+    end
+    local best = nil
+    for _, item in ipairs(catalog[CONTAINER_CATEGORY] or {}) do
+        local chest = item.refId:lower():find("chest", 1, true) ~= nil
+        local price = tonumber(item.price) or 0
+        if best == nil or (chest and not best.chest) or (chest == best.chest and price < best.price) then
+            best = { refId = item.refId, price = price, chest = chest }
+        end
+    end
+    return best and best.refId or nil
+end
+
+function marketplace.OwnedContainerInStock(pid)
+    local stock = inventory(pid)
+    if not stock then return nil end
+    local found = nil
+    for refId, count in pairs(stock) do
+        if (tonumber(count) or 0) > 0 and marketplace.IsContainerItem(refId) then
+            if found == nil or refId:lower() < found:lower() then found = refId end
+        end
+    end
+    return found
+end
+
+-- Return furniture counts to the player's furniture inventory ("My furniture").
+function marketplace.CreditStock(pid, counts, nonCommercialCounts)
+    local stock = inventory(pid)
+    local protectedStock = nonCommercial(pid)
+    if not stock or not protectedStock then return false end
+    for refId, count in pairs(counts or {}) do
+        count = math.floor(tonumber(count) or 0)
+        if count > 0 then stock[refId] = (tonumber(stock[refId]) or 0) + count end
+    end
+    for refId, count in pairs(nonCommercialCounts or {}) do
+        count = math.floor(tonumber(count) or 0)
+        if count > 0 then protectedStock[refId] = (tonumber(protectedStock[refId]) or 0) + count end
+    end
+    Players[pid]:Save()
+    return true
+end
+
+-- Place a chest in front of the player in their own home without taking it
+-- from the furniture stock. It is a normal owned furniture piece (movable,
+-- packable), marked non-commercial so a free chest can never be sold for gold.
+function marketplace.PlaceServerChest(pid, refId)
+    local item = type(refId) == "string" and byId[refId:lower()] or nil
+    if not item or item.category ~= CONTAINER_CATEGORY then
+        return nil, tr(pid, "Сундук недоступен в каталоге.", "The chest is not available in the catalogue.")
+    end
+    local cell, why = placementRoom(pid)
+    if not cell then return nil, why end
+    local rot = tonumber(tes3mp.GetRotZ(pid)) or 0
+    local location = {
+        posX = tes3mp.GetPosX(pid) + 100 * math.sin(rot),
+        posY = tes3mp.GetPosY(pid) + 100 * math.cos(rot),
+        posZ = tes3mp.GetPosZ(pid),
+        rotX = 0, rotY = 0, rotZ = rot + math.pi
+    }
+    local created = logicHandler.CreateObjectAtLocation(cell, location, {
+        refId = item.refId, count = 1, charge = -1, enchantmentCharge = -1, soul = ""
+    }, "place")
+    local room = LoadedCells[cell]
+    if type(created) ~= "string" or created == "" or not room or not room.data or not room.data.objectData[created] then
+        return nil, tr(pid, "Не удалось поставить сундук.", "Could not place the chest.")
+    end
+    local object = room.data.objectData[created]
+    object.arenaFurnitureOwner = tostring(Players[pid].accountName):lower()
+    object.arenaFurnitureOriginalPrice = item.price
+    object.arenaFurnitureRefId = item.refId
+    object.arenaFurnitureNonCommercial = true
+    object.arenaHouseStorageChest = true
+    object.inventory = object.inventory or {}
+    room:Save()
+    return created
+end
+
+function marketplace.OpenCategory(pid, category)
+    marketplace.OpenNative(pid)
+    if catalog[category] then sendCategory(pid, category, 1) end
+end
+
 function marketplace.Role(pid)
     if not Players[pid] or not Players[pid]:IsLoggedIn() then return end
     deliver(pid,"FS_ROLE",staff(pid) and "1" or "0",canDecorate(pid) and "1" or "0")
@@ -956,18 +1152,20 @@ function marketplace.Capture(pid, refId, uniqueIndex)
        (not baseStatic and (not object or type(object.refId)~="string" or object.refId:lower()~=refId:lower())) then
         return false,tr(pid,"Выберите существующий предмет в текущей ячейке.","Select an existing object in the current cell.")
     end
-    local record,err=autoCatalog.findActiveRecord(config,jsonInterface,refId)
-    local safe=record and autoCatalog.manualCandidate(record)
-    if not safe then return false,tr(pid,"Это не разрешённая мебель (скрипт, архитектура, контейнер с вещами или мод недоступен).",
-        "Not eligible furniture (script, architecture, non-empty base container, or missing mod).") end
     if byId[refId:lower()] then return true,tr(pid,"Мебель уже в каталоге. Выберите её и измените свойства.","Already in catalog. Select it to edit its properties.") end
+    local record,err=findRecord(refId)
+    -- FC1: staff may also add large decorative pieces (see staffCaptureCandidate).
+    local safe=record and (autoCatalog.manualCandidate(record) or autoCatalog.staffCaptureCandidate(record))
+    if not safe then return false,tr(pid,"Это нельзя добавить: дверь или телепорт, рычаг, объект со скриптом, контейнер с вещами или мод недоступен.",
+        "Cannot add this: door or teleport, lever, scripted object, non-empty base container, or missing mod.") end
     safe.nameRu,safe.nameEn=catalogNames(safe);safe.style=styleFor(safe.name)
+    safe.staffCaptured=true
     manualEntries[refId:lower()]=safe
     if not saveManual() then
         manualEntries[refId:lower()]=nil
         return false,tr(pid,"Не удалось сохранить каталог вручную.","Cannot save the manual catalog.")
     end
-    if not loadCatalog() then return false,tr(pid,"Каталог недоступен.","Catalog unavailable.") end
+    if not loadCatalog(true) then return false,tr(pid,"Каталог недоступен.","Catalog unavailable.") end
     return true,tr(pid,"Мебель добавлена. Выберите её в магазине, чтобы изменить категорию, название и цену: ",
         "Furniture added. Select it in the shop to edit its category, names and price: ")..safe.name
 end
@@ -983,12 +1181,14 @@ function marketplace.Edit(pid, refId, category, price, nameRu, nameEn)
     local key=item.refId:lower()
     local previous=manualEntries[key]
     manualEntries[key]={refId=item.refId,category=category,price=price,nameRu=nameRu,
-        nameEn=nameEn,style=item.style}
+        nameEn=nameEn,style=item.style,
+        -- FC1: keep the staff-capture mark, or a large piece would drop out on reload.
+        staffCaptured=(type(previous)=="table" and previous.staffCaptured) or nil}
     if not saveManual() then
         manualEntries[key]=previous
         return false,tr(pid,"Не удалось сохранить изменения.","Could not save changes.")
     end
-    if not loadCatalog() then return false,tr(pid,"Каталог недоступен.","Catalog unavailable.") end
+    if not loadCatalog(true) then return false,tr(pid,"Каталог недоступен.","Catalog unavailable.") end
     return true,tr(pid,"Свойства мебели сохранены.","Furniture settings saved.")
 end
 function marketplace.OpenNative(pid)
@@ -1074,8 +1274,29 @@ function marketplace.NativeCommand(pid,verb,argument,page,filter)
     if verb=="CAPTURE" then
         local ref,index=argument:match("^(.-)|(%d+%-%d+)$")
         local ok,message=marketplace.Capture(pid,ref,index)
+        tes3mp.LogMessage(enumerations.log.INFO, "[ArenaFurniture] CAPTURE pid=" .. tostring(pid) ..
+            " arg=" .. tostring(argument) .. " ok=" .. tostring(ok) .. " message=" .. tostring(message))
+        -- Y111: the catalogue is closed while the admin aims, so a notice sent
+        -- only to the window was never seen (rejections looked like "nothing
+        -- happens"). Report in chat as well, reopen the catalogue, show the new
+        -- piece selected, and send the notice LAST so the reopened window does
+        -- not overwrite it with its default hint.
+        say(pid,message)
+        marketplace.OpenNative(pid)
+        local item=ok and type(ref)=="string" and byId[ref:lower()] or nil
+        if item then
+            local entries=catalog[item.category] or {}
+            local position=0
+            for _,entry in ipairs(entries) do
+                if entry.price>0 then position=position+1 end
+                if entry.refId==item.refId then
+                    sendCategory(pid,item.category,math.max(1,math.ceil(position/NATIVE_PAGE)))
+                    deliver(pid,"FS_SELECT",item.refId)
+                    break
+                end
+            end
+        end
         deliver(pid,"FS_NOTICE",message)
-        if ok then marketplace.OpenNative(pid) end
         return
     end
     if verb=="CATEGORY" then
@@ -1085,10 +1306,22 @@ function marketplace.NativeCommand(pid,verb,argument,page,filter)
     if verb=="INVENTORY" then sendInventory(pid);return end
     if verb=="PLACED" then sendPlaced(pid);return end
     local ok,message
-    if verb=="TAKE_WORLD" or verb=="DELETE_WORLD" then
+    if verb=="DELETE_WORLD" then
+        -- HS1: deleting a piece from the world cannot be undone: ask first.
         local ref,index=argument:match("^([^|]+)|(%d+%-%d+)$")
-        if verb=="TAKE_WORLD" then ok,message=marketplace.TakeWorld(pid,ref,index)
-        else ok,message=marketplace.DeleteWorld(pid,ref,index) end
+        if not ref then return end
+        local item=byId[ref:lower()]
+        local name=item and localName(pid,item) or ref
+        pendingDeletes[pid]={ref=ref,index=index,at=os.time()}
+        tes3mp.CustomMessageBox(pid,GUI_DELETE_CONFIRM,tr(pid,
+            "Удалить из дома навсегда?\n\n"..name.."\n\nПредмет исчезнет и не вернётся в инвентарь. Чтобы сохранить его, выберите “Забрать”.",
+            "Delete from the home for good?\n\n"..name.."\n\nThe piece disappears and does not return to your inventory. To keep it, choose \"Take\"."),
+            tr(pid,"Удалить;Отмена","Delete;Cancel"))
+        return
+    end
+    if verb=="TAKE_WORLD" then
+        local ref,index=argument:match("^([^|]+)|(%d+%-%d+)$")
+        ok,message=marketplace.TakeWorld(pid,ref,index)
     elseif verb=="BUY" then ok,message=marketplace.Buy(pid,argument)
     elseif verb=="PLACE" then ok,message=marketplace.Place(pid,argument)
     elseif verb=="SELL" then ok,message=marketplace.SellInventory(pid,argument)
@@ -1131,6 +1364,17 @@ customCommandHooks.registerCommand("furniture", function(pid, cmd)
 end)
 
 customEventHooks.registerHandler("OnGUIAction", function(eventStatus, pid, id, data)
+    if id == GUI_DELETE_CONFIRM then
+        local request=pendingDeletes[pid]
+        pendingDeletes[pid]=nil
+        -- A stale answer (over a minute old) never deletes anything.
+        if type(request)~="table" or (tonumber(data) or -1)~=0 or os.time()-request.at>60 then return end
+        local ok,message=marketplace.DeleteWorld(pid,request.ref,request.index)
+        tes3mp.LogMessage(enumerations.log.INFO, "[ArenaFurniture] DELETE_WORLD pid=" .. tostring(pid) ..
+            " arg=" .. tostring(request.ref) .. "|" .. tostring(request.index) .. " ok=" .. tostring(ok))
+        tes3mp.MessageBox(pid,-1,tostring(message or (ok and tr(pid,"Готово","Done") or tr(pid,"Операция отклонена","Operation denied"))))
+        return
+    end
     if id ~= GUI_PRIVATE_NAME and id ~= GUI_CATEGORY and id ~= GUI_ITEMS and id ~= GUI_BUY and
         id ~= GUI_INVENTORY and id ~= GUI_PLACE and id ~= GUI_PLACED and
         id ~= GUI_PLACED_ACTION then return end
@@ -1183,7 +1427,7 @@ customEventHooks.registerHandler("OnGUIAction", function(eventStatus, pid, id, d
                 showInventory(pid)
                 return
             end
-            tes3mp.CustomMessageBox(pid,GUI_PLACE,"«"..cleanLine(item.name)..tr(pid,"»: выберите действие","»: choose an action"), tr(pid,"Установить;Продать магазину;Назад","Place;Sell to store;Back"))
+            tes3mp.CustomMessageBox(pid,GUI_PLACE,"“"..cleanLine(item.name)..tr(pid,"”: выберите действие","”: choose an action"), tr(pid,"Установить;Продать магазину;Назад","Place;Sell to store;Back"))
         elseif index==#state.values+1 then
             marketplace.ShowPlaced(pid)
         else showCategories(pid) end
