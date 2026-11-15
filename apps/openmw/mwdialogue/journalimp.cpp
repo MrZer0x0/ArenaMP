@@ -1,5 +1,6 @@
 #include "journalimp.hpp"
 
+#include <algorithm>
 #include <iterator>
 
 #include <components/esm/esmwriter.hpp>
@@ -180,6 +181,59 @@ namespace MWDialogue
         JournalEntry entry(topicId, infoId, actor);
         entry.mActorName = actor.getClass().getName(actor);
         topic.addEntry (entry);
+    }
+
+    void Journal::resetQuest(const std::string& id)
+    {
+        mJournal.erase(std::remove_if(mJournal.begin(), mJournal.end(), [&id](const StampedJournalEntry& entry)
+            { return Misc::StringUtils::ciEqual(entry.mTopic, id); }), mJournal.end());
+        for (TQuestContainer::iterator it = mQuests.begin(); it != mQuests.end();)
+        {
+            if (Misc::StringUtils::ciEqual(it->first, id))
+                it = mQuests.erase(it);
+            else
+                ++it;
+        }
+    }
+
+    void Journal::clearJournalText()
+    {
+        mJournal.clear();
+        for (auto& quest : mQuests)
+            quest.second.clearEntries();
+        for (auto& topic : mTopics)
+            topic.second.clearEntries();
+    }
+
+    bool Journal::hideEntry(const std::string& id, int index)
+    {
+        const ESM::Dialogue* dialogue
+            = MWBase::Environment::get().getWorld()->getStore().get<ESM::Dialogue>().search(id);
+        if (dialogue == nullptr)
+            return false;
+        std::string infoId;
+        for (const ESM::DialInfo& info : dialogue->mInfo)
+        {
+            if (info.mData.mJournalIndex == index)
+            {
+                infoId = info.mId;
+                break;
+            }
+        }
+        if (infoId.empty())
+            return false;
+
+        const std::size_t before = mJournal.size();
+        mJournal.erase(std::remove_if(mJournal.begin(), mJournal.end(), [&](const StampedJournalEntry& entry)
+            { return Misc::StringUtils::ciEqual(entry.mTopic, id) && Misc::StringUtils::ciEqual(entry.mInfoId, infoId); }),
+            mJournal.end());
+        bool removed = mJournal.size() != before;
+        for (auto& quest : mQuests)
+        {
+            if (Misc::StringUtils::ciEqual(quest.first, id))
+                removed = quest.second.removeEntry(infoId) || removed;
+        }
+        return removed;
     }
 
     void Journal::ensureKnownTopic(const std::string& topicId)

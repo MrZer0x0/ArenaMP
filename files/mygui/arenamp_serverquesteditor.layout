@@ -1,181 +1,196 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-  <!-- X045: compact 780x500 layout (78% of the former 1000x640). Every caption
-       below is a placeholder: ServerQuestEditorWindow replaces it with the
-       localised string for the active interface language. -->
-  <Widget type="Window" skin="MW_Window_NoCaption" layer="Windows" position="0 0 800 530" name="_Main">
-    <Property key="MinSize" value="800 530"/>
+  <!-- QS1: Quest Studio, authored at its smallest size (760x480). The window
+       grows to the viewport and only lists and text fields stretch; buttons and
+       fonts keep their size. Icon buttons get their icon and tooltip from
+       ServerQuestEditorWindow::decorateButtons. Captions are placeholders replaced
+       by the localised strings. -->
+  <Widget type="Window" skin="MW_Window_NoCaption" layer="Windows" position="0 0 760 480" name="_Main">
+    <Property key="MinSize" value="240 160"/>
     <Property key="Sizeable" value="false"/>
-    <Widget type="TextBox" skin="SandBrightText" position="8 4 764 20" name="EditorTitle">
-      <Property key="TextAlign" value="Center"/>
+    <Widget type="TextBox" skin="SandBrightText" position="0 1 712 20" align="HStretch Top" name="EditorTitle">
       <Property key="Caption" value="ArenaMP Server Quest Studio"/>
+      <Property key="TextAlign" value="Left VCenter"/>
     </Widget>
+    <Widget type="Button" skin="MW_Button" position="718 0 26 22" align="Right Top" name="CloseButton"><Property key="Caption" value="Close"/></Widget>
+    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="0 26 200 22" align="Left Top" name="QuestSearch"></Widget>
+    <Widget type="ListBox" skin="MW_List" position="0 52 200 314" align="Left VStretch" name="QuestList"></Widget>
+    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="0 370 98 22" align="Left Bottom" name="NewQuestId"></Widget>
+    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="102 370 98 22" align="Left Bottom" name="NewQuestName"></Widget>
+    <Widget type="Button" skin="MW_Button" position="0 396 26 22" align="Left Bottom" name="NewQuestButton"><Property key="Caption" value="New"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="28 396 26 22" align="Left Bottom" name="CloneQuestButton"><Property key="Caption" value="Clone"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="56 396 26 22" align="Left Bottom" name="DeleteQuestButton"><Property key="Caption" value="Delete"/></Widget>
+    <Widget type="TextBox" skin="SandText" position="88 397 112 20" align="Left Bottom" name="QuestCounter"><Property key="TextAlign" value="Right VCenter"/></Widget>
 
-    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="8 28 190 22" name="QuestSearch"/>
-    <Widget type="ListBox" skin="MW_List" position="8 54 190 300" name="QuestList"/>
-    <Widget type="TextBox" skin="SandText" position="8 358 190 18" name="QuestCounter"/>
-    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="8 378 92 22" name="NewQuestId"/>
-    <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="106 378 92 22" name="NewQuestName"/>
-    <Widget type="Button" skin="MW_Button" position="8 404 60 22" name="NewQuestButton"><Property key="Caption" value="New"/></Widget>
-    <Widget type="Button" skin="MW_Button" position="72 404 60 22" name="CloneQuestButton"><Property key="Caption" value="Clone"/></Widget>
-    <Widget type="Button" skin="MW_Button" position="136 404 62 22" name="DeleteQuestButton"><Property key="Caption" value="Delete"/></Widget>
-
-    <Widget type="TabControl" skin="TabControl" position="204 28 568 432" name="EditorTabs">
+    <Widget type="TabControl" skin="TabControl" position="206 26 538 394" align="Stretch" name="EditorTabs">
       <Property key="ButtonAutoWidth" value="true"/>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Overview"/>
-        <Widget type="TextBox" skin="SandText" position="6 6 70 20" name="LblQuestId"><Property key="Caption" value="Quest ID"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="80 4 180 22" name="QuestId"><Property key="EditStatic" value="true"/></Widget>
-        <Widget type="TextBox" skin="SandText" position="268 6 54 20" name="LblStatus"><Property key="Caption" value="Status"/></Widget>
-        <Widget type="TextBox" skin="SandBrightText" position="324 6 230 20" name="QuestStatus"/>
-
-        <Widget type="TextBox" skin="SandText" position="6 34 70 20" name="LblName"><Property key="Caption" value="Name"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="80 32 474 22" name="QuestName"/>
-
-        <Widget type="TextBox" skin="SandText" position="6 62 70 20" name="LblProgress"><Property key="Caption" value="Progress"/></Widget>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="80 60 130 22" name="ProgressMode"/>
-        <Widget type="TextBox" skin="SandText" position="220 62 56 20" name="LblVersion"><Property key="Caption" value="Version"/></Widget>
-        <Widget type="TextBox" skin="SandBrightText" position="278 62 50 20" name="QuestVersion"/>
-        <Widget type="TextBox" skin="SandText" position="334 62 56 20" name="LblAuthor"><Property key="Caption" value="Author"/></Widget>
-        <Widget type="TextBox" skin="SandBrightText" position="392 62 162 20" name="QuestAuthor"/>
-
-        <Widget type="TextBox" skin="SandBrightText" position="6 92 548 20" name="LblGiverSection"><Property key="Caption" value="Quest giver"/></Widget>
-        <Widget type="TextBox" skin="SandText" position="6 118 70 20" name="LblRefId"><Property key="Caption" value="RefId"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="80 116 200 22" name="GiverRefId"/>
-        <Widget type="Button" skin="MW_Button" position="288 116 124 22" name="PickGiverButton"><Property key="Caption" value="Pick in game"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="416 116 138 22" name="ClearUniqueButton"><Property key="Caption" value="Any instance"/></Widget>
-        <Widget type="TextBox" skin="SandText" position="6 146 70 20" name="LblCell"><Property key="Caption" value="Cell"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="80 144 474 22" name="GiverCell"/>
-        <Widget type="TextBox" skin="SandText" position="6 174 70 20" name="LblUnique"><Property key="Caption" value="UniqueIndex"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="80 172 200 22" name="GiverUnique"/>
-        <Widget type="TextBox" skin="SandText" position="288 174 86 20" name="LblInitialStage"><Property key="Caption" value="Initial stage"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="378 172 176 22" name="InitialStage"/>
-
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 210 548 148" name="OverviewHint">
-          <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="TextBox" skin="SandText" position="4 6 92 20" name="LblQuestId"><Property key="Caption" value="Quest ID"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="98 4 170 22" align="Left Top" name="QuestId">
+          <Property key="EditStatic" value="true"/>
+          <Property key="ReadOnly" value="true"/>
         </Widget>
-        <Widget type="Button" skin="MW_Button" position="396 366 158 24" name="SaveOverviewButton"><Property key="Caption" value="Save overview"/></Widget>
+        <Widget type="TextBox" skin="SandText" position="276 6 60 20" name="LblStatus"><Property key="Caption" value="Status"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="338 6 188 20" align="HStretch Top" name="QuestStatus"></Widget>
+        <Widget type="TextBox" skin="SandText" position="4 32 92 20" name="LblName"><Property key="Caption" value="Name"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="98 30 428 22" align="HStretch Top" name="QuestName"></Widget>
+        <Widget type="TextBox" skin="SandText" position="4 58 92 20" name="LblProgress"><Property key="Caption" value="Progress"/></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="98 56 116 22" align="Left Top" name="ProgressMode"></Widget>
+        <Widget type="TextBox" skin="SandText" position="220 58 56 20" name="LblVersion"><Property key="Caption" value="Version"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="278 58 40 20" align="Left Top" name="QuestVersion"></Widget>
+        <Widget type="TextBox" skin="SandText" position="322 58 54 20" name="LblAuthor"><Property key="Caption" value="Author"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="378 58 148 20" align="HStretch Top" name="QuestAuthor"></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="4 86 522 20" align="HStretch Top" name="LblGiverSection"><Property key="Caption" value="Quest giver"/></Widget>
+        <Widget type="TextBox" skin="SandText" position="4 112 92 20" name="LblRefId"><Property key="Caption" value="RefId"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="98 110 368 22" align="HStretch Top" name="GiverRefId"></Widget>
+        <Widget type="Button" skin="MW_Button" position="472 110 26 22" align="Right Top" name="PickGiverButton"><Property key="Caption" value="Pick"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="500 110 26 22" align="Right Top" name="ClearUniqueButton"><Property key="Caption" value="Any"/></Widget>
+        <Widget type="TextBox" skin="SandText" position="4 138 92 20" name="LblCell"><Property key="Caption" value="Cell"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="98 136 428 22" align="HStretch Top" name="GiverCell"></Widget>
+        <Widget type="TextBox" skin="SandText" position="4 164 92 20" name="LblUnique"><Property key="Caption" value="UniqueIndex"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="98 162 120 22" align="Left Top" name="GiverUnique"></Widget>
+        <Widget type="TextBox" skin="SandText" position="226 164 100 20" name="LblInitialStage"><Property key="Caption" value="Initial stage"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="328 162 70 22" align="Left Top" name="InitialStage"></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="4 192 522 138" align="Stretch" name="OverviewHint">
+          <Property key="EditStatic" value="true"/>
+          <Property key="ReadOnly" value="true"/>
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
+        </Widget>
+        <Widget type="Button" skin="MW_Button" position="356 336 170 22" align="Right Bottom" name="SaveOverviewButton"><Property key="Caption" value="Save overview"/></Widget>
       </Widget>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Dialogue"/>
-        <Widget type="TextBox" skin="SandBrightText" position="6 2 180 20" name="LblTopics"><Property key="Caption" value="Green topics"/></Widget>
-        <Widget type="ListBox" skin="MW_List" position="6 24 180 140" name="TopicList"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="192 24 130 22" name="TopicId"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="328 24 226 22" name="TopicText"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="192 52 130 22" name="TopicEnabled"/>
-        <Widget type="Button" skin="MW_Button" position="328 52 66 22" name="NewTopicButton"><Property key="Caption" value="New"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="398 52 80 22" name="SaveTopicButton"><Property key="Caption" value="Save"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="482 52 72 22" name="DeleteTopicButton"><Property key="Caption" value="Delete"/></Widget>
-
-        <Widget type="TextBox" skin="SandBrightText" position="6 172 548 20" name="LblOffer"><Property key="Caption" value="Offer / first NPC response"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 194 548 58" name="OfferDialogue">
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="TextBox" skin="SandBrightText" position="4 2 176 20" name="LblTopics"><Property key="Caption" value="Green topics"/></Widget>
+        <Widget type="ListBox" skin="MW_List" position="4 24 176 128" align="Left Top" name="TopicList"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 26 74 20" name="LblTopicId"><Property key="Caption" value="Topic ID"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="262 24 264 22" align="HStretch Top" name="TopicId"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 52 74 20" name="LblTopicText"><Property key="Caption" value="Text"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="262 50 264 22" align="HStretch Top" name="TopicText"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 78 74 20" name="LblTopicEnabled"><Property key="Caption" value="Active"/></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="262 76 84 22" align="Left Top" name="TopicEnabled"></Widget>
+        <Widget type="Button" skin="MW_Button" position="444 76 26 22" align="Right Top" name="NewTopicButton"><Property key="Caption" value="New"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="472 76 26 22" align="Right Top" name="SaveTopicButton"><Property key="Caption" value="Save"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="500 76 26 22" align="Right Top" name="DeleteTopicButton"><Property key="Caption" value="Delete"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="4 156 492 20" align="HStretch Top" name="LblOffer"><Property key="Caption" value="Offer / first NPC response"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="500 154 26 22" align="Right Top" name="SaveOfferButton"><Property key="Caption" value="Save offer"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="4 180 522 48" align="HStretch Top" name="OfferDialogue">
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
         </Widget>
-        <Widget type="Button" skin="MW_Button" position="424 256 130 22" name="SaveOfferButton"><Property key="Caption" value="Save offer"/></Widget>
-
-        <Widget type="TextBox" skin="SandBrightText" position="6 282 180 20" name="LblOfferChoices"><Property key="Caption" value="Offer choices"/></Widget>
-        <Widget type="ListBox" skin="MW_List" position="6 304 180 90" name="OfferChoiceList"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="192 304 110 22" name="OfferChoiceId"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="308 304 110 22" name="OfferChoiceAction"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="424 304 130 22" name="OfferChoiceTarget"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="192 332 362 22" name="OfferChoiceText"/>
-        <Widget type="Button" skin="MW_Button" position="192 360 116 22" name="NewOfferChoiceButton"><Property key="Caption" value="New"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="314 360 116 22" name="SaveOfferChoiceButton"><Property key="Caption" value="Save"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="436 360 118 22" name="DeleteOfferChoiceButton"><Property key="Caption" value="Delete"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="4 234 176 20" name="LblOfferChoices"><Property key="Caption" value="Offer choices"/></Widget>
+        <Widget type="ListBox" skin="MW_List" position="4 256 176 102" align="Left VStretch" name="OfferChoiceList"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 258 74 20" name="LblOfferChoiceId"><Property key="Caption" value="Choice ID"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="262 256 264 22" align="HStretch Top" name="OfferChoiceId"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 284 74 20" name="LblOfferChoiceAction"><Property key="Caption" value="Action"/></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="262 282 96 22" align="Left Top" name="OfferChoiceAction"></Widget>
+        <Widget type="TextBox" skin="SandText" position="364 284 48 20" name="LblOfferChoiceTarget"><Property key="Caption" value="Stage"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="414 282 112 22" align="HStretch Top" name="OfferChoiceTarget"></Widget>
+        <Widget type="TextBox" skin="SandText" position="186 310 74 20" name="LblOfferChoiceText"><Property key="Caption" value="Text"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="262 308 264 22" align="HStretch Top" name="OfferChoiceText"></Widget>
+        <Widget type="Button" skin="MW_Button" position="262 334 26 22" align="Left Top" name="NewOfferChoiceButton"><Property key="Caption" value="New"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="290 334 26 22" align="Left Top" name="SaveOfferChoiceButton"><Property key="Caption" value="Save"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="318 334 26 22" align="Left Top" name="DeleteOfferChoiceButton"><Property key="Caption" value="Delete"/></Widget>
       </Widget>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Stages"/>
-        <Widget type="ListBox" skin="MW_List" position="6 6 150 364" name="StageList"/>
-        <Widget type="TextBox" skin="SandText" position="164 8 48 20" name="LblStageIndex"><Property key="Caption" value="Index"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="214 6 58 22" name="StageIndex"/>
-        <Widget type="Button" skin="MW_Button" position="278 6 88 22" name="StageInitialButton"><Property key="Caption" value="Initial: no"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="370 6 88 22" name="StageCompleteButton"><Property key="Caption" value="Complete: no"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="462 6 92 22" name="StageFailButton"><Property key="Caption" value="Fail: no"/></Widget>
-
-        <Widget type="TextBox" skin="SandText" position="164 34 120 20" name="LblStageJournal"><Property key="Caption" value="Journal"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="164 56 390 56" name="StageJournal">
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="ListBox" skin="MW_List" position="4 4 136 354" align="Left VStretch" name="StageList"></Widget>
+        <Widget type="TextBox" skin="SandText" position="146 6 48 20" name="LblStageIndex"><Property key="Caption" value="Index"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="196 4 36 22" align="Left Top" name="StageIndex"></Widget>
+        <Widget type="Button" skin="MW_Button" position="238 4 93 22" align="Left Top" name="StageInitialButton"><Property key="Caption" value="Initial: no"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="335 4 93 22" align="Left Top" name="StageCompleteButton"><Property key="Caption" value="Complete: no"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="432 4 94 22" align="Left Top" name="StageFailButton"><Property key="Caption" value="Fail: no"/></Widget>
+        <Widget type="TextBox" skin="SandText" position="146 30 380 20" name="LblStageJournal"><Property key="Caption" value="Journal"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="146 50 380 48" align="HStretch Top" name="StageJournal">
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
         </Widget>
-        <Widget type="TextBox" skin="SandText" position="164 116 120 20" name="LblStageDialogue"><Property key="Caption" value="Dialogue"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="164 138 390 56" name="StageDialogue">
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="TextBox" skin="SandText" position="146 102 380 20" name="LblStageDialogue"><Property key="Caption" value="Dialogue"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="146 122 380 48" align="HStretch Top" name="StageDialogue">
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
         </Widget>
-        <Widget type="Button" skin="MW_Button" position="164 198 126 22" name="NewStageButton"><Property key="Caption" value="New stage"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="296 198 126 22" name="SaveStageButton"><Property key="Caption" value="Save stage"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="428 198 126 22" name="DeleteStageButton"><Property key="Caption" value="Delete stage"/></Widget>
-
-        <Widget type="TextBox" skin="SandBrightText" position="164 226 150 20" name="LblStageChoices"><Property key="Caption" value="Stage choices"/></Widget>
-        <Widget type="ListBox" skin="MW_List" position="164 248 150 122" name="StageChoiceList"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="320 248 110 22" name="StageChoiceId"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="436 248 118 22" name="StageChoiceAction"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="320 276 110 22" name="StageChoiceTarget"/>
-        <Widget type="TextBox" skin="SandText" position="436 278 40 20" name="LblNextStage"><Property key="Caption" value="Next"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="478 276 76 22" name="NextStageTarget"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="320 304 234 24" name="StageChoiceText">
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
-        </Widget>
-        <Widget type="Button" skin="MW_Button" position="320 332 74 22" name="NewStageChoiceButton"><Property key="Caption" value="New"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="398 332 80 22" name="SaveStageChoiceButton"><Property key="Caption" value="Save"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="482 332 72 22" name="DeleteStageChoiceButton"><Property key="Caption" value="Delete"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="320 358 110 22" name="AddNextButton"><Property key="Caption" value="Add next"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="436 358 118 22" name="DeleteNextButton"><Property key="Caption" value="Remove next"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="146 176 26 22" align="Left Top" name="NewStageButton"><Property key="Caption" value="New stage"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="174 176 26 22" align="Left Top" name="SaveStageButton"><Property key="Caption" value="Save stage"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="202 176 26 22" align="Left Top" name="DeleteStageButton"><Property key="Caption" value="Delete stage"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="146 206 130 20" name="LblStageChoices"><Property key="Caption" value="Stage choices"/></Widget>
+        <Widget type="ListBox" skin="MW_List" position="146 228 110 130" align="Left VStretch" name="StageChoiceList"></Widget>
+        <Widget type="TextBox" skin="SandText" position="262 230 72 20" name="LblStageChoiceId"><Property key="Caption" value="ID"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="336 228 190 22" align="HStretch Top" name="StageChoiceId"></Widget>
+        <Widget type="TextBox" skin="SandText" position="262 256 72 20" name="LblStageChoiceAction"><Property key="Caption" value="Action"/></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="336 254 190 22" align="HStretch Top" name="StageChoiceAction"></Widget>
+        <Widget type="TextBox" skin="SandText" position="262 282 72 20" name="LblStageChoiceTarget"><Property key="Caption" value="Stage"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="336 280 40 22" align="Left Top" name="StageChoiceTarget"></Widget>
+        <Widget type="TextBox" skin="SandText" position="380 282 48 20" name="LblNextStage"><Property key="Caption" value="Next"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="430 280 38 22" align="HStretch Top" name="NextStageTarget"></Widget>
+        <Widget type="Button" skin="MW_Button" position="472 280 26 22" align="Right Top" name="AddNextButton"><Property key="Caption" value="Add next"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="500 280 26 22" align="Right Top" name="DeleteNextButton"><Property key="Caption" value="Remove next"/></Widget>
+        <Widget type="TextBox" skin="SandText" position="262 308 72 20" name="LblStageChoiceText"><Property key="Caption" value="Text"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="336 306 190 22" align="HStretch Top" name="StageChoiceText"></Widget>
+        <Widget type="Button" skin="MW_Button" position="336 332 26 22" align="Left Top" name="NewStageChoiceButton"><Property key="Caption" value="New"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="364 332 26 22" align="Left Top" name="SaveStageChoiceButton"><Property key="Caption" value="Save"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="392 332 26 22" align="Left Top" name="DeleteStageChoiceButton"><Property key="Caption" value="Delete"/></Widget>
       </Widget>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Logic"/>
-        <Widget type="TextBox" skin="SandText" position="6 8 64 20" name="LblLogicTarget"><Property key="Caption" value="Target"/></Widget>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="72 6 190 22" name="LogicTarget"/>
-        <Widget type="TextBox" skin="SandBrightText" position="268 8 286 20" name="LogicContext"/>
-
-        <Widget type="TextBox" skin="SandBrightText" position="6 34 260 20" name="LblRequirements"><Property key="Caption" value="Requirements"/></Widget>
-        <Widget type="ListBox" skin="MW_List" position="6 56 260 130" name="RequirementList"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="272 56 140 22" name="RequirementType"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="418 56 54 22" name="RequirementOp"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="478 56 76 22" name="RequirementValue"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="272 84 282 22" name="RequirementRef"/>
-        <Widget type="Button" skin="MW_Button" position="272 112 134 22" name="AddRequirementButton"><Property key="Caption" value="Add"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="412 112 142 22" name="DeleteRequirementButton"><Property key="Caption" value="Delete"/></Widget>
-
-        <Widget type="TextBox" skin="SandBrightText" position="6 196 260 20" name="LblRewards"><Property key="Caption" value="Rewards for selected stage"/></Widget>
-        <Widget type="ListBox" skin="MW_List" position="6 218 260 120" name="RewardList"/>
-        <Widget type="ComboBox" skin="MW_ComboBox" position="272 218 140 22" name="RewardType"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="418 218 136 22" name="RewardValueA"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="272 246 282 22" name="RewardValueB"/>
-        <Widget type="Button" skin="MW_Button" position="272 274 134 22" name="AddRewardButton"><Property key="Caption" value="Add"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="412 274 142 22" name="DeleteRewardButton"><Property key="Caption" value="Delete"/></Widget>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="272 302 282 66" name="LogicHint">
-          <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="TextBox" skin="SandText" position="4 6 60 20" name="LblLogicTarget"><Property key="Caption" value="Target"/></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="66 4 180 22" align="Left Top" name="LogicTarget"></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="252 6 274 20" align="HStretch Top" name="LogicContext"></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="4 32 236 20" name="LblRequirements"><Property key="Caption" value="Requirements"/></Widget>
+        <Widget type="ListBox" skin="MW_List" position="4 54 236 118" align="Left Top" name="RequirementList"></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="246 54 128 22" align="Left Top" name="RequirementType"></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="378 54 50 22" align="Left Top" name="RequirementOp"></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="432 54 94 22" align="HStretch Top" name="RequirementValue"></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="246 80 280 22" align="HStretch Top" name="RequirementRef"></Widget>
+        <Widget type="Button" skin="MW_Button" position="246 106 26 22" align="Left Top" name="AddRequirementButton"><Property key="Caption" value="Add"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="274 106 26 22" align="Left Top" name="DeleteRequirementButton"><Property key="Caption" value="Delete"/></Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="4 178 236 20" name="LblRewards"><Property key="Caption" value="Rewards for selected stage"/></Widget>
+        <Widget type="ListBox" skin="MW_List" position="4 200 236 158" align="Left VStretch" name="RewardList"></Widget>
+        <Widget type="ComboBox" skin="MW_ComboBox" position="246 200 128 22" align="Left Top" name="RewardType"></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="378 200 148 22" align="HStretch Top" name="RewardValueA"></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="246 226 280 22" align="HStretch Top" name="RewardValueB"></Widget>
+        <Widget type="Button" skin="MW_Button" position="246 252 26 22" align="Left Top" name="AddRewardButton"><Property key="Caption" value="Add"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="274 252 26 22" align="Left Top" name="DeleteRewardButton"><Property key="Caption" value="Delete"/></Widget>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="246 280 280 78" align="Stretch" name="LogicHint">
+          <Property key="EditStatic" value="true"/>
+          <Property key="ReadOnly" value="true"/>
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
         </Widget>
       </Widget>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Validation"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 6 548 330" name="ValidationText">
-          <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="4 4 522 326" align="Stretch" name="ValidationText">
+          <Property key="EditStatic" value="true"/>
+          <Property key="ReadOnly" value="true"/>
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
+          <Property key="VisibleVScroll" value="true"/>
         </Widget>
-        <Widget type="Button" skin="MW_Button" position="6 344 124 24" name="ValidateButton"><Property key="Caption" value="Validate"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="136 344 124 24" name="PublishButton"><Property key="Caption" value="Publish"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="266 344 124 24" name="DisableButton"><Property key="Caption" value="Disable"/></Widget>
-        <Widget type="Button" skin="MW_Button" position="430 344 124 24" name="RefreshButton"><Property key="Caption" value="Refresh"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="4 336 124 22" align="Left Bottom" name="ValidateButton"><Property key="Caption" value="Validate"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="132 336 124 22" align="Left Bottom" name="PublishButton"><Property key="Caption" value="Publish"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="260 336 124 22" align="Left Bottom" name="DisableButton"><Property key="Caption" value="Disable"/></Widget>
+        <Widget type="Button" skin="MW_Button" position="500 336 26 22" align="Right Bottom" name="RefreshButton"><Property key="Caption" value="Refresh"/></Widget>
       </Widget>
 
-      <Widget type="TabItem" skin="" position="4 28 560 400">
+      <Widget type="TabItem" skin="" position="4 28 530 362">
         <Property key="Caption" value="Help"/>
-        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 6 548 388" name="HelpText">
-          <Property key="EditStatic" value="true"/><Property key="ReadOnly" value="true"/>
-          <Property key="MultiLine" value="true"/><Property key="WordWrap" value="true"/>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="4 4 522 354" align="Stretch" name="HelpText">
+          <Property key="EditStatic" value="true"/>
+          <Property key="ReadOnly" value="true"/>
+          <Property key="MultiLine" value="true"/>
+          <Property key="WordWrap" value="true"/>
           <Property key="VisibleVScroll" value="true"/>
         </Widget>
       </Widget>
     </Widget>
 
-    <Widget type="TextBox" skin="SandText" position="204 464 470 20" name="EditorNotice"/>
-    <Widget type="Button" skin="MW_Button" position="684 462 88 24" name="CloseButton"><Property key="Caption" value="Close"/></Widget>
+    <Widget type="TextBox" skin="SandText" position="0 423 744 20" align="HStretch Bottom" name="EditorNotice"></Widget>
   </Widget>
 </MyGUI>

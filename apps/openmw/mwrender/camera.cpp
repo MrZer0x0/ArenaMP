@@ -181,7 +181,7 @@ namespace MWRender
             // camera into the chest.
             // Y098: the temporary sneak body uses the same eye position as
             // the permanently enabled body, including clearance from collars.
-            if ((mImmersiveFirstPersonEnabled || mSneakImmersiveFirstPersonActive)
+            if ((mImmersiveFirstPersonEnabled || mSneakImmersiveFirstPersonActive || mGyroImmersiveFirstPersonActive)
                 && mImmersiveFirstPersonForwardOffset != 0.f)
             {
                 const osg::Quat yawOrientation(mYaw, osg::Vec3d(0.0, 0.0, 1.0));
@@ -478,9 +478,11 @@ namespace MWRender
     {
         const bool immersiveFirstPersonEnabled
             = Settings::Manager::getBool("immersive first person", "Camera");
-        const bool immersiveFirstPersonChanged
-            = immersiveFirstPersonEnabled != mImmersiveFirstPersonEnabled;
+        const bool wasActive = immersiveFirstPersonActive();
         mImmersiveFirstPersonEnabled = immersiveFirstPersonEnabled;
+        // GB1: rebuild only when what is drawn changes; a temporary sneak or
+        // gyroscope override may already show the body.
+        const bool immersiveFirstPersonChanged = wasActive != immersiveFirstPersonActive();
         mImmersiveFirstPersonForwardOffset
             = Settings::Manager::getFloat("immersive first person forward offset", "Camera");
         mHeadBobbingEnabled = Settings::Manager::getBool("head bobbing", "Camera");
@@ -899,8 +901,9 @@ namespace MWRender
         // so a player who already had the body enabled keeps it enabled after
         // leaving sneak, while a player who had it disabled returns to arms-only.
         const bool sneakActive = offset > 0.f;
-        const bool overrideChanged = sneakActive != mSneakImmersiveFirstPersonActive;
+        const bool wasActive = immersiveFirstPersonActive();
         mSneakImmersiveFirstPersonActive = sneakActive;
+        const bool overrideChanged = wasActive != immersiveFirstPersonActive();
 
         // Restore the vanilla first-person offset. The previous Y093 workaround
         // that moved the hand rig backwards is intentionally removed.
@@ -909,7 +912,22 @@ namespace MWRender
         // Rebuild the local first-person render skeleton only when the temporary
         // override actually changes the effective mode. If the user setting is
         // already enabled, entering/leaving sneak does not toggle anything.
-        if (overrideChanged && !mImmersiveFirstPersonEnabled && isFirstPerson())
+        if (overrideChanged && isFirstPerson())
+            processViewChange();
+    }
+
+    bool Camera::immersiveFirstPersonActive() const
+    {
+        return mImmersiveFirstPersonEnabled || mSneakImmersiveFirstPersonActive || mGyroImmersiveFirstPersonActive;
+    }
+
+    void Camera::setGyroImmersiveFirstPerson(bool active)
+    {
+        if (active == mGyroImmersiveFirstPersonActive)
+            return;
+        const bool wasActive = immersiveFirstPersonActive();
+        mGyroImmersiveFirstPersonActive = active;
+        if (wasActive != immersiveFirstPersonActive() && mAnimation && isFirstPerson())
             processViewChange();
     }
 
@@ -1029,7 +1047,7 @@ namespace MWRender
         if(isFirstPerson())
         {
             const bool immersiveFirstPerson
-                = mImmersiveFirstPersonEnabled || mSneakImmersiveFirstPersonActive;
+                = mImmersiveFirstPersonEnabled || mSneakImmersiveFirstPersonActive || mGyroImmersiveFirstPersonActive;
             mAnimation->setViewMode(immersiveFirstPerson
                 ? NpcAnimation::VM_ImmersiveFirstPerson : NpcAnimation::VM_FirstPerson);
             mTrackingNode = mAnimation->getNode("Camera");

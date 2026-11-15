@@ -86,6 +86,24 @@ namespace mwmp
 
         bool requestGroupRecall();
         bool getChatEditState();
+        /// KB1 (Android): whether focusing `widget` should open the on-screen
+        /// keyboard at once. True for the chat line opened by a short Say tap;
+        /// false inside the Player Menu (opened by holding Say).
+        bool shouldAutoShowKeyboardFor(MyGUI::Widget* widget) const;
+
+        /// UI3: what group members share on the map - their gold flags (kind "F")
+        /// and their group-shared markers - for the maps and the HUD compass.
+        struct GroupMapPoint
+        {
+            float x = 0.f;
+            float y = 0.f;
+            bool paged = true;          ///< exterior; otherwise `worldspace` is the interior cell
+            std::string worldspace;
+            std::string kind;           ///< "F" for a flag, otherwise the marker glyph
+            std::string color;
+            std::string text;           ///< member name for flags, note text for markers
+        };
+        std::vector<GroupMapPoint> getGroupMapPoints() const;
         std::string getChatHistoryText() const;
         bool getChatHistoryCoord(int& x, int& y, int& width, int& height) const;
         void setChatMainMenuOpen(bool state);

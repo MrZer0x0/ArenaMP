@@ -1,4 +1,5 @@
 #include "statswindow.hpp"
+#include "shapedbar.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -294,6 +295,7 @@ namespace MWGui
 
         pt->setProgressRange(std::max(0, max));
         pt->setProgressPosition(std::max(0, val));
+        fitShapedProgressBar(pt);
     }
 
     void StatsWindow::setPlayerName(const std::string& playerName)
@@ -496,6 +498,12 @@ namespace MWGui
     void StatsWindow::onFrame (float dt)
     {
         NoDrop::onFrame(dt);
+        for (const char* name : { "HBar", "MBar", "FBar", "ArchetypePowerBar" })
+        {
+            MyGUI::ProgressBar* bar = nullptr;
+            getWidget(bar, name);
+            fitShapedProgressBar(bar);
+        }
 
         MWWorld::Ptr player = MWMechanics::getPlayer();
         const MWMechanics::NpcStats &PCstats = player.getClass().getNpcStats(player);

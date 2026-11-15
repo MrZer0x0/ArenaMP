@@ -266,6 +266,10 @@ namespace MWBase
             virtual void setWeaponVisibility(bool visible) = 0;
             virtual void setSpellVisibility(bool visible) = 0;
             virtual void setSneakVisibility(bool visible) = 0;
+            /// ArenaMP UI4: sneak eye state while sneaking.
+            /// 0 = hidden (nobody notices), 1 = suspicious (an observer has line of
+            /// sight but failed the awareness check), 2 = detected.
+            virtual void setSneakDetection(int level) = 0;
 
             /// activate selected quick key
             virtual void editQuickKey(int index) = 0;
@@ -480,6 +484,9 @@ namespace MWBase
             virtual std::string getArenaLanguage() const = 0;
             /// Switch ArenaMP-owned UI/server-interface language at runtime.
             virtual void setArenaLanguage(const std::string& language) = 0;
+
+            /// Reapply the paired scene update/cull policy after renderer setup.
+            virtual void refreshSceneVisibility() = 0;
 
             virtual void watchActor(const MWWorld::Ptr& ptr) = 0;
             virtual MWWorld::Ptr getWatchedActor() const = 0;

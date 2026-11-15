@@ -95,6 +95,9 @@ coreChat = require("coreChat")
 require("customScripts")
 -- X035: server-authoritative custom quest definitions/editor/runtime.
 serverQuestSystem = require("serverQuestSystem")
+-- QM1: Quest Manager services (skip / reset quests, clear journal, leave a
+-- faction) paid with Skill Points.
+questmanService = require("questmanService")
 local configHotReload = require("configHotReload")
 local questIndexStore = require("questIndexStore")
 -- ArenaMP C19: core cell reset helper now lives in the main scripts folder.

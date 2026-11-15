@@ -1,5 +1,7 @@
 #include "topic.hpp"
 
+#include <algorithm>
+
 #include <components/misc/stringops.hpp>
 
 #include "../mwbase/environment.hpp"
@@ -58,6 +60,19 @@ namespace MWDialogue
     Topic::TEntryIter Topic::end() const
     {
         return mEntries.end();
+    }
+
+    void Topic::clearEntries()
+    {
+        mEntries.clear();
+    }
+
+    bool Topic::removeEntry (const std::string& infoId)
+    {
+        const std::size_t before = mEntries.size();
+        mEntries.erase(std::remove_if(mEntries.begin(), mEntries.end(), [&infoId](const Entry& entry)
+            { return Misc::StringUtils::ciEqual(entry.mInfoId, infoId); }), mEntries.end());
+        return mEntries.size() != before;
     }
 
     void Topic::removeLastAddedResponse (const std::string& actorName)

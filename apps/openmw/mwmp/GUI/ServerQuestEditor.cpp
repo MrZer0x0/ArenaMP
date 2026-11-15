@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include <MyGUI_Button.h>
+#include <MyGUI_ImageBox.h>
 #include <MyGUI_InputManager.h>
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_TabItem.h>
@@ -290,11 +292,13 @@ namespace mwmp
 
         applyLocalization();
 
-        // X048: remember the authored geometry before anything rescales it, then make
-        // the window fit the current viewport and use a font that can draw Cyrillic.
+        // X048: use a font that can draw Cyrillic. QS1: then turn the list actions
+        // into icon buttons (their captions are measured in that font), remember the
+        // authored geometry before anything resizes it and fit the viewport.
+        applyGameFont(mMainWidget);
+        decorateButtons();
         mBaseSize = mMainWidget->getSize();
         captureBaseGeometry(mMainWidget);
-        applyGameFont(mMainWidget);
         fitToViewport();
         center();
     }
@@ -320,26 +324,30 @@ namespace mwmp
         if (view.width <= 0 || view.height <= 0)
             return;
 
-        // Leave a small margin so the window never touches the screen edge.
-        // QW1: on large screens the studio may also grow up to 20% (fonts keep
-        // their size, so the fields and lists simply get more room).
-        const float marginated = 0.98f;
-        float scale = std::min(view.width * marginated / static_cast<float>(mBaseSize.width),
-            view.height * marginated / static_cast<float>(mBaseSize.height));
-        if (scale > 1.0f)
-            scale = std::max(1.0f, std::min(1.2f, std::min(view.width * 0.92f / static_cast<float>(mBaseSize.width),
-                view.height * 0.92f / static_cast<float>(mBaseSize.height))));
-
-        // Below this the bitmap font stops fitting into the controls and the studio
-        // becomes unusable in a different way, so we stop shrinking and accept that
-        // very small resolutions will clip the right-hand tabs.
+        // QS1: the layout is the smallest comfortable studio. Below it (small window,
+        // large GUI scaling, phones) the geometry is still scaled down so nothing
+        // leaves the screen; at or above it nothing is scaled at all.
+        float scale = std::min(1.0f, std::min(view.width * 0.98f / static_cast<float>(mBaseSize.width),
+            view.height * 0.98f / static_cast<float>(mBaseSize.height)));
+        // Below this the bitmap font stops fitting into the controls.
         scale = std::max(scale, 0.55f);
 
-        if (std::abs(scale - mAppliedScale) < 0.001f)
-            return;
+        // Larger viewports get a larger window instead: up to 94% of the view and
+        // at most 1.45x the layout. Align rules stretch the lists and text fields.
+        MyGUI::IntSize target = mBaseSize;
+        if (scale >= 1.0f)
+        {
+            target.width = std::max(mBaseSize.width, std::min(static_cast<int>(view.width * 0.94f),
+                static_cast<int>(mBaseSize.width * 1.45f)));
+            target.height = std::max(mBaseSize.height, std::min(static_cast<int>(view.height * 0.94f),
+                static_cast<int>(mBaseSize.height * 1.45f)));
+        }
 
+        if (std::abs(scale - mAppliedScale) < 0.001f && mMainWidget->getSize() == target && scale >= 1.0f)
+            return;
         mAppliedScale = scale;
 
+        // Start again from the authored geometry, so stretching never accumulates.
         for (const std::pair<MyGUI::Widget*, MyGUI::IntCoord>& entry : mBaseGeometry)
         {
             if (entry.first == nullptr)
@@ -353,8 +361,140 @@ namespace mwmp
                 static_cast<int>(base.height * scale + 0.5f));
         }
 
-        mMainWidget->setSize(static_cast<int>(mBaseSize.width * scale + 0.5f),
-            static_cast<int>(mBaseSize.height * scale + 0.5f));
+        if (scale < 1.0f)
+            mMainWidget->setSize(static_cast<int>(mBaseSize.width * scale + 0.5f),
+                static_cast<int>(mBaseSize.height * scale + 0.5f));
+        else
+            mMainWidget->setSize(target);
+
+        placeButtonIcons();
+    }
+
+    void ServerQuestEditorWindow::setTooltip(MyGUI::Widget* widget, const std::string& text)
+    {
+        if (widget == nullptr || text.empty())
+            return;
+        widget->setUserString("ToolTipType", "Layout");
+        widget->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        widget->setUserString("Caption_TextOneLine", text);
+    }
+
+    void ServerQuestEditorWindow::setIconButton(
+        MyGUI::Button* button, const char* icon, const std::string& tooltip, bool withCaption)
+    {
+        if (button == nullptr)
+            return;
+
+        IconButton entry;
+        entry.button = button;
+        entry.caption = withCaption ? tooltip : std::string();
+        entry.icon = button->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(0, 0, 16, 16), MyGUI::Align::Default);
+        entry.icon->setImageTexture(std::string("textures/ui/arenamw/btn_") + icon + ".png");
+        entry.icon->setNeedMouseFocus(false);
+        setTooltip(button, tooltip);
+        mIconButtons.push_back(entry);
+    }
+
+    void ServerQuestEditorWindow::placeButtonIcons()
+    {
+        for (const IconButton& entry : mIconButtons)
+        {
+            MyGUI::Button* button = entry.button;
+            if (button == nullptr || entry.icon == nullptr)
+                continue;
+
+            const int size = std::max(12, std::min(18, button->getHeight() - 6));
+            if (entry.caption.empty())
+            {
+                button->setCaption("");
+                entry.icon->setCoord((button->getWidth() - size) / 2, (button->getHeight() - size) / 2, size, size);
+                continue;
+            }
+
+            button->setCaption(entry.caption);
+            const int captionWidth = button->getTextSize().width;
+            button->setCaption(" " + entry.caption);
+            const int gap = std::max(8, button->getTextSize().width - captionWidth);
+            std::string padded = " " + entry.caption;
+            for (int n = 0; n < 64 && button->getTextSize().width - captionWidth < size + gap; ++n)
+            {
+                padded.insert(padded.begin(), ' ');
+                button->setCaption(padded);
+            }
+            const int textWidth = button->getTextSize().width;
+            if (textWidth > button->getWidth() - 6)
+            {
+                // Not enough room (tiny viewport): the icon alone, name in the tooltip.
+                button->setCaption("");
+                entry.icon->setCoord((button->getWidth() - size) / 2, (button->getHeight() - size) / 2, size, size);
+                continue;
+            }
+            const int x = std::max(3, (button->getWidth() - textWidth) / 2);
+            entry.icon->setCoord(x, (button->getHeight() - size) / 2, size, size);
+        }
+    }
+
+    void ServerQuestEditorWindow::decorateButtons()
+    {
+        // Quest list.
+        setIconButton(mNewQuestButton, "add", tr("questeditor.tip.new_quest"), false);
+        setIconButton(mCloneQuestButton, "copy", tr("questeditor.tip.clone_quest"), false);
+        setIconButton(mDeleteQuestButton, "delete", tr("questeditor.tip.delete_quest"), false);
+        setIconButton(mCloseButton, "close", tr("questeditor.btn.close"), false);
+
+        // Overview.
+        setIconButton(mPickGiverButton, "pick", tr("questeditor.tip.pick_giver"), false);
+        setIconButton(mClearUniqueButton, "anyone", tr("questeditor.tip.any_instance"), false);
+        setIconButton(mSaveOverviewButton, "save", tr("questeditor.btn.save_overview"), true);
+
+        // Dialogue.
+        setIconButton(mNewTopicButton, "add", tr("questeditor.tip.new_topic"), false);
+        setIconButton(mSaveTopicButton, "save", tr("questeditor.tip.save_topic"), false);
+        setIconButton(mDeleteTopicButton, "delete", tr("questeditor.tip.delete_topic"), false);
+        setIconButton(mSaveOfferButton, "save", tr("questeditor.btn.save_offer"), false);
+        setIconButton(mNewOfferChoiceButton, "add", tr("questeditor.tip.new_choice"), false);
+        setIconButton(mSaveOfferChoiceButton, "save", tr("questeditor.tip.save_choice"), false);
+        setIconButton(mDeleteOfferChoiceButton, "delete", tr("questeditor.tip.delete_choice"), false);
+
+        // Stages.
+        setIconButton(mNewStageButton, "add", tr("questeditor.btn.new_stage"), false);
+        setIconButton(mSaveStageButton, "save", tr("questeditor.btn.save_stage"), false);
+        setIconButton(mDeleteStageButton, "delete", tr("questeditor.btn.delete_stage"), false);
+        setIconButton(mNewStageChoiceButton, "add", tr("questeditor.tip.new_choice"), false);
+        setIconButton(mSaveStageChoiceButton, "save", tr("questeditor.tip.save_choice"), false);
+        setIconButton(mDeleteStageChoiceButton, "delete", tr("questeditor.tip.delete_choice"), false);
+        setIconButton(mAddNextButton, "link", tr("questeditor.tip.add_next"), false);
+        setIconButton(mDeleteNextButton, "unlink", tr("questeditor.tip.remove_next"), false);
+
+        // Logic.
+        setIconButton(mAddRequirementButton, "add", tr("questeditor.tip.add_requirement"), false);
+        setIconButton(mDeleteRequirementButton, "delete", tr("questeditor.tip.delete_requirement"), false);
+        setIconButton(mAddRewardButton, "add", tr("questeditor.tip.add_reward"), false);
+        setIconButton(mDeleteRewardButton, "delete", tr("questeditor.tip.delete_reward"), false);
+
+        // Validation.
+        setIconButton(mValidateButton, "accept", tr("questeditor.btn.validate"), true);
+        setIconButton(mPublishButton, "publish", tr("questeditor.btn.publish"), true);
+        setIconButton(mDisableButton, "disable", tr("questeditor.btn.disable"), true);
+        setIconButton(mRefreshButton, "refresh", tr("questeditor.btn.refresh"), false);
+
+        // Fields without a label of their own.
+        setTooltip(mQuestSearch, tr("questeditor.tip.search"));
+        setTooltip(mNewQuestId, tr("questeditor.tip.new_quest_id"));
+        setTooltip(mNewQuestName, tr("questeditor.tip.new_quest_name"));
+        setTooltip(mRequirementType, tr("questeditor.tip.requirement_type"));
+        setTooltip(mRequirementOp, tr("questeditor.tip.requirement_op"));
+        setTooltip(mRequirementValue, tr("questeditor.tip.requirement_value"));
+        setTooltip(mRequirementRef, tr("questeditor.tip.requirement_ref"));
+        setTooltip(mRewardType, tr("questeditor.tip.reward_type"));
+        setTooltip(mRewardValueA, tr("questeditor.tip.reward_a"));
+        setTooltip(mRewardValueB, tr("questeditor.tip.reward_b"));
+        setTooltip(mNextStageTarget, tr("questeditor.tip.next_stage"));
+        setTooltip(mInitialStage, tr("questeditor.tip.initial_stage"));
+        setTooltip(mGiverUnique, tr("questeditor.tip.unique"));
+
+        placeButtonIcons();
     }
 
     void ServerQuestEditorWindow::applyGameFont(MyGUI::Widget* widget)
@@ -403,9 +543,6 @@ namespace mwmp
         for (std::size_t i = 0; i < mTabs->getItemCount() && i < tabKeyCount; ++i)
             mTabs->getItemAt(i)->setCaption(tr(tabKeys[i]));
 
-        mNewQuestButton->setCaption(tr("questeditor.btn.new"));
-        mCloneQuestButton->setCaption(tr("questeditor.btn.clone"));
-        mDeleteQuestButton->setCaption(tr("questeditor.btn.delete"));
 
         localizeLabel("LblQuestId", "questeditor.lbl.quest_id");
         localizeLabel("LblStatus", "questeditor.lbl.status");
@@ -418,52 +555,37 @@ namespace mwmp
         localizeLabel("LblCell", "questeditor.lbl.cell");
         localizeLabel("LblUnique", "questeditor.lbl.unique");
         localizeLabel("LblInitialStage", "questeditor.lbl.initial_stage");
-        mPickGiverButton->setCaption(tr("questeditor.btn.pick_giver"));
-        mClearUniqueButton->setCaption(tr("questeditor.btn.any_instance"));
-        mSaveOverviewButton->setCaption(tr("questeditor.btn.save_overview"));
         mOverviewHint->setCaption(tr("questeditor.hint.overview"));
 
         localizeLabel("LblTopics", "questeditor.lbl.topics");
         localizeLabel("LblOffer", "questeditor.lbl.offer");
         localizeLabel("LblOfferChoices", "questeditor.lbl.offer_choices");
-        mNewTopicButton->setCaption(tr("questeditor.btn.new"));
-        mSaveTopicButton->setCaption(tr("questeditor.btn.save"));
-        mDeleteTopicButton->setCaption(tr("questeditor.btn.delete"));
-        mSaveOfferButton->setCaption(tr("questeditor.btn.save_offer"));
-        mNewOfferChoiceButton->setCaption(tr("questeditor.btn.new"));
-        mSaveOfferChoiceButton->setCaption(tr("questeditor.btn.save"));
-        mDeleteOfferChoiceButton->setCaption(tr("questeditor.btn.delete"));
+        // QS1: labels for fields that used to have none.
+        localizeLabel("LblTopicId", "questeditor.lbl.topic_id");
+        localizeLabel("LblTopicText", "questeditor.lbl.topic_text");
+        localizeLabel("LblTopicEnabled", "questeditor.lbl.topic_enabled");
+        localizeLabel("LblOfferChoiceId", "questeditor.lbl.choice_id");
+        localizeLabel("LblOfferChoiceAction", "questeditor.lbl.choice_action");
+        localizeLabel("LblOfferChoiceTarget", "questeditor.lbl.choice_target");
+        localizeLabel("LblOfferChoiceText", "questeditor.lbl.choice_text");
 
         localizeLabel("LblStageIndex", "questeditor.lbl.stage_index");
         localizeLabel("LblStageJournal", "questeditor.lbl.journal");
         localizeLabel("LblStageDialogue", "questeditor.lbl.dialogue");
         localizeLabel("LblStageChoices", "questeditor.lbl.stage_choices");
         localizeLabel("LblNextStage", "questeditor.lbl.next");
-        mNewStageButton->setCaption(tr("questeditor.btn.new_stage"));
-        mSaveStageButton->setCaption(tr("questeditor.btn.save_stage"));
-        mDeleteStageButton->setCaption(tr("questeditor.btn.delete_stage"));
-        mNewStageChoiceButton->setCaption(tr("questeditor.btn.new"));
-        mSaveStageChoiceButton->setCaption(tr("questeditor.btn.save"));
-        mDeleteStageChoiceButton->setCaption(tr("questeditor.btn.delete"));
-        mAddNextButton->setCaption(tr("questeditor.btn.add_next"));
-        mDeleteNextButton->setCaption(tr("questeditor.btn.remove_next"));
+        localizeLabel("LblStageChoiceId", "questeditor.lbl.choice_id");
+        localizeLabel("LblStageChoiceAction", "questeditor.lbl.choice_action");
+        localizeLabel("LblStageChoiceTarget", "questeditor.lbl.choice_target");
+        localizeLabel("LblStageChoiceText", "questeditor.lbl.choice_text");
 
         localizeLabel("LblLogicTarget", "questeditor.lbl.logic_target");
         localizeLabel("LblRequirements", "questeditor.lbl.requirements");
         localizeLabel("LblRewards", "questeditor.lbl.rewards");
-        mAddRequirementButton->setCaption(tr("questeditor.btn.add"));
-        mDeleteRequirementButton->setCaption(tr("questeditor.btn.delete"));
-        mAddRewardButton->setCaption(tr("questeditor.btn.add"));
-        mDeleteRewardButton->setCaption(tr("questeditor.btn.delete"));
         mLogicHint->setCaption(tr("questeditor.hint.logic"));
 
-        mValidateButton->setCaption(tr("questeditor.btn.validate"));
-        mPublishButton->setCaption(tr("questeditor.btn.publish"));
-        mDisableButton->setCaption(tr("questeditor.btn.disable"));
-        mRefreshButton->setCaption(tr("questeditor.btn.refresh"));
 
         mHelpText->setCaption(tr("questeditor.help.text"));
-        mCloseButton->setCaption(tr("questeditor.btn.close"));
     }
 
     void ServerQuestEditorWindow::onOpen()

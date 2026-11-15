@@ -20,7 +20,9 @@ if type(config.mapMarkerSystem) == "table" then
     cfg.maxGroup = math.max(1, tonumber(config.mapMarkerSystem["max group markers"]) or cfg.maxGroup)
 end
 
-local allowedKind = { ["?"] = true, ["!"] = true, A = true, B = true, C = true }
+-- UI3: "F" is a group member's gold flag (one per member, shown to the rest of
+-- the group as a silver flag on the maps and the compass).
+local allowedKind = { ["?"] = true, ["!"] = true, A = true, B = true, C = true, F = true }
 local allowedColor = { red=true, green=true, blue=true, yellow=true, white=true, purple=true, orange=true }
 
 local function valid(pid)
@@ -247,8 +249,54 @@ local function personalCommand(pid, cmd)
     end
 end
 
+-- UI3: /gmark flag <x> <y> | /gmark unflag. Sent automatically by the client
+-- when the player sets or removes the gold flag on the world map. A player
+-- without a group is ignored silently: the flag stays personal.
+local function flagCommand(pid, sub, cmd)
+    local gid = groupHelper.GetPlayerGroupId(pid)
+    if not gid then return end
+    local g = groupData(gid)
+    if not g then return end
+
+    local owner = accountName(pid)
+    local changed = false
+    for i = #g.markers, 1, -1 do
+        local marker = g.markers[i]
+        if tostring(marker.owner or "") == owner and normalizeKind(marker.kind) == "F" then
+            table.remove(g.markers, i)
+            changed = true
+        end
+    end
+
+    if sub == "flag" then
+        local x, y = tonumber(cmd[3]), tonumber(cmd[4])
+        if x and y and x == x and y == y and math.abs(x) < 1e7 and math.abs(y) < 1e7 then
+            local id = tostring(g.nextId)
+            g.nextId = g.nextId + 1
+            table.insert(g.markers, {
+                id=id, paged=true, cell="world",
+                cellX=math.floor(x / 8192), cellY=math.floor(y / 8192),
+                x=x, y=y, kind="F", color="white",
+                text=safeText(Players[pid].name or owner, 64), owner=owner
+            })
+            changed = true
+        end
+    end
+
+    if changed then
+        while #g.markers > cfg.maxGroup do table.remove(g.markers, 1) end
+        saveGroupData()
+        groupMapHelper.BroadcastGroup(gid)
+    end
+end
+
 local function groupCommand(pid, cmd)
     if not valid(pid) then return end
+    local flagSub = tostring(cmd[2] or ""):lower()
+    if flagSub == "flag" or flagSub == "unflag" then
+        flagCommand(pid, flagSub, cmd)
+        return
+    end
     local gid = groupHelper.GetPlayerGroupId(pid)
     if not gid then
         local isRu = tostring(Players[pid].language or "EN"):upper() == "RU"

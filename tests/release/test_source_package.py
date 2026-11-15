@@ -4,6 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile
 import subprocess, tempfile, shutil, tarfile, json, os
 SRC = Path(__file__).resolve().parents[2]
+PRIVATE = (SRC/'android/signing-local/ArenaMP-release.jks').exists()
 def run(*args,root,env=None):
     return subprocess.run(args,cwd=root,env=env,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True).stdout
 with tempfile.TemporaryDirectory(prefix='arena-source-test-') as tmp:
@@ -12,19 +13,23 @@ with tempfile.TemporaryDirectory(prefix='arena-source-test-') as tmp:
     shutil.copy2(SRC/'.gitattributes',root/'.gitattributes')
     (root/'CHANGELOG.md').write_text('# First public source release\n')
     (root/'test.cpp').write_text('int main(){return 0;}\n')
+    if PRIVATE:
+        p=root/'android/signing-local';p.mkdir(parents=True)
+        for n in ('ArenaMP-release.jks','signing.properties','README_PRIVATE.txt'):
+            (p/n).write_bytes((SRC/'android/signing-local'/n).read_bytes())
     run('git','init','-q',root=root)
     run('git','add','-A',root=root)
     run('git','-c','user.name=Source test','-c','user.email=test@example.invalid','commit','-qm','fixture',root=root)
     source=root/'release-input';source.mkdir()
     (source/'windows').mkdir()
     (source/'windows'/'ArenaMP-Windows-x64-fixture.zip').write_bytes(b'winpkg'+b'0'*200)
-    env={**os.environ,'WINDOWS_RESULT':'success','LINUX_RESULT':'skipped'}
+    env={**os.environ,'WINDOWS_RESULT':'success','LINUX_RESULT':'skipped','MACOS_RESULT':'skipped','ANDROID_RESULT':'skipped','GITHUB_REPOSITORY_PRIVATE':('true' if PRIVATE else 'false')}
     run('python3','CI/prepare-release.py','--source','release-input','--destination','release-assets','--tag','v24-fixture',root=root,env=env)
     assets=root/'release-assets'
     with tarfile.open(assets/'ArenaMP-Source-v24-fixture.tar.gz') as archive:
         names=archive.getnames()
         assert 'ArenaMP/test.cpp' in names
-        assert not any('signing-local' in n or '/android/' in n for n in names)
+        assert not any('signing-local' in n for n in names)
     info=json.loads((assets/'BUILD_INFO.json').read_text())
     assert info['configuration']=='Release' and len(info['packages'])==1
     assert (assets/'SHA256SUMS.txt').is_file()

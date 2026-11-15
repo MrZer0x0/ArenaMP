@@ -637,6 +637,10 @@ namespace MWBase
             virtual osg::Matrixf getActorHeadTransform(const MWWorld::ConstPtr& actor) const = 0;
 
             virtual void togglePOV(bool force = false) = 0;
+
+            /// GB1: temporary first-person body while the Android gyroscope is on.
+            /// Does not change the "immersive first person" setting.
+            virtual void setGyroImmersiveFirstPerson(bool active) = 0;
             virtual bool isFirstPerson() const = 0;
             virtual bool isPreviewModeEnabled() const = 0;
             virtual void togglePreviewMode(bool enable) = 0;

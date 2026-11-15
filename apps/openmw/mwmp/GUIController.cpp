@@ -889,6 +889,39 @@ bool mwmp::GUIController::getChatEditState()
     return mChat->editState;
 }
 
+std::vector<mwmp::GUIController::GroupMapPoint> mwmp::GUIController::getGroupMapPoints() const
+{
+    std::vector<GroupMapPoint> points;
+    for (auto it = mPlayerMarkers.begin(); it != mPlayerMarkers.end(); ++it)
+    {
+        const ESM::CustomMarker& marker = it->second;
+        if (marker.mNote.rfind("@AMP_GMARK@|", 0) != 0)
+            continue;
+        const MWGui::ArenaMapMarkerStyle style = MWGui::parseArenaMapMarker(marker.mNote);
+        if (!style.styled || !style.group)
+            continue;
+        GroupMapPoint point;
+        point.x = marker.mWorldX;
+        point.y = marker.mWorldY;
+        point.paged = marker.mCell.mPaged;
+        point.worldspace = marker.mCell.mWorldspace;
+        point.kind = style.kind;
+        point.color = style.color;
+        point.text = style.text;
+        points.push_back(point);
+    }
+    return points;
+}
+
+bool mwmp::GUIController::shouldAutoShowKeyboardFor(MyGUI::Widget* widget) const
+{
+    if (mChat == nullptr || widget == nullptr || widget != mChat->mCommandLine)
+        return false;
+    // A short Say tap opens the compact HUD chat line; holding Say opens the
+    // Player Menu, where the player may only be browsing groups or houses.
+    return !mChat->getMenuState();
+}
+
 std::string mwmp::GUIController::getChatHistoryText() const
 {
     return mChat != nullptr ? mChat->getHistoryText() : std::string();
@@ -1060,6 +1093,23 @@ void mwmp::GUIController::updatePlayersMarkers(MWGui::LocalMapBase *localMapBase
 
                 MWGui::LocalMapBase::MarkerUserData markerPos(localMapBase->mLocalMapRender);
                 const MyGUI::IntPoint pos = localMapBase->getMarkerPosition(marker.mWorldX, marker.mWorldY, markerPos);
+                if (style.kind == "F")
+                {
+                    // UI3: a group member's flag - silver, so it never reads as the
+                    // player's own gold flag. The pole foot marks the spot.
+                    MyGUI::ImageBox* flag = localMapBase->mLocalMap->createWidget<MyGUI::ImageBox>(
+                        "ImageBox", MyGUI::IntCoord(pos.left - 4, pos.top - 18, 18, 18), MyGUI::Align::Default);
+                    flag->setImageTexture("textures/ui/arenamw/map_flag_group.png");
+                    flag->setDepth(1);
+                    flag->setUserString("ToolTipType", "Layout");
+                    flag->setUserString("ToolTipLayout", "TextToolTipOneLine");
+                    flag->setUserString("Caption_TextOneLine",
+                        MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=map.flag.group}") + ": " + style.text);
+                    flag->setNeedMouseFocus(true);
+                    localMapBase->mPlayerMarkerWidgets.push_back(flag);
+                    ++created;
+                    continue;
+                }
                 MyGUI::Widget* widget = localMapBase->mLocalMap->createWidget<MyGUI::Widget>(
                     "CustomMarkerButton", MyGUI::IntCoord(pos.left - 8, pos.top - 8, 16, 16), MyGUI::Align::Default);
                 widget->setDepth(1);

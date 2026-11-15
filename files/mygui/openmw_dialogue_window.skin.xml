@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Resource" version="1.1">
     <!-- Borderless topic list used by the cinematic dialogue. -->
+    <!-- UI9: topic lines in the dialogue font (bold, like the loading screen). -->
+    <Resource type="ResourceSkin" name="ArenaDialogueTopicLine" size="5 5">
+        <Property key="FontName" value="ArenaDialogueTopicFont"/>
+        <Property key="TextAlign" value="Left VCenter"/>
+        <BasisSkin type="SimpleText" offset="2 0 1 5" align="Stretch">
+            <State name="disabled" colour="#{fontcolour=disabled}" shift="0"/>
+            <State name="normal" colour="#{fontcolour=normal}" shift="0"/>
+            <State name="highlighted" colour="#{fontcolour=normal_over}" shift="0"/>
+            <State name="pushed" colour="#{fontcolour=normal_pressed}" shift="0"/>
+            <State name="disabled_checked" colour="#{fontcolour=disabled}" shift="0"/>
+            <State name="normal_checked" colour="#{fontcolour=active}" shift="0"/>
+            <State name="highlighted_checked" colour="#{fontcolour=active_over}" shift="0"/>
+            <State name="pushed_checked" colour="#{fontcolour=active_pressed}" shift="0"/>
+        </BasisSkin>
+    </Resource>
+
     <Resource type="ResourceSkin" name="MW_DialogueList" size="256 256" align="Left Top">
-        <Property key="ListItemSkin" value="MW_ListLine"/>
+        <Property key="ListItemSkin" value="ArenaDialogueTopicLine"/>
         <Child type="Widget" skin="" offset="0 0 256 256" align="Top Left Stretch" name="Client"/>
     </Resource>
 
     <!-- Original Morrowind answer colours: red, pale-gold hover and bright pressed. -->
     <Resource type="ResourceSkin" name="MW_DialogueChoiceLine" size="16 18">
-        <Property key="FontName" value="Default"/>
+        <Property key="FontName" value="ArenaDialogueTopicFont"/>
         <Property key="TextAlign" value="Left VCenter"/>
         <Property key="NeedKey" value="true"/>
         <BasisSkin type="SimpleText" offset="0 0 16 18" align="Stretch">

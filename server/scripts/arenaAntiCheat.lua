@@ -886,6 +886,49 @@ function arenaAntiCheat.GrantSkillPoints(targetPid, amount, source)
     return true, newPoints, nil
 end
 
+-- QM1: server-side spending (Quest Manager services). Lowering the unspent
+-- balance never breaks the skill budget, but the trusted snapshot and level
+-- checkpoint must move with it, or a later rollback would hand the points back.
+function arenaAntiCheat.SpendSkillPoints(targetPid, amount, source)
+    local player = Players and Players[targetPid] or nil
+    amount = tonumber(amount)
+    if player == nil or type(player.data) ~= "table" or type(player.data.stats) ~= "table"
+        or amount == nil or amount ~= amount or amount == math.huge or amount == -math.huge then
+        return false, nil, "invalid"
+    end
+    amount = math.floor(amount)
+    if amount <= 0 or amount > 100000 then return false, nil, "range" end
+
+    local oldPoints = math.max(0, math.floor((tonumber(player.data.stats.skillPoints) or 0) + 0.0001))
+    if oldPoints < amount then return false, oldPoints, "insufficient" end
+    local newPoints = oldPoints - amount
+    player.data.stats.skillPoints = newPoints
+
+    local state = player.data.customVariables and player.data.customVariables[STATE_KEY] or nil
+    if isEnabled() and type(state) == "table" and tonumber(state.schema) == SCHEMA_VERSION then
+        state.lastServerSkillPointSpend = {at = now(), amount = amount, source = tostring(source or "server")}
+        local current = snapshotPlayer(player)
+        saveLevelCheckpoint(state, current, true)
+        persistTrusted(player, state, current, true)
+    elseif type(player.QuicksaveToDrive) == "function" then
+        player:QuicksaveToDrive()
+    end
+
+    if tes3mp ~= nil and type(tes3mp.SetSkillPoints) == "function" then
+        tes3mp.SetSkillPoints(targetPid, newPoints)
+    end
+    if type(player.LoadLevel) == "function" then
+        player:LoadLevel(true)
+    elseif tes3mp ~= nil and type(tes3mp.SendLevel) == "function" then
+        tes3mp.SendLevel(targetPid)
+    end
+
+    log(enumerations and enumerations.log and enumerations.log.INFO or 1,
+        "server skill point spend for " .. playerName(targetPid) .. ": -" .. tostring(amount) ..
+        " SP for " .. tostring(source or "server") .. "; balance=" .. tostring(newPoints))
+    return true, newPoints, nil
+end
+
 function arenaAntiCheat.IsEnabled()
     return isEnabled()
 end

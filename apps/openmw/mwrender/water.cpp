@@ -366,7 +366,8 @@ class Refraction : public osg::Camera
 public:
     Refraction()
     {
-        unsigned int rttSize = Settings::Manager::getInt("rtt size", "Water");
+        // P001: older settings may hold 2048; 1024 is the largest water texture.
+        unsigned int rttSize = static_cast<unsigned int>(std::clamp(Settings::Manager::getInt("rtt size", "Water"), 64, 1024));
         setRenderOrder(osg::Camera::PRE_RENDER, 1);
         setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
@@ -473,7 +474,8 @@ public:
         setInterior(isInterior);
         setNodeMask(Mask_RenderToTexture);
 
-        unsigned int rttSize = Settings::Manager::getInt("rtt size", "Water");
+        // P001: older settings may hold 2048; 1024 is the largest water texture.
+        unsigned int rttSize = static_cast<unsigned int>(std::clamp(Settings::Manager::getInt("rtt size", "Water"), 64, 1024));
         setViewport(0, 0, rttSize, rttSize);
 
         // No need for Update traversal since the mSceneRoot is already updated as part of the main scene graph

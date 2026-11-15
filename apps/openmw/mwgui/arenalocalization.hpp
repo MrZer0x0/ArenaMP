@@ -21,6 +21,7 @@ namespace MWGui
         ArenaLocalization(const VFS::Manager* vfs, ToUTF8::FromType encoding);
 
         std::string translate(const std::string& key) const;
+        std::string translateGame(const std::string& key) const;
         const std::string& getLanguage() const { return mLanguage; }
         void setLanguage(const std::string& language);
 
@@ -37,6 +38,7 @@ namespace MWGui
         std::string mLanguage;
         Strings mEnglish;
         Strings mCurrent;
+        Strings mGameStrings;
     };
 }
 

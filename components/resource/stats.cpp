@@ -81,6 +81,7 @@ static void setupStatCollection()
 
 StatsHandler::StatsHandler(bool offlineCollect):
     _key(0),
+    _modKeyMask(0),
     _initialized(false),
     _statsType(false),
     _offlineCollect(offlineCollect),
@@ -118,7 +119,18 @@ bool Profiler::handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter 
 {
     osgViewer::ViewerBase* viewer = nullptr;
 
-    bool handled = StatsHandler::handle(ea, aa);
+    // P001: plain F3 belongs to the ArenaMP HDR hotkey. The on-screen profiler
+    // (frame, event, update, cull, draw and GPU times) answers Ctrl+F3 only.
+    bool handled = false;
+    if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN && ea.getKey() == osgGA::GUIEventAdapter::KEY_F3
+        && (ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL) != 0)
+    {
+        setKeyEventTogglesOnScreenStats(osgGA::GUIEventAdapter::KEY_F3);
+        handled = StatsHandler::handle(ea, aa);
+        setKeyEventTogglesOnScreenStats(0);
+    }
+    else
+        handled = StatsHandler::handle(ea, aa);
 
     auto* view = dynamic_cast<osgViewer::View*>(&aa);
     if (view)
@@ -143,7 +155,10 @@ bool StatsHandler::handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdap
     {
         case(osgGA::GUIEventAdapter::KEYDOWN):
         {
-            if (ea.getKey()== _key)
+            // P001: the resource statistics answer only their key with the
+            // required modifiers (Ctrl+F4 in ArenaMP; plain F4 is Bloom).
+            if (_key != 0 && ea.getKey() == _key
+                && (ea.getModKeyMask() & _modKeyMask) == _modKeyMask)
             {
                 osgViewer::View* myview = dynamic_cast<osgViewer::View*>(&aa);
                 if (!myview) return false;

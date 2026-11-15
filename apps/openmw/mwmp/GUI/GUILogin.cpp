@@ -23,6 +23,16 @@ namespace
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (value == "ru" || value == "ru-ru" || value == "russian")
             return "ru";
+        // UI3: "auto" (the default) and an empty value mean "whatever the client
+        // interface already uses" - resolved from the game data encoding by
+        // ArenaLocalization. Treating it as English made the first login/register
+        // card switch a Russian client to English and save that choice.
+        if (value.empty() || value == "auto")
+        {
+            const MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+            if (windowManager != nullptr)
+                return windowManager->getArenaLanguage() == "ru" ? "ru" : "en";
+        }
         return "en";
     }
 

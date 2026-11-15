@@ -2,6 +2,8 @@
 
 #include <cctype>
 
+#include <SDL_keyboard.h>
+
 #include <MyGUI_InputManager.h>
 #include <MyGUI_EditBox.h>
 
@@ -92,7 +94,9 @@ namespace MWInput
         }
 
         bool consumed = false;
-        if (!arg.repeat && !mBindingsManager->isDetectingBindingState())
+        // P001: Ctrl+F3 / Ctrl+F4 are the profiler and resource statistics.
+        const bool ctrlHeld = (SDL_GetModState() & KMOD_CTRL) != 0;
+        if (!arg.repeat && !ctrlHeld && !mBindingsManager->isDetectingBindingState())
         {
             if (arg.keysym.scancode == SDL_SCANCODE_F3)
                 consumed = togglePostProcessSetting("hdr lighting", "#{arenamp=hotkey.hdr_on}", "#{arenamp=hotkey.hdr_off}");

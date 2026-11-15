@@ -745,6 +745,8 @@ namespace MWWorld
 
             void togglePOV(bool force = false) override;
 
+            void setGyroImmersiveFirstPerson(bool active) override;
+
             bool isFirstPerson() const override;
             bool isPreviewModeEnabled() const override;
 

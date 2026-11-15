@@ -753,26 +753,26 @@
         </Widget>
         <Widget type="TabItem" skin="" position="4 32 486 412">
           <Property key="Caption" value="#{arenamp=settings.subsection.lighting}" />
-          <Widget type="TextBox" skin="NormalText" position="8 8 462 18">
-            <Property key="Caption" value="#{arenamp=settings.lighting_method}" />
+          <!-- UI5: distance, light count, interior and night brightness. -->
+          <Widget type="ComboBox" skin="MW_ComboBox" position="8 300 260 24" name="LightingMethodButton">
+            <Property key="Visible" value="false" />
           </Widget>
-          <Widget type="ComboBox" skin="MW_ComboBox" position="8 30 260 24" name="LightingMethodButton" />
-          <Widget type="TextBox" skin="NormalText" position="8 66 462 18" name="MaxLightsText">
+          <Widget type="TextBox" skin="NormalText" position="8 62 462 18" name="MaxLightsText">
             <Property key="Caption" value="#{arenamp=settings.max_lights}" />
           </Widget>
-          <Widget type="ComboBox" skin="MW_ComboBox" position="8 88 260 24" name="MaxLights">
+          <Widget type="ComboBox" skin="MW_ComboBox" position="8 84 180 24" name="MaxLights">
             <Property key="AddItem" value="8" />
             <Property key="AddItem" value="16" />
             <Property key="AddItem" value="24" />
             <Property key="AddItem" value="32" />
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 124 462 18" name="MaxLightDistanceText">
+          <Widget type="TextBox" skin="NormalText" position="8 8 462 18" name="MaxLightDistanceText">
             <Property key="Caption" value="#{arenamp=settings.max_light_distance}" />
             <UserString key="ToolTipType" value="Layout" />
             <UserString key="ToolTipLayout" value="TextToolTip" />
             <UserString key="Caption_Text" value="#{arenamp=settings.tooltip.max_light_distance}" />
           </Widget>
-          <Widget type="ScrollBar" skin="MW_HScroll" position="8 146 462 16">
+          <Widget type="ScrollBar" skin="MW_HScroll" position="8 30 462 16">
             <Property key="Range" value="8192" />
             <Property key="Page" value="128" />
             <UserString key="SettingType" value="Slider" />
@@ -784,61 +784,40 @@
             <UserString key="SettingLabelWidget" value="MaxLightDistanceText" />
             <UserString key="SettingLabelCaption" value="#{arenamp=settings.max_light_distance}" />
           </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 176 462 18" name="LightFadeMultiplierText">
-            <Property key="Caption" value="#{arenamp=settings.light_fade}" />
-            <UserString key="ToolTipType" value="Layout" />
-            <UserString key="ToolTipLayout" value="TextToolTip" />
-            <UserString key="Caption_Text" value="#{arenamp=settings.tooltip.light_fade}" />
+          <Widget type="TextBox" skin="NormalText" position="8 126 462 18" name="InteriorBrightnessText">
+            <Property key="Caption" value="#{arenamp=settings.minimum_interior_brightness}" />
           </Widget>
-          <Widget type="ScrollBar" skin="MW_HScroll" position="8 198 462 16">
-            <Property key="Range" value="10000" />
-            <Property key="Page" value="100" />
-            <UserString key="SettingType" value="Slider" />
-            <UserString key="SettingCategory" value="Shaders" />
-            <UserString key="SettingName" value="light fade start" />
-            <UserString key="SettingValueType" value="Float" />
-            <UserString key="SettingMin" value="0.0" />
-            <UserString key="SettingMax" value="1.0" />
-            <UserString key="SettingLabelWidget" value="LightFadeMultiplierText" />
-            <UserString key="SettingLabelCaption" value="#{arenamp=settings.light_fade}" />
-          </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 228 462 18" name="BoundingSphereMultText">
-            <Property key="Caption" value="#{arenamp=settings.light_bounds}" />
-            <UserString key="ToolTipType" value="Layout" />
-            <UserString key="ToolTipLayout" value="TextToolTip" />
-            <UserString key="Caption_Text" value="#{arenamp=settings.tooltip.light_bounds}" />
-          </Widget>
-          <Widget type="ScrollBar" skin="MW_HScroll" position="8 250 462 16">
-            <Property key="Range" value="500000" />
-            <Property key="Page" value="1000" />
-            <UserString key="SettingType" value="Slider" />
-            <UserString key="SettingCategory" value="Shaders" />
-            <UserString key="SettingName" value="light bounds multiplier" />
-            <UserString key="SettingValueType" value="Float" />
-            <UserString key="SettingMin" value="0.0" />
-            <UserString key="SettingMax" value="5.0" />
-            <UserString key="SettingLabelWidget" value="BoundingSphereMultText" />
-            <UserString key="SettingLabelCaption" value="#{arenamp=settings.light_bounds}" />
-          </Widget>
-          <Widget type="TextBox" skin="NormalText" position="8 280 462 18" name="MinimumBrightnessText">
-            <Property key="Caption" value="#{arenamp=settings.minimum_brightness}" />
-            <UserString key="ToolTipType" value="Layout" />
-            <UserString key="ToolTipLayout" value="TextToolTip" />
-            <UserString key="Caption_Text" value="#{arenamp=settings.tooltip.minimum_brightness}" />
-          </Widget>
-          <Widget type="ScrollBar" skin="MW_HScroll" position="8 302 462 16">
-            <Property key="Range" value="10000" />
-            <Property key="Page" value="100" />
+          <Widget type="ScrollBar" skin="MW_HScroll" position="8 148 462 16">
+            <Property key="Range" value="1001" />
+            <Property key="Page" value="25" />
             <UserString key="SettingType" value="Slider" />
             <UserString key="SettingCategory" value="Shaders" />
             <UserString key="SettingName" value="minimum interior brightness" />
             <UserString key="SettingValueType" value="Float" />
             <UserString key="SettingMin" value="0.0" />
             <UserString key="SettingMax" value="1.0" />
-            <UserString key="SettingLabelWidget" value="MinimumBrightnessText" />
-            <UserString key="SettingLabelCaption" value="#{arenamp=settings.minimum_brightness}" />
+            <UserString key="SettingLabelWidget" value="InteriorBrightnessText" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.minimum_interior_brightness}" />
           </Widget>
-          <Widget type="AutoSizedButton" skin="MW_Button" position="8 356 160 24" name="LightsResetButton">
+          <Widget type="TextBox" skin="NormalText" position="8 190 462 18" name="NightExteriorBrightnessText">
+            <Property key="Caption" value="#{arenamp=settings.night_exterior_brightness}" />
+            <UserString key="ToolTipType" value="Layout" />
+            <UserString key="ToolTipLayout" value="TextToolTip" />
+            <UserString key="Caption_Text" value="#{arenamp=settings.tooltip.night_exterior_brightness}" />
+          </Widget>
+          <Widget type="ScrollBar" skin="MW_HScroll" position="8 212 462 16">
+            <Property key="Range" value="4000" />
+            <Property key="Page" value="100" />
+            <UserString key="SettingType" value="Slider" />
+            <UserString key="SettingCategory" value="Shaders" />
+            <UserString key="SettingName" value="night exterior brightness" />
+            <UserString key="SettingValueType" value="Float" />
+            <UserString key="SettingMin" value="0.0" />
+            <UserString key="SettingMax" value="0.4" />
+            <UserString key="SettingLabelWidget" value="NightExteriorBrightnessText" />
+            <UserString key="SettingLabelCaption" value="#{arenamp=settings.night_exterior_brightness}" />
+          </Widget>
+          <Widget type="AutoSizedButton" skin="MW_Button" position="8 252 160 24" name="LightsResetButton">
             <Property key="Caption" value="#{arenamp=settings.reset_defaults}" />
           </Widget>
         </Widget>

@@ -1,4 +1,5 @@
 #include "widgets.hpp"
+#include "shapedbar.hpp"
 
 #include <sstream>
 #include <iomanip>
@@ -507,6 +508,7 @@ namespace MWGui
             {
                 mBarWidget->setProgressRange(std::max(0, mMax));
                 mBarWidget->setProgressPosition(std::max(0, mValue));
+                fitShapedProgressBar(mBarWidget);
             }
 
             if (mBarTextWidget)
@@ -516,6 +518,18 @@ namespace MWGui
                 mBarTextWidget->setCaption(out.str().c_str());
             }
         }
+        void MWDynamicStat::setSize(const MyGUI::IntSize& size)
+        {
+            Base::setSize(size);
+            fitShapedProgressBar(mBarWidget);
+        }
+
+        void MWDynamicStat::setCoord(const MyGUI::IntCoord& coord)
+        {
+            Base::setCoord(coord);
+            fitShapedProgressBar(mBarWidget);
+        }
+
         void MWDynamicStat::setTitle(const std::string& text)
         {
             if (mTextWidget)

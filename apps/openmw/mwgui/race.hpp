@@ -183,6 +183,9 @@ namespace MWGui
         MyGUI::Widget* mClassPage;
         MyGUI::Widget* mBirthPage;
         MyGUI::TextBox* mStepTitle;
+        /// UI3: icon of the current step left of the step title.
+        MyGUI::ImageBox* mStepIcon = nullptr;
+        void decorateButtons();
         MyGUI::TextBox* mStepCounter;
         MyGUI::Button* mBackButton;
         MyGUI::Button* mNextButton;

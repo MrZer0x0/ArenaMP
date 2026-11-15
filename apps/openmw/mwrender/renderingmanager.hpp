@@ -266,6 +266,11 @@ namespace MWRender
         void updateThirdPersonViewMode();
         void updateHdrSettings();
         void updateHdrEnvironment();
+        /// LT1: how far the current hour is into the night, 0..1, with smooth
+        /// dusk (18-20) and dawn (6-8) ramps. Shared by HDR and the night lift.
+        static float nightFactorForHour(float hour);
+        /// LT1: per-frame exterior night state for 'night exterior brightness'.
+        void updateNightExteriorLift();
 
         void reportStats() const;
 
@@ -333,6 +338,8 @@ namespace MWRender
         osg::Vec4f mAmbientColor;
         float mMinimumAmbientLuminance;
         float mNightEyeFactor;
+        float mNightExteriorBrightness = 0.f;
+        float mNightExteriorLift = 0.f;
 
         float mNearClip;
         float mViewDistance;

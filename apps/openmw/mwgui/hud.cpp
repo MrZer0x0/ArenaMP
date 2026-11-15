@@ -1,5 +1,6 @@
 #include "../mwmp/ArenaHousing.hpp"
 #include "hud.hpp"
+#include "shapedbar.hpp"
 #include "arenawaypoint.hpp"
 
 #include <MyGUI_RenderManager.h>
@@ -19,6 +20,7 @@
 #include <map>
 #include <set>
 #include <sstream>
+#include <locale>
 #include <utility>
 
 /*
@@ -31,6 +33,9 @@
 #include "../mwmp/Networking.hpp"
 #include "../mwmp/ObjectList.hpp"
 #include "../mwmp/PlayerList.hpp"
+#include "../mwmp/MechanicsHelper.hpp"
+#include "../mwmp/GUIController.hpp"
+#include "mapmarkerstyle.hpp"
 #include "../mwmp/VoiceChat.hpp"
 #include "../mwworld/cellstore.hpp"
 /*
@@ -39,6 +44,7 @@
 
 #include <components/settings/settings.hpp>
 #include <components/esm/loadmgef.hpp>
+#include <components/esm/records.hpp>
 #include <components/misc/stringops.hpp>
 #include <components/openmw-mp/TimedLog.hpp>
 
@@ -50,6 +56,7 @@
 #include "../mwworld/class.hpp"
 #include "../mwworld/esmstore.hpp"
 #include "../mwworld/containerstore.hpp"
+#include "../mwworld/inventorystore.hpp"
 
 #include "../mwmechanics/creaturestats.hpp"
 #include "../mwmechanics/activespells.hpp"
@@ -199,7 +206,9 @@ namespace
         constexpr float sHeadWidthMax = 92.f;
         // Y028: hostile overhead HP is about one third thinner than Y027.
         // The docked HUD row still expands to sDockBarHeight below.
-        constexpr float sHeadHeightMax = 3.f;
+        // UI4: one pixel more, because the bar now sits on a dark plate with a
+        // 1 px rim (TESO-style) instead of being a bare coloured line.
+        constexpr float sHeadHeightMax = 4.f;
         constexpr float sHeadScaleMin = 0.28f;
         // Gap between the top of the actor's hit box and the bar. Kept tight so
         // the bar reads as belonging to that actor and not as floating above the
@@ -212,7 +221,7 @@ namespace
         // Y028: overhead combat HP is deliberately only a thin coloured line.
         // There is no frame above actors at any distance; the frame belongs solely
         // to the docked HUD presentation. Two pixels is the stable far-distance floor.
-        constexpr int sHeadMinHeightPixels = 2;
+        constexpr int sHeadMinHeightPixels = 3;
         constexpr int sScreenMargin = 6;
 
         // ------------------------------------------------------------------
@@ -220,11 +229,11 @@ namespace
         // above the stamina bar. One row is a name with its bar underneath.
         // ------------------------------------------------------------------
         constexpr int sDockWidth = 196;
-        constexpr int sDockBarHeight = 9;
+        constexpr int sDockBarHeight = 11;   // UI4: room for the bronze frame
         constexpr int sDockNameHeight = 18;
         constexpr int sDockNameFontHeight = 16;
         constexpr int sDockNameGap = 2;      // between the caption and its bar
-        constexpr int sDockRowStride = 31;   // name + gap + bar + breathing room
+        constexpr int sDockRowStride = 33;   // name + gap + bar + breathing room
         constexpr int sDockGap = 10;         // between the stack and the stamina bar
         constexpr std::size_t sDockMaxRows = 5;
 
@@ -238,6 +247,14 @@ namespace
         constexpr float sFrameFadeStart = 0.35f;
         // The name only becomes readable once the bar is essentially in the stack.
         constexpr float sNameFadeStart = 0.55f;
+
+        // UI4: TESO-style "recent damage" trail. After a hit the pale lag bar
+        // holds the old value briefly, then drains towards the real HP.
+        constexpr float sLagHoldTime = 0.40f;
+        constexpr float sLagSmoothTau = 0.22f;
+        // UI4: overhead/docked fill tints (the fill texture is neutral grey).
+        inline MyGUI::Colour enemyTint() { return MyGUI::Colour(0.93f, 0.24f, 0.19f); }
+        inline MyGUI::Colour allyTint() { return MyGUI::Colour(0.36f, 0.86f, 0.36f); }
 
         inline float clamp01(float value)
         {
@@ -276,8 +293,16 @@ namespace
         Door = 3,
         DetectKey = 4,
         DetectEnchantment = 5,
-        DetectCreature = 6
+        DetectCreature = 6,
+        // UI3: what group members share on the map.
+        GroupFlag = 7,
+        GroupMarker = 8
     };
+
+    // UI3: teleport doors are shown only this close (game units, ~1/3 of a
+    // cell) and only the nearest few, so a town is not a row of door icons.
+    constexpr float sCompassDoorRange = 2600.f;
+    constexpr std::size_t sCompassMaxDoors = 4;
 
     struct HorizontalCompassMarkerCandidate
     {
@@ -286,7 +311,30 @@ namespace
         int mLeft = 0;
         float mDistanceSquared = 0.f;
         HorizontalCompassMarkerKind mKind = HorizontalCompassMarkerKind::Ally;
+        MyGUI::Colour mTint = MyGUI::Colour::White;
     };
+
+    // UI3: icon kinds. An empty name keeps the coloured text dot (actors).
+    std::string getHorizontalCompassMarkerIcon(HorizontalCompassMarkerKind kind)
+    {
+        switch (kind)
+        {
+            case HorizontalCompassMarkerKind::Door:
+                return "textures/ui/arenamw/compass_door.png";
+            case HorizontalCompassMarkerKind::DetectKey:
+                return "textures/ui/arenamw/compass_key.png";
+            case HorizontalCompassMarkerKind::DetectEnchantment:
+                return "textures/ui/arenamw/compass_enchant.png";
+            case HorizontalCompassMarkerKind::DetectCreature:
+                return "textures/ui/arenamw/compass_creature.png";
+            case HorizontalCompassMarkerKind::GroupFlag:
+                return "textures/ui/arenamw/map_flag_group.png";
+            case HorizontalCompassMarkerKind::GroupMarker:
+                return "textures/ui/arenamw/compass_marker.png";
+            default:
+                return std::string();
+        }
+    }
 
     MyGUI::Colour getHorizontalCompassMarkerColour(HorizontalCompassMarkerKind kind)
     {
@@ -302,6 +350,8 @@ namespace
             case HorizontalCompassMarkerKind::DetectKey:
             case HorizontalCompassMarkerKind::DetectEnchantment:
             case HorizontalCompassMarkerKind::DetectCreature:
+            case HorizontalCompassMarkerKind::GroupFlag:
+            case HorizontalCompassMarkerKind::GroupMarker:
                 // Use the same sand/gold colour as normal Morrowind location text
                 // (for example the "Seyda Neen" HUD caption), not a hard-coded tint.
                 return MyGUI::Colour::parse(MyGUI::LanguageManager::getInstance().replaceTags("#{fontcolour=normal}"));
@@ -321,6 +371,9 @@ namespace
                 return "✦";
             case HorizontalCompassMarkerKind::DetectCreature:
                 return "△";
+            case HorizontalCompassMarkerKind::GroupFlag:
+            case HorizontalCompassMarkerKind::GroupMarker:
+                return std::string();
             case HorizontalCompassMarkerKind::Enemy:
             case HorizontalCompassMarkerKind::Player:
             case HorizontalCompassMarkerKind::Ally:
@@ -495,6 +548,13 @@ namespace MWGui
         getWidget(mDeathRecoveryPrompt, "DeathRecoveryPrompt");
         getWidget(mDeathRecoveryAction, "DeathRecoveryAction");
         mDeathRecoveryXpBar->setProgressRange(1000);
+        // Optional: older layouts without the red timer bar keep the gold one.
+        mDeathRecoveryRedBar = mMainWidget->findWidget("DeathRecoveryRedBar")
+            ? mMainWidget->findWidget("DeathRecoveryRedBar")->castType<MyGUI::ProgressBar>(false) : nullptr;
+        if (mDeathRecoveryRedBar)
+            mDeathRecoveryRedBar->setProgressRange(1000);
+        mDeathRecoveryTitleColour = mDeathRecoveryTitle->getTextColour();
+        mDeathRecoveryTextColour = mDeathRecoveryXpText->getTextColour();
 
         // X014: fixed widget pool for world-space combat health bars. Reusing
         // widgets avoids GUI allocations while fights are running.
@@ -510,17 +570,34 @@ namespace MWGui
             state.mWidget->setNeedMouseFocus(false);
             state.mWidget->setVisible(false);
 
-            // Y023: direct geometry, no ProgressBar Track. MW_Track_Red is just a
-            // stretchable coloured widget, so an HP value can never leave a bare
-            // frame because an internal progress child went missing.
+            // UI4: draw order inside one slot is plate -> damage trail -> fill ->
+            // frame. All four children are created here once and only resized
+            // later, so MyGUI keeps that order for the lifetime of the HUD.
+            state.mBack = state.mWidget->createWidget<MyGUI::Widget>(
+                "ArenaHUD_Plate", MyGUI::IntCoord(0, 0, 118, 9),
+                MyGUI::Align::Left | MyGUI::Align::Top, "Back");
+            state.mBack->setNeedMouseFocus(false);
+            state.mBack->setVisible(false);
+
+            state.mLag = state.mWidget->createWidget<MyGUI::Widget>(
+                "ArenaHUD_Track_Lag", MyGUI::IntCoord(0, 0, 118, 9),
+                MyGUI::Align::Left | MyGUI::Align::Top, "Lag");
+            state.mLag->setNeedMouseFocus(false);
+            state.mLag->setVisible(false);
+
+            // Y023: direct geometry, no ProgressBar Track. The fill is just a
+            // stretchable widget, so an HP value can never leave a bare frame
+            // because an internal progress child went missing.
+            // UI4: neutral glossy fill, tinted red for enemies, green for allies.
             state.mFill = state.mWidget->createWidget<MyGUI::Widget>(
-                "MW_Track_Red", MyGUI::IntCoord(0, 0, 118, 9),
+                "ArenaHUD_Track_Tint", MyGUI::IntCoord(0, 0, 118, 9),
                 MyGUI::Align::Left | MyGUI::Align::Top, "Fill");
             state.mFill->setNeedMouseFocus(false);
+            state.mFill->setColour(CombatBar::enemyTint());
             state.mFill->setVisible(false);
 
             state.mFrame = state.mWidget->createWidget<MyGUI::Widget>(
-                "MW_Box", MyGUI::IntCoord(0, 0, 118, 9),
+                "ArenaHUD_CombatFrame", MyGUI::IntCoord(0, 0, 118, 9),
                 MyGUI::Align::Left | MyGUI::Align::Top, "Frame");
             state.mFrame->setNeedMouseFocus(false);
             state.mFrame->setVisible(false);
@@ -557,11 +634,13 @@ namespace MWGui
             state.mPanel->setNeedMouseFocus(false);
             state.mPanel->setVisible(false);
 
+            // UI4: TESO-style card: dark glass that fades in from the left, a
+            // bronze rule on top without a protruding clasp. Alpha is baked into the
+            // texture, so the widget itself stays fully opaque.
             state.mShade = state.mPanel->createWidget<MyGUI::Widget>(
-                "BlackBG", MyGUI::IntCoord(0, 0, 300, 38), MyGUI::Align::Stretch,
+                "ArenaHUD_Toast", MyGUI::IntCoord(0, 0, 300, 38), MyGUI::Align::Stretch,
                 "HudEventShade" + MyGUI::utility::toString(i));
             state.mShade->setNeedMouseFocus(false);
-            state.mShade->setAlpha(0.22f);
 
             state.mIcon = state.mPanel->createWidget<MyGUI::ImageBox>(
                 "ImageBox", MyGUI::IntCoord(4, 4, 30, 30), MyGUI::Align::Left | MyGUI::Align::VCenter,
@@ -637,17 +716,23 @@ namespace MWGui
         // Item and spell images and status bars
         getWidget(mWeapBox, "WeapBox");
         getWidget(mWeapImage, "WeapImage");
+        getWidget(mWeapRing, "WeapRing");
         getWidget(mWeapStatus, "WeapStatus");
         mWeapBoxBaseLeft = mWeapBox->getLeft();
         mWeapBox->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onWeaponClicked);
 
         getWidget(mSpellBox, "SpellBox");
         getWidget(mSpellImage, "SpellImage");
+        getWidget(mSpellRing, "SpellRing");
         getWidget(mSpellStatus, "SpellStatus");
         mSpellBoxBaseLeft = mSpellBox->getLeft();
         mSpellBox->eventMouseButtonClick += MyGUI::newDelegate(this, &HUD::onMagicClicked);
+        // UI9.3: both spots stay empty and inert until something is selected.
+        mWeapBox->setNeedMouseFocus(false);
+        mSpellBox->setNeedMouseFocus(false);
 
         getWidget(mSneakBox, "SneakBox");
+        getWidget(mSneakImage, "SneakImage");
         mSneakBoxBaseLeft = mSneakBox->getLeft();
 
         getWidget(mEffectBox, "EffectBox");
@@ -692,7 +777,16 @@ namespace MWGui
         }
         mHorizontalCompassCenter = mHorizontalCompass->createWidget<MyGUI::TextBox>("SandBrightText",
             MyGUI::IntCoord(mHorizontalCompass->getWidth() / 2 - 12, 14, 24, 10), MyGUI::Align::Default);
-        mHorizontalCompassCenter->setCaption("^");
+        // UI4: the text caret is replaced by a small bronze chevron image.
+        mHorizontalCompassCenter->setCaption("");
+        {
+            MyGUI::ImageBox* notch = mHorizontalCompass->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(mHorizontalCompass->getWidth() / 2 - 6,
+                    mHorizontalCompass->getHeight() - 8, 12, 7),
+                MyGUI::Align::HCenter | MyGUI::Align::Bottom, "HorizontalCompassNotch");
+            notch->setImageTexture("textures/ui/arenamw/hud/compass_notch.png");
+            notch->setNeedMouseFocus(false);
+        }
         mHorizontalCompassCenter->setTextAlign(MyGUI::Align::Center);
         mHorizontalCompassCenter->setTextShadow(true);
         mHorizontalCompassCenter->setTextShadowColour(MyGUI::Colour::Black);
@@ -713,9 +807,14 @@ namespace MWGui
             marker->setNeedMouseFocus(false);
             marker->setAlpha(0.f);
             marker->setVisible(false);
+            MyGUI::ImageBox* icon = marker->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(7, 2, 18, 18), MyGUI::Align::Default);
+            icon->setNeedMouseFocus(false);
+            icon->setVisible(false);
 
             HorizontalCompassMarkerState state;
             state.mWidget = marker;
+            state.mIcon = icon;
             mHorizontalCompassMarkers.push_back(state);
         }
 
@@ -727,6 +826,7 @@ namespace MWGui
         mHorizontalCompassFlag->setVisible(false);
 
         getWidget(mCrosshair, "Crosshair");
+        setupDynamicCrosshair();
 
         LocalMapBase::init(mMinimap, mCompass);
 
@@ -965,6 +1065,11 @@ namespace MWGui
             && mwmp::Main::get().getLocalPlayer()->isLoggedIn();
         mDeathRecoveryBlinkTimer += std::max(0.f, dt);
 
+        // UI9.3: shaped fills (pointed ends) are revealed from the left.
+        for (MyGUI::ProgressBar* bar : { mHealth, mMagicka, mStamina, mEnemyHealth, mWeapStatus, mSpellStatus,
+                 mDeathRecoveryXpBar, mDeathRecoveryRedBar })
+            fitShapedProgressBar(bar);
+
         // LocalPlayer::isLoggedIn() becomes true only after an existing character has
         // been received or after the complete new-character registration sequence.
         // Toggling one parent preserves the individual visibility state of every HUD
@@ -975,6 +1080,8 @@ namespace MWGui
         // Y039: surface the recovery state without creating fake spells or save data.
         // The server owns XP checkpoints/revive; this HUD only interpolates the visible
         // countdown and exposes the E/touch affordance.
+        // UI9.2: knock-out, respawn wait and bounty death show a red timer.
+        bool redRecoveryTimer = false;
         if (mDeathRecoveryPanel && loginFinished)
         {
             mwmp::LocalPlayer* local = mwmp::Main::get().getLocalPlayer();
@@ -1009,6 +1116,7 @@ namespace MWGui
                 mDeathRecoveryXpBar->setProgressPosition(static_cast<std::size_t>(
                     std::lround(std::clamp(remaining / duration, 0.f, 1.f) * 1000.f)));
                 mDeathRecoveryTitle->setCaption(arenaText("death.bounty.title"));
+                redRecoveryTimer = true;
                 mDeathRecoveryXpText->setCaption(arenaText("death.bounty.remaining") + ": "
                     + MyGUI::utility::toString(seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "")
                     + MyGUI::utility::toString(seconds % 60));
@@ -1026,6 +1134,7 @@ namespace MWGui
                 mDeathRecoveryXpBar->setProgressPosition(static_cast<std::size_t>(
                     std::lround(std::clamp(remaining/duration,0.f,1.f)*1000.f)));
                 mDeathRecoveryTitle->setCaption(arenaText("death.respawn.title"));
+                redRecoveryTimer = true;
                 mDeathRecoveryXpText->setCaption(arenaText("death.respawn.remaining")+": "
                     +MyGUI::utility::toString(seconds/60)+":"+(seconds%60<10 ? "0" : "")
                     +MyGUI::utility::toString(seconds%60));
@@ -1065,6 +1174,7 @@ namespace MWGui
                 mDeathRecoveryXpText->setVisible(true);
                 mDeathRecoveryXpBar->setProgressPosition(static_cast<std::size_t>(std::lround(fraction * 1000.f)));
                 mDeathRecoveryTitle->setCaption(arenaText("death.recovery.title"));
+                redRecoveryTimer = true;
                 mDeathRecoveryXpText->setCaption(arenaText("death.recovery.xp") + ": "
                     + MyGUI::utility::toString(static_cast<int>(std::lround(xp))) + "  |  "
                     + secondsStream.str() + " s");
@@ -1133,6 +1243,25 @@ namespace MWGui
                 mDeathRecoveryAction->setVisible(false);
         }
 
+        if (mDeathRecoveryPanel && mDeathRecoveryPanel->getVisible())
+        {
+            const bool timerShown = mDeathRecoveryXpBar->getVisible()
+                || (mDeathRecoveryRedBar && mDeathRecoveryRedBar->getVisible());
+            const bool red = redRecoveryTimer && timerShown && mDeathRecoveryRedBar != nullptr;
+            if (mDeathRecoveryRedBar)
+            {
+                mDeathRecoveryRedBar->setVisible(red);
+                if (red)
+                    mDeathRecoveryRedBar->setProgressPosition(mDeathRecoveryXpBar->getProgressPosition());
+            }
+            if (red)
+                mDeathRecoveryXpBar->setVisible(false);
+            mDeathRecoveryTitle->setTextColour(redRecoveryTimer
+                ? MyGUI::Colour(1.f, 0.36f, 0.30f) : mDeathRecoveryTitleColour);
+            mDeathRecoveryXpText->setTextColour(redRecoveryTimer
+                ? MyGUI::Colour(1.f, 0.86f, 0.82f) : mDeathRecoveryTextColour);
+        }
+
         if (mDeathRecoveryAction && mDeathRecoveryAction->getVisible())
         {
             const float pulse = 0.5f + 0.5f * std::sin(mDeathRecoveryBlinkTimer * 7.f);
@@ -1183,6 +1312,8 @@ namespace MWGui
         }
 
         updateCombatHealthBars(dt);
+        updateSneakIndicator(dt);
+        updateDynamicCrosshair(dt);
         updateFloatingDamageNumbers(dt);
         updateHudEventFeed(dt);
         updateFocusedTargetPanel(dt);
@@ -1401,6 +1532,24 @@ namespace MWGui
                 tick->setCaption(directions[(wrappedStep / 3) % 8]);
             else
                 tick->setCaption("|");
+
+            // UI4: TESO-like hierarchy. Cardinal letters are bright gold,
+            // intercardinals sand, minor ticks dim; everything fades out towards
+            // the ends of the band instead of being cut at the edge.
+            const bool cardinal = wrappedStep % 6 == 0;
+            const bool intercardinal = !cardinal && wrappedStep % 3 == 0;
+            MyGUI::Colour colour = cardinal ? MyGUI::Colour(1.00f, 0.86f, 0.52f)
+                : (intercardinal ? MyGUI::Colour(0.86f, 0.80f, 0.66f) : MyGUI::Colour(0.74f, 0.68f, 0.56f));
+            if (wrappedStep == 0)
+                colour = MyGUI::Colour(1.00f, 0.93f, 0.70f);
+            const float baseAlpha = cardinal ? 1.f : (intercardinal ? 0.85f : 0.45f);
+            const float halfSpanDegrees = std::max(1.f,
+                mHorizontalCompass->getWidth() * 0.5f / pixelsPerDegree);
+            const float edge = std::max(0.f, std::min(1.f,
+                (std::abs(delta) - halfSpanDegrees * 0.55f) / (halfSpanDegrees * 0.45f)));
+            const float edgeFade = 1.f - edge * edge * (3.f - 2.f * edge);
+            tick->setTextColour(colour);
+            tick->setAlpha(std::max(0.f, baseAlpha * edgeFade));
         }
 
         mHorizontalCompassDirty = false;
@@ -1577,9 +1726,13 @@ namespace MWGui
                     candidates.reserve(objects.size() + 24);
 
                     const auto appendCandidate = [&](const MWWorld::Ptr& object, const std::string& identity,
-                        HorizontalCompassMarkerKind kind, float worldX, float worldY, float distanceSquared)
+                        HorizontalCompassMarkerKind kind, float worldX, float worldY, float distanceSquared,
+                        const MyGUI::Colour& tint = MyGUI::Colour::White)
                     {
-                        if (distanceSquared > markerRangeSquared || distanceSquared < 1.f)
+                        // UI3: a group member's flag is a destination like the gold flag:
+                        // shown at any distance. Everything else keeps the 8192 range.
+                        const bool unlimited = kind == HorizontalCompassMarkerKind::GroupFlag;
+                        if ((!unlimited && distanceSquared > markerRangeSquared) || distanceSquared < 1.f)
                             return;
 
                         const float bearing = std::atan2(worldX - playerPosition.x(), worldY - playerPosition.y());
@@ -1596,7 +1749,10 @@ namespace MWGui
 
                         // Skyrim-like edge behaviour: markers outside the visible compass arc
                         // stay pinned to the nearest edge rather than disappearing behind you.
+                        // UI3: doors are not pinned - a door behind you is not a direction.
                         const float relativeDegrees = osg::RadiansToDegrees(relativeAngle);
+                        if (kind == HorizontalCompassMarkerKind::Door && std::abs(relativeDegrees) > maximumVisibleDegrees)
+                            return;
                         const float displayedDegrees = std::max(-maximumVisibleDegrees,
                             std::min(maximumVisibleDegrees, relativeDegrees));
                         const int left = static_cast<int>(std::lround(
@@ -1608,6 +1764,7 @@ namespace MWGui
                         candidate.mLeft = left;
                         candidate.mDistanceSquared = distanceSquared;
                         candidate.mKind = kind;
+                        candidate.mTint = tint;
                         candidates.push_back(candidate);
                     };
 
@@ -1643,10 +1800,13 @@ namespace MWGui
                     // Door markers are now an exterior-navigation aid. While outdoors,
                     // show nearby teleport doors that lead into interiors (buildings, caves, etc.).
                     // Interior-to-interior/exterior door clutter is intentionally omitted.
+                    // UI3: doors appear as you approach them - only the few nearest
+                    // within sCompassDoorRange, fading in from the edge of that range.
                     if (player.getCell()->getCell()->isExterior())
                     {
                         std::vector<MWBase::World::DoorMarker> doors;
                         world->getDoorMarkers(player.getCell(), doors);
+                        std::vector<std::pair<float, const MWBase::World::DoorMarker*>> nearDoors;
                         for (const MWBase::World::DoorMarker& door : doors)
                         {
                             // mPaged == false identifies an interior destination.
@@ -1655,12 +1815,48 @@ namespace MWGui
 
                             const float dx = door.x - playerPosition.x();
                             const float dy = door.y - playerPosition.y();
+                            const float distanceSquared = dx * dx + dy * dy;
+                            if (distanceSquared <= sCompassDoorRange * sCompassDoorRange)
+                                nearDoors.emplace_back(distanceSquared, &door);
+                        }
+                        std::sort(nearDoors.begin(), nearDoors.end(),
+                            [](const auto& left, const auto& right) { return left.first < right.first; });
+                        if (nearDoors.size() > sCompassMaxDoors)
+                            nearDoors.resize(sCompassMaxDoors);
+                        for (const auto& [distanceSquared, door] : nearDoors)
+                        {
                             std::ostringstream identity;
-                            identity << "door:" << door.name << ':'
-                                << static_cast<int>(std::lround(door.x)) << ':'
-                                << static_cast<int>(std::lround(door.y));
+                            identity << "door:" << door->name << ':'
+                                << static_cast<int>(std::lround(door->x)) << ':'
+                                << static_cast<int>(std::lround(door->y));
                             appendCandidate(MWWorld::Ptr(), identity.str(), HorizontalCompassMarkerKind::Door,
-                                door.x, door.y, dx * dx + dy * dy);
+                                door->x, door->y, distanceSquared);
+                        }
+                    }
+
+                    // UI3: group members' flags and shared markers, in the space the
+                    // player is in (exterior, or the same interior cell).
+                    if (mwmp::Main::isInitialized() && mwmp::Main::get().getGUIController())
+                    {
+                        const bool exterior = player.getCell()->getCell()->isExterior();
+                        const std::string cellName = exterior ? std::string() : player.getCell()->getCell()->mName;
+                        for (const mwmp::GUIController::GroupMapPoint& point :
+                            mwmp::Main::get().getGUIController()->getGroupMapPoints())
+                        {
+                            if (point.paged != exterior || (!exterior && point.worldspace != cellName))
+                                continue;
+                            const float dx = point.x - playerPosition.x();
+                            const float dy = point.y - playerPosition.y();
+                            const bool isFlag = point.kind == "F";
+                            std::ostringstream identity;
+                            identity.imbue(std::locale::classic());
+                            identity << (isFlag ? "gflag:" : "gmark:") << point.text << ':'
+                                << static_cast<int>(std::lround(point.x)) << ':'
+                                << static_cast<int>(std::lround(point.y));
+                            appendCandidate(MWWorld::Ptr(), identity.str(),
+                                isFlag ? HorizontalCompassMarkerKind::GroupFlag : HorizontalCompassMarkerKind::GroupMarker,
+                                point.x, point.y, dx * dx + dy * dy,
+                                isFlag ? MyGUI::Colour::White : MWGui::arenaMarkerColour(point.color));
                         }
                     }
 
@@ -1668,6 +1864,11 @@ namespace MWGui
                         [](const HorizontalCompassMarkerCandidate& left,
                             const HorizontalCompassMarkerCandidate& right)
                         {
+                            // UI3: group flags are destinations: never crowded out of the pool.
+                            const bool leftFlag = left.mKind == HorizontalCompassMarkerKind::GroupFlag;
+                            const bool rightFlag = right.mKind == HorizontalCompassMarkerKind::GroupFlag;
+                            if (leftFlag != rightFlag)
+                                return leftFlag;
                             if (left.mDistanceSquared != right.mDistanceSquared)
                                 return left.mDistanceSquared < right.mDistanceSquared;
                             return static_cast<int>(left.mKind) < static_cast<int>(right.mKind);
@@ -1737,8 +1938,37 @@ namespace MWGui
                             const float fade = std::clamp((distance - 256.f) / (markerRange - 256.f), 0.f, 1.f);
                             selectedState->mTargetAlpha = 1.f - 0.65f * fade;
                         }
-                        selectedState->mWidget->setCaption(getHorizontalCompassMarkerCaption(candidate.mKind));
-                        selectedState->mWidget->setTextColour(getHorizontalCompassMarkerColour(candidate.mKind));
+                        if (candidate.mKind == HorizontalCompassMarkerKind::Door)
+                        {
+                            // UI3: doors fade in as you approach.
+                            const float distance = std::sqrt(candidate.mDistanceSquared);
+                            const float fade = std::clamp((distance - sCompassDoorRange * 0.4f)
+                                / (sCompassDoorRange * 0.6f), 0.f, 1.f);
+                            selectedState->mTargetAlpha = 1.f - 0.75f * fade;
+                        }
+                        const std::string icon = getHorizontalCompassMarkerIcon(candidate.mKind);
+                        if (icon.empty())
+                        {
+                            selectedState->mWidget->setCaption(getHorizontalCompassMarkerCaption(candidate.mKind));
+                            selectedState->mWidget->setTextColour(getHorizontalCompassMarkerColour(candidate.mKind));
+                            if (selectedState->mIcon)
+                                selectedState->mIcon->setVisible(false);
+                        }
+                        else
+                        {
+                            selectedState->mWidget->setCaption(std::string());
+                            if (selectedState->mIcon)
+                            {
+                                // Re-binding the same texture every scan is wasted work.
+                                if (selectedState->mIcon->getUserString("ArenaTexture") != icon)
+                                {
+                                    selectedState->mIcon->setImageTexture(icon);
+                                    selectedState->mIcon->setUserString("ArenaTexture", icon);
+                                }
+                                selectedState->mIcon->setColour(candidate.mTint);
+                                selectedState->mIcon->setVisible(true);
+                            }
+                        }
 
                         if (newMarker)
                         {
@@ -1973,7 +2203,12 @@ namespace MWGui
         icon.insert(slashPos+1, "b_");
         icon = MWBase::Environment::get().getWindowManager()->correctIconPath(icon);
 
+        // UI9.3: every icon is 18 px in the 26 px frame; the opaque ring covers its
+        // corners, so it fills the round window and never sticks out of the frame.
+        mSpellImage->setCoord(4, 4, 18, 18);
         mSpellImage->setSpellIcon(icon);
+        mSpellRing->setVisible(true);
+        mSpellBox->setNeedMouseFocus(true);
     }
 
     void HUD::setSelectedEnchantItem(const MWWorld::Ptr& item, int chargePercent)
@@ -1995,7 +2230,10 @@ namespace MWGui
         mSpellBox->setUserString("ToolTipType", "ItemPtr");
         mSpellBox->setUserData(MWWorld::Ptr(item));
 
+        mSpellImage->setCoord(4, 4, 18, 18);
         mSpellImage->setItem(item);
+        mSpellRing->setVisible(true);
+        mSpellBox->setNeedMouseFocus(true);
     }
 
     void HUD::setSelectedWeapon(const MWWorld::Ptr& item, int durabilityPercent)
@@ -2019,6 +2257,8 @@ namespace MWGui
 
 
         mWeapImage->setItem(item);
+        mWeapRing->setVisible(true);
+        mWeapBox->setNeedMouseFocus(true);
     }
 
     void HUD::unsetSelectedSpell()
@@ -2038,6 +2278,9 @@ namespace MWGui
 
         mSpellImage->setItem(MWWorld::Ptr());
         mSpellBox->clearUserStrings();
+        // UI9.3: nothing selected -> no frame, no icon, no tooltip on the HUD.
+        mSpellRing->setVisible(false);
+        mSpellBox->setNeedMouseFocus(false);
     }
 
     void HUD::unsetSelectedWeapon()
@@ -2068,6 +2311,11 @@ namespace MWGui
         mWeapBox->setUserString("ToolTipLayout", "HandToHandToolTip");
         mWeapBox->setUserString("Caption_HandToHandText", itemName);
         mWeapBox->setUserString("ImageTexture_HandToHandImage", icon);
+        // UI9.3: no weapon in hand -> no frame, no fist icon and no tooltip on
+        // the HUD (the empty spot does not react to the mouse either).
+        mWeapRing->setVisible(false);
+        mWeapBox->clearUserStrings();
+        mWeapBox->setNeedMouseFocus(false);
     }
 
     void HUD::setCrosshairVisible(bool visible)
@@ -2078,15 +2326,188 @@ namespace MWGui
 
     void HUD::setCrosshairOwned(bool owned)
     {
-        const int size = owned ? 32 : 64;
-        mCrosshair->changeWidgetSkin(owned ? "HUD_Crosshair_Owned" : "HUD_Crosshair");
+        // UI9: ownership is part of the contextual crosshair (red hand / red
+        // chest); the old ownership texture is no longer swapped in. Only keep
+        // the 64x64 crosshair box centred.
+        (void)owned;
+        mCrosshair->setCoord((mMainWidget->getWidth() - 64) / 2, (mMainWidget->getHeight() - 64) / 2, 64, 64);
+    }
 
-        // Keep both reticles exactly centred. The ownership hand is intentionally
-        // half the size of the normal crosshair and must not inherit its 64x64 box.
-        mCrosshair->setCoord(
-            (mMainWidget->getWidth() - size) / 2,
-            (mMainWidget->getHeight() - size) / 2,
-            size, size);
+    namespace
+    {
+        bool crosshairOwned(const MWWorld::Ptr& player, const MWWorld::Ptr& object)
+        {
+            MWWorld::Ptr victim;
+            return !MWBase::Environment::get().getMechanicsManager()->isAllowedToUse(player, object, victim);
+        }
+
+        bool isCarryableItem(const MWWorld::Ptr& object)
+        {
+            const std::string& type = object.getTypeName();
+            if (type == typeid(ESM::Light).name())
+                return object.get<ESM::Light>()->mBase != nullptr
+                    && (object.get<ESM::Light>()->mBase->mData.mFlags & ESM::Light::Carry) != 0;
+            return type == typeid(ESM::Weapon).name() || type == typeid(ESM::Armor).name()
+                || type == typeid(ESM::Clothing).name() || type == typeid(ESM::Potion).name()
+                || type == typeid(ESM::Ingredient).name() || type == typeid(ESM::Apparatus).name()
+                || type == typeid(ESM::Lockpick).name() || type == typeid(ESM::Probe).name()
+                || type == typeid(ESM::Repair).name() || type == typeid(ESM::Miscellaneous).name();
+        }
+
+        const char* crosshairIcon(int kind)
+        {
+            static const char* const icons[] = {
+                "", "ch_hand", "ch_book", "ch_activate", "ch_talk", "ch_hand", "ch_pouch",
+                "ch_door", "ch_chest", "ch_lockpick", "ch_probe" };
+            return icons[std::max(0, std::min(10, kind))];
+        }
+    }
+
+    void HUD::setupDynamicCrosshair()
+    {
+        if (!mCrosshair)
+            return;
+        // The box keeps its name and visibility rules; its own texture is gone
+        // and the reticle/icon are children so they hide with it.
+        mCrosshair->setImageTexture("");
+        mCrosshair->setCoord((mMainWidget->getWidth() - 64) / 2, (mMainWidget->getHeight() - 64) / 2, 64, 64);
+        static const char* const ticks[] = { "top", "bottom", "left", "right" };
+        for (int i = 0; i < 4; ++i)
+        {
+            mCrossTicks[i] = mCrosshair->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(27, 27, 10, 10), MyGUI::Align::Default, "ArenaCrosshairTick" + MyGUI::utility::toString(i));
+            mCrossTicks[i]->setImageTexture(std::string("textures/ui/arenamw/hud/ch_tick_") + ticks[i] + ".png");
+            mCrossTicks[i]->setNeedMouseFocus(false);
+        }
+        mCrossDot = mCrosshair->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(29, 29, 6, 6), MyGUI::Align::Default, "ArenaCrosshairDot");
+        mCrossDot->setImageTexture("textures/ui/arenamw/hud/ch_dot.png");
+        mCrossDot->setNeedMouseFocus(false);
+        mCrossIcon = mCrosshair->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord(18, 18, 28, 28), MyGUI::Align::Default, "ArenaCrosshairIcon");
+        mCrossIcon->setNeedMouseFocus(false);
+        mCrossIcon->setVisible(false);
+    }
+
+    void HUD::updateDynamicCrosshair(float dt)
+    {
+        if (!mCrosshair || !mCrossDot || !mCrossIcon || !mCrosshair->getVisible())
+            return;
+        dt = std::max(0.f, std::min(dt, 0.1f));
+
+        const MWWorld::Ptr player = MWMechanics::getPlayer();
+        if (player.isEmpty())
+            return;
+        MWBase::MechanicsManager* mechanics = MWBase::Environment::get().getMechanicsManager();
+        const MWMechanics::CreatureStats& stats = player.getClass().getCreatureStats(player);
+
+        // Movement speed from the player's position (units per second).
+        const osg::Vec3f position = player.getRefData().getPosition().asVec3();
+        if (mCrossHasLastPos && dt > 0.f)
+        {
+            const float dx = position.x() - mCrossLastPos[0];
+            const float dy = position.y() - mCrossLastPos[1];
+            const float speed = std::sqrt(dx * dx + dy * dy) / dt;
+            mCrossSpeed += (std::min(speed, 2000.f) - mCrossSpeed) * (1.f - std::exp(-dt / 0.15f));
+        }
+        mCrossLastPos[0] = position.x();
+        mCrossLastPos[1] = position.y();
+        mCrossLastPos[2] = position.z();
+        mCrossHasLastPos = true;
+        const float move = std::max(0.f, std::min(1.f, mCrossSpeed / 320.f));
+
+        // Ranged weapon state.
+        bool bow = false;
+        bool steadyAim = false; // crossbow / thrown: focus by holding still
+        const bool weaponDrawn = stats.getDrawState() == MWMechanics::DrawState_Weapon;
+        if (weaponDrawn && player.getClass().hasInventoryStore(player))
+        {
+            MWWorld::InventoryStore& inventory = player.getClass().getInventoryStore(player);
+            MWWorld::ContainerStoreIterator weapon = inventory.getSlot(MWWorld::InventoryStore::Slot_CarriedRight);
+            if (weapon != inventory.end() && weapon->getTypeName() == typeid(ESM::Weapon).name())
+            {
+                const int type = weapon->get<ESM::Weapon>()->mBase->mData.mType;
+                bow = type == ESM::Weapon::MarksmanBow;
+                steadyAim = type == ESM::Weapon::MarksmanCrossbow || type == ESM::Weapon::MarksmanThrown;
+            }
+        }
+        const bool ranged = bow || steadyAim;
+        const bool drawing = ranged && mechanics->isAttackingOrSpell(player);
+        const float strength = drawing ? std::max(0.f, std::min(1.f, mechanics->getAttackStrength(player))) : 0.f;
+
+        if (steadyAim)
+        {
+            const float aimTarget = move < 0.08f ? 1.f : 0.f;
+            const float rate = aimTarget > mCrossAimFocus ? dt / 0.7f : dt / 0.15f;
+            mCrossAimFocus += std::max(-rate, std::min(rate, aimTarget - mCrossAimFocus));
+        }
+        else
+            mCrossAimFocus = 0.f;
+
+        float focus = 0.f;
+        float targetSpread = weaponDrawn ? 7.f : 5.f;
+        if (bow)
+        {
+            focus = strength;
+            targetSpread = 18.f - 15.f * focus;
+        }
+        else if (steadyAim)
+        {
+            focus = std::max(mCrossAimFocus, strength);
+            targetSpread = 15.f - 11.f * focus;
+        }
+        targetSpread += (ranged ? 10.f : 7.f) * move;
+        targetSpread = std::max(2.f, std::min(21.f, targetSpread)); // 21 + 10 px tick stays in the 64 px box
+        mCrossSpread += (targetSpread - mCrossSpread) * (1.f - std::exp(-dt / 0.07f));
+        const bool focused = ranged && focus > 0.95f && move < 0.12f;
+        mCrossFocusPulse = focused ? mCrossFocusPulse + dt : 0.f;
+
+        // Icon or reticle. A drawn ranged weapon always keeps the reticle.
+        const bool showIcon = mCrossKind != CrosshairKind::None && !ranged;
+        if (showIcon && mCrossShownKind != mCrossKind)
+        {
+            mCrossShownKind = mCrossKind;
+            mCrossIconAnim = std::min(mCrossIconAnim, 0.35f); // pop again on a new target type
+            mCrossIcon->setImageTexture(std::string("textures/ui/arenamw/hud/")
+                + crosshairIcon(static_cast<int>(mCrossKind)) + ".png");
+        }
+        const float animTarget = showIcon ? 1.f : 0.f;
+        mCrossIconAnim += (animTarget - mCrossIconAnim) * (1.f - std::exp(-dt / 0.05f));
+        if (!showIcon && mCrossIconAnim < 0.02f)
+            mCrossShownKind = CrosshairKind::None;
+
+        // Colours: the sneak eye's gold; warm red for crimes, traps and enemies.
+        const MyGUI::Colour gold(1.f, 0.82f, 0.50f);
+        const MyGUI::Colour danger(1.f, 0.46f, 0.36f);
+        const MyGUI::Colour bright(1.f, 0.93f, 0.72f);
+        const MyGUI::Colour tint = mCrossDanger ? danger : (focused ? bright : gold);
+
+        const float eased = mCrossIconAnim * mCrossIconAnim * (3.f - 2.f * mCrossIconAnim);
+        const int iconSize = static_cast<int>(std::lround(28.f * (0.7f + 0.3f * eased)));
+        mCrossIcon->setVisible(mCrossIconAnim > 0.02f);
+        mCrossIcon->setCoord(32 - iconSize / 2, 32 - iconSize / 2, iconSize, iconSize);
+        mCrossIcon->setColour(mCrossDanger ? danger : gold);
+        mCrossIcon->setAlpha(eased);
+
+        const float reticleAlpha = 1.f - eased;
+        const int spread = static_cast<int>(std::lround(mCrossSpread));
+        const int c = 32;
+        const MyGUI::IntPoint tickPos[4] = {
+            { c - 5, c - spread - 10 }, { c - 5, c + spread }, { c - spread - 10, c - 5 }, { c + spread, c - 5 } };
+        // Away from a target the four chevrons stay faint; with a ranged weapon
+        // they are the aiming aid and stay fully visible.
+        const float tickAlpha = (ranged ? 0.95f : 0.55f) * reticleAlpha;
+        for (int i = 0; i < 4; ++i)
+        {
+            mCrossTicks[i]->setCoord(tickPos[i].left, tickPos[i].top, 10, 10);
+            mCrossTicks[i]->setColour(tint);
+            mCrossTicks[i]->setAlpha(tickAlpha);
+        }
+        const float pulse = focused ? 0.5f + 0.5f * std::cos(mCrossFocusPulse * 6.2832f * 2.f) : 0.f;
+        const int dotSize = focused ? 6 + static_cast<int>(std::lround(2.f * pulse)) : 6;
+        mCrossDot->setCoord(c - dotSize / 2, c - dotSize / 2, dotSize, dotSize);
+        mCrossDot->setColour(tint);
+        mCrossDot->setAlpha(reticleAlpha);
     }
 
     void HUD::setHmsVisible(bool visible)
@@ -2134,8 +2555,81 @@ namespace MWGui
 
     void HUD::setSneakVisible(bool visible)
     {
+        if (mSneakBox->getVisible() == visible)
+            return;
         mSneakBox->setVisible(visible);
+        if (!visible)
+        {
+            // Leaving sneak mode forgets the previous verdict; the next sneak
+            // starts from the neutral (hidden) eye until mechanics report.
+            mSneakReportedLevel = 0;
+            mSneakLevel = 0;
+            mSneakHoldTimer = 0.f;
+        }
         updatePositions();
+    }
+
+    void HUD::setSneakDetection(int level)
+    {
+        level = std::max(0, std::min(2, level));
+        mSneakReportedLevel = level;
+        if (level >= mSneakLevel)
+        {
+            // Raising (or confirming) is immediate. Detection is held longer than
+            // suspicion: the danger state must never blink off between checks.
+            mSneakLevel = level;
+            if (level > 0)
+                mSneakHoldTimer = level == 2 ? 2.0f : 1.4f;
+        }
+    }
+
+    void HUD::updateSneakIndicator(float dt)
+    {
+        if (!mSneakBox || !mSneakImage || !mSneakBox->getVisible())
+            return;
+
+        dt = std::max(0.f, dt);
+        if (mSneakHoldTimer > 0.f)
+            mSneakHoldTimer = std::max(0.f, mSneakHoldTimer - dt);
+        if (mSneakHoldTimer <= 0.f && mSneakReportedLevel < mSneakLevel)
+        {
+            // Step down one level at a time (detected -> suspicious -> hidden),
+            // so losing a pursuer reads as "they are still looking".
+            --mSneakLevel;
+            if (mSneakLevel > mSneakReportedLevel)
+                mSneakHoldTimer = 0.8f;
+        }
+
+        if (mSneakShownLevel != mSneakLevel)
+        {
+            static const char* textures[] = {
+                "textures/ui/arenamw/hud/eye_hidden.png",
+                "textures/ui/arenamw/hud/eye_suspicious.png",
+                "textures/ui/arenamw/hud/eye_detected.png" };
+            mSneakImage->setImageTexture(textures[mSneakLevel]);
+            mSneakShownLevel = mSneakLevel;
+            mSneakPulse = 0.f;
+        }
+
+        // Gold in every state; shape, opacity and pulse communicate detection.
+        static const float targets[3][4] = {
+            { 1.00f, 0.82f, 0.50f, 1.00f },
+            { 1.00f, 0.82f, 0.50f, 0.70f },
+            { 1.00f, 0.82f, 0.50f, 1.00f } };
+        const float* target = targets[mSneakLevel];
+        const float blend = 1.f - std::exp(-dt / 0.12f);
+        for (int i = 0; i < 4; ++i)
+            mSneakColour[i] += (target[i] - mSneakColour[i]) * blend;
+
+        mSneakPulse += dt;
+        float alpha = mSneakColour[3];
+        if (mSneakLevel == 2)
+            alpha *= 0.82f + 0.18f * (0.5f + 0.5f * std::cos(mSneakPulse * 6.2832f * 1.6f));
+        else if (mSneakLevel == 1)
+            alpha *= 0.90f + 0.10f * (0.5f + 0.5f * std::cos(mSneakPulse * 6.2832f * 0.8f));
+
+        mSneakImage->setColour(MyGUI::Colour(mSneakColour[0], mSneakColour[1], mSneakColour[2]));
+        mSneakImage->setAlpha(std::max(0.f, std::min(1.f, alpha)));
     }
 
     void HUD::setEffectVisible(bool visible)
@@ -2170,8 +2664,9 @@ namespace MWGui
         mSpellBox->setPosition(mSpellBoxBaseLeft - spellDx, mSpellBox->getTop());
 
         const MyGUI::IntSize& viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+        // UI7: keep the smaller gold eye above the crosshair.
         mSneakBox->setPosition((viewSize.width - mSneakBox->getWidth()) / 2,
-                               (viewSize.height - mSneakBox->getHeight()) / 2);
+                               viewSize.height / 2 - mSneakBox->getHeight() - 10);
 
         if (mHorizontalCompass && mGameTimeBox)
         {
@@ -2203,6 +2698,65 @@ namespace MWGui
 
     void HUD::setFocusObject(const MWWorld::Ptr& focus)
     {
+        // UI9: what the contextual crosshair shows for this object.
+        mCrossKind = CrosshairKind::None;
+        mCrossDanger = false;
+        const MWWorld::Ptr player = MWMechanics::getPlayer();
+        if (!focus.isEmpty() && !player.isEmpty() && focus != player)
+        {
+            const MWWorld::Class& cls = focus.getClass();
+            const std::string& type = focus.getTypeName();
+            if (cls.isActor())
+            {
+                const MWMechanics::CreatureStats& stats = cls.getCreatureStats(focus);
+                if (stats.isDead())
+                    mCrossKind = CrosshairKind::Loot;
+                else if (stats.getAiSequence().isInCombat(player))
+                    mCrossDanger = true; // enemy: red reticle, no icon
+                else if (cls.isNpc() && !mwmp::PlayerList::isDedicatedPlayer(focus))
+                {
+                    if (player.getClass().getCreatureStats(player).getStance(MWMechanics::CreatureStats::Stance_Sneak))
+                    {
+                        mCrossKind = CrosshairKind::Pickpocket;
+                        mCrossDanger = true;
+                    }
+                    else
+                        mCrossKind = CrosshairKind::Talk;
+                }
+            }
+            else if (cls.isDoor() || type == typeid(ESM::Container).name())
+            {
+                const bool door = cls.isDoor();
+                if (!focus.getCellRef().getTrap().empty())
+                {
+                    mCrossKind = CrosshairKind::Trapped;
+                    mCrossDanger = true;
+                }
+                else if (focus.getCellRef().getLockLevel() > 0)
+                {
+                    mCrossKind = CrosshairKind::Locked;
+                    mCrossDanger = crosshairOwned(player, focus);
+                }
+                else
+                {
+                    mCrossKind = door ? CrosshairKind::Door : CrosshairKind::Container;
+                    mCrossDanger = !door && crosshairOwned(player, focus);
+                }
+            }
+            else if (type == typeid(ESM::Book).name())
+            {
+                mCrossKind = CrosshairKind::Read;
+                mCrossDanger = crosshairOwned(player, focus);
+            }
+            else if (isCarryableItem(focus))
+            {
+                mCrossKind = CrosshairKind::Take;
+                mCrossDanger = crosshairOwned(player, focus);
+            }
+            else if (type == typeid(ESM::Activator).name())
+                mCrossKind = CrosshairKind::Activate;
+        }
+
         const bool validActor = !focus.isEmpty() && focus.getClass().isActor()
             && focus != MWMechanics::getPlayer()
             && !focus.getClass().getCreatureStats(focus).isDead();
@@ -2450,8 +3004,14 @@ namespace MWGui
             state.mDockSwitchTimer = 0.f;
             state.mDockRow = -1;
             state.mNameCaption.clear();
+            state.mLagFraction = -1.f;
+            state.mLagHoldTimer = 0.f;
             if (state.mWidget)
                 state.mWidget->setVisible(false);
+            if (state.mBack)
+                state.mBack->setVisible(false);
+            if (state.mLag)
+                state.mLag->setVisible(false);
             if (state.mFill)
                 state.mFill->setVisible(false);
             if (state.mFrame)
@@ -2476,6 +3036,11 @@ namespace MWGui
         {
             bar->setVisible(false);
             fill->setVisible(false);
+            if (state.mBack)
+                state.mBack->setVisible(false);
+            if (state.mLag)
+                state.mLag->setVisible(false);
+            state.mLagFraction = -1.f;
             if (state.mFrame)
                 state.mFrame->setVisible(false);
             if (state.mName)
@@ -2502,6 +3067,11 @@ namespace MWGui
             }
             bar->setVisible(false);
             fill->setVisible(false);
+            if (state.mBack)
+                state.mBack->setVisible(false);
+            if (state.mLag)
+                state.mLag->setVisible(false);
+            state.mLagFraction = -1.f;
             if (state.mFrame)
                 state.mFrame->setVisible(false);
             if (state.mName)
@@ -2533,7 +3103,10 @@ namespace MWGui
             / std::max(0.001f, 1.f - CombatBar::sFrameFadeStart));
         const float frameReveal = frameRevealLinear * frameRevealLinear
             * (3.f - 2.f * frameRevealLinear); // smoothstep
-        const int inset = static_cast<int>(std::lround(2.f * frameReveal));
+        // UI4: the overhead bar sits on a dark plate with a 1 px rim as soon as it
+        // is tall enough to show one; the docked bar adds the bronze frame (2 px).
+        const int baseInset = height >= 4 ? 1 : 0;
+        const int inset = std::max(baseInset, static_cast<int>(std::lround(2.f * frameReveal)));
         const int fillHeight = std::max(1, height - inset * 2);
         const int availableWidth = std::max(1, width - inset * 2);
         const float healthFraction = CombatBar::clamp01(state.mFrameHealthFraction);
@@ -2541,6 +3114,53 @@ namespace MWGui
         if (healthFraction > 0.f)
             fillWidth = std::max(1, fillWidth);
         fillWidth = std::min(availableWidth, std::max(0, fillWidth));
+
+        // UI4: enemy red / ally green on the neutral fill texture.
+        const int wantedTint = state.mAlly ? 1 : 0;
+        if (state.mAppliedTint != wantedTint)
+        {
+            fill->setColour(state.mAlly ? CombatBar::allyTint() : CombatBar::enemyTint());
+            state.mAppliedTint = wantedTint;
+        }
+
+        if (state.mBack)
+        {
+            state.mBack->setCoord(0, 0, width, height);
+            state.mBack->setAlpha(alpha);
+            state.mBack->setVisible(fillWidth > 0);
+        }
+
+        // UI4: damage trail. Heals and fresh slots snap; damage holds briefly and
+        // then drains, which makes every hit readable like in TESO.
+        if (state.mLagFraction < 0.f || healthFraction >= state.mLagFraction)
+        {
+            state.mLagFraction = healthFraction;
+            state.mLagHoldTimer = CombatBar::sLagHoldTime;
+        }
+        else if (state.mLagHoldTimer > 0.f)
+        {
+            state.mLagHoldTimer = std::max(0.f, state.mLagHoldTimer - dt);
+        }
+        else
+        {
+            state.mLagFraction = CombatBar::approach(state.mLagFraction, healthFraction,
+                CombatBar::sLagSmoothTau, dt);
+        }
+        if (state.mLag)
+        {
+            const int lagWidth = std::min(availableWidth, static_cast<int>(
+                std::lround(availableWidth * CombatBar::clamp01(state.mLagFraction))));
+            if (lagWidth > fillWidth && fillWidth > 0)
+            {
+                state.mLag->setCoord(inset, inset, lagWidth, fillHeight);
+                state.mLag->setAlpha(alpha);
+                state.mLag->setVisible(true);
+            }
+            else
+            {
+                state.mLag->setVisible(false);
+            }
+        }
 
         if (fillWidth > 0)
         {
@@ -2648,8 +3268,43 @@ namespace MWGui
                     participants[enemy] = false;
             }
 
-            // Y022: this combat HP system is enemy-only. Friendly actors retain
-            // their compass relationship markers but do not consume combat-bar slots.
+            // UI4 (replaces the Y022 enemy-only rule): allies get green bars too.
+            // Followers/summons count while they fight; while the player is in a
+            // fight every follower, summon and group member in the cell is shown.
+            // Allies never join the docked stack (see pass 1), so the close-range
+            // stack stays an enemy list.
+            {
+                const bool playerFighting = !participants.empty();
+                std::set<MWWorld::Ptr> allies;
+                mechanics->getActorsSidingWith(player, allies);
+                for (const MWWorld::Ptr& ally : allies)
+                {
+                    if (ally.isEmpty() || ally == player || participants.count(ally) != 0)
+                        continue;
+                    if (!ally.getClass().isActor())
+                        continue;
+                    const bool allyFighting = !mwmp::PlayerList::isDedicatedPlayer(ally)
+                        && ally.getClass().getCreatureStats(ally).getAiSequence().isInCombat();
+                    if (playerFighting || allyFighting)
+                        participants.emplace(ally, true);
+                }
+
+                if (playerFighting && mwmp::Main::isInitialized() && mwmp::Main::get().getLocalPlayer())
+                {
+                    const std::vector<RakNet::RakNetGUID> playerGuids
+                        = mwmp::PlayerList::getPlayersInCell(*player.getCell()->getCell());
+                    for (const RakNet::RakNetGUID& guid : playerGuids)
+                    {
+                        mwmp::DedicatedPlayer* remotePlayer = mwmp::PlayerList::getPlayer(guid);
+                        if (!remotePlayer)
+                            continue;
+                        const MWWorld::Ptr remotePtr = remotePlayer->getPtr();
+                        if (!remotePtr.isEmpty() && participants.count(remotePtr) == 0
+                            && MechanicsHelper::isTeamMember(remotePtr, player))
+                            participants.emplace(remotePtr, true);
+                    }
+                }
+            }
 
             const osg::Vec3f playerPosition = player.getRefData().getPosition().asVec3();
             constexpr float maximumBarDistanceSquared
@@ -2679,7 +3334,7 @@ namespace MWGui
 
                 Candidate candidate;
                 candidate.mActor = actor;
-                candidate.mAlly = false;
+                candidate.mAlly = participant.second;
                 candidate.mDistanceSquared = distanceSquared;
                 candidates.push_back(candidate);
             }
@@ -2689,6 +3344,26 @@ namespace MWGui
                 {
                     return left.mDistanceSquared < right.mDistanceSquared;
                 });
+
+            // UI4: at most six ally bars, the nearest ones; enemies are never
+            // pushed out of the pool by allies.
+            {
+                constexpr std::size_t maximumAllyBars = 6;
+                std::vector<Candidate> enemiesFirst;
+                enemiesFirst.reserve(candidates.size());
+                for (const Candidate& candidate : candidates)
+                {
+                    if (!candidate.mAlly)
+                        enemiesFirst.push_back(candidate);
+                }
+                std::size_t allyCount = 0;
+                for (const Candidate& candidate : candidates)
+                {
+                    if (candidate.mAlly && allyCount++ < maximumAllyBars)
+                        enemiesFirst.push_back(candidate);
+                }
+                candidates.swap(enemiesFirst);
+            }
 
             const std::size_t capacity = mCombatHealthBars.size();
             if (candidates.size() > capacity)
@@ -2774,8 +3449,12 @@ namespace MWGui
                 state.mHasValidHealth = false;
                 state.mFrameHealthFraction = 0.f;
                 state.mNameCaption.clear();
+                state.mLagFraction = -1.f;
+                state.mLagHoldTimer = 0.f;
                 if (state.mFill)
                     state.mFill->setVisible(false);
+                if (state.mLag)
+                    state.mLag->setVisible(false);
                 if (state.mFrame)
                     state.mFrame->setVisible(false);
 
@@ -2907,9 +3586,10 @@ namespace MWGui
             // Dock decision: two thresholds plus a dwell timer. An actor pacing
             // around the 15 pace mark holds the new side for sDockSwitchDelay before
             // anything moves, and only gives the row back at 18 paces.
-            const bool wantsDock = state.mDocked
+            // UI4: allies stay over their heads; the stack is for enemies only.
+            const bool wantsDock = !state.mAlly && (state.mDocked
                 ? distance < CombatBar::sDockExitDistance
-                : distance < CombatBar::sDockEnterDistance;
+                : distance < CombatBar::sDockEnterDistance);
 
             if (wantsDock == state.mDocked)
             {
@@ -3198,8 +3878,8 @@ namespace MWGui
             MyGUI::LanguageManager::getInstance().replaceTags("#{fontcolour=header}"));
         if (target->mShade)
         {
-            target->mShade->setColour(MyGUI::Colour::Black);
-            target->mShade->setAlpha(0.22f);
+            target->mShade->setColour(MyGUI::Colour::White);
+            target->mShade->setAlpha(1.f);
         }
         if (target->mTitle)
         {
@@ -3302,20 +3982,20 @@ namespace MWGui
 
         const auto styleExperience = [](HudNotificationState& state, float value)
         {
+            // UI4: the card texture is dark glass with a bronze rule; a tint
+            // colours the rule and warms/cools the glass without hiding the text.
             MyGUI::Colour textColour = MyGUI::Colour::White;
-            MyGUI::Colour background = MyGUI::Colour::Black;
-            float alpha = 0.28f;
+            MyGUI::Colour background = MyGUI::Colour::White;
+            float alpha = 1.f;
             if (value > 0.0001f)
             {
                 textColour = MyGUI::Colour(0.42f, 1.0f, 0.42f);
-                background = MyGUI::Colour(0.08f, 0.30f, 0.10f);
-                alpha = 0.36f;
+                background = MyGUI::Colour(0.62f, 1.0f, 0.62f);
             }
             else if (value < -0.0001f)
             {
                 textColour = MyGUI::Colour(1.0f, 0.48f, 0.48f);
-                background = MyGUI::Colour(0.36f, 0.07f, 0.07f);
-                alpha = 0.36f;
+                background = MyGUI::Colour(1.0f, 0.58f, 0.58f);
             }
 
             if (state.mShade)
@@ -3689,7 +4369,10 @@ namespace MWGui
             nextBottom = top - cardGap;
             if (state.mPanel)
             {
-                state.mPanel->setCoord(cardLeft, top, cardWidth, cardHeight);
+                // UI4: new cards slide in from the screen edge while fading in.
+                const float slideIn = 1.f - std::min(1.f, state.mAge / 0.22f);
+                const int slide = static_cast<int>(std::lround(28.f * slideIn * slideIn));
+                state.mPanel->setCoord(cardLeft + slide, top, cardWidth, cardHeight);
                 state.mTitle->setCoord(textLeft, 2, titleWidth, cardHeight - 4);
                 state.mValue->setCoord(cardWidth - 4 - valueWidth, 2,
                     std::max(1, valueWidth), cardHeight - 4);

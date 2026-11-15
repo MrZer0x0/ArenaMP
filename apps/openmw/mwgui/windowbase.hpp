@@ -16,6 +16,7 @@ namespace MWGui
     {
     public:
         WindowBase(const std::string& parLayout);
+        ~WindowBase() override;
 
         virtual MyGUI::Widget* getDefaultKeyFocus() { return nullptr; }
 
@@ -46,6 +47,12 @@ namespace MWGui
 
         /// Called when GUI viewport changes size
         virtual void onResChange(int width, int height) {}
+
+        /// ArenaMP UI9: advance the open/close fades of all windows.
+        /// Called once per frame by the WindowManager.
+        static void updateFades(float duration);
+        /// Finish every running fade at once (game teardown).
+        static void finishFades();
 
     protected:
         virtual void onTitleDoubleClicked();

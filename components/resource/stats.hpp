@@ -30,7 +30,11 @@ namespace Resource
     public:
         StatsHandler(bool offlineCollect);
 
-        void setKey(int key) { _key = key; }
+        void setKey(int key, int modKeyMask = 0)
+        {
+            _key = key;
+            _modKeyMask = modKeyMask;
+        }
         int getKey() const { return _key; }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
@@ -48,6 +52,7 @@ namespace Resource
     private:
         osg::ref_ptr<osg::Switch> _switch;
         int _key;
+        int _modKeyMask;
         osg::ref_ptr<osg::Camera>  _camera;
         bool _initialized;
         bool _statsType;

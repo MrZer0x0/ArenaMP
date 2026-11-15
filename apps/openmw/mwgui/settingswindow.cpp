@@ -136,9 +136,10 @@ namespace
             box->setIndexSelected(MyGUI::ITEM_NONE);
     }
 
-    constexpr std::array<int, 5> shadowMapResolutions = { 512, 1024, 2048, 4096, 8192 };
-    constexpr std::array<const char*, 5> shadowMapQualityNames =
-        { "value.balanced", "value.high", "value.very_high", "value.detailed", "value.maximum" };
+    // P001: shadow maps never exceed 2048.
+    constexpr std::array<int, 3> shadowMapResolutions = { 512, 1024, 2048 };
+    constexpr std::array<const char*, 3> shadowMapQualityNames =
+        { "value.balanced", "value.high", "value.very_high" };
     constexpr std::array<const char*, 6> shadowPresetNames =
         { "value.disabled", "value.actor", "value.npc", "value.object", "value.terrain", "value.indoor" };
 
@@ -598,7 +599,7 @@ namespace MWGui
         mWaterTextureSize->addItem(arenaText("value.extra_low"));
         mWaterTextureSize->addItem(arenaText("value.low"));
         mWaterTextureSize->addItem(arenaText("value.medium"));
-        mWaterTextureSize->addItem(arenaText("value.high"));
+        // P001: no 2048 entry; 1024 is the largest water texture.
 
         mWaterReflectionDetail->removeAllItems();
         mWaterReflectionDetail->addItem(arenaText("value.off"));
@@ -685,9 +686,7 @@ namespace MWGui
         mTextureFilteringButton->setCaption(textureMipmappingToStr(tmip));
 
         int waterTextureSize = Settings::Manager::getInt("rtt size", "Water");
-        if (waterTextureSize >= 2048)
-            mWaterTextureSize->setIndexSelected(3);
-        else if (waterTextureSize >= 1024)
+        if (waterTextureSize >= 1024)
             mWaterTextureSize->setIndexSelected(2);
         else if (waterTextureSize >= 512)
             mWaterTextureSize->setIndexSelected(1);
@@ -806,10 +805,8 @@ namespace MWGui
             size = 256;
         else if (pos == 1)
             size = 512;
-        else if (pos == 2)
+        else
             size = 1024;
-        else if (pos == 3)
-            size = 2048;
         Settings::Manager::setInt("rtt size", "Water", size);
         apply();
     }
@@ -850,9 +847,7 @@ namespace MWGui
         updateWaterShaderModeCombo();
 
         const int waterTextureSize = Settings::Manager::getInt("rtt size", "Water");
-        if (waterTextureSize >= 2048)
-            mWaterTextureSize->setIndexSelected(3);
-        else if (waterTextureSize >= 1024)
+        if (waterTextureSize >= 1024)
             mWaterTextureSize->setIndexSelected(2);
         else if (waterTextureSize >= 512)
             mWaterTextureSize->setIndexSelected(1);
@@ -899,13 +894,15 @@ namespace MWGui
         if (selectedButton == 1 || selectedButton == -1)
             return;
 
-        constexpr std::array<const char*, 6> settings = {
+        // Reset the four visible lighting controls and the related backend defaults.
+        constexpr std::array<const char*, 7> settings = {
             "light bounds multiplier",
             "maximum light distance",
             "light fade start",
             "minimum interior brightness",
             "max lights",
             "lighting method",
+            "night exterior brightness",
         };
         for (const auto& setting : settings)
             Settings::Manager::setString(setting, "Shaders", Settings::Manager::mDefaultSettings[{"Shaders", setting}]);

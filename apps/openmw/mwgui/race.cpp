@@ -1,5 +1,7 @@
 #include "race.hpp"
 
+#include "arenaiconbutton.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -418,7 +420,48 @@ namespace MWGui
         updateRaces();
         updateClasses();
         updateBirths();
+        decorateButtons();
         updatePageVisibility();
+    }
+
+    void RaceDialog::decorateButtons()
+    {
+        using ArenaUi::IconMode;
+        const auto button = [this](const char* name) {
+            MyGUI::Button* widget = nullptr;
+            getWidget(widget, name);
+            return widget;
+        };
+        // Arrows: the row label already says what they change.
+        for (const char* name : { "PrevRaceButton", "PrevGenderButton", "PrevFaceButton", "PrevHairButton" })
+            ArenaUi::decorate(button(name), "btn_prev", std::string(), IconMode::IconOnly);
+        for (const char* name : { "NextRaceButton", "NextGenderButton", "NextFaceButton", "NextHairButton" })
+            ArenaUi::decorate(button(name), "btn_next", std::string(), IconMode::IconOnly);
+
+        // The three narrow random-class buttons become icons with their name as a
+        // tooltip; the wide ones keep the caption beside the icon.
+        const auto keep = [](MyGUI::Button* widget) { return widget->getCaption().asUTF8(); };
+        MyGUI::Button* combat = button("RandomCombatButton");
+        ArenaUi::decorate(combat, "inv_weapon", keep(combat), IconMode::IconOnly);
+        MyGUI::Button* magic = button("RandomMagicButton");
+        ArenaUi::decorate(magic, "inv_magic", keep(magic), IconMode::IconOnly);
+        MyGUI::Button* stealth = button("RandomStealthButton");
+        ArenaUi::decorate(stealth, "inv_keys", keep(stealth), IconMode::IconOnly);
+        MyGUI::Button* any = button("RandomAnyButton");
+        ArenaUi::decorate(any, "btn_try", keep(any), IconMode::IconAndCaption);
+        ArenaUi::decorate(mRaceDetailsButton, "btn_journal", keep(mRaceDetailsButton), IconMode::IconAndCaption);
+        ArenaUi::decorate(mNextArchetypeButton, "btn_next", keep(mNextArchetypeButton), IconMode::IconAndCaption);
+        ArenaUi::decorate(mTutorialAcceptButton, "btn_accept", keep(mTutorialAcceptButton), IconMode::IconAndCaption);
+
+        // Step icon left of the step title.
+        if (mStepTitle != nullptr && mStepIcon == nullptr)
+        {
+            const MyGUI::IntCoord title = mStepTitle->getCoord();
+            mStepIcon = mMainWidget->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(title.left, title.top + (title.height - 24) / 2, 24, 24), MyGUI::Align::Default);
+            mStepIcon->setNeedMouseFocus(false);
+            mStepTitle->setCoord(title.left + 32, title.top, std::max(40, title.width - 32), title.height);
+        }
     }
 
     RaceDialog::~RaceDialog()
@@ -574,6 +617,12 @@ namespace MWGui
         mNextButton->setCaption(mPage == Page_Birth
             ? MWBase::Environment::get().getWindowManager()->getGameSettingString("sOK", "OK")
             : MWBase::Environment::get().getWindowManager()->getGameSettingString("sNext", "Next"));
+        // UI3: icons beside the navigation captions.
+        ArenaUi::decorate(mBackButton, "btn_prev",
+            MWBase::Environment::get().getWindowManager()->getGameSettingString("sBack", "Back"),
+            ArenaUi::IconMode::IconAndCaption);
+        ArenaUi::decorate(mNextButton, mPage == Page_Birth ? "btn_accept" : "btn_next",
+            mNextButton->getCaption().asUTF8(), ArenaUi::IconMode::IconAndCaption);
     }
 
     void RaceDialog::updatePageHeader()
@@ -584,8 +633,17 @@ namespace MWGui
         {
             mStepTitle->setCaptionWithReplacing("#{arenamp=chargen.tutorial.title}");
             mStepCounter->setCaptionWithReplacing("#{arenamp=chargen.tutorial.step}");
+            if (mStepIcon)
+                mStepIcon->setImageTexture("textures/ui/arenamw/btn_journal.png");
             return;
         }
+        static const char* stepIcons[] = {
+            "textures/ui/arenamw/menu_players.png",
+            "textures/ui/arenamw/inv_weapon.png",
+            "textures/ui/arenamw/compass_enchant.png"
+        };
+        if (mStepIcon)
+            mStepIcon->setImageTexture(stepIcons[static_cast<int>(mPage)]);
         static const char* titles[] = {
             "#{arenamp=chargen.appearance}",
             "#{arenamp=chargen.class}",
@@ -685,7 +743,8 @@ namespace MWGui
 
         if (id == MyGUI::MouseButton::Left)
         {
-            mCurrentAngle += static_cast<float>(dx) * 0.012f;
+            // UI3: inverted, so the body turns with the drag like a turntable.
+            mCurrentAngle -= static_cast<float>(dx) * 0.012f;
             if (mPreview)
                 mPreview->setAngle(mCurrentAngle);
         }

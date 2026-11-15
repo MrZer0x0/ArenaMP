@@ -645,8 +645,12 @@ namespace mwmp
         setTabLabel(mTabPlayers, localizeArena("chat.tab.players"));
         setTabLabel(mTabStats, localizeArena("chat.tab.stats"));
         setupButtonIcons();
-        setMenuCaption(mReturnButton, "X");
-        mReturnButton->setTextColour(MyGUI::Colour(1.f, 0.15f, 0.15f));
+        // UI3: the single close button is an icon; its name is the tooltip.
+        setButtonIcon(mReturnButton, "close");
+        setMenuCaption(mReturnButton, "");
+        mReturnButton->setUserString("ToolTipType", "Layout");
+        mReturnButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        mReturnButton->setUserString("Caption_TextOneLine", localizeArena("chat.menu.back_to_game"));
         setMenuCaption(mModeOoc, "OOC");
         setMenuCaption(mModeRp, "RP");
         setMenuCaption(mChannelSay, localizeArena("chat.channel.say"));
@@ -3187,13 +3191,10 @@ namespace mwmp
             mTabIcons[i]->setNeedMouseFocus(false);
         }
 
-        // A large "back to game" button at the bottom of the column: easier to
-        // hit than the small red X, especially on a touch screen.
-        mSidebarReturn = mMenuSidebar->createWidget<MyGUI::Button>("MW_Button",
-            MyGUI::IntCoord(sSidebarPadding, 300, sSidebarWidth - 2 * sSidebarPadding, sSidebarReturnHeight),
-            MyGUI::Align::Default);
-        mSidebarReturn->setCaption("X");
-        mSidebarReturn->eventMouseButtonClick += MyGUI::newDelegate(this, &GUIChat::onReturnClicked);
+        // UI3: the menu has one way back to the game, the close button in the
+        // title strip. The second "back" button at the foot of this column was a
+        // duplicate and took room from the sections on short screens.
+        mSidebarReturn = nullptr;
     }
 
     void GUIChat::setTabLabel(MyGUI::Button* tab, const std::string& text)
@@ -3353,7 +3354,7 @@ namespace mwmp
     {
         if (caption.empty() || menuIcons.count(widget) == 0)
             return caption;
-        const int room = buttonIconSize(widget) + 5;
+        const int room = buttonIconSize(widget) + 10;
         return std::string(static_cast<std::size_t>(iconPrefixSpaces(widget, room)), ' ') + caption;
     }
 
@@ -3511,9 +3512,10 @@ namespace mwmp
         // Title strip: the title on the left, the red X on the right. The
         // section tabs moved into the column below (layoutSidebar).
         mDragHandle->setCoord(6, 6, std::max(80, mainWidth - 12), 32);
-        const int closeWidth = 30;
+        const int closeWidth = 32;
         getWidget("PlayerMenuTitle")->setCoord(10, 5, std::max(60, mDragHandle->getWidth() - closeWidth - 24), 22);
-        mReturnButton->setCoord(mDragHandle->getWidth() - closeWidth - 4, 4, closeWidth, 24);
+        mReturnButton->setCoord(mDragHandle->getWidth() - closeWidth - 4, 3, closeWidth, 26);
+        placeButtonIcon(mReturnButton);
         layoutSidebar();
 
         // X054: one container, two rows. Row 1 is the RP switch plus coreChat's

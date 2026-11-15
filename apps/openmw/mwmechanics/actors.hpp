@@ -241,6 +241,7 @@ namespace MWMechanics
             bool isReadyToBlock(const MWWorld::Ptr& ptr) const;
             bool isWeaponTransition(const MWWorld::Ptr& ptr) const;
             bool isAttackingOrSpell(const MWWorld::Ptr& ptr) const;
+            float getAttackStrength(const MWWorld::Ptr& ptr) const;
 
             /*
                 Start of tes3mp addition

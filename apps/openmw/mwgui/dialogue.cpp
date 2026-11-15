@@ -1,5 +1,7 @@
 #include "dialogue.hpp"
+#include "shapedbar.hpp"
 
+#include <MyGUI_FontManager.h>
 #include <MyGUI_LanguageManager.h>
 #include <MyGUI_Window.h>
 #include <MyGUI_ProgressBar.h>
@@ -278,6 +280,18 @@ namespace
     }
 }
 
+namespace
+{
+    // ArenaMP UI9: dialogue history in the plain bold loading-screen face.
+    // Falls back to the default font if the resource is missing.
+    const std::string& dialogueFontName()
+    {
+        static const std::string arena = "ArenaDialogueFont";
+        static const std::string fallback;
+        return MyGUI::FontManager::getInstance().getByName(arena) != nullptr ? arena : fallback;
+    }
+}
+
 namespace MWGui
 {
 
@@ -321,7 +335,7 @@ namespace MWGui
         if (mTitle != "")
         {
             const MyGUI::Colour& headerColour = MWBase::Environment::get().getWindowManager()->getTextColours().header;
-            BookTypesetter::Style* title = typesetter->createStyle("", headerColour, false);
+            BookTypesetter::Style* title = typesetter->createStyle(dialogueFontName(), headerColour, false);
             typesetter->write(title, to_utf8_span(mTitle.c_str()));
             typesetter->sectionBreak();
         }
@@ -366,7 +380,7 @@ namespace MWGui
         {
             const TextColours& textColours = MWBase::Environment::get().getWindowManager()->getTextColours();
 
-            BookTypesetter::Style* style = typesetter->createStyle("", textColours.normal, false);
+            BookTypesetter::Style* style = typesetter->createStyle(dialogueFontName(), textColours.normal, false);
             size_t formatted = 0; // points to the first character that is not laid out yet
             for (auto& hyperLink : hyperLinks)
             {
@@ -406,7 +420,7 @@ namespace MWGui
     {
         const TextColours& textColours = MWBase::Environment::get().getWindowManager()->getTextColours();
 
-        BookTypesetter::Style* style = typesetter->createStyle("", textColours.normal, false);
+        BookTypesetter::Style* style = typesetter->createStyle(dialogueFontName(), textColours.normal, false);
 
 
         if (topicId)
@@ -422,7 +436,7 @@ namespace MWGui
     void Message::write(BookTypesetter::Ptr typesetter, KeywordSearchT* keywordSearch, std::map<std::string, Link*>& topicLinks) const
     {
         const MyGUI::Colour& textColour = MWBase::Environment::get().getWindowManager()->getTextColours().notify;
-        BookTypesetter::Style* title = typesetter->createStyle("", textColour, false);
+        BookTypesetter::Style* title = typesetter->createStyle(dialogueFontName(), textColour, false);
         typesetter->sectionBreak(9);
         typesetter->write(title, to_utf8_span(mText.c_str()));
     }
@@ -1330,7 +1344,7 @@ namespace MWGui
             mPersuasionMode = false;
 
         updateHistory();
-        updateDisposition();
+        updateStatusBarsSafely();
         selectInitialItem();
     }
 
@@ -1688,15 +1702,17 @@ namespace MWGui
 
         const std::string actorName = mPtr.getClass().getName(mPtr);
         setTitle(actorName);
-        updateActorStatus();
 
         updateTopics();
         updateTopicsPane(); // force update for new services
 
-        updateDisposition();
-        restock();
+        // UI9.2: start the cinematic camera and the actor's gestures before the
+        // cosmetic bars. A caption that cannot be resolved (UI8 used a missing
+        // GMST) must never abort the conversation set-up again.
         startDialogueCamera();
         startDynamicDialogueActor();
+        updateStatusBarsSafely();
+        restock();
         playDynamicDialogueAnimation(false);
         selectInitialItem();
     }
@@ -2039,7 +2055,7 @@ namespace MWGui
             if (MWMechanics::ClassArchetype::getDisplayInfo(mPtr, false, archetypeInfo))
             {
                 const std::string name = MyGUI::LanguageManager::getInstance().replaceTags(
-                    "#{arenamp=archetype." + archetypeInfo.id + ".name}");
+                    "#{arenagame=archetype." + archetypeInfo.id + ".name}");
                 npcCaption += " — " + name;
             }
         }
@@ -2047,10 +2063,30 @@ namespace MWGui
         mNpcName->setCaption(npcCaption);
         mNpcHealthBar->setProgressRange(static_cast<size_t>(maximumHealth));
         mNpcHealthBar->setProgressPosition(static_cast<size_t>(currentHealth));
-        mNpcHealthText->setCaption(MyGUI::utility::toString(currentHealth) + " / "
-            + MyGUI::utility::toString(maximumHealth));
+        // UI8: the caption names the value, as on the HUD-style bar below it.
+        mNpcHealthText->setCaption(MyGUI::LanguageManager::getInstance().replaceTags("#{sHealth}") + "  "
+            + MyGUI::utility::toString(currentHealth) + " / " + MyGUI::utility::toString(maximumHealth));
         mNpcHealthBar->setVisible(!stats.isDead());
         mNpcHealthText->setVisible(!stats.isDead());
+    }
+
+    void DialogueWindow::updateStatusBarsSafely()
+    {
+        // The health/disposition bars are decoration. If one of their captions
+        // throws, log it once and keep the dialogue (camera, gestures, topics
+        // and history updates in onFrame) working.
+        static bool sReported = false;
+        try
+        {
+            updateActorStatus();
+            updateDisposition();
+        }
+        catch (const std::exception& e)
+        {
+            if (!sReported)
+                Log(Debug::Warning) << "Dialogue: status bars could not be updated: " << e.what();
+            sReported = true;
+        }
     }
 
     void DialogueWindow::updateDisposition()
@@ -2061,7 +2097,9 @@ namespace MWGui
             dispositionVisible = true;
             mDispositionBar->setProgressRange(100);
             mDispositionBar->setProgressPosition(MWBase::Environment::get().getMechanicsManager()->getDerivedDisposition(mPtr));
-            mDispositionText->setCaption(MyGUI::utility::toString(MWBase::Environment::get().getMechanicsManager()->getDerivedDisposition(mPtr))+std::string("/100"));
+            mDispositionText->setCaption(MyGUI::LanguageManager::getInstance().replaceTags("#{arenagame=dialogue.disposition_label}") + "  "
+                + MyGUI::utility::toString(MWBase::Environment::get().getMechanicsManager()->getDerivedDisposition(mPtr))
+                + std::string(" / 100"));
         }
 
         mDispositionBar->setVisible(dispositionVisible);
@@ -2082,8 +2120,9 @@ namespace MWGui
             return;
 
         updateDynamicDialogueActor(dt);
-        updateActorStatus();
-        updateDisposition();
+        updateStatusBarsSafely();
+        fitShapedProgressBar(mNpcHealthBar);
+        fitShapedProgressBar(mDispositionBar);
         deleteLater();
 
         if (mChoices != MWBase::Environment::get().getDialogueManager()->getChoices()
@@ -2109,6 +2148,22 @@ namespace MWGui
                     button->getSubWidgetText()->setTextColour(MyGUI::Colour::parse(specialColour));
                 else if (!oldColour.empty() && flag & MWBase::DialogueManager::TopicType::Exhausted)
                     button->getSubWidgetText()->setTextColour(MyGUI::Colour::parse(oldColour));
+            }
+        }
+
+        // UI9: services (barter, training, travel, spells, ...) stand out in
+        // warm gold above the ordinary topics.
+        {
+            static const char* const services[][2] = {
+                { "sPersuasion", "Persuasion" }, { "sBarter", "Barter" }, { "sSpells", "Spells" },
+                { "sTravel", "Travel" }, { "sSpellmakingMenuTitle", "Spellmaking" },
+                { "sEnchanting", "Enchanting" }, { "sServiceTrainingTitle", "Training" },
+                { "sRepair", "Repair" }, { "sCompanionShare", "Companion Share" } };
+            for (const auto& service : services)
+            {
+                MyGUI::Button* button = mTopicsList->getItemWidget(gameSettingString(service[0], service[1]));
+                if (button && button->getSubWidgetText())
+                    button->getSubWidgetText()->setTextColour(MyGUI::Colour(1.f, 0.84f, 0.48f));
             }
         }
 

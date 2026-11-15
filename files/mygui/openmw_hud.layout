@@ -17,12 +17,12 @@
         </Widget>
 
         <!-- Engine-native horizontal compass; tick labels are populated by HUD.cpp. -->
-        <Widget type="Widget" skin="MW_Box" position="0 8 420 26" name="HorizontalCompass" align="HCenter Top">
+        <!-- UI4: dark band that fades out at both ends, bronze rules (TESO-like). -->
+        <Widget type="Widget" skin="ArenaHUD_CompassBand" position="0 8 420 26" name="HorizontalCompass" align="HCenter Top">
             <Property key="Visible" value="false"/>
             <Property key="NeedMouse" value="false"/>
             <!-- Soft inner shade keeps compass marks readable without making the bar visually heavy. -->
-            <Widget type="Widget" skin="HUD_Box" position="2 2 416 22" name="HorizontalCompassShade" align="Stretch">
-                <Property key="Alpha" value="0.72"/>
+            <Widget type="Widget" skin="" position="2 2 416 22" name="HorizontalCompassShade" align="Stretch">
                 <Property key="NeedMouse" value="false"/>
             </Widget>
         </Widget>
@@ -37,7 +37,7 @@
             <Property key="TextShadowColour" value="0 0 0"/>
             <Property key="Visible" value="false"/>
         </Widget>
-        <Widget type="ProgressBar" skin="MW_EnergyBar_Red" position="0 0 190 16" align="Left Top" name="EnemyHealth">
+        <Widget type="ProgressBar" skin="ArenaHUD_Bar_Health" position="0 0 190 16" align="Left Top" name="EnemyHealth">
             <Property key="NeedMouse" value="false"/>
             <Property key="Visible" value="false"/>
         </Widget>
@@ -54,30 +54,44 @@
 
 
 
-        <Widget type="Button" skin="" position="100 170 200 20" align="Left Bottom" name="MagickaFrame">
+        <Widget type="Button" skin="" position="100 164 200 26" align="Left Bottom" name="MagickaFrame">
             <UserString key="ToolTipType" value="Layout"/>
             <UserString key="ToolTipLayout" value="HealthToolTip"/>
             <UserString key="ImageTexture_HealthImage" value="icons\k\magicka.dds"/>
-            <Widget type="ProgressBar" skin="MW_EnergyBar_Blue" position="0 0 170 16" align="Rigth Bottom" name="Magicka">
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_Magicka" position="0 4 170 17" align="Right Bottom" name="Magicka">
                 <Property key="NeedMouse" value="false"/>
             </Widget>
-            <Widget type="TextBox" skin="SandBrightText" position="0 0 170 16" align="Right Bottom" name="MagickaText">
+            <Widget type="TextBox" skin="SandBrightText" position="0 4 170 17" align="Right Bottom" name="MagickaText">
+                <Property key="FontHeight" value="15"/>
                 <Property key="NeedMouse" value="false"/>
                 <Property key="TextAlign" value="Center"/>
                 <Property key="TextShadow" value="true"/>
                 <Property key="TextShadowColour" value="0 0 0"/>
                 <Property key="Caption" value="0/0"/>
             </Widget>
-			<Widget type="ProgressBar" skin="MW_EnergyBar_Magic" position="0 14 170 7" align="Right Bottom" name="SpellStatus">
+			<Widget type="ProgressBar" skin="ArenaHUD_ThinBar_Cast" position="6 21 158 5" align="Right Bottom" name="SpellStatus">
                 <Property key="NeedMouse" value="false"/>
             </Widget>
 			
 			        <!-- Selected spell box -->
-        <Widget type="Button" position="179 0 21 21" align="Left Bottom" name="SpellBox">
-            <Widget type="Widget" skin="HUD_Box" position="0 0 21 21">
-                <Widget type="SpellWidget" skin="MW_ItemIconNoShadow" position="-3 -3 27 27" align="Center Center" name="SpellImage"/>
+        <Widget type="Button" skin="" position="174 0 26 26" align="Left Bottom" name="SpellBox">
+            <!-- UI9.3: round frame; hidden while nothing is selected. The 18 px icon's
+                 corners lie under the opaque ring, so it reads as a full circle. -->
+            <Widget type="Widget" skin="" position="0 0 26 26" name="SpellRing">
+                <Property key="Visible" value="false"/>
                 <Property key="NeedMouse" value="false"/>
-            </Widget>       
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">
+                    <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_disc.png"/>
+                    <Property key="NeedMouse" value="false"/>
+                </Widget>
+                <Widget type="SpellWidget" skin="ArenaHUD_RoundIcon" position="4 4 18 18" name="SpellImage">
+                    <Property key="NeedMouse" value="false"/>
+                </Widget>
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">
+                    <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_ring.png"/>
+                    <Property key="NeedMouse" value="false"/>
+                </Widget>
+            </Widget>
         </Widget>
 
         </Widget>
@@ -88,10 +102,11 @@
             <UserString key="ToolTipType" value="Layout"/>
             <UserString key="ToolTipLayout" value="HealthToolTip"/>
             <UserString key="ImageTexture_HealthImage" value="icons\k\health.dds"/>
-            <Widget type="ProgressBar" skin="MW_EnergyBar_Red" position="0 0 190 16" align="Center Bottom" name="Health">
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_Health" position="0 0 190 18" align="Center Bottom" name="Health">
                 <Property key="NeedMouse" value="false"/>
                         </Widget>
-            <Widget type="TextBox" skin="SandBrightText" position="0 0 190 16" align="Center Bottom" name="HealthText">
+            <Widget type="TextBox" skin="SandBrightText" position="0 0 190 18" align="Center Bottom" name="HealthText">
+                <Property key="FontHeight" value="15"/>
                 <Property key="NeedMouse" value="false"/>
                 <Property key="TextAlign" value="Center"/>
                 <Property key="TextShadow" value="true"/>
@@ -113,32 +128,43 @@
 
 		
 		
-        <Widget type="Button" skin="" position="10 170 200 20" align="Right Bottom" name="FatigueFrame">
+        <Widget type="Button" skin="" position="10 164 200 26" align="Right Bottom" name="FatigueFrame">
             <UserString key="ToolTipType" value="Layout"/>
             <UserString key="ToolTipLayout" value="HealthToolTip"/>
             <UserString key="ImageTexture_HealthImage" value="icons\k\fatigue.dds"/>
-            <Widget type="ProgressBar" skin="MW_EnergyBar_Green" position="30 0 170 16" align="Left Bottom" name="Stamina">
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_Stamina" position="30 4 170 17" align="Left Bottom" name="Stamina">
                 <Property key="NeedMouse" value="false"/>
             </Widget>
-            <Widget type="TextBox" skin="SandBrightText" position="30 0 170 16" align="Left Bottom" name="StaminaText">
+            <Widget type="TextBox" skin="SandBrightText" position="30 4 170 17" align="Left Bottom" name="StaminaText">
+                <Property key="FontHeight" value="15"/>
                 <Property key="NeedMouse" value="false"/>
                 <Property key="TextAlign" value="Center"/>
                 <Property key="TextShadow" value="true"/>
                 <Property key="TextShadowColour" value="0 0 0"/>
                 <Property key="Caption" value="0/0"/>
             </Widget>
-							<Widget type="ProgressBar" skin="MW_EnergyBar_Weapon" position="30 14 170 7" align="Center Bottom" name="WeapStatus">
+							<Widget type="ProgressBar" skin="ArenaHUD_ThinBar_Weapon" position="36 21 158 5" align="Center Bottom" name="WeapStatus">
                 <Property key="NeedMouse" value="false"/>
             </Widget>
 			
-			        <Widget type="Button" skin="" position="0 0 21 21" align="Right Bottom" name="WeapBox">
-            <Widget type="Widget" skin="HUD_Box" position="0 0 21 21">
+        <Widget type="Button" skin="" position="0 0 26 26" align="Right Bottom" name="WeapBox">
+            <!-- UI9.3: round frame; hidden while nothing is selected. The 18 px icon's
+                 corners lie under the opaque ring, so it reads as a full circle. -->
+            <Widget type="Widget" skin="" position="0 0 26 26" name="WeapRing">
+                <Property key="Visible" value="false"/>
                 <Property key="NeedMouse" value="false"/>
-                <Widget type="ItemWidget" skin="MW_ItemIconNoShadow" position="-3 -3 27 27" align="Center Center" name="WeapImage">
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">
+                    <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_disc.png"/>
+                    <Property key="NeedMouse" value="false"/>
+                </Widget>
+                <Widget type="ItemWidget" skin="ArenaHUD_RoundIcon" position="4 4 18 18" name="WeapImage">
+                    <Property key="NeedMouse" value="false"/>
+                </Widget>
+                <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">
+                    <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_ring.png"/>
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
             </Widget>
-
         </Widget>
         </Widget>
 		
@@ -157,13 +183,15 @@
       
 
         <!-- Sneak indicator box -->
-            <Widget type="Button" skin="" position="0 0 64 64" align="Center Center" name="SneakBox">
+            <!-- UI4: three-state eye (hidden / suspicious / detected), see HUD::updateSneakIndicator. -->
+            <Widget type="Button" skin="" position="0 0 36 36" align="Center Center" name="SneakBox">
                 <Property key="Visible" value="false"/>
-                <Widget type="Widget" skin="" position="0 0 64 64">
+                <Property key="NeedMouse" value="false"/>
+                <Widget type="Widget" skin="" position="0 0 36 36">
                     <Property key="NeedMouse" value="false"/>
-                    <Widget type="ImageBox" skin="ImageBox" position="0 0 64 64" align="Left Top" name="SneakImage">
+                    <Widget type="ImageBox" skin="ImageBox" position="0 0 36 36" align="Left Top" name="SneakImage">
                         <Property key="NeedMouse" value="false"/>
-                        <Property key="ImageTexture" value="textures\sneak.dds"/>
+                        <Property key="ImageTexture" value="textures\ui\arenamw\hud\eye_hidden.png"/>
                     </Widget>
                 </Widget>
             </Widget>
@@ -229,7 +257,12 @@
                 <Property key="TextShadowColour" value="0 0 0"/>
                 <Property key="NeedMouse" value="false"/>
             </Widget>
-            <Widget type="ProgressBar" skin="MW_EnergyBar_Red" position="40 22 520 18" name="DeathRecoveryXpBar">
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_XP" position="40 22 520 18" name="DeathRecoveryXpBar">
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+            <!-- UI9.2: knock-out, respawn and bounty timers use the red health bar. -->
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_Health" position="40 22 520 18" name="DeathRecoveryRedBar">
+                <Property key="Visible" value="false"/>
                 <Property key="NeedMouse" value="false"/>
             </Widget>
             <Widget type="TextBox" skin="SandBrightText" position="40 22 520 18" name="DeathRecoveryXpText">
@@ -253,8 +286,10 @@
             </Widget>
         </Widget>
 
-        <!-- Crosshair -->
-        <Widget type="ImageBox" skin="HUD_Crosshair" position="118 68 64 64" align="Center Center" name="Crosshair">
+        <!-- Crosshair. UI9: an empty 64x64 box; HUD::setupDynamicCrosshair adds
+             the reticle (dot + four chevrons) and the contextual icon. -->
+        <Widget type="ImageBox" skin="ImageBox" position="118 68 64 64" align="Center Center" name="Crosshair">
+            <Property key="NeedMouse" value="false"/>
         </Widget>
 
         </Widget>

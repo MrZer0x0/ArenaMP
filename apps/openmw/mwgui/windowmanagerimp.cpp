@@ -137,6 +137,23 @@
 #include "keyboardnavigation.hpp"
 #include "resourceskin.hpp"
 
+#ifdef __ANDROID__
+#include <atomic>
+#include <jni.h>
+
+namespace
+{
+    // KB1: 0 = show the keyboard button only, 1 = open the keyboard (chat line
+    // after a short Say tap), 2 = open it and keep it open (console).
+    std::atomic<int> sAndroidKeyboardHint{0};
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_ui_controls_NativeKeyboard_nativeAutoShowHint(JNIEnv*, jobject)
+{
+    return static_cast<jint>(sAndroidKeyboardHint.load(std::memory_order_acquire));
+}
+#endif
+
 namespace MWGui
 {
     WindowManager::WindowManager(
@@ -251,6 +268,9 @@ namespace MWGui
         MyGUI::FactoryManager::getInstance().registerFactory<ResourceImageSetPointerFix>("Resource", "ResourceImageSetPointer");
         MyGUI::FactoryManager::getInstance().registerFactory<AutoSizedResourceSkin>("Resource", "AutoSizedResourceSkin");
         MyGUI::ResourceManager::getInstance().load("core.xml");
+        // UI10 repair: this is the standard ArenaMP interface, not a user toggle.
+        // Ignore old settings.cfg values that used to disable it.
+        MyGUI::ResourceManager::getInstance().load("arenamp_modern.skin.xml");
         WindowManager::loadUserFonts();
 
         bool keyboardNav = Settings::Manager::getBool("keyboard navigation", "GUI");
@@ -658,6 +678,7 @@ namespace MWGui
             MyGUI::ClipboardManager::getInstance().eventClipboardChanged.clear();
             MyGUI::ClipboardManager::getInstance().eventClipboardRequested.clear();
 
+            WindowBase::finishFades();
             for (WindowBase* window : mWindows)
                 delete window;
             mWindows.clear();
@@ -710,19 +731,48 @@ namespace MWGui
 
     void WindowManager::enableScene(bool enable)
     {
-        unsigned int disablemask = MWRender::Mask_GUI|MWRender::Mask_PreCompile;
-        if (!enable && mViewer->getCamera()->getCullMask() != disablemask)
+        const unsigned int disabled = MWRender::Mask_GUI | MWRender::Mask_PreCompile;
+        const unsigned int cull = mViewer->getCamera()->getCullMask();
+        const unsigned int update = mViewer->getUpdateVisitor()->getTraversalMask();
+        if (!enable)
         {
-            mOldUpdateMask = mViewer->getUpdateVisitor()->getTraversalMask();
-            mOldCullMask = mViewer->getCamera()->getCullMask();
-            mViewer->getUpdateVisitor()->setTraversalMask(disablemask);
-            mViewer->getCamera()->setCullMask(disablemask);
+            // Save once. In particular, do NOT overwrite the original update
+            // mask when RenderingManager sets a new camera mask during startup.
+            if (!mSceneDisabled)
+            {
+                mOldCullMask = cull;
+                mOldUpdateMask = update;
+                mSceneDisabled = true;
+            }
+            else
+            {
+                if (cull != disabled)
+                    mOldCullMask = cull;
+                if (update != disabled)
+                    mOldUpdateMask = update;
+            }
+            mViewer->getUpdateVisitor()->setTraversalMask(disabled);
+            mViewer->getCamera()->setCullMask(disabled);
         }
-        else if (enable && mViewer->getCamera()->getCullMask() == disablemask)
+        else if (mSceneDisabled)
         {
+            // Respect a renderer replacement that occurred since the last draw.
+            if (cull != disabled)
+                mOldCullMask = cull;
+            if (update != disabled)
+                mOldUpdateMask = update;
             mViewer->getUpdateVisitor()->setTraversalMask(mOldUpdateMask);
             mViewer->getCamera()->setCullMask(mOldCullMask);
+            mSceneDisabled = false;
         }
+    }
+
+    void WindowManager::refreshSceneVisibility()
+    {
+        const bool loading = containsMode(GM_Loading) || containsMode(GM_LoadingWallpaper);
+        MWBase::StateManager* state = MWBase::Environment::get().getStateManager();
+        const bool noGame = !state || state->getState() == MWBase::StateManager::State_NoGame;
+        enableScene(!loading && !(containsMode(GM_MainMenu) && noGame));
     }
 
     void WindowManager::updateConsoleObjectPtr(const MWWorld::Ptr& currentPtr, const MWWorld::Ptr& newPtr)
@@ -734,14 +784,7 @@ namespace MWGui
     {
         bool loading = (getMode() == GM_Loading || getMode() == GM_LoadingWallpaper);
 
-        // updateVisible() can be called while the GUI is being constructed.
-        // ArenaMP has no World::isMainMenuSceneActive(), so preserve the MP main-menu
-        // behaviour while keeping the state-manager access safe during startup.
-        MWBase::StateManager* stateManager = MWBase::Environment::get().getStateManager();
-        const bool noGame = !stateManager || stateManager->getState() == MWBase::StateManager::State_NoGame;
-        const bool mainmenucover = containsMode(GM_MainMenu) && noGame;
-
-        enableScene(!loading && !mainmenucover);
+        refreshSceneVisibility();
 
         if (!mMap)
             return; // UI not created yet
@@ -754,6 +797,11 @@ namespace MWGui
         MWBase::Environment::get().getInputManager()->changeInputMode(!gameMode);
 
         mInputBlocker->setVisible (gameMode);
+
+        // Synchronize modal capture as part of the GUI transition, before input
+        // can reach a newly opened dialogue. The frame update also handles boxes
+        // created asynchronously while the conversation is already visible.
+        updateInteractiveMessageBoxInput();
 
         if (loading)
             setCursorVisible(mMessageBoxManager && mMessageBoxManager->isInteractiveMessageBox());
@@ -1038,8 +1086,43 @@ namespace MWGui
         mHud->setPlayerPos(x, y, u, v);
     }
 
+    void WindowManager::updateInteractiveMessageBoxInput()
+    {
+        // Y092: MessageBox-under-dialogue input priority matches visual layers.
+        // Leave the box visible behind Dialogue, but suspend its modal input grab.
+        // Restore normal modality when dialogue/loading ends without recreating it
+        // or losing the server callback and selected button.
+        if (mMessageBoxManager && mMessageBoxManager->isInteractiveMessageBox())
+        {
+            WindowModal* interactive = const_cast<InteractiveMessageBox*>(
+                mMessageBoxManager->getInteractiveMessageBox());
+            if (interactive && interactive->mMainWidget && interactive->mMainWidget->getVisible())
+            {
+                const bool deferInput = containsMode(GM_Dialogue)
+                    || containsMode(GM_Loading) || containsMode(GM_LoadingWallpaper);
+                const bool registered = std::find(mCurrentModals.begin(), mCurrentModals.end(), interactive)
+                    != mCurrentModals.end();
+                if (deferInput)
+                {
+                    MyGUI::InputManager::getInstance().removeWidgetModal(interactive->mMainWidget);
+                    if (registered)
+                        removeCurrentModal(interactive);
+                }
+                else if (!deferInput && !registered)
+                {
+                    MyGUI::InputManager::getInstance().addWidgetModal(interactive->mMainWidget);
+                    addCurrentModal(interactive);
+                }
+            }
+        }
+
+    }
+
     void WindowManager::update (float frameDuration)
     {
+        // ArenaMP UI9: window open/close fades.
+        WindowBase::updateFades(frameDuration);
+
         bool gameRunning = MWBase::Environment::get().getStateManager()->getState()!=
             MWBase::StateManager::State_NoGame;
 
@@ -1078,32 +1161,7 @@ namespace MWGui
             mKeyboardNavigation->setModalWindow(
                 mCurrentModals.empty() ? nullptr : mCurrentModals.back()->mMainWidget);
 
-        // Y092: MessageBox-under-dialogue input priority matches visual layers.
-        // Leave the box visible behind Dialogue, but suspend its modal input grab.
-        // Restore normal modality when dialogue/loading ends without recreating it
-        // or losing the server callback and selected button.
-        if (mMessageBoxManager && mMessageBoxManager->isInteractiveMessageBox())
-        {
-            WindowModal* interactive = const_cast<InteractiveMessageBox*>(
-                mMessageBoxManager->getInteractiveMessageBox());
-            if (interactive && interactive->mMainWidget->getVisible())
-            {
-                const bool deferInput = containsMode(GM_Dialogue)
-                    || containsMode(GM_Loading) || containsMode(GM_LoadingWallpaper);
-                const bool registered = std::find(mCurrentModals.begin(), mCurrentModals.end(), interactive)
-                    != mCurrentModals.end();
-                if (deferInput && registered)
-                {
-                    MyGUI::InputManager::getInstance().removeWidgetModal(interactive->mMainWidget);
-                    removeCurrentModal(interactive);
-                }
-                else if (!deferInput && !registered)
-                {
-                    MyGUI::InputManager::getInstance().addWidgetModal(interactive->mMainWidget);
-                    addCurrentModal(interactive);
-                }
-            }
-        }
+        updateInteractiveMessageBoxInput();
 
         if (!mCurrentModals.empty())
             mCurrentModals.back()->onFrame(frameDuration);
@@ -1332,6 +1390,12 @@ namespace MWGui
         mHud->setSneakVisible(visible);
     }
 
+    void WindowManager::setSneakDetection(int level)
+    {
+        if (mHud)
+            mHud->setSneakDetection(level);
+    }
+
     void WindowManager::setDragDrop(bool dragDrop)
     {
         mToolTips->setEnabled(!dragDrop);
@@ -1373,7 +1437,14 @@ namespace MWGui
         size_t tokenLength = tokenToFind.length();
 
         const std::string arenaPrefix = "arenamp=";
-        if (tag.compare(0, arenaPrefix.length(), arenaPrefix) == 0)
+        const std::string gamePrefix = "arenagame=";
+        if (tag.compare(0, gamePrefix.length(), gamePrefix) == 0)
+        {
+            _result = mArenaLocalization
+                ? mArenaLocalization->translateGame(tag.substr(gamePrefix.length()))
+                : tag.substr(gamePrefix.length());
+        }
+        else if (tag.compare(0, arenaPrefix.length(), arenaPrefix) == 0)
         {
             _result = mArenaLocalization
                 ? mArenaLocalization->translate(tag.substr(arenaPrefix.length()))
@@ -1598,6 +1669,18 @@ namespace MWGui
                 mGuiModeStates[mGuiModes.back()].update(false);
             }
             mGuiModes.push_back(mode);
+
+            // Loading modes are pushed while World is being constructed, before
+            // initUI creates mInputBlocker. Only a ready dialogue needs this early
+            // input transition; other modes keep the normal updateVisible path.
+            if (mode == GM_Dialogue && mInputBlocker)
+            {
+                if (MWBase::InputManager* input = MWBase::Environment::get().getInputManager())
+                {
+                    input->changeInputMode(true);
+                    mInputBlocker->setVisible(false);
+                }
+            }
 
             mGuiModeStates[mode].update(true);
             playSound(mGuiModeStates[mode].mOpenSound);
@@ -2097,7 +2180,22 @@ namespace MWGui
     void WindowManager::onKeyFocusChanged(MyGUI::Widget *widget)
     {
         if (widget && widget->castType<MyGUI::EditBox>(false))
+        {
+#ifdef __ANDROID__
+            // KB1: tell the Android layer, before SDL asks it for text input,
+            // whether this field should open the on-screen keyboard at once:
+            // always in the console, for the chat line opened by a short Say tap,
+            // never in the Player Menu; other fields keep the keyboard button.
+            int hint = 0;
+            if (isConsoleMode())
+                hint = 2;
+            else if (mwmp::Main::isInitialized()
+                && mwmp::Main::get().getGUIController()->shouldAutoShowKeyboardFor(widget))
+                hint = 1;
+            sAndroidKeyboardHint.store(hint, std::memory_order_release);
+#endif
             SDL_StartTextInput();
+        }
         else
             SDL_StopTextInput();
     }
@@ -2373,6 +2471,10 @@ namespace MWGui
 
     void WindowManager::addCurrentModal(WindowModal *input)
     {
+        // setVisible(true) can call onOpen more than once for the same window.
+        if (std::find(mCurrentModals.begin(), mCurrentModals.end(), input) != mCurrentModals.end())
+            return;
+
         if (mCurrentModals.empty())
             mKeyboardNavigation->saveFocus(getMode());
 
@@ -2385,22 +2487,17 @@ namespace MWGui
 
     void WindowManager::removeCurrentModal(WindowModal* input)
     {
-        if(!mCurrentModals.empty())
-        {
-            if(input == mCurrentModals.back())
-            {
-                mCurrentModals.pop_back();
-                mKeyboardNavigation->saveFocus(-1);
-            }
-            else
-            {
-                auto found = std::find(mCurrentModals.begin(), mCurrentModals.end(), input);
-                if (found != mCurrentModals.end())
-                    mCurrentModals.erase(found);
-                else
-                    Log(Debug::Warning) << "Warning: can't find modal window " << input;
-            }
-        }
+        auto found = std::find(mCurrentModals.begin(), mCurrentModals.end(), input);
+        if (found == mCurrentModals.end())
+            return;
+
+        const bool wasTop = input == mCurrentModals.back();
+        // Remove every occurrence, including duplicates registered before a
+        // repeated visibility update. No stale modal may retain keyboard focus.
+        mCurrentModals.erase(std::remove(mCurrentModals.begin(), mCurrentModals.end(), input),
+            mCurrentModals.end());
+        if (wasTop)
+            mKeyboardNavigation->saveFocus(-1);
         if (mCurrentModals.empty())
         {
             mKeyboardNavigation->setModalWindow(nullptr);

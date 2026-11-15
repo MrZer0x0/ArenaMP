@@ -300,7 +300,8 @@ namespace MWGui
             const float aspect = 0.5f;
             int leftPaneWidth = static_cast<int>((paneHeight - mArmorRating->getHeight()) * aspect);
 
-            const int minimumTableWidth = 300;
+            // IV1: the right pane also holds the 38 px filter column.
+            const int minimumTableWidth = 338;
             const int maximumPreviewWidth = std::max(80, mainWidth - minimumTableWidth - rightMargin - paneGap);
             leftPaneWidth = std::max(80, std::min(leftPaneWidth, maximumPreviewWidth));
 
@@ -316,14 +317,12 @@ namespace MWGui
         const int rightWidth = std::max(120, mainWidth - rightLeft - rightMargin);
         mRightPane->setCoord(rightLeft, mRightPane->getTop(), rightWidth, paneHeight);
 
-        // The top strip is intentionally reserved for categories and table
-        // sorting only. Search, used weight and view/paper-doll controls live
-        // in the bottom strip.
+        // IV1: the filters are a column at the left edge of the right pane,
+        // so the order is paper doll | filters | list, or filters | list when
+        // the doll is hidden. The list keeps the whole height of the window.
+        // Search, used weight and view/paper-doll controls live in the bottom strip.
         if (mCategories)
-        {
-            mCategories->setCoord(0, 6, rightWidth, 28);
-            layoutFilterIcons(rightWidth);
-        }
+            layoutFilterColumn(paneHeight);
 
         if (mPaperDollButton)
         {
@@ -1136,30 +1135,49 @@ namespace MWGui
         }
     }
 
-    void InventoryWindow::layoutFilterIcons(int rowWidth)
+    namespace
+    {
+        // IV1: geometry shared by the filter column and the item list.
+        // The content top matches the paper doll's frame, so the doll, the
+        // filter column and the list start on one line.
+        constexpr int sInventoryContentTop = 8;
+        constexpr int sFilterColumnWidth = 34;
+        constexpr int sInventoryGap = 4;
+        constexpr int sBottomBarHeight = 32;
+
+        int inventoryBottomTop(int paneHeight)
+        {
+            return std::max(sInventoryContentTop + 40, paneHeight - sBottomBarHeight);
+        }
+    }
+
+    void InventoryWindow::layoutFilterColumn(int paneHeight)
     {
         MyGUI::Button* buttons[] = { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys };
-        const int height = 28;
-        // 40 px buttons; on a narrow table the gaps shrink first, then the
-        // buttons, so all six always stay inside the row.
-        int gap = 4;
-        int width = (rowWidth - gap * 5) / 6;
-        if (width < 28)
+        const int columnHeight = std::max(40, inventoryBottomTop(paneHeight) - sInventoryContentTop - sInventoryGap);
+        mCategories->setCoord(0, sInventoryContentTop, sFilterColumnWidth, columnHeight);
+
+        // 32 px square buttons with 4 px gaps; a short window shrinks the gaps
+        // first, then the buttons, so all six always stay inside the column.
+        int gap = sInventoryGap;
+        int height = (columnHeight - gap * 5) / 6;
+        if (height < 26)
         {
             gap = 2;
-            width = (rowWidth - gap * 5) / 6;
+            height = (columnHeight - gap * 5) / 6;
         }
-        width = std::max(16, std::min(40, width));
+        height = std::max(16, std::min(32, height));
+        const int width = sFilterColumnWidth;
         const int iconSize = std::max(12, std::min(24, std::min(width, height) - 6));
-        int x = 0;
+        int y = 0;
         for (int i = 0; i < 6; ++i)
         {
             if (buttons[i] == nullptr)
                 continue;
-            buttons[i]->setCoord(x, 0, width, height);
+            buttons[i]->setCoord(0, y, width, height);
             if (mFilterIcons[i] != nullptr)
                 mFilterIcons[i]->setCoord((width - iconSize) / 2, (height - iconSize) / 2, iconSize, iconSize);
-            x += width + gap;
+            y += height + gap;
         }
     }
 
@@ -1452,16 +1470,19 @@ namespace MWGui
 
         const int width = std::max(1, mRightPane->getWidth());
         const int height = std::max(1, mRightPane->getHeight());
-        const int bottomHeight = 32;
-        const int gap = 4;
-        const int bottomTop = std::max(38, height - bottomHeight);
+        const int bottomHeight = sBottomBarHeight;
+        const int gap = sInventoryGap;
+        const int bottomTop = inventoryBottomTop(height);
 
         mBottomBar->setCoord(0, bottomTop, width, bottomHeight);
 
-        int x = 0;
+        // UI8: the strip is aligned with the list: weight, search and the other
+        // controls start at the list's left edge. The square under the filter
+        // column holds the paper-doll toggle (inventory) or the view toggle
+        // (barter/container), so it lines up with the filter buttons above it.
+        const int listLeft = sFilterColumnWidth + gap;
+        int x = listLeft;
 
-        // The paper-doll toggle deliberately occupies the old key-ring button
-        // position at the lower-left edge of the inventory pane.
         const bool paperDollAvailable = (mGuiMode == GM_Inventory);
         const bool showPaperDoll = paperDollAvailable && paperDollShown();
         if (mPaperDollButton)
@@ -1470,9 +1491,8 @@ namespace MWGui
             mPaperDollButton->setEnabled(paperDollAvailable);
             if (paperDollAvailable)
             {
-                mPaperDollButton->setCoord(x, 2, 30, 26);
+                mPaperDollButton->setCoord(0, 2, sFilterColumnWidth, 26);
                 mPaperDollButton->setStateSelected(showPaperDoll);
-                x += 30 + gap;
             }
         }
 
@@ -1487,14 +1507,21 @@ namespace MWGui
         const int weightWidth = std::max(72, std::min(110, width / 4));
         if (mEncumbranceBar)
         {
-            mEncumbranceBar->setCoord(x, 2, weightWidth, 26);
+            mEncumbranceBar->setCoord(x, 6, weightWidth, 18);
             x += weightWidth + gap;
         }
 
         if (mViewModeButton)
         {
-            mViewModeButton->setCoord(x, 2, 30, 26);
-            x += 30 + gap;
+            if (paperDollAvailable)
+            {
+                mViewModeButton->setCoord(x, 2, 30, 26);
+                x += 30 + gap;
+            }
+            else
+            {
+                mViewModeButton->setCoord(0, 2, sFilterColumnWidth, 26);
+            }
         }
 
         const bool showWriter = (mGuiMode == GM_Inventory);
@@ -1553,11 +1580,10 @@ namespace MWGui
         if (mViewModeButton)
             mViewModeButton->setStateSelected(mItemView->getViewMode() == ItemView::View_List);
 
-        // ItemView gets every remaining pixel between the top filter row and
-        // the bottom strip. Used weight/search controls never overlap the list.
-        const int itemTop = mItemView->getTop();
-        static_cast<MyGUI::Widget*>(mItemView)->setSize(
-            MyGUI::IntSize(width, std::max(40, bottomTop - itemTop - gap)));
+        // IV1: ItemView gets every remaining pixel right of the filter column
+        // and above the bottom strip. Used weight/search controls never overlap the list.
+        static_cast<MyGUI::Widget*>(mItemView)->setCoord(listLeft, sInventoryContentTop,
+            std::max(40, width - listLeft), std::max(40, bottomTop - sInventoryContentTop - gap));
     }
 
     void InventoryWindow::adjustKeyRingLayout()

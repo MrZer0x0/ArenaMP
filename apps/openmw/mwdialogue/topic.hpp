@@ -50,6 +50,12 @@ namespace MWDialogue
 
             void removeLastAddedResponse (const std::string& actorName);
 
+            /// ArenaMP QM1: drop every recorded response (the topic itself stays).
+            void clearEntries();
+
+            /// ArenaMP QM1: drop the response with this info id; true if one was removed.
+            bool removeEntry (const std::string& infoId);
+
             TEntryIter begin() const;
             ///< Iterator pointing to the begin of the journal for this topic.
 

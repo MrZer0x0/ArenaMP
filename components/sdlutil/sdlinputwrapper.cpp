@@ -98,7 +98,11 @@ InputWrapper::InputWrapper(SDL_Window* window, osg::ref_ptr<osgViewer::Viewer> v
 
                     if (!isModifierHeld(KMOD_ALT) && evt.key.keysym.sym >= SDLK_F1 && evt.key.keysym.sym <= SDLK_F12)
                     {
-                        mViewer->getEventQueue()->keyPress(osgGA::GUIEventAdapter::KEY_F1 + (evt.key.keysym.sym - SDLK_F1));
+                        osgGA::GUIEventAdapter* event = mViewer->getEventQueue()->keyPress(
+                            osgGA::GUIEventAdapter::KEY_F1 + (evt.key.keysym.sym - SDLK_F1));
+                        // P001: Ctrl+F3 / Ctrl+F4 open the OSG profiler and resource stats.
+                        if (event)
+                            event->setModKeyMask(isModifierHeld(KMOD_CTRL) ? osgGA::GUIEventAdapter::MODKEY_CTRL : 0);
                     }
 
                     break;

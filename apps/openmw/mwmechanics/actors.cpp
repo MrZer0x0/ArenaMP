@@ -3993,7 +3993,8 @@ namespace MWMechanics
                     {
                         detected = true;
                         avoidedNotice = false;
-                        MWBase::Environment::get().getWindowManager()->setSneakVisibility(false);
+                        // ArenaMP UI4: the eye stays visible and turns red instead
+                        // of disappearing (reported after the loop).
                         break;
                     }
                     else
@@ -4009,8 +4010,15 @@ namespace MWMechanics
             if (avoidedNotice && sneakSkillTimer == 0.f)
                 player.getClass().skillUsageSucceeded(player, ESM::Skill::Sneak, 0);
 
-            if (!detected)
-                MWBase::Environment::get().getWindowManager()->setSneakVisibility(true);
+            /*
+                ArenaMP UI4: three-state sneak eye. While sneaking the icon is
+                always shown; its state tells the player how safe they are:
+                hidden (nobody notices), suspicious (someone has line of sight but
+                failed the awareness roll) or detected.
+            */
+            MWBase::WindowManager* windowManager = MWBase::Environment::get().getWindowManager();
+            windowManager->setSneakVisibility(true);
+            windowManager->setSneakDetection(detected ? 2 : (avoidedNotice ? 1 : 0));
         }
 
         sneakTimer += duration;
@@ -4402,6 +4410,16 @@ namespace MWMechanics
         CharacterController* ctrl = it->second->getCharacterController();
 
         return ctrl->isAttackingOrSpell();
+    }
+
+    float Actors::getAttackStrength(const MWWorld::Ptr& ptr) const
+    {
+        // ArenaMP UI9: read by the HUD for the bow/crossbow reticle focus.
+        PtrActorMap::const_iterator it = mActors.find(ptr);
+        if (it == mActors.end())
+            return 0.f;
+        CharacterController* ctrl = it->second->getCharacterController();
+        return ctrl ? ctrl->getAttackStrength() : 0.f;
     }
 
     /*

@@ -7,6 +7,7 @@
 #include <limits>
 #include <cstdlib>
 #include <cmath>
+#include <exception>
 
 #include <osg/Light>
 #include <osg/Math>
@@ -252,7 +253,7 @@ namespace MWRender
                 uniform->set(Settings::Manager::getBool("adaptive softness", "Shadows") ? 1.0f : 0.0f);
             if (osg::Uniform* uniform = stateset->getUniform("arenaShadowTexelSize"))
             {
-                const int shadowMapResolution = std::max(1, Settings::Manager::getInt("shadow map resolution", "Shadows"));
+                const int shadowMapResolution = std::clamp(Settings::Manager::getInt("shadow map resolution", "Shadows"), 128, 2048);
                 uniform->set(1.0f / static_cast<float>(shadowMapResolution));
             }
         }
@@ -769,6 +770,15 @@ namespace MWRender
         resourceSystem->getSceneManager()->setLightingMethod(sceneRoot->getLightingMethod());
         resourceSystem->getSceneManager()->setSupportedLightingMethods(sceneRoot->getSupportedLightingMethods());
         mMinimumAmbientLuminance = std::clamp(Settings::Manager::getFloat("minimum interior brightness", "Shaders"), 0.f, 1.f);
+        // LT1: a stale settings bundle may not know the key yet; 0 keeps vanilla nights.
+        try
+        {
+            mNightExteriorBrightness = std::clamp(Settings::Manager::getFloat("night exterior brightness", "Shaders"), 0.f, 0.4f);
+        }
+        catch (const std::exception&)
+        {
+            mNightExteriorBrightness = 0.f;
+        }
 
         sceneRoot->setLightingMask(Mask_Lighting);
         mSceneRoot = sceneRoot;
@@ -1332,23 +1342,48 @@ namespace MWRender
             && !MWBase::Environment::get().getWorld()->isCellQuasiExterior();
 
         const float hour = MWBase::Environment::get().getWorld()->getTimeStamp().getHour();
-        float nightFactor = 0.f;
-        if (hour < 6.f || hour >= 20.f)
-            nightFactor = 1.f;
-        else if (hour < 8.f)
-        {
-            float t = std::clamp((hour - 6.f) / 2.f, 0.f, 1.f);
-            t = t * t * (3.f - 2.f * t);
-            nightFactor = 1.f - t;
-        }
-        else if (hour >= 18.f)
-        {
-            float t = std::clamp((hour - 18.f) / 2.f, 0.f, 1.f);
-            nightFactor = t * t * (3.f - 2.f * t);
-        }
+        const float nightFactor = nightFactorForHour(hour);
 
         mHdrIsInteriorUniform->set(isInterior);
         mHdrNightFactorUniform->set(nightFactor);
+    }
+
+    float RenderingManager::nightFactorForHour(float hour)
+    {
+        if (hour < 6.f || hour >= 20.f)
+            return 1.f;
+        if (hour < 8.f)
+        {
+            float t = std::clamp((hour - 6.f) / 2.f, 0.f, 1.f);
+            t = t * t * (3.f - 2.f * t);
+            return 1.f - t;
+        }
+        if (hour >= 18.f)
+        {
+            const float t = std::clamp((hour - 18.f) / 2.f, 0.f, 1.f);
+            return t * t * (3.f - 2.f * t);
+        }
+        return 0.f;
+    }
+
+    void RenderingManager::updateNightExteriorLift()
+    {
+        float lift = 0.f;
+        if (mNightExteriorBrightness > 0.f)
+        {
+            const MWWorld::Ptr& player = MWMechanics::getPlayer();
+            const bool exterior = !player.isEmpty() && player.isInCell() && (player.getCell()->isExterior()
+                || MWBase::Environment::get().getWorld()->isCellQuasiExterior());
+            if (exterior)
+                lift = nightFactorForHour(MWBase::Environment::get().getWorld()->getTimeStamp().getHour());
+        }
+        // The weather pushes a new ambient colour every frame outdoors; this only
+        // has to catch the setting or the dusk/dawn ramp changing between pushes.
+        if (std::abs(lift - mNightExteriorLift) > 0.002f || (lift == 0.f) != (mNightExteriorLift == 0.f))
+        {
+            mNightExteriorLift = lift;
+            updateAmbient();
+        }
     }
 
     SkyManager* RenderingManager::getSkyManager()
@@ -1361,6 +1396,7 @@ namespace MWRender
         reportStats();
 
         updateHdrEnvironment();
+        updateNightExteriorLift();
         if (mBloomProcessor)
             mBloomProcessor->update();
 
@@ -2063,6 +2099,29 @@ namespace MWRender
     {
         osg::Vec4f color = mAmbientColor;
 
+        // LT1: 'night exterior brightness' raises dark outdoor ambient light to a
+        // floor, scaled by how deep into the night it is. Same method as
+        // 'minimum interior brightness': keep the weather's hue, never darken.
+        const float nightFloor = mNightExteriorBrightness * mNightExteriorLift;
+        if (nightFloor > 0.f)
+        {
+            constexpr float pR = 0.2126f;
+            constexpr float pG = 0.7152f;
+            constexpr float pB = 0.0722f;
+            const float luminance = pR * color.r() + pG * color.g() + pB * color.b();
+            if (luminance < nightFloor)
+            {
+                if (luminance <= 0.0001f)
+                    color = osg::Vec4f(nightFloor, nightFloor, nightFloor, color.a());
+                else
+                {
+                    const float alpha = color.a();
+                    color *= nightFloor / luminance;
+                    color.a() = alpha;
+                }
+            }
+        }
+
         if (mNightEyeFactor > 0.f)
             color += osg::Vec4f(0.7, 0.7, 0.7, 0.0) * mNightEyeFactor;
 
@@ -2308,6 +2367,12 @@ namespace MWRender
                 refreshMaterialQuality = true;
                 refreshShaderDefines = true;
                 rebuildTerrainViews = true;
+            }
+            else if (setting.first == "Shaders" && setting.second == "night exterior brightness")
+            {
+                mNightExteriorBrightness = std::clamp(
+                    Settings::Manager::getFloat("night exterior brightness", "Shaders"), 0.f, 0.4f);
+                updateAmbient();
             }
             else if (setting.first == "Shaders" && setting.second == "minimum interior brightness")
             {

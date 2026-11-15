@@ -1,4 +1,5 @@
 #include "class.hpp"
+#include "shapedbar.hpp"
 
 #include <MyGUI_ImageBox.h>
 #include <MyGUI_ListBox.h>
@@ -402,6 +403,7 @@ namespace MWGui
             mArchetypeName->setCaption(archetypeText(archetypeInfo, "name"));
             mArchetypePair->setCaption(archetypePairText(klass->mData.mAttribute[0], klass->mData.mAttribute[1]));
             mArchetypePowerBar->setProgressPosition(static_cast<std::size_t>(powerPercent));
+            fitShapedProgressBar(mArchetypePowerBar);
             mArchetypePowerText->setCaption(arenaText("archetype.power") + ": "
                 + MyGUI::utility::toString(powerPercent) + "%");
             const std::string title = archetypePreviewTitle(archetypeInfo);
@@ -651,6 +653,7 @@ namespace MWGui
             mArchetypeName->setCaption(arenaText("archetype.selected") + ": —");
             mArchetypePair->setCaption("");
             mArchetypePowerBar->setProgressPosition(0);
+            fitShapedProgressBar(mArchetypePowerBar);
             mArchetypePowerText->setCaption("");
             mArchetypePerk->setCaption("");
             mArchetypeDrawback->setCaption("");
@@ -667,6 +670,7 @@ namespace MWGui
         mArchetypeName->setCaption(arenaText("archetype.selected") + ": " + localizedName);
         mArchetypePair->setCaption(archetypePairText(attribute0, attribute1));
         mArchetypePowerBar->setProgressPosition(static_cast<std::size_t>(powerPercent));
+        fitShapedProgressBar(mArchetypePowerBar);
         mArchetypePowerText->setCaption(arenaText("archetype.power") + ": "
             + MyGUI::utility::toString(powerPercent) + "%");
         mArchetypePerk->setCaption(arenaText("archetype.buff") + ": " + archetypeText(info, "buff"));

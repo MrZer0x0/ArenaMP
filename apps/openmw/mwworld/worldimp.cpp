@@ -172,13 +172,52 @@ bool physicsStringContains(const std::string& value, const char* token)
     return value.find(token) != std::string::npos;
 }
 
+bool isBedPlacementRecord(const MWWorld::ConstPtr& object)
+{
+    if (object.isEmpty())
+        return false;
+
+    const std::string& type = object.getTypeName();
+    if (type != typeid(ESM::Static).name() && type != typeid(ESM::Activator).name()
+        && type != typeid(ESM::Miscellaneous).name())
+        return false;
+
+    std::string id = lowerPhysicsString(object.getCellRef().getRefId());
+    std::string model;
+    std::string name;
+    try
+    {
+        model = lowerPhysicsString(object.getClass().getModel(object));
+        name = lowerPhysicsString(object.getClass().getName(object));
+        // Vanilla and mod beds can use opaque IDs/models. The engine itself
+        // recognises Bed* scripts as resting activators.
+        const std::string script = lowerPhysicsString(object.getClass().getScript(object));
+        if (script.compare(0, 3, "bed") == 0)
+            return true;
+    }
+    catch (const std::exception&)
+    {
+    }
+
+    const char* const bedTokens[] = { "bed", "bedroll", "bunk", "cot", "mattress", "hammock",
+        "sleep", "pallet", "кроват", "лежан", "гамак" };
+    for (const char* token : bedTokens)
+    {
+        if (physicsStringContains(id, token) || physicsStringContains(model, token)
+            || physicsStringContains(name, token))
+            return true;
+    }
+    return false;
+}
+
 bool isCreativePlacementRecord(const MWWorld::ConstPtr& object)
 {
     if (object.isEmpty())
         return false;
 
     const std::string& type = object.getTypeName();
-    return type == typeid(ESM::Static).name()
+    return isBedPlacementRecord(object)
+        || type == typeid(ESM::Static).name()
         || type == typeid(ESM::Container).name()
         || type == typeid(ESM::Activator).name()
         // Fixed LIGHT records are fixtures, not inventory loot. Let them use
@@ -187,35 +226,6 @@ bool isCreativePlacementRecord(const MWWorld::ConstPtr& object)
         || (type == typeid(ESM::Light).name()
             && object.get<ESM::Light>()->mBase != nullptr
             && (object.get<ESM::Light>()->mBase->mData.mFlags & ESM::Light::Carry) == 0);
-}
-
-bool isBedPlacementRecord(const MWWorld::ConstPtr& object)
-{
-    if (object.isEmpty())
-        return false;
-
-    const std::string& type = object.getTypeName();
-    if (type != typeid(ESM::Static).name() && type != typeid(ESM::Activator).name())
-        return false;
-
-    std::string id = lowerPhysicsString(object.getCellRef().getRefId());
-    std::string model;
-    try
-    {
-        model = lowerPhysicsString(object.getClass().getModel(object));
-    }
-    catch (const std::exception&)
-    {
-    }
-
-    const char* const bedTokens[] = { "bed", "bedroll", "bunk", "cot", "mattress", "hammock",
-        "sleep", "pallet" };
-    for (const char* token : bedTokens)
-    {
-        if (physicsStringContains(id, token) || physicsStringContains(model, token))
-            return true;
-    }
-    return false;
 }
 
 std::string getPhysicsMaterial(const MWWorld::ConstPtr& object)
@@ -1772,13 +1782,12 @@ namespace MWWorld
         if (isCreativePlacementRecord(object))
         {
             // Scripted furniture and activators are normally protected because their
-            // transform can be part of quest/gameplay logic. In a home we allow
-            // scripted beds and fixed lights to move AS THE SAME reference, so
-            // resting/light scripts and their state are not stripped or recreated.
-            const bool movableHomeFixture = mwmp::ArenaHousing::get().ownsPlace(object)
-                && (isBedPlacementRecord(object)
-                    || (object.getTypeName() == typeid(ESM::Light).name()
-                        && isCreativePlacementRecord(object)));
+            // transform can be part of quest/gameplay logic. Owners/co-owners
+            // may move beds at home; placement staff may move beds anywhere.
+            // Keep the original reference and its resting script/state.
+            const bool movableHomeFixture = ((homeEditor || placementStaff) && isBedPlacementRecord(object))
+                || (homeEditor && object.getTypeName() == typeid(ESM::Light).name()
+                    && isCreativePlacementRecord(object));
             try
             {
                 if (!cls.getScript(object).empty() && !movableHomeFixture)
@@ -1795,7 +1804,7 @@ namespace MWWorld
             // server-spawned shop pieces still need the same hold-E action menu.
             // Structural statics and unsafe scripted activators were already rejected
             // above, and the server independently authorizes every published move.
-            if (mwmp::ArenaHousing::get().ownsPlace(object))
+            if (homeEditor || (placementStaff && isBedPlacementRecord(object)))
                 return true;
 
             // Staff outside an owned home retain the conservative
@@ -4849,6 +4858,12 @@ namespace MWWorld
         return mPhysics->isOnGround(ptr);
     }
 
+    void World::setGyroImmersiveFirstPerson(bool active)
+    {
+        if (mRendering && mRendering->getCamera())
+            mRendering->getCamera()->setGyroImmersiveFirstPerson(active);
+    }
+
     void World::togglePOV(bool force)
     {
         mRendering->getCamera()->toggleViewMode(force);
@@ -5572,8 +5587,11 @@ namespace MWWorld
         const std::vector<std::string>& content, const std::vector<std::string>& groundcover, ContentLoader& contentLoader)
     {
         int idx = 0;
+        Loading::Listener* progress = MWBase::Environment::get().getWindowManager()->getLoadingScreen();
+        const size_t totalPlugins = content.size() + groundcover.size();
         for (const std::string &file : content)
         {
+            progress->setProgressStage(Loading::Stage::Content, idx, totalPlugins);
             boost::filesystem::path filename(file);
             const Files::MultiDirCollection& col = fileCollections.getCollection(filename.extension().string());
             if (col.doesExist(file))
@@ -5592,6 +5610,7 @@ namespace MWWorld
 
         for (const std::string &file : groundcover)
         {
+            progress->setProgressStage(Loading::Stage::Content, idx, totalPlugins);
             boost::filesystem::path filename(file);
             const Files::MultiDirCollection& col = fileCollections.getCollection(filename.extension().string());
             if (!col.doesExist(file))

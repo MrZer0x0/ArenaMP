@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """ArenaMP PM1/IF1/WF1/HS1: draws the Player Menu section icons, the inventory
 filter icons, the map waypoint flag and the small button icons of the Chat,
-Group and Home pages (btn_*; shown at 18-20 px, so the shapes are bold).
+Group and Home pages and of the Quest Studio (btn_*; shown at 14-20 px, so
+the shapes are bold).
 
 Original artwork, drawn with Pillow in the gold "engraved" look of the
 Morrowind interface: a warm gold gradient glyph with a dark outline and a
@@ -666,6 +667,189 @@ def btn_proceeds():
     return m
 
 
+
+# quest studio (QS1) -------------------------------------------------------
+
+def btn_add():
+    m = canvas(); d = ImageDraw.Draw(m)
+    plus(d, 32, 32, 26, 6)
+    return m
+
+
+def btn_copy():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Two overlapping sheets.
+    d.rectangle(p(6, 4, 40, 44), fill=255)
+    d.rectangle(p(12, 10, 34, 38), fill=0)
+    d.rectangle(p(20, 18, 58, 60), fill=0)
+    d.rectangle(p(24, 22, 58, 60), fill=255)
+    d.rectangle(p(30, 28, 52, 54), fill=0)
+    return m
+
+
+def btn_delete():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Waste basket: lid, handle and ribbed body.
+    d.rectangle(p(24, 2, 40, 10), fill=255)
+    d.rectangle(p(29, 5, 35, 10), fill=0)
+    d.rectangle(p(6, 10, 58, 18), fill=255)
+    d.polygon(p(11, 22, 53, 22, 48, 62, 16, 62), fill=255)
+    for x in (24, 32, 40):
+        d.line(p(x, 28, x, 56), fill=0, width=W(3.5))
+    return m
+
+
+def btn_save():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Rolled scroll with a seal: the record is written.
+    d.rounded_rectangle(p(8, 6, 56, 58), radius=6 * K, fill=255)
+    d.rectangle(p(14, 14, 50, 50), fill=0)
+    for y in (20, 28, 36):
+        d.rectangle(p(18, y, 46, y + 3), fill=255)
+    d.ellipse(p(34, 36, 58, 60), fill=255)
+    d.ellipse(p(40, 42, 52, 54), fill=0)
+    return m
+
+
+def btn_pick():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Crosshair: choose an NPC in the world.
+    d.ellipse(p(8, 8, 56, 56), outline=255, width=W(6))
+    for x0, y0, x1, y1 in ((32, 0, 32, 20), (32, 44, 32, 64), (0, 32, 20, 32), (44, 32, 64, 32)):
+        d.line(p(x0, y0, x1, y1), fill=255, width=W(6))
+    d.ellipse(p(27, 27, 37, 37), fill=255)
+    return m
+
+
+def btn_anyone():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Three figures: any NPC with this RefId.
+    for cx, top, sc in ((16, 14, 0.75), (48, 14, 0.75), (32, 6, 1.0)):
+        person(d, cx, top, sc)
+    return m
+
+
+def btn_publish():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Arrow rising out of a tray: put the quest live.
+    d.rectangle(p(26, 18, 38, 46), fill=255)
+    d.polygon(p(12, 24, 32, 2, 52, 24), fill=255)
+    d.rectangle(p(4, 50, 60, 60), fill=255)
+    d.rectangle(p(4, 40, 12, 60), fill=255)
+    d.rectangle(p(52, 40, 60, 60), fill=255)
+    return m
+
+
+def btn_disable():
+    m = canvas(); d = ImageDraw.Draw(m)
+    d.ellipse(p(4, 4, 60, 60), outline=255, width=W(8))
+    d.line(p(15, 15, 49, 49), fill=255, width=W(8))
+    return m
+
+
+def btn_link():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Two chain links: add a next stage.
+    d.rounded_rectangle(p(4, 20, 38, 44), radius=12 * K, outline=255, width=W(7))
+    d.rounded_rectangle(p(26, 20, 60, 44), radius=12 * K, outline=255, width=W(7))
+    return m
+
+
+def btn_unlink():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Broken chain: remove a next stage.
+    d.rounded_rectangle(p(2, 22, 30, 42), radius=10 * K, outline=255, width=W(7))
+    d.rounded_rectangle(p(34, 22, 62, 42), radius=10 * K, outline=255, width=W(7))
+    d.line(p(32, 4, 32, 16), fill=255, width=W(4))
+    d.line(p(32, 48, 32, 60), fill=255, width=W(4))
+    return m
+
+
+def btn_close():
+    return btn_decline()
+
+
+# UI3: furniture store, map and compass -------------------------------------
+
+def btn_prev():
+    m = canvas(); d = ImageDraw.Draw(m)
+    d.polygon(p(42, 6, 14, 32, 42, 58, 50, 50, 30, 32, 50, 14), fill=255)
+    return m
+
+
+def btn_next():
+    return btn_prev().transpose(Image.FLIP_LEFT_RIGHT)
+
+
+def btn_place():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Arrow coming down onto a floor: put the item in the house.
+    d.rectangle(p(26, 2, 38, 26), fill=255)
+    d.polygon(p(12, 22, 52, 22, 32, 44), fill=255)
+    d.rectangle(p(4, 50, 60, 58), fill=255)
+    return m
+
+
+def magnifier(sign):
+    m = canvas(); d = ImageDraw.Draw(m)
+    d.ellipse(p(4, 4, 44, 44), outline=255, width=W(7))
+    d.line(p(38, 38, 58, 58), fill=255, width=W(10))
+    d.rectangle(p(14, 21, 34, 27), fill=255)
+    if sign == "+":
+        d.rectangle(p(21, 14, 27, 34), fill=255)
+    return m
+
+
+def btn_zoom_in():
+    return magnifier("+")
+
+
+def btn_zoom_out():
+    return magnifier("-")
+
+
+def compass_door():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Solid arched door: planks and a ring handle, on a threshold.
+    d.rounded_rectangle(p(12, 2, 52, 58), radius=20 * K, fill=255)
+    for x in (25, 39):
+        d.line(p(x, 10, x, 56), fill=0, width=W(2.5))
+    d.ellipse(p(42, 30, 50, 38), fill=0)
+    d.rectangle(p(6, 58, 58, 63), fill=255)
+    return m
+
+
+def compass_key():
+    return key_mask(-45)
+
+
+def compass_enchant():
+    m = canvas(); d = ImageDraw.Draw(m)
+    d.polygon(p(*star_points(32, 32, 30, 11, n=4, start=-90)), fill=255)
+    return m
+
+
+def compass_creature():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Paw print.
+    d.ellipse(p(18, 30, 46, 58), fill=255)
+    for cx, cy in ((12, 24), (24, 12), (40, 12), (52, 24)):
+        d.ellipse(p(cx - 7, cy - 8, cx + 7, cy + 8), fill=255)
+    return m
+
+
+def compass_marker():
+    m = canvas(); d = ImageDraw.Draw(m)
+    # Map pin; tinted with the marker colour in game.
+    d.ellipse(p(14, 2, 50, 38), fill=255)
+    d.polygon(p(17, 28, 47, 28, 32, 62), fill=255)
+    d.ellipse(p(25, 13, 39, 27), fill=0)
+    return m
+
+
+def map_flag_group():
+    return map_flag()
+
 ICONS = {
     "map_flag": map_flag,
     "inv_all": inv_all,
@@ -688,25 +872,38 @@ BUTTON_ICONS = (
     "accept", "decline", "voice",
     "rename", "lock", "take", "house", "tavern", "shop", "guild", "coowner", "friend", "revoke",
     "reset", "gift", "sell", "proceeds",
+    # QS1: Quest Studio.
+    "add", "copy", "delete", "save", "pick", "anyone", "publish", "disable", "link", "unlink",
+    "close",
+    # UI3: furniture store and map.
+    "prev", "next", "place", "zoom_in", "zoom_out",
 )
 for _name in BUTTON_ICONS:
     ICONS["btn_" + _name] = globals()["btn_" + _name]
+# UI3: compass markers and the flag of a group member. The silver ones are
+# tinted in game (group marker colours) or must read as "not mine" (flag).
+for _name in ("compass_door", "compass_key", "compass_enchant", "compass_creature",
+              "compass_marker", "map_flag_group"):
+    ICONS[_name] = globals()[_name]
+SILVER_ICONS = {"compass_marker", "map_flag_group"}
+SILVER_TOP = (246, 248, 252)
+SILVER_BOTTOM = (150, 168, 196)
 
 
 # ------------------------------------------------------------- rendering
 
-def gradient():
+def gradient(top=GOLD_TOP, bottom=GOLD_BOTTOM):
     g = Image.new("RGB", (N, N))
     px = g.load()
     for y in range(N):
         t = y / (N - 1)
-        c = tuple(int(GOLD_TOP[i] * (1 - t) + GOLD_BOTTOM[i] * t) for i in range(3))
+        c = tuple(int(top[i] * (1 - t) + bottom[i] * t) for i in range(3))
         for x in range(N):
             px[x, y] = c
     return g
 
 
-def render(mask):
+def render(mask, silver=False):
     outline = mask.filter(ImageFilter.MaxFilter(2 * K + 1))
     shadow = outline.filter(ImageFilter.GaussianBlur(2 * K))
     shadow = ImageChops.offset(shadow, K, 2 * K)
@@ -715,7 +912,7 @@ def render(mask):
     out = Image.alpha_composite(out, Image.merge("RGBA", (*Image.new("RGB", (N, N), (0, 0, 0)).split(),
                                                          shadow.point(lambda v: v * 0.55))))
     out = Image.alpha_composite(out, Image.merge("RGBA", (*Image.new("RGB", (N, N), OUTLINE).split(), outline)))
-    gold = gradient()
+    gold = gradient(SILVER_TOP, SILVER_BOTTOM) if silver else gradient()
     # Light bevel: brighten the upper-left edge of the glyph.
     bevel = ImageChops.subtract(mask, ImageChops.offset(mask, K, K)).filter(ImageFilter.GaussianBlur(K))
     gold = Image.composite(Image.new("RGB", (N, N), (255, 244, 214)), gold, bevel.point(lambda v: v * 0.7))
@@ -727,7 +924,7 @@ def main():
     target = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
     target.mkdir(parents=True, exist_ok=True)
     for name, draw in ICONS.items():
-        render(draw()).save(target / (name + ".png"), optimize=True)
+        render(draw(), silver=name in SILVER_ICONS).save(target / (name + ".png"), optimize=True)
         print("wrote", target / (name + ".png"))
 
 

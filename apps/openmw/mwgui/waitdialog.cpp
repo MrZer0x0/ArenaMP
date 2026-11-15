@@ -1,4 +1,5 @@
 #include "waitdialog.hpp"
+#include "shapedbar.hpp"
 
 #include <MyGUI_ProgressBar.h>
 #include <MyGUI_InputManager.h>
@@ -53,6 +54,7 @@ namespace MWGui
     {
         mProgressBar->setProgressRange (total);
         mProgressBar->setProgressPosition (cur);
+        fitShapedProgressBar(mProgressBar);
         mProgressText->setCaption(MyGUI::utility::toString(cur) + "/" + MyGUI::utility::toString(total));
     }
 

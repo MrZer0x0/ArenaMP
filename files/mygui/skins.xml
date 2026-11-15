@@ -21,6 +21,7 @@
         <List file="openmw_scroll.skin.xml"/>
         <List file="openmw_debug_window.skin.xml" />
         <List file="tes3mp_chat.skin.xml" />
+        <List file="arenamp_ui.skin.xml" />
     </MyGUI>
 </MyGUI>
 

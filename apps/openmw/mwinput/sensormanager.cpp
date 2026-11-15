@@ -5,6 +5,7 @@
 #include "../mwbase/environment.hpp"
 #include "../mwbase/inputmanager.hpp"
 #include "../mwbase/world.hpp"
+#include "../mwbase/windowmanager.hpp"
 
 #include "../mwworld/player.hpp"
 
@@ -246,7 +247,8 @@ namespace MWInput
 
         mGyroUpdateTimer += dt;
 
-        if (!mGuiCursorEnabled)
+        if (!mGuiCursorEnabled
+            && !MWBase::Environment::get().getWindowManager()->isGuiMode())
         {
             float rot[3];
             rot[0] = -mGyroYSpeed * dt * mGyroVSensitivity * 4 * (mInvertY ? -1 : 1);

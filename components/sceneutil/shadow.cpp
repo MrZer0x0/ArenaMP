@@ -48,7 +48,8 @@ namespace SceneUtil
         else if (Misc::StringUtils::lowerCase(computeSceneBounds) == "bounds")
             mShadowSettings->setComputeNearFarModeOverride(osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES);
 
-        int mapres = Settings::Manager::getInt("shadow map resolution", "Shadows");
+        // P001: older settings may hold 4096/8192; 2048 is the largest shadow map.
+        int mapres = std::clamp(Settings::Manager::getInt("shadow map resolution", "Shadows"), 128, 2048);
         mShadowSettings->setTextureSize(osg::Vec2s(mapres, mapres));
 
         mShadowTechnique->setSplitPointUniformLogarithmicRatio(Settings::Manager::getFloat("split point uniform logarithmic ratio", "Shadows"));

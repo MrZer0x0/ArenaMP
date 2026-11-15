@@ -2117,6 +2117,11 @@ namespace MWMechanics
         return mActors.isAttackingOrSpell(ptr);
     }
 
+    float MechanicsManager::getAttackStrength(const MWWorld::Ptr &ptr) const
+    {
+        return mActors.getAttackStrength(ptr);
+    }
+
     /*
         Start of tes3mp addition
 

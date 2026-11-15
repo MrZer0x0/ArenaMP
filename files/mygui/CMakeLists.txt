@@ -122,6 +122,9 @@ set(MYGUI_FILES
     arenamp_serverquesteditor.layout
     arenamp_furniture.layout
     arenamp_questwizard.layout
+    # UI8: ArenaMP skins (always) and the modern skin overrides ([GUI] arenamp modern skin)
+    arenamp_ui.skin.xml
+    arenamp_modern.skin.xml
 )
 
 

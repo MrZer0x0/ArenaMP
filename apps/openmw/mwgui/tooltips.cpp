@@ -1,4 +1,5 @@
 #include "tooltips.hpp"
+#include "shapedbar.hpp"
 
 #include <iomanip>
 
@@ -320,6 +321,14 @@ namespace MWGui
                     tooltipSize = tooltip->getSize();
 
                     tooltip->setCoord(0, 0, tooltipSize.width, tooltipSize.height);
+                    // Tooltip VBox sizing runs after property assignment. Fit the
+                    // fill only now, using the final width of the visible tooltip.
+                    for (const char* name : { "ArchetypePowerBar", "SkillProgress", "LevelProgress" })
+                    {
+                        MyGUI::ProgressBar* bar = nullptr;
+                        getWidget(bar, name);
+                        fitShapedProgressBar(bar);
+                    }
                 }
                 else
                     throw std::runtime_error ("unknown tooltip type");
@@ -598,7 +607,7 @@ namespace MWGui
                     chargeCoord = MyGUI::IntCoord((totalSize.width - chargeAndTextWidth)/2 + chargeTextWidth, coord.top+6, chargeWidth, 18);
                 }
                 Widgets::MWDynamicStatPtr chargeWidget = enchantArea->createWidget<Widgets::MWDynamicStat>
-                    ("MW_ChargeBar", chargeCoord, MyGUI::Align::Default);
+                    ("MW_ChargeBar_Blue", chargeCoord, MyGUI::Align::Default);
                 chargeWidget->setValue(charge, maxCharge);
                 totalSize.height += 24;
             }

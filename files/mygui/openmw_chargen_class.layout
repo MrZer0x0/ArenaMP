@@ -20,9 +20,11 @@
                 <Property key="Visible" value="false"/>
                 <Property key="TextAlign" value="Center VCenter"/>
             </Widget>
-            <Widget type="ProgressBar" skin="MW_Progress_Green" position="4 40 459 14" name="ArchetypePowerBar" align="HStretch Top">
+            <Widget type="ProgressBar" skin="ArenaHUD_Bar_Stamina" position="4 40 459 14" name="ArchetypePowerBar" align="HStretch Top">
                 <Property key="Visible" value="false"/>
                 <Widget type="TextBox" skin="ProgressText" position="0 0 459 14" name="ArchetypePowerText" align="Stretch">
+                    <Property key="TextShadow" value="true"/>
+                    <Property key="TextShadowColour" value="0 0 0"/>
                     <Property key="NeedMouse" value="false"/>
                     <Property key="TextAlign" value="Center VCenter"/>
                 </Widget>

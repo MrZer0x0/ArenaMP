@@ -69,6 +69,18 @@ namespace MWDialogue
             // player never actually heard.
             void ensureKnownTopic(const std::string& topicId);
 
+            /// ArenaMP QM1 (Quest Manager services). The server decides and
+            /// persists; these only mirror its decision in the local journal.
+            ///
+            /// Forget a quest: its entries and its index (so it can start over).
+            void resetQuest(const std::string& id);
+            /// Remove all journal text (quest entries and topic responses) but
+            /// keep every quest's index and finished state and every topic.
+            void clearJournalText();
+            /// Hide one quest entry (by journal index) while keeping its effect
+            /// on the quest's state. Returns true if an entry was removed.
+            bool hideEntry(const std::string& id, int index);
+
             void removeLastAddedTopicResponse (const std::string& topicId, const std::string& actorName) override;
             ///< Removes the last topic response added for the given topicId and actor name.
             /// \note topicId must be lowercase

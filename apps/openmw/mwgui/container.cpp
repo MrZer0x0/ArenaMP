@@ -78,6 +78,14 @@ namespace MWGui
         getWidget(mBottomBar, "BottomBar");
         getWidget(mSingleTransferButton, "SingleTransferButton");
 
+        // UI8: category filters are an icon column left of the list.
+        {
+            MyGUI::Widget* categories = nullptr;
+            getWidget(categories, "Categories");
+            ArenaUi::setupFilterColumn(mFilterColumn, categories,
+                { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys });
+        }
+
         getWidget(mItemView, "ItemView");
         mItemView->setExtendedMode(true);
         mItemView->setSingleClickActionEnabled(true);
@@ -87,16 +95,22 @@ namespace MWGui
         mItemView->eventItemDragStarted += MyGUI::newDelegate(this, &ContainerWindow::onItemDragStarted);
         mItemView->eventItemDoubleClicked += MyGUI::newDelegate(this, &ContainerWindow::onItemDoubleClicked);
 
-        mViewModeButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button",
-            MyGUI::IntCoord(126, 2, 30, 24), MyGUI::Align::Left | MyGUI::Align::Top, "ContainerViewModeButton");
+        // UI8: the view toggle sits under the filter column, left of the strip,
+        // exactly where the inventory keeps its paper-doll/view toggle.
+        mViewModeButton = mMainWidget->createWidget<MyGUI::Button>("MW_Button",
+            MyGUI::IntCoord(mBottomBar->getLeft() - ArenaUi::sFilterColumnWidth - ArenaUi::sFilterColumnGap,
+                mBottomBar->getTop() + 2, ArenaUi::sFilterColumnWidth, 24),
+            MyGUI::Align::Left | MyGUI::Align::Bottom, "ContainerViewModeButton");
         mViewModeButton->setCaption("");
         mViewModeIcon = mViewModeButton->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(6, 3, 18, 18), MyGUI::Align::Center, "ContainerViewModeIcon");
+            MyGUI::IntCoord(8, 3, 18, 18), MyGUI::Align::Center, "ContainerViewModeIcon");
         mViewModeIcon->setNeedMouseFocus(false);
         mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
         mViewModeIcon->setImageTexture("icons/inventoryextender/Base/view_grid.dds");
 
         mFilterAll->setStateSelected(true);
+        ArenaUi::layoutFilterColumn(mFilterColumn, true);
+        ArenaUi::refreshFilterColumn(mFilterColumn);
         mFilterAll->eventMouseButtonClick += MyGUI::newDelegate(this, &ContainerWindow::onFilterChanged);
         mFilterWeapon->eventMouseButtonClick += MyGUI::newDelegate(this, &ContainerWindow::onFilterChanged);
         mFilterApparel->eventMouseButtonClick += MyGUI::newDelegate(this, &ContainerWindow::onFilterChanged);
@@ -368,6 +382,7 @@ namespace MWGui
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
         mFilterKeys->setStateSelected(false);
+        ArenaUi::refreshFilterColumn(mFilterColumn);
 
         mItemView->setModel (mSortModel);
         mItemView->setViewMode(ItemView::View_List);
@@ -406,6 +421,7 @@ namespace MWGui
         if (!mPtr.isEmpty())
             updateEncumbranceBar();
         updateBottomBarLayout();
+        ArenaUi::layoutFilterColumn(mFilterColumn);
     }
 
     void ContainerWindow::onClose()
@@ -651,6 +667,7 @@ namespace MWGui
         mFilterMagic->setStateSelected(sender == mFilterMagic);
         mFilterMisc->setStateSelected(sender == mFilterMisc);
         mFilterKeys->setStateSelected(sender == mFilterKeys);
+        ArenaUi::refreshFilterColumn(mFilterColumn);
         mItemView->update();
         mItemView->resetScrollBars();
     }
@@ -709,8 +726,8 @@ namespace MWGui
         mEncumbranceBar->setCoord(x, 2, encWidth, 24);
         x += encWidth + gap;
 
-        mViewModeButton->setCoord(x, 2, buttonW, 24);
-        x += buttonW + gap;
+        // UI8: the view toggle lives under the filter column (see constructor).
+        (void)buttonW;
 
         mSingleTransferButton->setCoord(x, 2, singleW, 24);
         x += singleW + gap;

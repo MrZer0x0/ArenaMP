@@ -101,7 +101,8 @@ namespace MWGui
                 line.mIcon->eventMouseButtonClick += MyGUI::newDelegate(this, &ItemChargeView::onIconClicked);
                 line.mIcon->eventMouseWheel += MyGUI::newDelegate(this, &ItemChargeView::onMouseWheelMoved);
 
-                line.mCharge = mScrollView->createWidget<Widgets::MWDynamicStat>("MW_ChargeBar", MyGUI::IntCoord(), MyGUI::Align::Default);
+                line.mCharge = mScrollView->createWidget<Widgets::MWDynamicStat>(mDisplayMode == DisplayMode_Health ? "MW_ChargeBar" : "MW_ChargeBar_Blue",
+                        MyGUI::IntCoord(), MyGUI::Align::Default);
                 line.mCharge->setNeedMouseFocus(false);
 
                 updateLine(line);

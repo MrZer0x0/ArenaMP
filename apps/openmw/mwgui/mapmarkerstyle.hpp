@@ -50,7 +50,8 @@ namespace MWGui
             auto f=arenaSplitMarker(body,'|');
             if (f.size()>=3) { s.kind=f[0]; s.color=f[1]; s.text=f[2]; }
         }
-        if (s.kind!="?" && s.kind!="!" && s.kind!="A" && s.kind!="B" && s.kind!="C") s.kind="?";
+        // UI3: "F" is a group member's gold flag (group markers only).
+        if (s.kind!="?" && s.kind!="!" && s.kind!="A" && s.kind!="B" && s.kind!="C" && !(s.group && s.kind=="F")) s.kind="?";
         if (!s.styled) s.text=note;
         return s;
     }

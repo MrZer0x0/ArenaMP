@@ -611,6 +611,7 @@ namespace MWWorld
             }
         }
 
+        loadingListener->setProgressStage(Loading::Stage::Objects);
         loadingListener->setProgressRange(refsToLoad);
 
         const auto getDistanceToPlayerCell = [&] (const std::pair<int, int>& cellPosition)
@@ -913,6 +914,7 @@ namespace MWWorld
         while (active!=mActiveCells.end())
             unloadCell (active++);
 
+        loadingListener->setProgressStage(Loading::Stage::Objects);
         loadingListener->setProgressRange(cell->count());
 
         // Load cell.
@@ -1223,6 +1225,7 @@ namespace MWWorld
 
         Loading::Listener* loadingListener = MWBase::Environment::get().getWindowManager()->getLoadingScreen();
         Loading::ScopedLoad load(loadingListener);
+        loadingListener->setProgressStage(Loading::Stage::Terrain);
         int progress = 0, initialProgress = -1, progressRange = 0;
         while (!mPreloader->syncTerrainLoad(vec, progress, progressRange, mRendering.getReferenceTime()))
         {

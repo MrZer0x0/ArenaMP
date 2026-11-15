@@ -347,6 +347,8 @@ namespace MWGui
         void placeFlagAtMouse();
         void updateGlobalFlag();
         void updateFlagButton();
+        /// UI3: icon + caption on the World/Local button.
+        void updateWorldButton();
         void onNoteEditOk();
         void onNoteEditDelete();
         void onNoteEditDeleteConfirm();
@@ -367,6 +369,18 @@ namespace MWGui
         MyGUI::Button* mZoomOutButton;
         MyGUI::Button* mFlagButton = nullptr;
         MyGUI::ImageBox* mGlobalFlag = nullptr;
+        // UI3: silver flags of group members on the world map.
+        struct GroupFlag
+        {
+            MyGUI::ImageBox* mWidget = nullptr;
+            float mWorldX = 0.f;
+            float mWorldY = 0.f;
+        };
+        std::vector<GroupFlag> mGroupFlags;
+        std::string mGroupFlagSignature;
+        float mGroupFlagTimer = 0.f;
+        void syncGroupFlags();
+        void positionGroupFlags();
         bool mFlagArmed = false;
         MyGUI::IntPoint mFlagPressPos;
         int mLocalZoomStep;

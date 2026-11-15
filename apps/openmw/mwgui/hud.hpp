@@ -1,6 +1,7 @@
 #ifndef OPENMW_GAME_MWGUI_HUD_H
 #define OPENMW_GAME_MWGUI_HUD_H
 
+#include <MyGUI_Colour.h>
 #include "mapwindow.hpp"
 #include "statswatcher.hpp"
 
@@ -41,6 +42,8 @@ namespace MWGui
         void setWeapVisible(bool visible);
         void setSpellVisible(bool visible);
         void setSneakVisible(bool visible);
+        /// UI4: 0 hidden, 1 suspicious, 2 detected (see MWBase::WindowManager).
+        void setSneakDetection(int level);
 
         void setEffectVisible(bool visible);
         void setMinimapVisible(bool visible);
@@ -90,6 +93,9 @@ namespace MWGui
         // Y039: death XP countdown / potion and party recovery prompt.
         MyGUI::Widget* mDeathRecoveryPanel;
         MyGUI::ProgressBar* mDeathRecoveryXpBar;
+        MyGUI::ProgressBar* mDeathRecoveryRedBar = nullptr;
+        MyGUI::Colour mDeathRecoveryTitleColour = MyGUI::Colour::White;
+        MyGUI::Colour mDeathRecoveryTextColour = MyGUI::Colour::White;
         MyGUI::TextBox* mDeathRecoveryTitle;
         MyGUI::TextBox* mDeathRecoveryXpText;
         MyGUI::TextBox* mDeathRecoveryPrompt;
@@ -100,6 +106,8 @@ namespace MWGui
         ItemWidget *mWeapImage;
         SpellWidget *mSpellImage;
         MyGUI::ProgressBar *mWeapStatus, *mSpellStatus;
+        MyGUI::Widget* mWeapRing = nullptr;
+        MyGUI::Widget* mSpellRing = nullptr;
         MyGUI::Widget *mEffectBox, *mMinimapBox;
         MyGUI::Button* mMinimapButton;
         MyGUI::ScrollView* mMinimap;
@@ -110,11 +118,51 @@ namespace MWGui
         MyGUI::TextBox* mGameTimeBox;
         MyGUI::Widget* mHorizontalCompass;
         MyGUI::TextBox* mHorizontalCompassCenter;
+
+        // UI4: three-state sneak eye. The mechanics report once per
+        // fSneakUseDelay; a raised level is held for a moment so a random
+        // awareness roll cannot make the eye flicker between states.
+        void updateSneakIndicator(float dt);
+
+        // UI9: contextual, dynamic crosshair. The faced object picks an icon
+        // (take, read, talk, open, unlock, disarm, search, use); gold normally,
+        // warm red for crimes and traps. Without a target the reticle is a dot
+        // and four chevrons that spread with movement and, with a bow or
+        // crossbow drawn, focus while the shot is drawn or held steady.
+        enum class CrosshairKind
+        {
+            None, Take, Read, Activate, Talk, Pickpocket, Loot, Door, Container, Locked, Trapped
+        };
+        void setupDynamicCrosshair();
+        void updateDynamicCrosshair(float dt);
+        MyGUI::ImageBox* mCrossDot = nullptr;
+        MyGUI::ImageBox* mCrossTicks[4] = { nullptr, nullptr, nullptr, nullptr };
+        MyGUI::ImageBox* mCrossIcon = nullptr;
+        CrosshairKind mCrossKind = CrosshairKind::None;
+        bool mCrossDanger = false;
+        CrosshairKind mCrossShownKind = CrosshairKind::None;
+        float mCrossIconAnim = 0.f;
+        float mCrossSpread = 5.f;
+        float mCrossAimFocus = 0.f;
+        float mCrossSpeed = 0.f;
+        float mCrossFocusPulse = 0.f;
+        float mCrossLastPos[3] = { 0.f, 0.f, 0.f };
+        bool mCrossHasLastPos = false;
+        MyGUI::ImageBox* mSneakImage = nullptr;
+        int mSneakReportedLevel = 0;
+        int mSneakLevel = 0;
+        int mSneakShownLevel = -1;
+        float mSneakHoldTimer = 0.f;
+        float mSneakPulse = 0.f;
+        float mSneakColour[4] = { 1.f, 0.82f, 0.50f, 1.f };
         std::vector<MyGUI::TextBox*> mHorizontalCompassTicks;
 
         struct HorizontalCompassMarkerState
         {
             MyGUI::TextBox* mWidget = nullptr;
+            // UI3: icon kinds (doors, detected objects, group flags/markers) draw
+            // this image instead of a text glyph.
+            MyGUI::ImageBox* mIcon = nullptr;
             // Object markers use mObject; non-reference markers such as teleport
             // doors use a stable textual identity. This lets one fixed widget pool
             // cover actors, Detect Key/Enchantment/Animal results and doors.
@@ -140,6 +188,9 @@ namespace MWGui
             // a stable transparent container with an ordinary red child whose width
             // is the HP fraction. This removes ProgressBar Track lifetime/range bugs.
             MyGUI::Widget* mWidget = nullptr;
+            // UI4: dark plate and pale "recent damage" trail behind the fill.
+            MyGUI::Widget* mBack = nullptr;
+            MyGUI::Widget* mLag = nullptr;
             MyGUI::Widget* mFill = nullptr;
             // Decorative frame is a separate child and is visible only after the
             // bar has arrived in the docked HUD stack.
@@ -189,6 +240,12 @@ namespace MWGui
             float mHeadCentreY = 0.f;
             float mHeadWidth = 0.f;
             float mHeadHeight = 0.f;
+
+            // UI4: damage trail state and the tint currently applied to mFill
+            // (-1 unknown, 0 enemy, 1 ally) so setColour runs only on change.
+            float mLagFraction = -1.f;
+            float mLagHoldTimer = 0.f;
+            int mAppliedTint = -1;
         };
 
         std::vector<CombatHealthBarState> mCombatHealthBars;

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ArenaMP UI8: skins used by ArenaMP windows in both the classic and the
+     modern interface style (textures from tools/arenamp_make_ui_skin.py). -->
+<MyGUI type="Resource" version="1.1">
+    <!-- Frameless icon button: no button outline at all; the icon itself is
+         the button. Hover, press and the selected state show a soft gold glow
+         behind the icon (rows of icon_button.png). -->
+    <Resource type="ResourceSkin" name="ArenaUI_IconButton" size="32 32" texture="textures\ui\arenamw\skin\icon_button.png">
+        <Property key="FontName" value="Default"/>
+        <Property key="TextAlign" value="Center"/>
+        <Property key="NeedKey" value="false"/>
+        <BasisSkin type="SubSkin" offset="0 0 32 32" align="Stretch">
+            <State name="disabled" offset="0 160 32 32"/>
+            <State name="normal" offset="0 0 32 32"/>
+            <State name="highlighted" offset="0 40 32 32"/>
+            <State name="pushed" offset="0 80 32 32"/>
+            <State name="disabled_checked" offset="0 160 32 32"/>
+            <State name="normal_checked" offset="0 120 32 32"/>
+            <State name="highlighted_checked" offset="0 120 32 32"/>
+            <State name="pushed_checked" offset="0 80 32 32"/>
+        </BasisSkin>
+        <BasisSkin type="SimpleText" offset="0 0 32 32" align="Stretch">
+            <State name="disabled" colour="#{fontcolour=disabled}" shift="0"/>
+            <State name="normal" colour="#{fontcolour=normal}" shift="0"/>
+            <State name="highlighted" colour="#{fontcolour=normal_over}" shift="0"/>
+            <State name="pushed" colour="#{fontcolour=normal_pressed}" shift="0"/>
+            <State name="disabled_checked" colour="#{fontcolour=disabled}" shift="0"/>
+            <State name="normal_checked" colour="#{fontcolour=active}" shift="0"/>
+            <State name="highlighted_checked" colour="#{fontcolour=active_over}" shift="0"/>
+            <State name="pushed_checked" colour="#{fontcolour=active_pressed}" shift="0"/>
+        </BasisSkin>
+    </Resource>
+</MyGUI>

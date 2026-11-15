@@ -759,10 +759,12 @@ namespace MWMechanics
         const float attribute = (stats.getAttribute(ESM::Attribute::Strength).getModified()
             + stats.getAttribute(ESM::Attribute::Agility).getModified()) * .5f;
         healthdmg = true;
-        damage = 10.f * (1.f + 1.2f * std::clamp(attackStrength, 0.f, 1.f))
-            * ArenaCombatLimits::weaponScaling(skill, attribute);
         const bool werewolf = attacker.getClass().isNpc()
             && attacker.getClass().getNpcStats(attacker).isWerewolf();
+        damage = werewolf
+            ? 10.f * (1.f + 1.2f * std::clamp(attackStrength, 0.f, 1.f))
+                * ArenaCombatLimits::weaponScaling(skill, attribute)
+            : ArenaCombatLimits::handToHandDamage(skill, attribute, attackStrength);
         if (werewolf)
             damage *= MWBase::Environment::get().getWorld()->getGlobalFloat("werewolfclawmult");
         damage *= arenaPlayerStaminaDamageMultiplier(attacker);

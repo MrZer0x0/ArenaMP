@@ -43,6 +43,7 @@
         <Property key="TextAlign" value="VCenter HCenter"/>
         <Property key="TextColour" value="#{fontcolour=normal}"/>
         <Property key="TextShadow" value="true"/>
+        <Property key="TextShadowColour" value="0 0 0"/>
 
         <BasisSkin type="SimpleText" offset="0 0 16 16" align="Stretch"/>
     </Resource>

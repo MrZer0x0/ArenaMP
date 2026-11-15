@@ -9,6 +9,7 @@
 #include "../../../mwbase/environment.hpp"
 #include "../../../mwbase/windowmanager.hpp"
 #include "../../../mwgui/dialogue.hpp"
+#include "../../../mwgui/questmanager.hpp"
 #include "../../../mwworld/cellstore.hpp"
 #include <components/misc/stringops.hpp>
 
@@ -34,6 +35,13 @@ namespace mwmp
                 // definitions and dialogue responses server-authoritative.
                 if (player->guiMessageBox.id == ServerQuestRegistry::TransportGuiId)
                 {
+                    // QM1: Quest Manager services (skip / reset / clear / leave faction)
+                    // share the hidden transport; their replies start with "QUESTMAN\t".
+                    if (player->guiMessageBox.label.rfind("QUESTMAN\t", 0) == 0)
+                    {
+                        MWGui::QuestManagerWindow::handleServiceMessage(player->guiMessageBox.label);
+                        return;
+                    }
                     ServerQuestResponse response;
                     const ServerQuestRegistry::TransportEvent event
                         = ServerQuestRegistry::get().handleTransport(player->guiMessageBox.label, &response);

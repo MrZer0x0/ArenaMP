@@ -2,8 +2,9 @@
 <MyGUI type="Layout" version="3.2.0">
   <!-- Transparent host: when embedded, the Player Menu DecorPane supplies the frame. -->
   <Widget type="Widget" skin="" layer="Windows" position="0 0 700 416" name="_Main">
-    <Widget type="TextBox" skin="SandBrightText" position="8 2 574 24" name="FurnitureTitle"/>
-    <Widget type="Button" skin="MW_Button" position="590 0 102 26" name="CloseButton"><Property key="Caption" value="Close"/></Widget>
+    <Widget type="TextBox" skin="SandBrightText" position="8 2 640 24" name="FurnitureTitle"/>
+    <!-- UI3: icon-only close; buy/sell keep captions, edit and refresh are icons. -->
+    <Widget type="Button" skin="MW_Button" position="658 0 34 26" name="CloseButton"><Property key="Caption" value="Close"/></Widget>
 
     <Widget type="Button" skin="MW_Button" position="8 30 220 28" name="ShopTab"><Property key="Caption" value="Shop"/></Widget>
     <Widget type="Button" skin="MW_Button" position="234 30 220 28" name="InventoryTab"><Property key="Caption" value="Inventory"/></Widget>
@@ -27,11 +28,11 @@
 
     <Widget type="TextBox" skin="SandBrightText" position="440 308 252 20" name="ItemTitle"/>
     <Widget type="TextBox" skin="SandText" position="440 329 252 18" name="ItemPrice"/>
-    <Widget type="Button" skin="MW_Button" position="440 351 80 27" name="PrimaryButton"><Property key="Caption" value="Action"/></Widget>
-    <Widget type="Button" skin="MW_Button" position="526 351 80 27" name="SecondaryButton"><Property key="Caption" value="Action"/></Widget>
-    <Widget type="Button" skin="MW_Button" position="612 351 80 27" name="AdminEditButton"><Property key="Caption" value="Edit"/><Property key="Visible" value="false"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="440 351 104 27" name="PrimaryButton"><Property key="Caption" value="Action"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="550 351 100 27" name="SecondaryButton"><Property key="Caption" value="Action"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="656 351 36 27" name="AdminEditButton"><Property key="Caption" value="Edit"/><Property key="Visible" value="false"/></Widget>
 
-    <Widget type="Button" skin="MW_Button" position="440 383 123 27" name="AdminCaptureButton"><Property key="Caption" value="Add furniture"/><Property key="Visible" value="false"/></Widget>
-    <Widget type="Button" skin="MW_Button" position="569 383 123 27" name="AdminRefreshButton"><Property key="Caption" value="Refresh"/><Property key="Visible" value="false"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="440 383 210 27" name="AdminCaptureButton"><Property key="Caption" value="Add furniture"/><Property key="Visible" value="false"/></Widget>
+    <Widget type="Button" skin="MW_Button" position="656 383 36 27" name="AdminRefreshButton"><Property key="Caption" value="Refresh"/><Property key="Visible" value="false"/></Widget>
   </Widget>
 </MyGUI>

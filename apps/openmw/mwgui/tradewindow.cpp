@@ -91,6 +91,13 @@ namespace MWGui
         getWidget(mFilterMagic, "MagicButton");
         getWidget(mFilterMisc, "MiscButton");
         getWidget(mFilterKeys, "KeysButton");
+        // UI8: category filters are an icon column left of the list.
+        {
+            MyGUI::Widget* categories = nullptr;
+            getWidget(categories, "Categories");
+            ArenaUi::setupFilterColumn(mFilterColumn, categories,
+                { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys });
+        }
 
         getWidget(mMaxSaleButton, "MaxSaleButton");
         getWidget(mCancelButton, "CancelButton");
@@ -120,11 +127,13 @@ namespace MWGui
         mItemView->eventBackgroundClicked += MyGUI::newDelegate(this, &TradeWindow::onBackgroundSelected);
 
         mViewModeIcon = mViewModeButton->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(5, 4, 18, 18), MyGUI::Align::Center, "ArenaTradeViewToggleIcon");
+            MyGUI::IntCoord(8, 4, 18, 18), MyGUI::Align::Center, "ArenaTradeViewToggleIcon");
         mViewModeIcon->setNeedMouseFocus(false);
         mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
 
         mFilterAll->setStateSelected(true);
+        ArenaUi::layoutFilterColumn(mFilterColumn, true);
+        ArenaUi::refreshFilterColumn(mFilterColumn);
         mItemView->setInternalViewModeButtonVisible(false);
         mItemView->setExtendedMode(true);
         if (mViewModeIcon)
@@ -197,6 +206,7 @@ namespace MWGui
 
     void TradeWindow::onFrame(float dt)
     {
+        ArenaUi::layoutFilterColumn(mFilterColumn);
         checkReferenceAvailable();
         if(mPtr.isEmpty())return;
         auto& ce=mwmp::CraftEconomic::get();
@@ -325,6 +335,7 @@ namespace MWGui
         mFilterKeys->setStateSelected(false);
 
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
+        ArenaUi::refreshFilterColumn(mFilterColumn);
 
         mItemView->update();
     }

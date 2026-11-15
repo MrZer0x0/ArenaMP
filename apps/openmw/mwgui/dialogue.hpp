@@ -213,6 +213,7 @@ namespace MWGui
         bool activateSelection();
         void selectInitialItem();
         void positionDialogueWindow();
+        void updateStatusBarsSafely();
         void startDialogueCamera();
         void stopDialogueCamera();
         void startDynamicDialogueActor();

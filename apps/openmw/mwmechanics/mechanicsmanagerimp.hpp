@@ -199,6 +199,7 @@ namespace MWMechanics
             bool isWeaponTransition(const MWWorld::Ptr& ptr) const override;
             /// Is \a ptr casting spell or using weapon now?
             bool isAttackingOrSpell(const MWWorld::Ptr &ptr) const override;
+            float getAttackStrength(const MWWorld::Ptr &ptr) const override;
 
             /*
                 Start of tes3mp addition

@@ -93,6 +93,11 @@ namespace MWRender
         // intentionally separate from the user setting: if immersive first
         // person was already enabled, leaving sneak must not disable it.
         bool mSneakImmersiveFirstPersonActive;
+        // GB1: the same kind of temporary override while the Android gyroscope is
+        // on. The player's "immersive first person" setting is never written, so
+        // leaving the game with the gyroscope on cannot turn the body on for good.
+        bool mGyroImmersiveFirstPersonActive = false;
+        bool immersiveFirstPersonActive() const;
         float mImmersiveFirstPersonForwardOffset;
         float mHeadBobbingOffset;
         float mHeadBobbingRoll;
@@ -188,6 +193,8 @@ namespace MWRender
 
         /// \brief Lowers the camera for sneak.
         void setSneakOffset(float offset);
+        /// GB1: show the first-person body while the gyroscope is enabled.
+        void setGyroImmersiveFirstPerson(bool active);
 
         bool isFirstPerson() const { return mFirstPersonView && mMode == Mode::Normal; }
 

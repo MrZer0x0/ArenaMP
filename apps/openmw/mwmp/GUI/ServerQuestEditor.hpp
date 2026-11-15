@@ -65,7 +65,18 @@ namespace mwmp
         /// geometry of every widget is captured once and re-applied scaled so the
         /// whole studio always fits, whatever the resolution.
         void captureBaseGeometry(MyGUI::Widget* widget);
+        /// QS1: the layout is authored at its smallest size. A larger viewport makes the
+        /// window bigger and MyGUI's align rules stretch only lists and text fields, so
+        /// buttons and fonts keep their size. Only a viewport smaller than the layout
+        /// still scales the geometry down (X048).
         void fitToViewport();
+        /// QS1: icon buttons. List actions (new, copy, delete, save, add...) are
+        /// small icon-only buttons whose name is the tooltip; main actions keep a
+        /// caption beside the icon. Unlabelled fields get a tooltip too.
+        void decorateButtons();
+        void setIconButton(MyGUI::Button* button, const char* icon, const std::string& tooltip, bool withCaption);
+        void placeButtonIcons();
+        static void setTooltip(MyGUI::Widget* widget, const std::string& text);
         /// X048: force the game's own font on the studio widgets. Parts of the layout
         /// use MyGUI core skins whose default font has no Cyrillic glyphs, which is
         /// what turns Russian quest names and journal text into empty boxes.
@@ -234,6 +245,13 @@ namespace mwmp
         std::vector<std::pair<MyGUI::Widget*, MyGUI::IntCoord>> mBaseGeometry;
         MyGUI::IntSize mBaseSize;
         float mAppliedScale = 1.0f;
+        struct IconButton
+        {
+            MyGUI::Button* button = nullptr;
+            MyGUI::ImageBox* icon = nullptr;
+            std::string caption;
+        };
+        std::vector<IconButton> mIconButtons;
     };
 }
 

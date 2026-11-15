@@ -1,4 +1,5 @@
 #include "mapwindow.hpp"
+#include "arenaiconbutton.hpp"
 
 #include <osg/Texture2D>
 
@@ -7,6 +8,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
+#include <locale>
 
 #include <MyGUI_ScrollView.h>
 #include <MyGUI_ComboBox.h>
@@ -877,12 +879,17 @@ namespace MWGui
 
         getWidget(mButton, "WorldButton");
         mButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onWorldButtonClicked);
-        mButton->setCaptionWithReplacing( mGlobal ? "#{sLocal}" : "#{sWorld}");
+        updateWorldButton();
 
         getWidget(mZoomOutButton, "ZoomOutButton");
         getWidget(mZoomInButton, "ZoomInButton");
         mZoomOutButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onZoomOutClicked);
         mZoomInButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onZoomInClicked);
+        // UI3: magnifier icons, names in the tooltip.
+        ArenaUi::decorate(mZoomOutButton, "btn_zoom_out",
+            MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=map.zoom_out}"), ArenaUi::IconMode::IconOnly);
+        ArenaUi::decorate(mZoomInButton, "btn_zoom_in",
+            MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=map.zoom_in}"), ArenaUi::IconMode::IconOnly);
 
         getWidget(mEventBoxGlobal, "EventBoxGlobal");
         mEventBoxGlobal->eventMouseDrag += MyGUI::newDelegate(this, &MapWindow::onMouseDrag);
@@ -902,14 +909,16 @@ namespace MWGui
         // Compact icon-only button: leaves room for the other map controls,
         // including on small Android map windows. Keep its full action text
         // as a tooltip instead of rendering it inside the button.
-        mFlagButton = mMainWidget->createWidget<MyGUI::Button>("MW_Button",
-            MyGUI::IntCoord(70, 233, 32, 22), MyGUI::Align::Bottom | MyGUI::Align::Left, "ArenaFlagButton");
+        // UI8: frameless like the zoom and world buttons; the selected state
+        // (flag armed or placed) shows a gold ring.
+        mFlagButton = mMainWidget->createWidget<MyGUI::Button>("ArenaUI_IconButton",
+            MyGUI::IntCoord(68, 228, 30, 30), MyGUI::Align::Bottom | MyGUI::Align::Left, "ArenaFlagButton");
         mFlagButton->setNeedKeyFocus(false);
         mFlagButton->setCaption("");
         mFlagButton->setUserString("ToolTipType", "Layout");
         mFlagButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
         MyGUI::ImageBox* flagButtonIcon = mFlagButton->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(7, 2, 18, 18), MyGUI::Align::Default);
+            MyGUI::IntCoord(4, 4, 22, 22), MyGUI::Align::Default);
         flagButtonIcon->setImageTexture("textures/ui/arenamw/map_flag.png");
         flagButtonIcon->setNeedMouseFocus(false);
         mFlagButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MapWindow::onFlagButtonClicked);
@@ -1153,6 +1162,74 @@ namespace MWGui
         // The GUI mode can change while a pinned map remains visible, so keep
         // its HUD/menu presentation in sync with inventory/menu transitions.
         updatePinnedPresentation();
+
+        // UI3: group flags change rarely; poll twice a second while visible.
+        mGroupFlagTimer -= dt;
+        if (mGroupFlagTimer <= 0.f && isVisible())
+        {
+            mGroupFlagTimer = 0.5f;
+            syncGroupFlags();
+        }
+    }
+
+    void MapWindow::syncGroupFlags()
+    {
+        if (!mGlobalMap || !mwmp::Main::isInitialized() || !mwmp::Main::get().getGUIController())
+            return;
+
+        std::vector<mwmp::GUIController::GroupMapPoint> flags;
+        std::ostringstream signature;
+        signature.imbue(std::locale::classic());
+        for (const mwmp::GUIController::GroupMapPoint& point : mwmp::Main::get().getGUIController()->getGroupMapPoints())
+        {
+            if (point.kind != "F" || !point.paged)
+                continue;
+            flags.push_back(point);
+            signature << point.x << ',' << point.y << ',' << point.text << ';';
+        }
+        if (signature.str() == mGroupFlagSignature)
+            return;
+        mGroupFlagSignature = signature.str();
+
+        for (GroupFlag& flag : mGroupFlags)
+            MyGUI::Gui::getInstance().destroyWidget(flag.mWidget);
+        mGroupFlags.clear();
+
+        const std::string caption = MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=map.flag.group}");
+        for (const mwmp::GUIController::GroupMapPoint& point : flags)
+        {
+            GroupFlag flag;
+            flag.mWorldX = point.x;
+            flag.mWorldY = point.y;
+            flag.mWidget = mGlobalMap->createWidget<MyGUI::ImageBox>("ImageBox",
+                MyGUI::IntCoord(0, 0, 22, 22), MyGUI::Align::Default);
+            flag.mWidget->setImageTexture("textures/ui/arenamw/map_flag_group.png");
+            flag.mWidget->setDepth(Global_CompassLayer);
+            flag.mWidget->setUserString("ToolTipType", "Layout");
+            flag.mWidget->setUserString("ToolTipLayout", "TextToolTipOneLine");
+            flag.mWidget->setUserString("Caption_TextOneLine", caption + ": " + point.text);
+            flag.mWidget->setNeedMouseFocus(true);
+            mGroupFlags.push_back(flag);
+        }
+        positionGroupFlags();
+    }
+
+    void MapWindow::positionGroupFlags()
+    {
+        if (!mGlobalMapRender)
+            return;
+        const float zoom = getGlobalZoomFactor();
+        for (GroupFlag& flag : mGroupFlags)
+        {
+            float x = 0.f;
+            float y = 0.f;
+            mGlobalMapRender->worldPosToImageSpace(flag.mWorldX, flag.mWorldY, x, y);
+            x *= mGlobalMapRender->getWidth() * zoom;
+            y *= mGlobalMapRender->getHeight() * zoom;
+            // Same anchor as the gold flag: the pole foot marks the spot.
+            flag.mWidget->setPosition(MyGUI::IntPoint(static_cast<int>(std::lround(x)) - 4,
+                static_cast<int>(std::lround(y)) - 22));
+        }
     }
 
     void MapWindow::setGlobalMapMarkerTooltip(MyGUI::Widget* markerWidget, int x, int y)
@@ -1218,6 +1295,16 @@ namespace MWGui
         mFlagPressPos = MyGUI::IntPoint(_left, _top);
     }
 
+    void MapWindow::updateWorldButton()
+    {
+        // UI3: globe = open the world map, pin = back to the local map.
+        if (!mButton)
+            return;
+        const std::string caption = MyGUI::LanguageManager::getInstance().replaceTags(mGlobal ? "#{sLocal}" : "#{sWorld}");
+        // UI8: icon only (frameless); "World"/"Local" is the tooltip.
+        ArenaUi::decorate(mButton, mGlobal ? "btn_local" : "btn_global", caption, ArenaUi::IconMode::IconOnly);
+    }
+
     // ---------------------------------------------------------------- WF1 flag
 
     void MapWindow::updateFlagButton()
@@ -1236,6 +1323,8 @@ namespace MWGui
         if (ArenaWaypoint::has())
         {
             ArenaWaypoint::clear();
+            // UI3: the group (if any) stops seeing this flag. Ignored when solo.
+            sendArenaGroupMarkerCommand("/gmark unflag");
             mFlagArmed = false;
             MWBase::Environment::get().getWindowManager()->messageBox("#{arenamp=map.flag.removed}");
         }
@@ -1291,6 +1380,15 @@ namespace MWGui
         const float worldY = (imageY - y0) / (y1 - y0) * unit;
 
         ArenaWaypoint::set(worldX, worldY);
+        // UI3: share the flag with the group; the server ignores it when solo.
+        {
+            std::ostringstream cmd;
+            cmd.imbue(std::locale::classic());
+            cmd.setf(std::ios::fixed);
+            cmd.precision(1);
+            cmd << "/gmark flag " << worldX << ' ' << worldY;
+            sendArenaGroupMarkerCommand(cmd.str());
+        }
         mFlagArmed = false;
         updateFlagButton();
         updateGlobalFlag();
@@ -1299,6 +1397,8 @@ namespace MWGui
 
     void MapWindow::updateGlobalFlag()
     {
+        // UI3: group flags follow the same zoom/pan as the gold one.
+        positionGroupFlags();
         if (!mGlobalFlag || !mGlobalMapRender)
             return;
         if (!ArenaWaypoint::has())
@@ -1340,8 +1440,7 @@ namespace MWGui
 
         Settings::Manager::setBool("global", "Map", mGlobal);
 
-        mButton->setCaptionWithReplacing( mGlobal ? "#{sLocal}" :
-                "#{sWorld}");
+        updateWorldButton();
 
         if (mGlobal)
             globalMapUpdatePlayer ();

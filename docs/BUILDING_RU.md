@@ -79,3 +79,9 @@ git push origin v1.0.0
 Полный каталог `extern/LuaJIT` должен содержать настоящие `src/Makefile`, `src/luajit_rolling.h` и другие исходные файлы. Файл `src/luajit.h` **создаётся при сборке**. После `git add -A` запускайте `python3 CI/verify-rubic0n-vendor.py`: проверка обнаружит исходники, проигнорированные Git. На обычный LuaJIT возвращаться не требуется.
 
 Для Windows OpenSSL использует `CI/vcpkg-triplets/x64-windows-release.cmake` с `VCPKG_BUILD_TYPE=release`: библиотека устанавливается в `C:/vcpkg/installed/x64-windows-release`, **без отдельной компиляции Debug-варианта**. Это не отменяет библиотеки совместимости TLS для Qt 5.
+
+## Полный приватный архив Android и подпись APK
+
+**Только в личном полном архиве** включены `android/`, клиент, локальный сервер, задача GitHub Actions Android ARM64 и **исходный ключ владельца** `android/signing-local/ArenaMP-release.jks` вместе с `signing.properties`. Это позволяет собирать `assembleMainlineRelease` с прежней подписью и обновлять установленное приложение. CI проверяет сертификат и запрещает сборку с ключом в публичном репозитории. **Полный архив с Android и ключом нельзя размещать в открытом GitHub.**
+
+В общедоступном Windows/Linux-архиве нет Android и файлов подписи. Исходники, прикрепляемые к GitHub Releases даже из приватной версии, дополнительно исключают ключ и пароль. Подробности: [Android README](../android/README_RU.md) и [инструкция Android](ANDROID_RU.md).

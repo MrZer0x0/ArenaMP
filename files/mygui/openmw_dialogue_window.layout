@@ -7,28 +7,10 @@
 
         <Widget type="TextBox" skin="SandText" position="18 6 430 25" name="NpcName" align="Left Top HStretch">
             <Property key="TextAlign" value="Left VCenter"/>
-            <Property key="FontHeight" value="18"/>
+            <Property key="FontName" value="ArenaDialogueFont"/>
             <Property key="NeedMouse" value="false"/>
         </Widget>
 
-
-        <Widget type="ProgressBar" skin="MW_Progress_Blue" position="465 40 224 18"
-            align="Right Top" name="Disposition">
-            <Widget type="TextBox" skin="ProgressText" position="0 0 224 12" name="DispositionText" align="Stretch">
-                <Property key="NeedMouse" value="false"/>
-            </Widget>
-        </Widget>
-		
-		<Widget type="ProgressBar" skin="MW_EnergyBar_Red" position="465 10 224 18"
-            align="Right Top" name="NpcHealth">
-            <Property key="NeedMouse" value="false"/>
-            <Widget type="TextBox" skin="SandBrightText" position="0 0 224 14" name="NpcHealthText" align="Stretch">
-                <Property key="NeedMouse" value="false"/>
-                <Property key="TextAlign" value="Center"/>
-                <Property key="TextShadow" value="true"/>
-                <Property key="TextShadowColour" value="0 0 0"/>
-            </Widget>
-        </Widget>
 
         <!-- Dialogue text pane. -->
         <Widget type="Widget" skin="BlackBG" position="10 34 432 326" align="Stretch">
@@ -55,15 +37,33 @@
             <Property key="Alpha" value="0.75"/>
             <Property key="NeedMouse" value="false"/>
         </Widget>
-		<Widget type="ProgressBar" skin="MW_EnergyBar_Red" position="0 0 190 16"
-            align="Right Stretch" name="NpcHealth">
+        <!-- UI8: NPC health and disposition as HUD-style bars (dark glass, bronze
+             ends, glossy fill): red health on top, gold disposition below.
+             UI9 fix: 20 px bars, and the captions are siblings drawn over the
+             bars. Inside a ProgressBar MyGUI parents children to its fill area,
+             which clipped the text. Declared after the panels so the dark
+             panel does not dim the lower bar. -->
+        <Widget type="ProgressBar" skin="ArenaHUD_Bar_Health" position="465 4 224 20"
+            align="Right Top" name="NpcHealth">
             <Property key="NeedMouse" value="false"/>
-            <Widget type="TextBox" skin="SandBrightText" position="0 0 190 16" name="NpcHealthText" align="Stretch">
-                <Property key="NeedMouse" value="false"/>
-                <Property key="TextAlign" value="Center"/>
-                <Property key="TextShadow" value="true"/>
-                <Property key="TextShadowColour" value="0 0 0"/>
-            </Widget>
+        </Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="465 4 224 20" align="Right Top" name="NpcHealthText">
+            <Property key="NeedMouse" value="false"/>
+            <Property key="TextAlign" value="Center"/>
+            <Property key="TextShadow" value="true"/>
+            <Property key="TextShadowColour" value="0 0 0"/>
+        </Widget>
+
+        <!-- UI9.4: disposition is blue again, as in the original game. -->
+        <Widget type="ProgressBar" skin="ArenaHUD_Bar_Magicka" position="465 26 224 20"
+            align="Right Top" name="Disposition">
+            <Property key="NeedMouse" value="false"/>
+        </Widget>
+        <Widget type="TextBox" skin="SandBrightText" position="465 26 224 20" align="Right Top" name="DispositionText">
+            <Property key="NeedMouse" value="false"/>
+            <Property key="TextAlign" value="Center"/>
+            <Property key="TextShadow" value="true"/>
+            <Property key="TextShadowColour" value="0 0 0"/>
         </Widget>
 
         <Widget type="TextBox" skin="SandText" position="430 44 26 18" name="ChoicesLabel" align="Right Top">

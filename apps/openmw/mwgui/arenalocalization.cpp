@@ -18,6 +18,9 @@ namespace MWGui
         load("en", mEnglish);
         if (mLanguage != "en")
             load(mLanguage, mCurrent);
+        const std::string gameLanguage = normaliseLanguage("auto", encoding);
+        if (gameLanguage != "en")
+            load(gameLanguage, mGameStrings);
     }
 
     void ArenaLocalization::setLanguage(const std::string& language)
@@ -44,6 +47,15 @@ namespace MWGui
 
         Log(Debug::Warning) << "ArenaMP localisation key is missing: " << key;
         return key;
+    }
+
+    std::string ArenaLocalization::translateGame(const std::string& key) const
+    {
+        const auto game = mGameStrings.find(key);
+        if (game != mGameStrings.end())
+            return game->second;
+        const auto english = mEnglish.find(key);
+        return english != mEnglish.end() ? english->second : key;
     }
 
     std::string ArenaLocalization::normaliseLanguage(std::string language, ToUTF8::FromType encoding)

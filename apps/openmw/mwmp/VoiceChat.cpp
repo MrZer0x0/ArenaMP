@@ -50,77 +50,77 @@ namespace
     // on the game thread.
     std::atomic<int> sGyroUiState{-1};        // -1 unknown, 0 off, 1 on
     std::atomic<int> sGyroRequestedState{-1}; // -1 no request, 0 off, 1 on
-    bool sGyroImmersiveManaged = false;
-    bool sGyroPreviousImmersive = false;
+    // GB1: the gyroscope shows the first-person body through a temporary camera
+    // override (World::setGyroImmersiveFirstPerson) and never writes the
+    // player's "immersive first person" setting. Older builds wrote it and kept
+    // the previous value only in memory, so quitting with the gyroscope on left
+    // the body enabled for good.
+    void applyGyroBodyOverride(bool enabled)
+    {
+        const MWBase::Environment& env = MWBase::Environment::get();
+        if (env.getWorld() != nullptr)
+            env.getWorld()->setGyroImmersiveFirstPerson(enabled);
+    }
+
+    void repairGyroBodySettingOnce()
+    {
+        static bool checked = false;
+        if (checked)
+            return;
+        checked = true;
+
+        try
+        {
+            if (Settings::Manager::getBool("gyroscope body repaired", "Camera"))
+                return;
+        }
+        catch (const std::exception&)
+        {
+            // A stale settings bundle without the key: repair once and record it.
+        }
+
+        // A settings file that has both the gyroscope and the body on was written by
+        // the old code, which forced the body on together with the gyroscope. The
+        // gyroscope still shows the body while it is on; once it is turned off the
+        // player's own choice (off) applies again.
+        Settings::CategorySettingVector changed;
+        if (Settings::Manager::getBool("enable gyroscope", "Input")
+            && Settings::Manager::getBool("immersive first person", "Camera"))
+        {
+            Settings::Manager::setBool("immersive first person", "Camera", false);
+            changed.emplace("Camera", "immersive first person");
+        }
+        Settings::Manager::setBool("gyroscope body repaired", "Camera", true);
+
+        const MWBase::Environment& env = MWBase::Environment::get();
+        if (!changed.empty() && env.getWorld() != nullptr)
+            env.getWorld()->processChangedSettings(changed);
+        Settings::Manager::resetPendingChange("immersive first person", "Camera");
+        Settings::Manager::resetPendingChange("gyroscope body repaired", "Camera");
+        Settings::Manager::saveUser();
+    }
 
     void setAndroidGyroOnGameThread(bool enabled)
     {
         const bool current = Settings::Manager::getBool("enable gyroscope", "Input");
-        bool inputChanged = false;
-        bool cameraChanged = false;
-
-        if (enabled)
+        if (current != enabled)
         {
-            if (!sGyroImmersiveManaged)
-            {
-                sGyroPreviousImmersive = Settings::Manager::getBool("immersive first person", "Camera");
-                sGyroImmersiveManaged = true;
-            }
-            if (!current)
-            {
-                Settings::Manager::setBool("enable gyroscope", "Input", true);
-                inputChanged = true;
-            }
-            if (!Settings::Manager::getBool("immersive first person", "Camera"))
-            {
-                Settings::Manager::setBool("immersive first person", "Camera", true);
-                cameraChanged = true;
-            }
-        }
-        else
-        {
-            if (current)
-            {
-                Settings::Manager::setBool("enable gyroscope", "Input", false);
-                inputChanged = true;
-            }
-            if (sGyroImmersiveManaged)
-            {
-                const bool immersiveNow = Settings::Manager::getBool("immersive first person", "Camera");
-                if (immersiveNow != sGyroPreviousImmersive)
-                {
-                    Settings::Manager::setBool("immersive first person", "Camera", sGyroPreviousImmersive);
-                    cameraChanged = true;
-                }
-                sGyroImmersiveManaged = false;
-            }
-        }
+            Settings::Manager::setBool("enable gyroscope", "Input", enabled);
 
-        // setBool() only marks settings as pending. Apply the exact changed keys
-        // immediately so SensorManager reopens/closes the SDL gyroscope and the
-        // camera rebuilds its immersive first-person mesh without requiring the
-        // Settings window's Apply button. Do not clear unrelated pending changes.
-        Settings::CategorySettingVector changed;
-        if (inputChanged)
+            // setBool() only marks settings as pending. Apply the exact changed key
+            // immediately so SensorManager reopens/closes the SDL gyroscope without
+            // requiring the Settings window's Apply button. Do not clear unrelated
+            // pending changes.
+            Settings::CategorySettingVector changed;
             changed.emplace("Input", "enable gyroscope");
-        if (cameraChanged)
-            changed.emplace("Camera", "immersive first person");
-
-        if (!changed.empty())
-        {
             const MWBase::Environment& env = MWBase::Environment::get();
-            if (inputChanged && env.getInputManager() != nullptr)
+            if (env.getInputManager() != nullptr)
                 env.getInputManager()->processChangedSettings(changed);
-            if (cameraChanged && env.getWorld() != nullptr)
-                env.getWorld()->processChangedSettings(changed);
-
-            if (inputChanged)
-                Settings::Manager::resetPendingChange("enable gyroscope", "Input");
-            if (cameraChanged)
-                Settings::Manager::resetPendingChange("immersive first person", "Camera");
+            Settings::Manager::resetPendingChange("enable gyroscope", "Input");
             Settings::Manager::saveUser();
         }
 
+        applyGyroBodyOverride(enabled);
         sGyroUiState.store(enabled ? 1 : 0, std::memory_order_release);
     }
 
@@ -128,6 +128,8 @@ namespace
     {
         // An explicit OSC button press has priority over the previous settings
         // snapshot. This avoids briefly applying the old state before the new one.
+        repairGyroBodySettingOnce();
+
         const int requested = sGyroRequestedState.exchange(-1, std::memory_order_acq_rel);
         if (requested >= 0)
         {
@@ -146,6 +148,12 @@ namespace
         {
             // Settings window/launcher changed the value outside the OSC button.
             setAndroidGyroOnGameThread(settingEnabled);
+        }
+        else
+        {
+            // GB1: the world (and its camera) can be created after the first
+            // sync; re-assert the override. The camera ignores repeated values.
+            applyGyroBodyOverride(settingEnabled);
         }
     }
 #endif

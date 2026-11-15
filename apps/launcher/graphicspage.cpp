@@ -341,7 +341,7 @@ void Launcher::GraphicsPage::syncGraphicsControls()
     waterModeAdvancedComboBox->setCurrentIndex(waterModeIndex);
 
     const int waterTextureSize = Settings::Manager::getInt("rtt size", "Water");
-    waterTextureSizeComboBox->setCurrentIndex(waterTextureSize >= 2048 ? 3 : waterTextureSize >= 1024 ? 2 : waterTextureSize >= 512 ? 1 : 0);
+    waterTextureSizeComboBox->setCurrentIndex(waterTextureSize >= 1024 ? 2 : waterTextureSize >= 512 ? 1 : 0);
     const bool waterRefraction = Settings::Manager::getBool("refraction", "Water");
     waterRefractionCheckBox->setChecked(waterRefraction);
     waterRefractionScaleComboBox->setEnabled(waterRefraction);
@@ -403,7 +403,8 @@ void Launcher::GraphicsPage::syncGraphicsControls()
     if (shadowFadeStart != 0.f)
         fadeStartSpinBox->setValue(shadowFadeStart);
 
-    const int shadowRes = Settings::Manager::getInt("shadow map resolution", "Shadows");
+    // P001: older settings may hold 4096/8192; the largest map is now 2048.
+    const int shadowRes = std::min(2048, Settings::Manager::getInt("shadow map resolution", "Shadows"));
     const int shadowResIndex = shadowResolutionComboBox->findText(QString::number(shadowRes));
     if (shadowResIndex != -1)
         shadowResolutionComboBox->setCurrentIndex(shadowResIndex);
@@ -498,12 +499,13 @@ bool Launcher::GraphicsPage::saveSettings()
 
     // X033: full launcher-side water controls. The graphics preset chooses a
     // sensible backend/texture tier, but manual water tuning remains independent.
-    static const int waterTextureSizes[] = { 256, 512, 1024, 2048 };
+    // P001: 1024 is the largest water texture.
+    static const int waterTextureSizes[] = { 256, 512, 1024 };
     static const float waterRefractionScales[] = { 4.f, 3.f, 2.f, 1.f };
     Settings::Manager::setString("shader mode", "Water",
         waterModeAdvancedComboBox->currentIndex() == 0 ? "simple" : "new");
     Settings::Manager::setBool("shader", "Water", true);
-    Settings::Manager::setInt("rtt size", "Water", waterTextureSizes[std::max(0, std::min(3, waterTextureSizeComboBox->currentIndex()))]);
+    Settings::Manager::setInt("rtt size", "Water", waterTextureSizes[std::max(0, std::min(2, waterTextureSizeComboBox->currentIndex()))]);
     Settings::Manager::setBool("refraction", "Water", waterRefractionCheckBox->isChecked());
     Settings::Manager::setInt("reflection detail", "Water", std::max(0, std::min(5, waterReflectionDetailComboBox->currentIndex())));
     Settings::Manager::setFloat("refraction scale", "Water", waterRefractionScales[std::max(0, std::min(3, waterRefractionScaleComboBox->currentIndex()))]);
@@ -788,12 +790,12 @@ QString Launcher::GraphicsPage::qualityName(int level) const
 QString Launcher::GraphicsPage::qualityDescription(int level) const
 {
     static const std::array<const char*, 6> descriptions = {
-        "Maximum performance for software renderers and very old integrated graphics. Uses simple non-PBR water, shorter view distance, small terrain budget and no realtime shadows.",
-        "For older integrated GPUs. Uses simple non-PBR water, modest view distance, actor shadows and lightweight grass without expensive object shadows.",
-        "A stable default for entry-level hardware. Enables distant terrain, normal maps, actor shadows and conservative paging.",
-        "Balanced visual quality for modern integrated graphics and mainstream discrete GPUs. Enables object shadows, improved water and denser grass.",
-        "For powerful discrete GPUs. Uses longer view distance, detailed terrain, terrain shadows, higher anisotropy and larger shadow maps.",
-        "Maximum detail for high-end GPUs. Uses the longest draw distances, dense groundcover, high light counts and very large shadow maps."
+        "Maximum performance for software renderers and very old integrated graphics. Simple water, short view distance, light grass, no shadows and no normal maps.",
+        "New PBR water with refraction, HDR, Bloom and Godrays. Modest view distance and light grass; no shadows, no normal maps and no software occlusion culling.",
+        "A stable default for entry-level hardware. Normal maps, actor shadows (1024), improved water and conservative paging.",
+        "Balanced visual quality for modern integrated graphics and mainstream discrete GPUs. Object shadows, specular maps and denser grass.",
+        "For powerful discrete GPUs. Longer view distance, detailed terrain, terrain shadows (2048), higher anisotropy and 1024 water textures.",
+        "Maximum detail for high-end GPUs. Longest draw distances, densest grass and 2048 shadow maps. Never chosen automatically: OpenMW is usually limited by the processor."
     };
     return tr(descriptions[std::max(0, std::min(5, level))]);
 }
@@ -987,7 +989,11 @@ int Launcher::GraphicsPage::recommendQuality(const HardwareInfo& info) const
     if (info.logicalCores <= 2)
         level = std::min(level, 1);
     else if (info.logicalCores <= 4)
-        level = std::min(level, 3);
+        level = std::min(level, 2);
+
+    // P001: OpenMW is usually CPU-bound, so video memory alone never earns Ultra.
+    // Automatic selection stops at High; Ultra stays available by hand.
+    level = std::min(level, 4);
 
     // Rendering at 4K costs substantially more even when the adapter model is unknown.
     if (info.displayMegapixelsTimes100 >= 800 && info.dedicatedVramMb < 8192
@@ -1093,6 +1099,19 @@ void Launcher::GraphicsPage::initializeQualityPage()
     // closing the window must not touch settings.cfg. Further preset changes
     // happen only through the explicit Apply preset button.
     const QString pendingKey = QStringLiteral("General/Graphics/initialQualityPresetPending");
+
+    // P001 one-time migration: the preset tables changed (water <= 1024,
+    // shadows <= 2048, threading, lights, occlusion). Re-apply the player's
+    // selected preset once, Auto or manual, so existing settings.cfg files do not
+    // keep the old Ultra values. Only preset-owned keys are written, as always.
+    const QString p001Key = QStringLiteral("General/Graphics/p001PerformancePresetsApplied");
+    if (mLauncherSettings.value(p001Key, QStringLiteral("false"))
+            .compare(QStringLiteral("true"), Qt::CaseInsensitive) != 0)
+    {
+        storeLauncherValue(pendingKey, QStringLiteral("true"));
+        storeLauncherValue(p001Key, QStringLiteral("true"));
+    }
+
     const bool initialPresetPending = mLauncherSettings.value(
         pendingKey, QStringLiteral("false"))
         .compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
@@ -1125,6 +1144,43 @@ void Launcher::GraphicsPage::initializeQualityPage()
             storeLauncherValue(QStringLiteral("General/Graphics/initialQualityPresetApplied"),
                 QStringLiteral("true"));
         }
+    }
+
+    // UI6: retire the UI5 low-end workaround and apply only the requested
+    // effect switches once. Do not reset the rest of a customised preset.
+    const QString ui6Key = QStringLiteral("General/Graphics/ui6WaterPostApplied");
+    if (mLauncherSettings.value(ui6Key, QStringLiteral("false"))
+            .compare(QStringLiteral("true"), Qt::CaseInsensitive) != 0
+        && reloadUserSettingsFromDisk())
+    {
+        bool parsed = false;
+        int level = mode.toInt(&parsed);
+        if (mode == QLatin1String("auto"))
+            level = autoSelect ? mRecommendedQuality : 2;
+        else if (!parsed)
+            level = 2;
+        level = std::max(0, std::min(5, level));
+        const bool ui5Applied = mLauncherSettings.value(
+            QStringLiteral("General/Graphics/ui5LowWaterStabilityApplied"), QStringLiteral("false"))
+            .compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0;
+        if (ui5Applied && level <= 1)
+        {
+            if (Settings::Manager::getString("threading model", "OSG") == "SingleThreaded")
+                Settings::Manager::setString("threading model", "OSG", "DrawThreadPerContext");
+            if (level == 0)
+                Settings::Manager::setBool("refraction", "Water", false);
+        }
+        if (level >= 1)
+        {
+            Settings::Manager::setBool("shader", "Water", true);
+            Settings::Manager::setString("shader mode", "Water", "new");
+            Settings::Manager::setBool("refraction", "Water", true);
+            Settings::Manager::setBool("hdr lighting", "Shaders", true);
+            Settings::Manager::setBool("bloom enabled", "Shaders", true);
+            Settings::Manager::setBool("god rays enabled", "Shaders", true);
+        }
+        if (saveUserSettingsToDisk())
+            storeLauncherValue(ui6Key, QStringLiteral("true"));
     }
 
     mInitializingQuality = false;
@@ -1254,6 +1310,9 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     // Lower values cull fewer small projected features.
     static const int cullingPixels[] = { 12, 11, 10, 8, 7, 6 };
     static const int cellCache[] = { 24, 32, 48, 64, 96, 128 };
+    // P001: shadows stop at this distance even when the view reaches further.
+    // Cascades spread over a shorter range are sharper and cost fewer casters.
+    static const int shadowDistanceCap[] = { 4096, 4096, 6144, 8192, 8192, 10240 };
     static const int targetFps[] = { 20, 25, 30, 45, 60, 75 };
     // Distant land is always enabled. Minimum is the safe baseline requested
     // for every build; higher presets increase terrain and texture detail.
@@ -1264,16 +1323,23 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     static const float maxCompositeGeometrySize[] = { 4.f, 4.f, 6.f, 8.f, 12.f, 16.f };
     static const float objectPagingMergeFactor[] = { 100000.f, 75000.f, 50000.f, 30000.f, 15000.f, 8000.f };
     static const float objectPagingMinSize[] = { 1.f, 0.85f, 0.65f, 0.50f, 0.35f, 0.25f };
-    static const int maxLights[] = { 8, 12, 16, 24, 32, 48 };
+    // P001: with the stock light bounds (1.65) an object rarely meets more than
+    // 16-24 lights; higher caps only lengthened the per-pixel light loop.
+    static const int maxLights[] = { 8, 8, 12, 16, 20, 24 };
     static const int anisotropy[] = { 0, 2, 4, 8, 12, 16 };
     static const int antialiasing[] = { 0, 0, 2, 2, 4, 4 };
-    static const int waterRtt[] = { 256, 256, 512, 512, 1024, 2048 };
-    // Minimum/Low avoid reflecting the entire city into the water RTT.
-    static const int waterReflectionDetail[] = { 0, 1, 3, 4, 5, 5 };
-    // Shadow-map sizes below 512 are intentionally not used by any quality preset.
-    static const int shadowResolution[] = { 512, 512, 1024, 2048, 4096, 8192 };
+    // P001: water reflection/refraction textures never exceed 1024.
+    static const int waterRtt[] = { 256, 256, 512, 512, 1024, 1024 };
+    // Minimum/Low avoid reflecting the entire city into the water RTT. No preset
+    // reflects groundcover (detail 5): it is a whole extra grass pass for blades
+    // that are hardly visible in a reflection.
+    static const int waterReflectionDetail[] = { 0, 1, 2, 3, 4, 4 };
+    // P001: shadow maps never exceed 2048. Minimum/Low render no shadows at all,
+    // so their entries only matter if the player enables shadows by hand.
+    static const int shadowResolution[] = { 512, 512, 1024, 1024, 2048, 2048 };
     static const float grassDensity[] = { 0.30f, 0.45f, 0.65f, 0.80f, 0.90f, 1.00f };
-    static const float grassDistance[] = { 4096.f, 6144.f, 8192.f, 10240.f, 12288.f, 16384.f };
+    // P001: groundcover is always on and drawn 4096..8192 units away, Minimum included.
+    static const float grassDistance[] = { 4096.f, 4096.f, 5120.f, 6144.f, 7168.f, 8192.f };
     static const int physicsThreads[] = { 0, 0, 1, 1, 2, 2 };
     // Occlusion presets are intentionally conservative. A slightly denser depth buffer
     // avoids coarse false-positive occlusion on the minimum and low profiles, while the
@@ -1293,7 +1359,8 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     int effectiveAa = antialiasing[level];
     int effectiveShadowResolution = shadowResolution[level];
     int effectiveMaxLights = maxLights[level];
-    static const int materialQuality[] = { 0, 1, 1, 2, 3, 4 };
+    // P001: Minimum and Low use no normal/specular maps.
+    static const int materialQuality[] = { 0, 0, 1, 2, 3, 4 };
     int effectiveMaterialQuality = materialQuality[level];
 
     const QString rendererLower = mHardwareInfo.renderer.toLower();
@@ -1313,7 +1380,12 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
 
     Settings::Manager::setInt("viewing distance", "Camera", viewDistance[level]);
     Settings::Manager::setInt("small feature culling pixel size", "Camera", cullingPixels[level]);
-    Settings::Manager::setBool("occlusion culling", "Camera", true);
+    // P001: software occlusion culling rasterizes occluders on the CPU in the
+    // cull traversal. It pays off only with CPU headroom: off on Minimum/Low and
+    // on processors with four or fewer logical cores (0 means "not detected").
+    const bool occlusionCulling = level >= 2
+        && (mHardwareInfo.logicalCores == 0 || mHardwareInfo.logicalCores > 4);
+    Settings::Manager::setBool("occlusion culling", "Camera", occlusionCulling);
     Settings::Manager::setInt("occlusion buffer width", "Camera", occlusionWidth[level]);
     Settings::Manager::setInt("occlusion buffer height", "Camera", occlusionHeight[level]);
     Settings::Manager::setInt("occlusion terrain radius", "Camera", occlusionTerrainRadius[level]);
@@ -1367,17 +1439,21 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setBool("auto use object specular maps", "Shaders", specularMaps);
     Settings::Manager::setBool("auto use terrain specular maps", "Shaders", specularMaps);
     Settings::Manager::setInt("max lights", "Shaders", effectiveMaxLights);
+    // P001: stock OpenMW light reach. 3.30 doubled each light's radius, so every
+    // object collected far more lights; 0 never culled distant lights at all.
+    Settings::Manager::setFloat("light bounds multiplier", "Shaders", 1.65f);
+    Settings::Manager::setInt("maximum light distance", "Shaders", 8192);
+    Settings::Manager::setFloat("light fade start", "Shaders", 0.85f);
     // All ArenaMP presets use the shader-compatible lighting backend. Legacy
     // lighting is never selected by a preset, including the minimum profile.
     Settings::Manager::setString("lighting method", "Shaders", "shaders compatibility");
 
-    // X030 quality-aware water. Minimum and Low deliberately avoid the PBR
-    // water path; Balanced and above use the new renderer. Both remain shader
-    // backed so reflection detail and RTT scaling continue to work.
-    Settings::Manager::setString("shader mode", "Water", level <= 1 ? "simple" : "new");
+    // UI6: Low and above use the new PBR water renderer with refraction.
+    // Minimum retains the simple shader without refraction.
+    Settings::Manager::setString("shader mode", "Water", level == 0 ? "simple" : "new");
     Settings::Manager::setBool("shader", "Water", true);
     Settings::Manager::setInt("rtt size", "Water", waterRtt[level]);
-    Settings::Manager::setBool("refraction", "Water", level >= 2);
+    Settings::Manager::setBool("refraction", "Water", level >= 1);
     Settings::Manager::setInt("reflection detail", "Water", waterReflectionDetail[level]);
     Settings::Manager::setInt("rain ripple detail", "Water", level >= 4 ? 2 : (level >= 2 ? 1 : 0));
     Settings::Manager::setBool("shader water ripples", "Water", level >= 1);
@@ -1388,38 +1464,39 @@ void Launcher::GraphicsPage::applyQualityLevel(int requestedLevel)
     Settings::Manager::setFloat("refraction scale", "Water",
         level <= 1 ? 4.f : (level <= 3 ? 3.f : (level == 4 ? 2.f : 1.f)));
 
-    Settings::Manager::setBool("enable shadows", "Shadows", level >= 1);
-    Settings::Manager::setBool("player shadows", "Shadows", level >= 1);
-    Settings::Manager::setBool("actor shadows", "Shadows", level >= 1);
+    // P001: Minimum and Low render no shadows, actors' included.
+    Settings::Manager::setBool("enable shadows", "Shadows", level >= 2);
+    Settings::Manager::setBool("player shadows", "Shadows", level >= 2);
+    Settings::Manager::setBool("actor shadows", "Shadows", level >= 2);
     Settings::Manager::setBool("object shadows", "Shadows", level >= 3);
     Settings::Manager::setBool("terrain shadows", "Shadows", level >= 4);
     Settings::Manager::setBool("enable indoor shadows", "Shadows", level >= 2);
     Settings::Manager::setBool("link shadow distance to viewing distance", "Shadows", true);
-    Settings::Manager::setInt("maximum shadow map distance", "Shadows", std::min(16384, viewDistance[level]));
+    Settings::Manager::setInt("maximum shadow map distance", "Shadows",
+        std::min(shadowDistanceCap[level], viewDistance[level]));
     Settings::Manager::setInt("shadow map resolution", "Shadows", effectiveShadowResolution);
-    Settings::Manager::setString("compute scene bounds", "Shadows", level >= 5 ? "primitives" : "bounds");
+    // P001: "primitives" walks every triangle of every caster on the CPU each frame.
+    Settings::Manager::setString("compute scene bounds", "Shadows", "bounds");
 
-    Settings::Manager::setBool("enabled", "Groundcover", level >= 1);
+    Settings::Manager::setBool("enabled", "Groundcover", true);
     Settings::Manager::setFloat("density", "Groundcover", grassDensity[level]);
     Settings::Manager::setFloat("rendering distance", "Groundcover", grassDistance[level]);
     Settings::Manager::setInt("async num threads", "Physics", physicsThreads[level]);
 
-    const char* threadingModel = level <= 1 ? "SingleThreaded"
-        : (level >= 5 && mHardwareInfo.vendor != QLatin1String("apple")
-            ? "CullDrawThreadPerContext" : "DrawThreadPerContext");
-    Settings::Manager::setString("threading model", "OSG", threadingModel);
+    // UI6: restore the P001 threading model on every preset.
+    Settings::Manager::setString("threading model", "OSG", "DrawThreadPerContext");
 
     // U030: the common baseline supplies tone parameters only. It must not
     // undo the material/lighting quality selected above, especially Minimum.
     applyRequiredShaderBaseline();
-    const bool postEnabled = level >= 2;
+    const bool postEnabled = level >= 1;
     Settings::Manager::setBool("hdr lighting", "Shaders", postEnabled);
     Settings::Manager::setBool("bloom enabled", "Shaders", postEnabled);
+    Settings::Manager::setBool("god rays enabled", "Shaders", postEnabled);
     if (!postEnabled)
     {
         Settings::Manager::setBool("native ssr enabled", "Shaders", false);
         Settings::Manager::setBool("smaa enabled", "Shaders", false);
-        Settings::Manager::setBool("god rays enabled", "Shaders", false);
         Settings::Manager::setBool("atmospheric fog enabled", "Shaders", false);
     }
 

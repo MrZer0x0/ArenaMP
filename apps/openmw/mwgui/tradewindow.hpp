@@ -5,6 +5,7 @@
 
 #include "referenceinterface.hpp"
 #include "windowbase.hpp"
+#include "arenafiltercolumn.hpp"
 #include <vector>
 
 namespace Gui
@@ -93,6 +94,8 @@ namespace MWGui
             MyGUI::Button* mCancelButton;
             MyGUI::Button* mOfferButton;
             MyGUI::ImageBox* mMerchantGoldIcon;
+            // UI8: filter column shared with the inventory and container windows.
+            ArenaUi::FilterColumn mFilterColumn;
             MyGUI::TextBox* mMerchantGold;
 
             int mItemToSell;

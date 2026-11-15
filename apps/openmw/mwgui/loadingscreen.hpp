@@ -7,7 +7,7 @@
 #include <osg/Timer>
 #include <osg/ref_ptr>
 #include "windowbase.hpp"
-#include <components/loadinglistener/loadinglistener.hpp>
+#include <components/loadinglistener/progress.hpp>
 
 namespace osgViewer { class Viewer; }
 namespace Resource { class ResourceSystem; }
@@ -30,12 +30,16 @@ namespace MWGui
         void setProgress(size_t value) override;
         void increaseProgress(size_t increase = 1) override;
         void setVisible(bool visible) override;
+        void beginStartupProgress() override;
+        void endStartupProgress() override;
+        void setProgressStage(Loading::Stage stage, size_t index = 0, size_t count = 1) override;
         double getTargetFrameRate() const;
 
     private:
         void findSplashScreens();
         void changeWallpaper();
         void setupCopyFramebufferToTextureCallback();
+        void restoreViewerThreading();
         BackgroundImage* mSceneImage;
         osg::ref_ptr<osg::Texture2D> mTexture;
         osg::ref_ptr<CopyFramebufferToTextureCallback> mCopyFramebufferToTextureCallback;
@@ -52,6 +56,9 @@ namespace MWGui
 
         bool mShowWallpaper = false;
         bool mSceneSnapshotReady = false;
+        int mPreviousThreadingModel = -1;
+        int mLayoutWidth = -1, mLayoutHeight = -1;
+        bool mTipLayoutDirty = true;
         bool mHasCompletedOuterLoad = false;
         DestinationKind mDestinationKind = DestinationKind::Unknown;
         void updateLayout();
@@ -64,18 +71,17 @@ namespace MWGui
         osg::Timer mTimer;
         double mLastRenderTime = -1000.0;
         int mNestedLoadingCount = 0;
-        size_t mProgress = 0;
-        size_t mProgressRange = 1;
+        Loading::Progress mProgress;
+        bool mStartupProgress = false;
         float mOldIcoMin = 0.f;
         unsigned int mOldIcoMax = 0;
         int mTipIndex = -1;
         MyGUI::Widget* mLoadingBox;
-        MyGUI::Widget* mTipStrip;
-        MyGUI::Widget* mStatusBackground;
-        MyGUI::TextBox* mLoadingText;
-        MyGUI::TextBox* mCenterLoadingText;
+        MyGUI::Widget* mLoadingPanel;
+        MyGUI::TextBox* mProgressText;
+        MyGUI::TextBox* mTipTitle;
         MyGUI::TextBox* mTipText;
-        MyGUI::ScrollBar* mProgressBar;
+        MyGUI::ProgressBar* mProgressBar;
     };
 }
 #endif

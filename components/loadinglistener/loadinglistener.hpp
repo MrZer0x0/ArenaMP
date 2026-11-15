@@ -5,6 +5,10 @@
 
 namespace Loading
 {
+    // Stages of a single client startup / cell transition. A listener may ignore
+    // them; command-line loaders retain their existing local counters.
+    enum class Stage { Content, World, Terrain, Objects };
+
     class Listener
     {
     public:
@@ -29,6 +33,10 @@ namespace Loading
         virtual void setProgress (size_t value) {}
         /// Increase current progress, default by 1.
         virtual void increaseProgress (size_t increase = 1) {}
+
+        virtual void beginStartupProgress() {}
+        virtual void endStartupProgress() {}
+        virtual void setProgressStage(Stage stage, size_t index = 0, size_t count = 1) {}
 
         virtual ~Listener() = default;
     };

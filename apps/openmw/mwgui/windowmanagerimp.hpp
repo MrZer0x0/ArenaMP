@@ -308,6 +308,7 @@ namespace MWGui
     void setWeaponVisibility(bool visible) override;
     void setSpellVisibility(bool visible) override;
     void setSneakVisibility(bool visible) override;
+    void setSneakDetection(int level) override;
 
     /// activate selected quick key
     void editQuickKey(int index) override;
@@ -400,6 +401,7 @@ namespace MWGui
     bool isWindowVisible() override;
     std::string getArenaLanguage() const override;
     void setArenaLanguage(const std::string& language) override;
+    void refreshSceneVisibility() override;
     void openBookWriter() override;
     void openBookWriter(const MWWorld::Ptr& source) override;
 
@@ -510,6 +512,7 @@ namespace MWGui
 
   private:
     unsigned int mOldUpdateMask; unsigned int mOldCullMask;
+    bool mSceneDisabled = false;
 
     const MWWorld::ESMStore* mStore;
     Resource::ResourceSystem* mResourceSystem;
@@ -644,6 +647,7 @@ namespace MWGui
     // is the rest window allowed?
     bool mRestAllowed;
 
+    void updateInteractiveMessageBoxInput();
     void updateVisible(); // Update visibility of all windows based on mode, shown and allowed settings
 
     void updateMap();

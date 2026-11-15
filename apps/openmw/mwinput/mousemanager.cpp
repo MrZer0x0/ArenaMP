@@ -71,7 +71,10 @@ namespace MWInput
         input->setJoystickLastUsed(false);
         input->resetIdleTime();
 
-        if (mGuiCursorEnabled)
+        // The GUI stack is authoritative even if its cached input flags have
+        // not yet caught up with a mode change in this event batch.
+        const bool guiMode = MWBase::Environment::get().getWindowManager()->isGuiMode();
+        if (guiMode || mGuiCursorEnabled)
         {
             input->setGamepadGuiCursorEnabled(true);
 
@@ -90,7 +93,7 @@ namespace MWInput
             MWBase::Environment::get().getWindowManager()->setCursorActive(true);
         }
 
-        if (mMouseLookEnabled && !input->controlsDisabled())
+        if (!guiMode && mMouseLookEnabled && !input->controlsDisabled())
         {
             MWBase::World* world = MWBase::Environment::get().getWorld();
 
@@ -273,7 +276,8 @@ namespace MWInput
 
     void MouseManager::update(float dt)
     {
-        if (!mMouseLookEnabled)
+        if (!mMouseLookEnabled
+            || MWBase::Environment::get().getWindowManager()->isGuiMode())
             return;
 
         float xAxis = mBindingsManager->getActionValue(A_LookLeftRight) * 2.0f - 1.0f;

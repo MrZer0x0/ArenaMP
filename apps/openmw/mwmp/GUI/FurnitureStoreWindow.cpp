@@ -1,5 +1,7 @@
 #include "FurnitureStoreWindow.hpp"
 
+#include "apps/openmw/mwgui/arenaiconbutton.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -672,6 +674,8 @@ namespace mwmp
                     std::max(1,static_cast<int>(c.width*scale)),std::max(1,static_cast<int>(c.height*scale)));
             }
         }
+        // UI3: buttons changed size; re-centre their icons and captions.
+        refreshIcons();
     }
 
     void FurnitureStoreWindow::localize()
@@ -719,6 +723,27 @@ namespace mwmp
         caption(mAdminPanel,"AdminCancelButton","admin.cancel");
         if (mSelected.empty()) mNotice->setCaption(furnitureText("select"));
         rebuildCategories();updateStyle();rebuildItems();
+        refreshIcons();
+    }
+
+    void FurnitureStoreWindow::refreshIcons()
+    {
+        using ArenaUi::IconMode;
+        const auto named=[this](const std::string& name)->MyGUI::Button* {
+            try { return getWidget(name)->castType<MyGUI::Button>(false); } catch (...) { return nullptr; }
+        };
+        ArenaUi::decorate(named("ShopTab"),"btn_shop",furnitureText("shop"),IconMode::IconAndCaption);
+        ArenaUi::decorate(named("InventoryTab"),"btn_take",furnitureText("inventory"),IconMode::IconAndCaption);
+        ArenaUi::decorate(named("PlacedTab"),"menu_decor",furnitureText("placed"),IconMode::IconAndCaption);
+        ArenaUi::decorate(named("CloseButton"),"btn_close",furnitureText("close"),IconMode::IconOnly);
+        ArenaUi::decorate(mPrevious,"btn_prev",furnitureText("previous"),IconMode::IconOnly);
+        ArenaUi::decorate(mNext,"btn_next",furnitureText("next"),IconMode::IconOnly);
+        ArenaUi::decorate(mPrimary,mTab==Shop?"btn_proceeds":mTab==Inventory?"btn_place":"btn_take",
+            furnitureText(mTab==Shop?"buy":mTab==Inventory?"place":"take"),IconMode::IconAndCaption);
+        ArenaUi::decorate(mSecondary,"btn_sell",furnitureText("sell"),IconMode::IconAndCaption);
+        ArenaUi::decorate(mAdminEdit,"btn_rename",furnitureText("admin.edit"),IconMode::IconOnly);
+        ArenaUi::decorate(mAdminCapture,"btn_add",furnitureText("admin.capture"),IconMode::IconAndCaption);
+        ArenaUi::decorate(mAdminRefresh,"btn_refresh",furnitureText("admin.refresh"),IconMode::IconOnly);
     }
 
     void FurnitureStoreWindow::onOpen()
@@ -848,6 +873,7 @@ namespace mwmp
         mAdminCapture->setVisible(mIsAdmin);
         mAdminRefresh->setVisible(mIsAdmin);
         mSecondary->setCaption(furnitureText("sell"));
+        refreshIcons();
         if (mSelected.empty()) return;
         if (mTab==Shop)
         {

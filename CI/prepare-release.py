@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PLATFORMS = {
     "WINDOWS_RESULT": ("windows", ".zip"),
     "LINUX_RESULT": ("linux", ".tar.gz"),
+    "MACOS_RESULT": ("macos", ".dmg"),
+    "ANDROID_RESULT": ("android", ".apk"),
 }
 
 
@@ -60,13 +62,19 @@ def main() -> int:
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if os.environ.get("GITHUB_SHA") and commit != os.environ["GITHUB_SHA"]:
         parser.error("Checkout commit differs from the triggering GitHub commit")
-    # This is a PUBLIC desktop-only repository. Never export private identities.
+    # Signed Android builds may use a deliberate checked-in private key. Never
+    # allow those credentials in a public release's source tarball.
     tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()
-    private = sorted(name for name in tracked if
-        name.startswith(("android/", "signing-local/")) or
-        name.lower().endswith((".jks", ".keystore", ".p12", ".pfx", "signing.properties")))
-    if private:
-        parser.error("Private/Android files found in public source index: " + ", ".join(private))
+    private_files = {"android/signing-local/ArenaMP-release.jks",
+                     "android/signing-local/signing.properties",
+                     "android/signing-local/README_PRIVATE.txt"}
+    sensitive = {name for name in tracked if name.startswith(("android/signing-local/", "signing-local/")) or
+                 name.endswith((".jks", ".keystore", ".p12", ".pfx", "signing.properties"))}
+    unexpected = sorted(sensitive - private_files)
+    if unexpected:
+        parser.error("Unrecognized signing credentials tracked: " + ", ".join(unexpected))
+    if sensitive and os.environ.get("GITHUB_REPOSITORY_PRIVATE", "").lower() != "true":
+        parser.error("Signed private-source variant must not publish from a public repository")
     output.mkdir(parents=True)
     releases = []
     for platform, src in selected:
@@ -85,10 +93,10 @@ def main() -> int:
     import tarfile
     with tarfile.open(source_tar, "r:gz") as tf:
         names = [f.name for f in tf.getmembers() if f.isfile()]
-    if any(name.startswith("ArenaMP/android/") or
-           name.lower().endswith((".jks", ".keystore", ".p12", ".pfx", "signing.properties"))
+    if any(name.startswith("ArenaMP/android/signing-local/") or
+           name.endswith((".jks", ".keystore", ".p12", ".pfx", "signing.properties"))
            for name in names):
-        parser.error("Private or Android files unexpectedly present in source archive")
+        parser.error("Signing material unexpectedly present in source release archive")
     info = {
         "project": "ArenaMP",
         "release": args.tag,

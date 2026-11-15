@@ -28,20 +28,24 @@
             <Widget type="Button" skin="" position_real="0 0 1 1" name="EventBoxGlobal" align="Stretch"/>
         </Widget>
 
-        <!-- Local map zoom -->
-        <Widget type="Button" skin="MW_Button" position="8 233 28 22" align="Bottom Left" name="ZoomOutButton">
+        <!-- UI8: frameless icon buttons. The icon is the button; hover, press
+             and the selected state show a soft gold glow (ArenaUI_IconButton).
+             Names stay in the tooltips. -->
+        <Widget type="Button" skin="ArenaUI_IconButton" position="4 228 30 30" align="Bottom Left" name="ZoomOutButton">
             <Property key="Caption" value="-"/>
             <Property key="NeedKey" value="false"/>
+            <UserString key="ArenaFrameless" value="1"/>
         </Widget>
-        <Widget type="Button" skin="MW_Button" position="39 233 28 22" align="Bottom Left" name="ZoomInButton">
+        <Widget type="Button" skin="ArenaUI_IconButton" position="36 228 30 30" align="Bottom Left" name="ZoomInButton">
             <Property key="Caption" value="+"/>
             <Property key="NeedKey" value="false"/>
+            <UserString key="ArenaFrameless" value="1"/>
         </Widget>
 
-        <!-- World button -->
-        <Widget type="AutoSizedButton" skin="MW_Button" position="213 233 61 22" align="Bottom Right" name="WorldButton">
-            <Property key="ExpandDirection" value="Left"/>
+        <!-- World / local map -->
+        <Widget type="Button" skin="ArenaUI_IconButton" position="250 228 30 30" align="Bottom Right" name="WorldButton">
             <Property key="NeedKey" value="false"/>
+            <UserString key="ArenaFrameless" value="1"/>
         </Widget>
 
     </Widget>

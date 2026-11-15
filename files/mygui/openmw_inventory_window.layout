@@ -17,38 +17,39 @@
         </Widget>
 
         <Widget type="Widget" skin="" position="228 0 350 223" align="Left Top" name="RightPane">
-            <!-- Top row is deliberately filters/sorting only.
-                 IF1: icon buttons (InventoryWindow::setupFilterIcons adds the icon
-                 and the tooltip; layoutFilterIcons places them). -->
-            <Widget type="Widget" skin="" position="0 6 350 28" align="Left Top HStretch" name="Categories">
-                <Widget type="Button" skin="MW_Button" position="0 0 40 28" name="AllButton">
+            <!-- IV1: filters are a column at the left edge of this pane: paper doll |
+                 filters | list, or filters | list without the doll.
+                 InventoryWindow::setupFilterIcons adds the icons and tooltips;
+                 layoutFilterColumn sizes the column to the window. -->
+            <Widget type="Widget" skin="" position="0 8 34 179" align="Left Top VStretch" name="Categories">
+                <Widget type="Button" skin="MW_Button" position="0 0 34 28" name="AllButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
-                <Widget type="Button" skin="MW_Button" position="44 0 40 28" name="WeaponButton">
+                <Widget type="Button" skin="MW_Button" position="0 30 34 28" name="WeaponButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
-                <Widget type="Button" skin="MW_Button" position="88 0 40 28" name="ApparelButton">
+                <Widget type="Button" skin="MW_Button" position="0 60 34 28" name="ApparelButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
-                <Widget type="Button" skin="MW_Button" position="132 0 40 28" name="MagicButton">
+                <Widget type="Button" skin="MW_Button" position="0 90 34 28" name="MagicButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
-                <Widget type="Button" skin="MW_Button" position="176 0 40 28" name="MiscButton">
+                <Widget type="Button" skin="MW_Button" position="0 120 34 28" name="MiscButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
-                <Widget type="Button" skin="MW_Button" position="220 0 40 28" name="KeysButton">
+                <Widget type="Button" skin="MW_Button" position="0 150 34 28" name="KeysButton">
                     <Property key="NeedKey" value="false"/>
                 </Widget>
             </Widget>
 
-            <!-- Items in inventory. Runtime layout reserves the bottom control strip. -->
-            <Widget type="ItemView" skin="MW_ItemView" position="0 38 350 149" name="ItemView" align="Left Top Stretch">
+            <!-- Items in inventory: everything right of the filters, above the bottom strip. -->
+            <Widget type="ItemView" skin="MW_ItemView" position="38 8 312 179" name="ItemView" align="Left Top Stretch">
             </Widget>
 
             <!-- Bottom strip: paper doll, used weight, view mode and search.
                  The key ring itself is a virtual item inside ItemView. -->
             <Widget type="Widget" skin="" position="0 191 350 32" align="Left Bottom HStretch" name="BottomBar">
-                <Widget type="MWDynamicStat" skin="MW_ChargeBar_Blue" position="80 4 104 24" name="EncumbranceBar" align="Left Top">
+                <Widget type="MWDynamicStat" skin="MW_ChargeBar_Blue" position="80 7 104 18" name="EncumbranceBar" align="Left Top">
                 </Widget>
                 <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="220 4 130 24" name="FilterEdit" align="Left Top HStretch">
                     <UserString key="AcceptTab" value="true"/>

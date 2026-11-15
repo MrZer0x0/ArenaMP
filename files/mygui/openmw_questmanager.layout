@@ -29,6 +29,9 @@
         <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="304 92 440 146" name="QuestDetail"/>
         <Widget type="Button" skin="MW_Button" position="304 246 120 28" name="PinButton"/>
         <Widget type="Button" skin="MW_Button" position="432 246 120 28" name="HideButton"/>
+        <!-- QM1: paid services for the selected quest (two clicks to confirm). -->
+        <Widget type="Button" skin="MW_Button" position="560 246 88 28" name="SkipQuestButton"/>
+        <Widget type="Button" skin="MW_Button" position="656 246 88 28" name="ResetQuestButton"/>
         <Widget type="TextBox" skin="SandBrightText" position="304 282 440 18" name="QuestRelatedLabel"/>
         <Widget type="ListBox" skin="MW_List" position="304 304 440 44" name="QuestRelatedList"/>
       </Widget>
@@ -57,8 +60,23 @@
         <Property key="Caption" value="#{arenamp=questman.tab.stats}"/>
         <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 6 738 342" name="StatsDetail"/>
       </Widget>
+
+      <!-- QM1: services paid with Skill Points. -->
+      <Widget type="TabItem" skin="" position="4 32 762 352">
+        <Property key="Caption" value="#{arenamp=questman.tab.services}"/>
+        <Widget type="TextBox" skin="SandBrightText" position="6 6 738 22" name="ServicesPoints"/>
+        <Widget type="EditBox" skin="MW_TextBoxEditWithBorder" position="6 32 738 118" name="ServicesInfo"/>
+        <Widget type="Button" skin="MW_Button" position="6 158 260 28" name="ClearJournalButton"/>
+        <Widget type="TextBox" skin="SandBrightText" position="6 196 420 20" name="FactionLabel"/>
+        <Widget type="ListBox" skin="MW_List" position="6 218 420 130" name="FactionList"/>
+        <Widget type="Button" skin="MW_Button" position="440 218 240 28" name="LeaveFactionButton"/>
+      </Widget>
     </Widget>
 
+    <!-- QM1: result of the last service request. -->
+    <Widget type="TextBox" skin="SandText" position="14 432 650 22" name="QuestmanStatus">
+      <Property key="TextAlign" value="Left VCenter"/>
+    </Widget>
     <Widget type="Button" skin="MW_Button" position="674 430 88 26" name="CloseButton">
       <Property key="Caption" value="#{arenamp=questman.close}"/>
     </Widget>

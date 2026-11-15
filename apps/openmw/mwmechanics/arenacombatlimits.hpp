@@ -29,6 +29,13 @@ inline float weaponScaling(float skill, float attribute)
 {
     return .70f + .009f * softStat(skill) + .004f * softStat(attribute);
 }
+// Ordinary fists must not start with weapon-like 10..22 base health damage.
+// Soft stats keep training useful without uncapped fortification scaling.
+inline float handToHandDamage(float skill, float attribute, float charge)
+{
+    return (1.f + .08f * softStat(skill) + .02f * softStat(attribute))
+        * (.65f + .65f * std::clamp(charge, 0.f, 1.f));
+}
 inline float armorMultiplier(float rating)
 {
     rating = std::max(0.f, rating);

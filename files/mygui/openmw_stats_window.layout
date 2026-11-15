@@ -6,8 +6,8 @@
             <Property key="CanvasAlign" value="Left Top" />
             <UserString key="LeftOffsetWidth" value="24" />
             <UserString key="LeftPaneRatio" value="1" />
-            <Widget type="Widget" skin="MW_Box" position="8 8 212 62" align="Left Top HStretch" name="VitalsBox">
-                <Widget type="Widget" skin="" position="4 4 204 18" name="Health" align="Left Top HStretch">
+            <Widget type="Widget" skin="MW_Box" position="8 8 212 74" align="Left Top HStretch" name="VitalsBox">
+                <Widget type="Widget" skin="" position="4 4 204 21" name="Health" align="Left Top HStretch">
                     <Property key="NeedMouse" value="true" />
                     <UserString key="ToolTipType" value="Layout" />
                     <UserString key="ToolTipLayout" value="HealthToolTip" />
@@ -16,14 +16,15 @@
                         <Property key="NeedMouse" value="false" />
                         <Property key="Caption" value="#{sHealth}" />
                     </Widget>
-                    <Widget type="ProgressBar" skin="MW_Progress_Red" position="74 0 130 18" name="HBar" align="Right Top">
+                    <Widget type="ProgressBar" skin="ArenaHUD_Bar_Health" position="74 0 130 21" name="HBar" align="Right Top">
                         <Property key="NeedMouse" value="false" />
-                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 14" name="HBarT" align="Right VCenter">
+                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 21" name="HBarT" align="Stretch">
+                            <Property key="FontHeight" value="15" />
                             <Property key="NeedMouse" value="false" />
                         </Widget>
                     </Widget>
                 </Widget>
-                <Widget type="Widget" skin="" position="4 22 204 18" name="Magicka" align="Left Top HStretch">
+                <Widget type="Widget" skin="" position="4 26 204 21" name="Magicka" align="Left Top HStretch">
                     <Property key="NeedMouse" value="true" />
                     <UserString key="ToolTipType" value="Layout" />
                     <UserString key="ToolTipLayout" value="HealthToolTip" />
@@ -32,14 +33,15 @@
                         <Property key="Caption" value="#{sMagic}" />
                         <Property key="NeedMouse" value="false" />
                     </Widget>
-                    <Widget type="ProgressBar" skin="MW_Progress_Blue" position="74 0 130 18" name="MBar" align="Right Top">
+                    <Widget type="ProgressBar" skin="ArenaHUD_Bar_Magicka" position="74 0 130 21" name="MBar" align="Right Top">
                         <Property key="NeedMouse" value="false" />
-                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 14" name="MBarT" align="Right VCenter">
+                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 21" name="MBarT" align="Stretch">
+                            <Property key="FontHeight" value="15" />
                             <Property key="NeedMouse" value="false" />
                         </Widget>
                     </Widget>
                 </Widget>
-                <Widget type="Widget" skin="" position="4 40 204 18" name="Fatigue" align="Left Top HStretch">
+                <Widget type="Widget" skin="" position="4 48 204 21" name="Fatigue" align="Left Top HStretch">
                     <Property key="NeedMouse" value="true" />
                     <UserString key="ToolTipType" value="Layout" />
                     <UserString key="ToolTipLayout" value="HealthToolTip" />
@@ -48,15 +50,16 @@
                         <Property key="Caption" value="#{sFatigue}" />
                         <Property key="NeedMouse" value="false" />
                     </Widget>
-                    <Widget type="ProgressBar" skin="MW_Progress_Green" position="74 0 130 18" name="FBar" align="Right Top">
+                    <Widget type="ProgressBar" skin="ArenaHUD_Bar_Stamina" position="74 0 130 21" name="FBar" align="Right Top">
                         <Property key="NeedMouse" value="false" />
-                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 14" name="FBarT" align="Right VCenter">
+                        <Widget type="TextBox" skin="ProgressText" position="0 0 130 21" name="FBarT" align="Stretch">
+                            <Property key="FontHeight" value="15" />
                             <Property key="NeedMouse" value="false" />
                         </Widget>
                     </Widget>
                 </Widget>
             </Widget>
-            <Widget type="Widget" skin="MW_Box" position="8 78 212 82" align="Top HStretch" name="IdentityBox">
+            <Widget type="Widget" skin="MW_Box" position="8 90 212 82" align="Top HStretch" name="IdentityBox">
                 <Widget type="Widget" position="4 4 204 18" align="Top HStretch">
                     <Widget type="AutoSizedTextBox" skin="NormalText" position="0 0 150 18" name="Level_str" align="Left Top">
                         <Property key="Caption" value="#{sLevel}" />
@@ -104,15 +107,17 @@
                         <Property key="TextAlign" value="Right Top" />
                     </Widget>
                 </Widget>
-                <Widget type="ProgressBar" skin="MW_Progress_Green" position="4 81 204 14" name="ArchetypePowerBar" align="Top HStretch">
+                <Widget type="ProgressBar" skin="ArenaHUD_Bar_Stamina" position="4 81 204 14" name="ArchetypePowerBar" align="Top HStretch">
                     <Property key="Visible" value="false" />
                     <Widget type="TextBox" skin="ProgressText" position="0 0 204 14" name="ArchetypePowerText" align="Stretch">
+                    <Property key="TextShadow" value="true"/>
+                    <Property key="TextShadowColour" value="0 0 0"/>
                         <Property key="NeedMouse" value="false" />
                         <Property key="TextAlign" value="Center VCenter" />
                     </Widget>
                 </Widget>
             </Widget>
-            <Widget type="Widget" skin="MW_Box" position="8 168 212 152" align="Top HStretch" name="AttributesBox">
+            <Widget type="Widget" skin="MW_Box" position="8 180 212 152" align="Top HStretch" name="AttributesBox">
                 <Widget type="Widget" skin="" position="4 4 204 144" align="Left Top Stretch" name="AttributeView">
                     <Widget type="Button" skin="" position="0 0 204 18" name="Attrib1Box" align="Left Top HStretch">
                         <UserString key="ToolTipType" value="Layout" />
@@ -220,7 +225,7 @@
                     </Widget>
                 </Widget>
             </Widget>
-            <Widget type="Widget" skin="MW_Box" name="StatsSkillsBox" position="8 329 212 80" align="Left Top HStretch">
+            <Widget type="Widget" skin="MW_Box" name="StatsSkillsBox" position="8 341 212 80" align="Left Top HStretch">
                 <Widget type="ScrollView" skin="MW_ScrollView" position="4 2 204 76" align="Left Top HStretch" name="SkillView">
                     <Property key="CanvasAlign" value="Left Top" />
                 </Widget>

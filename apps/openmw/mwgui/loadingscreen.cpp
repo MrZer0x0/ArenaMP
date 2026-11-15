@@ -16,7 +16,8 @@
 #include <components/myguiplatform/myguitexture.hpp>
 #include <osgViewer/Viewer>
 #include <MyGUI_RenderManager.h>
-#include <MyGUI_ScrollBar.h>
+#include <MyGUI_ProgressBar.h>
+#include "shapedbar.hpp"
 #include <MyGUI_TextBox.h>
 #include <components/misc/rng.hpp>
 #include <components/resource/resourcesystem.hpp>
@@ -85,17 +86,18 @@ namespace MWGui
             MyGUI::Align::Stretch, "Scene");
         mSceneImage->setVisible(false);
         findSplashScreens();
-        getWidget(mLoadingText, "LoadingText");
-        getWidget(mCenterLoadingText, "CenterLoadingText");
-        mCenterLoadingText->setFontHeight(20);
+        getWidget(mTipTitle, "LoadingTipTitle");
         getWidget(mTipText, "LoadingTip");
+        // TextBox ignores the layout's EditBox WordWrap property. Enable the
+        // actual text subwidget wrapping, as InfoBoxDialog already does.
+        mTipText->getSubWidgetText()->setWordWrap(true);
         getWidget(mProgressBar, "ProgressBar");
+        getWidget(mProgressText, "ProgressText");
         getWidget(mLoadingBox, "LoadingBox");
-        getWidget(mTipStrip, "LoadingTipStrip");
-        getWidget(mStatusBackground, "LoadingStatusBackground");
-        mLoadingText->setFontHeight(20);
+        getWidget(mLoadingPanel, "LoadingPanel");
+        mTipTitle->setFontHeight(18);
         mTipText->setFontHeight(18);
-        mProgressBar->setScrollViewPage(1);
+        mProgressBar->setProgressRange(1000);
         updateLayout();
     }
 
@@ -160,9 +162,8 @@ namespace MWGui
         else if (label == "#{sLoadingMessage3}")
             mDestinationKind = DestinationKind::Exterior;
 
-        mLoadingText->setCaptionWithReplacing(label);
-        mCenterLoadingText->setCaptionWithReplacing(label);
-        updateLayout();
+        // Labels classify destinations only. File names and internal phases are
+        // deliberately absent from the player-facing loading card.
     }
 
     void LoadingScreen::setVisible(bool visible)
@@ -185,6 +186,15 @@ namespace MWGui
     {
         if (mNestedLoadingCount++ != 0)
             return;
+
+        // Join the previous draw before replacing callbacks or mutating the
+        // scene. Loading draws are synchronous; gameplay keeps its chosen model.
+        mPreviousThreadingModel = static_cast<int>(mViewer->getThreadingModel());
+        mViewer->stopThreading();
+        mViewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+
+        if (!mStartupProgress)
+            mProgress.reset();
 
         // ArenaMP Y090 loading policy:
         //  * game startup -> splash;
@@ -209,20 +219,22 @@ namespace MWGui
         }
 
 #ifdef __ANDROID__
-        // ArenaMP Y091 Android policy: use splash wallpaper for every cell transition.
-        // Android framebuffer capture can briefly expose the cleared backbuffer as a white
-        // frame, so never use the PC exterior freeze-frame path for interior/exterior loads.
-        mShowWallpaper = !mHasCompletedOuterLoad || mDestinationKind != DestinationKind::Unknown;
+        // Android must never try to capture the framebuffer while a load is in
+        // progress: on GLES this may expose a cleared/unfinished backbuffer.
+        // Keep the splash presentation for both cell and non-cell loads.
+        mShowWallpaper = true;
 #else
-        // Desktop keeps the lighter freeze-frame presentation for exterior -> exterior travel.
-        mShowWallpaper = !mHasCompletedOuterLoad || crossCellTypeBoundary;
+        // Do not force an extra rendering traversal before a world/character
+        // exists (e.g. New Game or login). Only capture a previously running
+        // scene for an actual same-type cell transition.
+        mShowWallpaper = mStartupProgress || !mHasCompletedOuterLoad
+            || mDestinationKind == DestinationKind::Unknown || crossCellTypeBoundary;
 #endif
         mSceneSnapshotReady = false;
 
         if (mShowWallpaper)
         {
             changeWallpaper();
-            changeTip();
         }
         else
         {
@@ -231,9 +243,8 @@ namespace MWGui
             setupCopyFramebufferToTextureCallback();
         }
 
-        mTipStrip->setVisible(mShowWallpaper);
-        mStatusBackground->setVisible(mShowWallpaper);
-        mProgressBar->setVisible(mShowWallpaper);
+        changeTip();
+        mLoadingPanel->setVisible(true);
         updateLayout();
         mLoadingBox->setVisible(visible);
         if (osg::Node* scene = mViewer->getSceneData())
@@ -255,8 +266,17 @@ namespace MWGui
 
     void LoadingScreen::loadingOff()
     {
-        if (mNestedLoadingCount <= 0 || --mNestedLoadingCount != 0)
+        if (mNestedLoadingCount <= 0)
             return;
+        if (mNestedLoadingCount > 1)
+        {
+            --mNestedLoadingCount;
+            return;
+        }
+        mProgress.complete();
+        mLastRenderTime = -1000.0;
+        draw(); // Present 100% only once all work in the outer operation is done.
+        --mNestedLoadingCount;
         setVisible(false);
         mLoadingBox->setVisible(true);
         if (osg::Node* scene = mViewer->getSceneData())
@@ -274,6 +294,7 @@ namespace MWGui
         MWBase::Environment::get().getWindowManager()->removeGuiMode(GM_LoadingWallpaper);
         mHasCompletedOuterLoad = true;
         mDestinationKind = DestinationKind::Unknown;
+        restoreViewerThreading();
     }
 
     void LoadingScreen::updateLayout()
@@ -285,27 +306,35 @@ namespace MWGui
         mBlackBackground->setCoord(0, 0, view.width, view.height);
         mBackgroundImage->setCoord(MyGUI::IntCoord(0, 0, view.width, view.height));
         mSceneImage->setCoord(MyGUI::IntCoord(0, 0, view.width, view.height));
-        // Measure wrapped UTF-8 hints after setting their width. Long Russian
-        // entries need more than two lines on narrow/mobile screens.
-        mTipText->setCoord(margin, 6, std::max(1, view.width - 2 * margin), 52);
-        const int tipHeight = std::max(52, mTipText->getTextSize().height + 8);
-        mTipStrip->setCoord(0, 0, view.width, tipHeight + 12);
-        mTipText->setCoord(margin, 6, std::max(1, view.width - 2 * margin), tipHeight);
-
-        // Y092: only desktop exterior streaming uses the crosshair label.
-        bool centerLabel = !mShowWallpaper && mDestinationKind == DestinationKind::Exterior;
-#ifdef __ANDROID__
-        centerLabel = false;
-#endif
-        mCenterLoadingText->setCoord(margin, (view.height - 44) / 2,
-            std::max(1, view.width - 2 * margin), 44);
-        mCenterLoadingText->setVisible(centerLabel);
-        mLoadingText->setVisible(!centerLabel);
-        // LoadingText and ProgressBar are relative to the fixed-height bottom strip.
-        mLoadingText->setCoord(margin, 4, std::max(1, view.width - 2 * margin), 44);
-        mProgressBar->setCoord(0, 53, view.width, 5);
-        mProgressBar->setTrackSize(static_cast<int>(static_cast<double>(mProgress)
-            / mProgressRange * mProgressBar->getLineSize()));
+        // Reflow only after a resize or a new hint, not on every progress tick.
+        if (mTipLayoutDirty || mLayoutWidth != view.width || mLayoutHeight != view.height)
+        {
+            mLayoutWidth = view.width;
+            mLayoutHeight = view.height;
+            mTipLayoutDirty = false;
+            const int panelWidth = std::max(1, std::min(720, view.width - 2 * margin));
+            const int innerWidth = std::max(1, panelWidth - 8);
+            const int padding = std::min(24, std::max(8, innerWidth / 16));
+            // 540 px yields two/three lines for normal RU/EN hints at 18 px.
+            // Narrow mobile windows get more lines and a taller card, not tiny text.
+            const int tipWidth = std::max(1, std::min(540, innerWidth - 2 * padding));
+            mTipText->setCoord((innerWidth - tipWidth) / 2, padding + 32, tipWidth, 64);
+            const int tipHeight = std::max(48, mTipText->getTextSize().height + 12);
+            const int panelHeight = tipHeight + 2 * padding + 78;
+            const int top = std::max(8, std::min(view.height * 3 / 5,
+                view.height - margin - panelHeight));
+            mLoadingPanel->setCoord((view.width - panelWidth) / 2, top, panelWidth, panelHeight);
+            mTipTitle->setCoord(padding, padding, innerWidth - 2 * padding, 26);
+            mTipText->setCoord((innerWidth - tipWidth) / 2, padding + 32, tipWidth, tipHeight);
+            const int barWidth = std::max(1, (innerWidth - 2 * padding) * 3 / 4);
+            const MyGUI::IntCoord bar((innerWidth - barWidth) / 2,
+                padding + 32 + tipHeight + 16, barWidth, 18);
+            mProgressBar->setCoord(bar);
+            mProgressText->setCoord(bar);
+        }
+        mProgressBar->setProgressPosition(static_cast<size_t>(mProgress.fraction() * 1000.));
+        fitShapedProgressBar(mProgressBar);
+        mProgressText->setCaption(std::to_string(static_cast<int>(mProgress.fraction() * 100.)) + "%");
     }
 
     void LoadingScreen::changeTip()
@@ -314,30 +343,59 @@ namespace MWGui
         // Uniformly choose a different entry without an unbounded retry loop.
         const int offset = Misc::Rng::rollDice(mTipIndex < 0 ? count : count - 1);
         mTipIndex = mTipIndex < 0 ? offset : (mTipIndex + 1 + offset) % count;
-        mTipText->setCaptionWithReplacing("#{arenamp=loading.did_you_know}\n#{arenamp=loading.tip."
+        mTipTitle->setCaptionWithReplacing("#{arenamp=loading.did_you_know}");
+        mTipText->setCaptionWithReplacing("#{arenamp=loading.tip."
             + std::to_string(mTipIndex + 1) + "}");
+        mTipLayoutDirty = true;
+    }
+
+    void LoadingScreen::beginStartupProgress()
+    {
+        mStartupProgress = true;
+        mProgress.reset(true);
+        loadingOn(); // Own one scope from the first plugin to the initial cell.
+    }
+
+    void LoadingScreen::endStartupProgress()
+    {
+        if (!mStartupProgress)
+            return;
+        loadingOff();
+        mStartupProgress = false;
+    }
+
+    void LoadingScreen::setProgressStage(Loading::Stage stage, size_t index, size_t count)
+    {
+        mProgress.stage(stage, index, count);
+        draw();
     }
 
     void LoadingScreen::setProgressRange(size_t range)
     {
-        mProgressRange = std::max(size_t(1), range);
-        // The scrollbar is only a drawing surface, never an input control.
-        mProgressBar->setScrollRange(2);
-        mProgressBar->setScrollPosition(0);
-        mProgressBar->setTrackSize(0);
-        mProgress = 0;
+        mProgress.range(range);
     }
 
     void LoadingScreen::setProgress(size_t value)
     {
-        mProgress = std::min(value, mProgressRange);
-        // Keep pumping events during long stages, with a capped render rate.
+        mProgress.set(value);
         draw();
     }
 
     void LoadingScreen::increaseProgress(size_t increase)
     {
-        setProgress(mProgress + std::min(increase, mProgressRange - mProgress));
+        mProgress.increase(increase);
+        draw();
+    }
+
+    void LoadingScreen::restoreViewerThreading()
+    {
+        if (mPreviousThreadingModel < 0)
+            return;
+        const auto model = static_cast<osgViewer::ViewerBase::ThreadingModel>(mPreviousThreadingModel);
+        mPreviousThreadingModel = -1;
+        mViewer->setThreadingModel(model);
+        if (model != osgViewer::ViewerBase::SingleThreaded)
+            mViewer->startThreading();
     }
 
     bool LoadingScreen::needToDrawLoadingScreen()
@@ -378,8 +436,12 @@ namespace MWGui
         osg::ref_ptr<osg::Camera::DrawCallback> previous = camera->getFinalDrawCallback();
         camera->setFinalDrawCallback(mCopyFramebufferToTextureCallback);
 #endif
-        // Cull/draw the existing scene only: do not recursively run simulation,
-        // input, scripts or an update traversal from within a cell load.
+        MWBase::Environment::get().getWindowManager()->refreshSceneVisibility();
+        // RigGeometry builds its skeleton bindings in the OSG update traversal.
+        // A raw draw traversal before update can render skinned actors without
+        // skeletons and corrupt the frozen frame (and subsequent rendering).
+        // This only advances the OSG scene graph, not gameplay simulation.
+        mViewer->updateTraversal();
         mViewer->renderingTraversals();
         const bool captured = mCopyFramebufferToTextureCallback->waitTillDone();
 #if OSG_VERSION_GREATER_OR_EQUAL(3, 5, 10)
@@ -414,6 +476,10 @@ namespace MWGui
             ico->setMinimumTimeAvailableForGLCompileAndDeletePerFrame(1.f/getTargetFrameRate());
             ico->setMaximumNumOfObjectsToCompilePerFrame(1000);
         }
+
+        // Renderer construction may have changed the camera mask since the last
+        // loading tick. Reapply BOTH masks before visiting any scene objects.
+        MWBase::Environment::get().getWindowManager()->refreshSceneVisibility();
 
         // at the time this function is called we are in the middle of a frame,
         // so out of order calls are necessary to get a correct frameNumber for the next frame.

@@ -288,6 +288,11 @@ namespace MWGui
             void setValue(int value, int max);
             void setTitle(const std::string& text);
 
+            void setSize(const MyGUI::IntSize& size) override;
+            void setCoord(const MyGUI::IntCoord& coord) override;
+            using MyGUI::Widget::setSize;
+            using MyGUI::Widget::setCoord;
+
             int getValue() const { return mValue; }
             int getMax() const { return mMax; }
 

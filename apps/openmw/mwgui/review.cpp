@@ -1,5 +1,7 @@
 #include "review.hpp"
 
+#include "arenaiconbutton.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <exception>
@@ -176,6 +178,20 @@ namespace MWGui
         MyGUI::Button* okButton;
         getWidget(okButton, "OKButton");
         okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ReviewDialog::onOkClicked);
+
+        // UI3: icons on the edit and navigation buttons. Narrow buttons fall back
+        // to the icon alone, with the caption as a tooltip.
+        const auto decorate = [this](const char* name, const char* icon) {
+            MyGUI::Button* widget = nullptr;
+            getWidget(widget, name);
+            ArenaUi::decorate(widget, icon, widget->getCaption().asUTF8(), ArenaUi::IconMode::IconAndCaption);
+        };
+        decorate("NameButton", "btn_rename");
+        decorate("RaceButton", "menu_players");
+        decorate("ClassButton", "inv_weapon");
+        decorate("SignButton", "compass_enchant");
+        decorate("BackButton", "btn_prev");
+        decorate("OKButton", "btn_accept");
     }
 
     ReviewDialog::~ReviewDialog()
@@ -691,7 +707,8 @@ namespace MWGui
 
         if (id == MyGUI::MouseButton::Left)
         {
-            mPreviewAngle += static_cast<float>(dx) * 0.012f;
+            // UI3: inverted, so the body turns with the drag like a turntable.
+            mPreviewAngle -= static_cast<float>(dx) * 0.012f;
             if (mPreview)
                 mPreview->setAngle(mPreviewAngle);
         }

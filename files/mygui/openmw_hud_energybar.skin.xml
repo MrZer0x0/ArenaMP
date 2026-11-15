@@ -109,4 +109,260 @@
         <Child type="Widget" skin="BlackBG" offset="2 2 60 8" align="Stretch" name="Client"/>
     </Resource>
 
+    <!-- ArenaMP UI4: dark-glass / bronze HUD (textures from
+         tools/arenamp_make_hud_textures.py). Bars keep the ProgressBar
+         contract (TrackSkin + Client), so the HUD code is unchanged. -->
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Health" size="8 16" texture="textures\ui\arenamw\hud\fill_health.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Magicka" size="8 16" texture="textures\ui\arenamw\hud\fill_magicka.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Stamina" size="8 16" texture="textures\ui\arenamw\hud\fill_stamina.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Cast" size="8 16" texture="textures\ui\arenamw\hud\fill_cast.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Weapon" size="8 16" texture="textures\ui\arenamw\hud\fill_weapon.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_XP" size="8 16" texture="textures\ui\arenamw\hud\fill_xp.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Tint" size="8 16" texture="textures\ui\arenamw\hud\fill_tint.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Track_Lag" size="8 16" texture="textures\ui\arenamw\hud\fill_lag.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 16" align="Stretch">
+            <State name="normal" offset="0 0 8 16"/>
+        </BasisSkin>
+    </Resource>
+    <!-- ArenaMP UI9.3: shaped fills. Each fill has exactly the glass shape of
+         its backplate (same size and 3-slice cuts), so a full bar fills the
+         pointed ends but never covers the bronze rim. The track holds the fill
+         as the child "Client"; MWGui::fitShapedProgressBar() pins it to the
+         bar's full width so the growing track only reveals it from the left.
+         Without that call the fill simply stretches with the track. -->
+    <Resource type="ResourceSkin" name="ArenaHUD_Shape_Health" size="64 16" texture="textures\ui\arenamw\hud\shape_health.png">
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ShapedTrack_Health" size="64 16">
+        <Child type="Widget" skin="ArenaHUD_Shape_Health" offset="0 0 64 16" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Shape_Magicka" size="64 16" texture="textures\ui\arenamw\hud\shape_magicka.png">
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ShapedTrack_Magicka" size="64 16">
+        <Child type="Widget" skin="ArenaHUD_Shape_Magicka" offset="0 0 64 16" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Shape_Stamina" size="64 16" texture="textures\ui\arenamw\hud\shape_stamina.png">
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ShapedTrack_Stamina" size="64 16">
+        <Child type="Widget" skin="ArenaHUD_Shape_Stamina" offset="0 0 64 16" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Shape_XP" size="64 16" texture="textures\ui\arenamw\hud\shape_xp.png">
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ShapedTrack_XP" size="64 16">
+        <Child type="Widget" skin="ArenaHUD_Shape_XP" offset="0 0 64 16" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinShape_Cast" size="64 6" texture="textures\ui\arenamw\hud\thinshape_cast.png">
+        <BasisSkin type="SubSkin" offset="0 0 3 6" align="Left VStretch">
+            <State name="normal" offset="0 0 3 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="3 0 58 6" align="HStretch VStretch">
+            <State name="normal" offset="3 0 58 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="61 0 3 6" align="Right VStretch">
+            <State name="normal" offset="61 0 3 6"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinShapedTrack_Cast" size="64 6">
+        <Child type="Widget" skin="ArenaHUD_ThinShape_Cast" offset="0 0 64 6" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinShape_Weapon" size="64 6" texture="textures\ui\arenamw\hud\thinshape_weapon.png">
+        <BasisSkin type="SubSkin" offset="0 0 3 6" align="Left VStretch">
+            <State name="normal" offset="0 0 3 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="3 0 58 6" align="HStretch VStretch">
+            <State name="normal" offset="3 0 58 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="61 0 3 6" align="Right VStretch">
+            <State name="normal" offset="61 0 3 6"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinShapedTrack_Weapon" size="64 6">
+        <Child type="Widget" skin="ArenaHUD_ThinShape_Weapon" offset="0 0 64 6" align="Stretch" name="Client">
+            <Property key="NeedMouse" value="false"/>
+        </Child>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Bar_Health" size="64 16" texture="textures\ui\arenamw\hud\bar_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ShapedTrack_Health"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 16" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Bar_Magicka" size="64 16" texture="textures\ui\arenamw\hud\bar_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ShapedTrack_Magicka"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 16" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Bar_Stamina" size="64 16" texture="textures\ui\arenamw\hud\bar_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ShapedTrack_Stamina"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 16" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Bar_XP" size="64 16" texture="textures\ui\arenamw\hud\bar_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ShapedTrack_XP"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 10 16" align="Left VStretch">
+            <State name="normal" offset="0 0 10 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="10 0 44 16" align="HStretch VStretch">
+            <State name="normal" offset="10 0 44 16"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="54 0 10 16" align="Right VStretch">
+            <State name="normal" offset="54 0 10 16"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 16" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinBar_Cast" size="64 6" texture="textures\ui\arenamw\hud\thin_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ThinShapedTrack_Cast"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 3 6" align="Left VStretch">
+            <State name="normal" offset="0 0 3 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="3 0 58 6" align="HStretch VStretch">
+            <State name="normal" offset="3 0 58 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="61 0 3 6" align="Right VStretch">
+            <State name="normal" offset="61 0 3 6"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 6" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_ThinBar_Weapon" size="64 6" texture="textures\ui\arenamw\hud\thin_back.png">
+        <Property key="TrackSkin" value="ArenaHUD_ThinShapedTrack_Weapon"/>
+        <Property key="TrackFill" value="1"/>
+        <BasisSkin type="SubSkin" offset="0 0 3 6" align="Left VStretch">
+            <State name="normal" offset="0 0 3 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="3 0 58 6" align="HStretch VStretch">
+            <State name="normal" offset="3 0 58 6"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="61 0 3 6" align="Right VStretch">
+            <State name="normal" offset="61 0 3 6"/>
+        </BasisSkin>
+        <Child type="Widget" skin="" offset="0 0 64 6" align="Stretch" name="Client"/>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Plate" size="8 8" texture="textures\ui\arenamw\hud\plate.png">
+        <BasisSkin type="MainSkin" offset="0 0 8 8" align="Stretch">
+            <State name="normal" offset="0 0 8 8"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_CombatFrame" size="64 12" texture="textures\ui\arenamw\hud\combat_frame.png">
+        <BasisSkin type="SubSkin" offset="0 0 4 12" align="Left VStretch">
+            <State name="normal" offset="0 0 4 12"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="4 0 56 12" align="HStretch VStretch">
+            <State name="normal" offset="4 0 56 12"/>
+        </BasisSkin>
+        <BasisSkin type="SubSkin" offset="60 0 4 12" align="Right VStretch">
+            <State name="normal" offset="60 0 4 12"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_CompassBand" size="256 32" texture="textures\ui\arenamw\hud\compass_band.png">
+        <BasisSkin type="MainSkin" offset="0 0 256 32" align="Stretch">
+            <State name="normal" offset="0 0 256 32"/>
+        </BasisSkin>
+    </Resource>
+    <Resource type="ResourceSkin" name="ArenaHUD_Toast" size="256 32" texture="textures\ui\arenamw\hud\toast_back.png">
+        <BasisSkin type="MainSkin" offset="0 0 256 32" align="Stretch">
+            <State name="normal" offset="0 0 256 32"/>
+        </BasisSkin>
+    </Resource>
+
 </MyGUI>

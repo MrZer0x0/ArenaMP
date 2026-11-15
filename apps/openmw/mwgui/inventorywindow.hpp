@@ -168,7 +168,9 @@ namespace MWGui
             void onFilterChanged(MyGUI::Widget* _sender);
             // IF1: category filters are icon buttons with tooltips.
             void setupFilterIcons();
-            void layoutFilterIcons(int rowWidth);
+            /// IV1: lays the six filter buttons out as a column at the left edge
+            /// of the right pane, between the paper doll and the item list.
+            void layoutFilterColumn(int paneHeight);
             void refreshFilterIconStates();
             MyGUI::ImageBox* mFilterIcons[6] = {};
             void onNameFilterChanged(MyGUI::EditBox* _sender);

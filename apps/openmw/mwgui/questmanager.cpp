@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <regex>
 #include <sstream>
@@ -20,6 +21,7 @@
 #include <MyGUI_Window.h>
 #include <MyGUI_RenderManager.h>
 
+#include <components/debug/debuglog.hpp>
 #include <components/esm/loaddial.hpp>
 #include <components/esm/loadinfo.hpp>
 #include <components/esm/loadfact.hpp>
@@ -38,6 +40,11 @@
 #include "../mwworld/class.hpp"
 #include "../mwworld/esmstore.hpp"
 #include "../mwmp/ServerQuestRegistry.hpp"
+#include "../mwmp/LocalPlayer.hpp"
+#include "../mwmp/Main.hpp"
+#include "../mwmp/Networking.hpp"
+#include "../mwdialogue/journalimp.hpp"
+#include "../mwmechanics/actorutil.hpp"
 
 namespace
 {
@@ -189,12 +196,29 @@ namespace MWGui
         getWidget(mRecordDetail, "RecordDetail");
         getWidget(mStatsDetail, "StatsDetail");
         getWidget(mCloseButton, "CloseButton");
+        getWidget(mSkipButton, "SkipQuestButton");
+        getWidget(mResetButton, "ResetQuestButton");
+        getWidget(mStatusText, "QuestmanStatus");
+        getWidget(mServicesPoints, "ServicesPoints");
+        getWidget(mServicesInfo, "ServicesInfo");
+        getWidget(mClearJournalButton, "ClearJournalButton");
+        getWidget(mFactionLabel, "FactionLabel");
+        getWidget(mFactionList, "FactionList");
+        getWidget(mLeaveFactionButton, "LeaveFactionButton");
+        sInstance = this;
 
         mTitle->setCaption(tr("questman.title"));
         mTabs->getItemAt(0)->setCaption(tr("questman.tab.quests"));
         mTabs->getItemAt(1)->setCaption(tr("questman.tab.topics"));
         mTabs->getItemAt(2)->setCaption(tr("questman.tab.records"));
         mTabs->getItemAt(3)->setCaption(tr("questman.tab.stats"));
+        mTabs->getItemAt(4)->setCaption(tr("questman.tab.services"));
+        mFactionLabel->setCaption(tr("questman.svc.factions"));
+        mServicesInfo->setEditStatic(true);
+        mServicesInfo->setEditReadOnly(true);
+        mServicesInfo->setEditMultiLine(true);
+        mServicesInfo->setEditWordWrap(true);
+        mStatusText->setCaption("");
         mQuestSearch->setCaption("");
         mTopicSearch->setCaption("");
         mRecordSearch->setCaption("");
@@ -234,6 +258,11 @@ namespace MWGui
         mRecordList->eventListChangePosition += MyGUI::newDelegate(this, &QuestManagerWindow::notifyRecordSelected);
         mPinButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifyPin);
         mHideButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifyHide);
+        mSkipButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifySkipQuest);
+        mResetButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifyResetQuest);
+        mClearJournalButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifyClearJournal);
+        mLeaveFactionButton->eventMouseButtonClick += MyGUI::newDelegate(this, &QuestManagerWindow::notifyLeaveFaction);
+        mFactionList->eventListChangePosition += MyGUI::newDelegate(this, &QuestManagerWindow::notifyFactionSelected);
         mQuestRelatedList->eventListChangePosition += MyGUI::newDelegate(this, &QuestManagerWindow::notifyQuestRelatedSelected);
         mTopicRelatedList->eventListChangePosition += MyGUI::newDelegate(this, &QuestManagerWindow::notifyTopicRelatedSelected);
         mMainWidget->castType<MyGUI::Window>()->eventWindowChangeCoord += MyGUI::newDelegate(this, &QuestManagerWindow::notifyWindowChanged);
@@ -250,9 +279,13 @@ namespace MWGui
         int tab = 0;
         try { tab = Settings::Manager::getInt("last tab", "Questman"); }
         catch (...) {}
-        tab = std::max(0, std::min(tab, 3));
+        tab = std::max(0, std::min(tab, 4));
         mTabs->setIndexSelected(static_cast<std::size_t>(tab));
         applyResponsiveLayout();
+        mArmedAction.clear();
+        mStatusText->setCaption("");
+        // QM1: prices come from the server; ask again on every open (cheap).
+        sendServiceCommand({ "config" });
         refreshCurrentTab();
         MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mCloseButton);
     }
@@ -375,6 +408,9 @@ namespace MWGui
         mQuestDetail->setCoord(MyGUI::IntCoord(304, 92, 440, 146));
         mPinButton->setCoord(MyGUI::IntCoord(304, 246, 120, 28));
         mHideButton->setCoord(MyGUI::IntCoord(432, 246, 120, 28));
+        mSkipButton->setCoord(MyGUI::IntCoord(560, 246, 88, 28));
+        mResetButton->setCoord(MyGUI::IntCoord(656, 246, 88, 28));
+        mStatusText->setCoord(MyGUI::IntCoord(14, 430, 650, 26));
         mQuestRelatedLabel->setCoord(MyGUI::IntCoord(304, 282, 440, 18));
         mQuestRelatedList->setCoord(MyGUI::IntCoord(304, 304, 440, 44));
 
@@ -396,6 +432,14 @@ namespace MWGui
 
         // Progress tab
         mStatsDetail->setCoord(MyGUI::IntCoord(6, 6, 738, 342));
+
+        // QM1: Services tab
+        mServicesPoints->setCoord(MyGUI::IntCoord(6, 6, 738, 22));
+        mServicesInfo->setCoord(MyGUI::IntCoord(6, 32, 738, 118));
+        mClearJournalButton->setCoord(MyGUI::IntCoord(6, 158, 300, 28));
+        mFactionLabel->setCoord(MyGUI::IntCoord(6, 196, 420, 20));
+        mFactionList->setCoord(MyGUI::IntCoord(6, 218, 420, 130));
+        mLeaveFactionButton->setCoord(MyGUI::IntCoord(440, 218, 304, 28));
     }
 
     std::string QuestManagerWindow::tr(const std::string& key)
@@ -1171,7 +1215,8 @@ namespace MWGui
             case 0: refreshQuests(); break;
             case 1: refreshTopics(); break;
             case 2: refreshRecords(); break;
-            default: refreshStats(); break;
+            case 3: refreshStats(); break;
+            default: refreshServices(); break;
         }
     }
 
@@ -1469,6 +1514,7 @@ namespace MWGui
             mQuestIcon->setImageTexture("");
             mPinButton->setEnabled(false);
             mHideButton->setEnabled(false);
+            updateServiceButtons();
             mQuestRelatedTopics.clear();
             mQuestRelatedList->removeAllItems();
             return;
@@ -1510,6 +1556,7 @@ namespace MWGui
         mHideButton->setEnabled(true);
         mPinButton->setCaption(quest.mPinned ? tr("questman.unpin") : tr("questman.pin"));
         mHideButton->setCaption(quest.mHidden ? tr("questman.unhide") : tr("questman.hide"));
+        updateServiceButtons();
     }
 
     void QuestManagerWindow::updateTopicDetail()
@@ -1706,6 +1753,589 @@ namespace MWGui
         }
         applyResponsiveLayout();
         saveWindowGeometry();
+    }
+
+
+    // ======================================================================
+    // QM1: Quest Manager services paid with Skill Points.
+    //
+    // The server owns prices, points and persistence (server/scripts/
+    // questmanService.lua). The client only offers what makes sense for the
+    // selected quest, asks for a second click to confirm, and mirrors the
+    // server's answer in the local journal / faction state.
+    // ======================================================================
+
+    QuestManagerWindow* QuestManagerWindow::sInstance = nullptr;
+
+    namespace
+    {
+        struct ServiceConfig
+        {
+            bool mReceived = false;
+            bool mEnabled = false;
+            int mResetSmall = 5;
+            int mResetLarge = 10;
+            int mResetLargeFrom = 3;
+            int mSkip = 10;
+            int mSkipFaction = 15;
+            int mSkipReputation = 2;
+            int mClear = 10;
+            int mLeave = 10;
+            bool mSharedJournal = false;
+            bool mSharedFactions = false;
+        };
+
+        ServiceConfig sServices;
+
+        double nowSeconds()
+        {
+            return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        }
+
+        std::string servicePercentEncode(const std::string& value)
+        {
+            static const char* hex = "0123456789ABCDEF";
+            std::string out;
+            for (unsigned char c : value)
+            {
+                if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == ' ')
+                    out.push_back(static_cast<char>(c));
+                else
+                {
+                    out.push_back('%');
+                    out.push_back(hex[(c >> 4) & 0x0f]);
+                    out.push_back(hex[c & 0x0f]);
+                }
+            }
+            return out;
+        }
+
+        std::string servicePercentDecode(const std::string& value)
+        {
+            std::string out;
+            for (std::size_t i = 0; i < value.size(); ++i)
+            {
+                if (value[i] == '%' && i + 2 < value.size()
+                    && std::isxdigit(static_cast<unsigned char>(value[i + 1]))
+                    && std::isxdigit(static_cast<unsigned char>(value[i + 2])))
+                {
+                    out.push_back(static_cast<char>(std::strtol(value.substr(i + 1, 2).c_str(), nullptr, 16)));
+                    i += 2;
+                }
+                else
+                    out.push_back(value[i]);
+            }
+            return out;
+        }
+
+        std::vector<std::string> splitOn(const std::string& value, char separator)
+        {
+            std::vector<std::string> parts;
+            std::string current;
+            for (char c : value)
+            {
+                if (c == separator)
+                {
+                    parts.push_back(current);
+                    current.clear();
+                }
+                else
+                    current.push_back(c);
+            }
+            parts.push_back(current);
+            return parts;
+        }
+
+        int toInt(const std::string& value, int fallback)
+        {
+            char* end = nullptr;
+            const long parsed = std::strtol(value.c_str(), &end, 10);
+            return (end != value.c_str()) ? static_cast<int>(parsed) : fallback;
+        }
+
+        /// "{0}", "{1}", ... placeholders in l10n strings.
+        std::string formatText(std::string text, const std::vector<std::string>& args)
+        {
+            for (std::size_t i = 0; i < args.size(); ++i)
+            {
+                const std::string token = "{" + std::to_string(i) + "}";
+                std::size_t pos = 0;
+                while ((pos = text.find(token, pos)) != std::string::npos)
+                {
+                    text.replace(pos, token.size(), args[i]);
+                    pos += args[i].size();
+                }
+            }
+            return text;
+        }
+
+        std::string questDisplayName(const std::string& id)
+        {
+            const ESM::Dialogue* dialogue
+                = MWBase::Environment::get().getWorld()->getStore().get<ESM::Dialogue>().search(id);
+            if (dialogue != nullptr)
+            {
+                for (const ESM::DialInfo& info : dialogue->mInfo)
+                    if (info.mQuestStatus == ESM::DialInfo::QS_Name && !info.mResponse.empty())
+                        return info.mResponse;
+            }
+            return id;
+        }
+
+        std::string factionDisplayName(const std::string& id)
+        {
+            const ESM::Faction* faction
+                = MWBase::Environment::get().getWorld()->getStore().get<ESM::Faction>().search(id);
+            return faction != nullptr && !faction->mName.empty() ? faction->mName : id;
+        }
+    }
+
+    QuestManagerWindow::~QuestManagerWindow()
+    {
+        if (sInstance == this)
+            sInstance = nullptr;
+    }
+
+    int QuestManagerWindow::playerSkillPoints()
+    {
+        const MWWorld::Ptr player = MWMechanics::getPlayer();
+        if (player.isEmpty() || !player.getClass().isNpc())
+            return 0;
+        return player.getClass().getNpcStats(player).getSkillPoints();
+    }
+
+    void QuestManagerWindow::sendServiceCommand(const std::vector<std::string>& fields)
+    {
+        if (!mwmp::Main::isInitialized())
+            return;
+        mwmp::LocalPlayer* localPlayer = mwmp::Main::get().getLocalPlayer();
+        if (localPlayer == nullptr)
+            return;
+        std::string data = "QUESTMAN_CMD";
+        for (const std::string& field : fields)
+        {
+            data.push_back('\t');
+            data += servicePercentEncode(field);
+        }
+        localPlayer->guiMessageBox.id = mwmp::ServerQuestRegistry::TransportGuiId;
+        localPlayer->guiMessageBox.type = mwmp::BasePlayer::GUIMessageBox::CustomMessageBox;
+        localPlayer->guiMessageBox.label.clear();
+        localPlayer->guiMessageBox.note.clear();
+        localPlayer->guiMessageBox.buttons.clear();
+        localPlayer->guiMessageBox.data = data;
+        auto* packet = mwmp::Main::get().getNetworking()->getPlayerPacket(ID_GUI_MESSAGEBOX);
+        packet->setPlayer(localPlayer);
+        packet->Send();
+    }
+
+    const QuestManagerWindow::QuestData* QuestManagerWindow::selectedQuest() const
+    {
+        const std::size_t selected = mQuestList->getIndexSelected();
+        if (selected == MyGUI::ITEM_NONE || selected >= mVisibleQuests.size())
+            return nullptr;
+        return &mQuests[mVisibleQuests[selected]];
+    }
+
+    QuestManagerWindow::SkipPlan QuestManagerWindow::planSkip(const QuestData& quest) const
+    {
+        SkipPlan plan;
+        if (quest.mAddon == "server")
+        {
+            plan.mReason = "questman.svc.no_server";
+            return plan;
+        }
+        if (quest.mCompleted)
+        {
+            plan.mReason = "questman.svc.no_completed";
+            return plan;
+        }
+        MWBase::Journal* journal = MWBase::Environment::get().getJournal();
+        const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+        // Try the alias that has progressed furthest first: its finishing
+        // stage is the one this character is heading for.
+        std::vector<std::pair<int, std::string>> ids;
+        for (const std::string& id : quest.mIds)
+            ids.emplace_back(journal->getJournalIndex(id), id);
+        std::sort(ids.begin(), ids.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+        for (const auto& candidate : ids)
+        {
+            const ESM::Dialogue* dialogue = store.get<ESM::Dialogue>().search(candidate.second);
+            if (dialogue == nullptr)
+                continue;
+            int best = -1;
+            for (const ESM::DialInfo& info : dialogue->mInfo)
+            {
+                if (info.mQuestStatus == ESM::DialInfo::QS_Finished && info.mData.mJournalIndex > candidate.first
+                    && (best < 0 || info.mData.mJournalIndex < best))
+                    best = info.mData.mJournalIndex;
+            }
+            if (best >= 0)
+            {
+                plan.mOk = true;
+                plan.mId = candidate.second;
+                plan.mIndex = best;
+                return plan;
+            }
+        }
+        plan.mReason = "questman.svc.no_finish";
+        return plan;
+    }
+
+    int QuestManagerWindow::skipCost(const QuestData& quest) const
+    {
+        const bool faction = quest.mCategory == "faction" || quest.mCategory == "great_house";
+        return faction ? sServices.mSkipFaction : sServices.mSkip;
+    }
+
+    int QuestManagerWindow::resetCost(const QuestData& quest) const
+    {
+        return static_cast<int>(quest.mEntries.size()) >= sServices.mResetLargeFrom
+            ? sServices.mResetLarge : sServices.mResetSmall;
+    }
+
+    void QuestManagerWindow::setStatus(const std::string& text, bool error)
+    {
+        mStatusText->setCaption(text);
+        mStatusText->setTextColour(error ? MyGUI::Colour(1.f, 0.55f, 0.45f) : MyGUI::Colour(0.86f, 0.80f, 0.62f));
+    }
+
+    bool QuestManagerWindow::confirmAction(const std::string& action, MyGUI::Button* button, int cost)
+    {
+        const double now = nowSeconds();
+        if (mArmedAction == action && now - mArmedAt < 4.0)
+        {
+            mArmedAction.clear();
+            return true;
+        }
+        mArmedAction = action;
+        mArmedAt = now;
+        button->setCaption(formatText(tr("questman.svc.confirm"), { std::to_string(cost) }));
+        setStatus(formatText(tr("questman.svc.confirm_hint"), { std::to_string(cost), std::to_string(playerSkillPoints()) }), false);
+        return false;
+    }
+
+    void QuestManagerWindow::onFrame(float)
+    {
+        if (!mArmedAction.empty() && nowSeconds() - mArmedAt >= 4.0)
+        {
+            mArmedAction.clear();
+            updateServiceButtons();
+            refreshServices();
+        }
+    }
+
+    void QuestManagerWindow::updateServiceButtons()
+    {
+        const QuestData* quest = selectedQuest();
+        const bool available = sServices.mReceived && sServices.mEnabled && !sServices.mSharedJournal;
+        if (quest == nullptr)
+        {
+            mSkipButton->setEnabled(false);
+            mResetButton->setEnabled(false);
+            mSkipButton->setCaption(tr("questman.svc.skip"));
+            mResetButton->setCaption(tr("questman.svc.reset"));
+            return;
+        }
+        const SkipPlan plan = planSkip(*quest);
+        const int skip = skipCost(*quest);
+        const int reset = resetCost(*quest);
+        const bool canReset = quest->mAddon != "server" && !quest->mCompleted;
+
+        if (mArmedAction != "skip:" + quest->mId)
+            mSkipButton->setCaption(formatText(tr("questman.svc.skip_cost"), { std::to_string(skip) }));
+        if (mArmedAction != "reset:" + quest->mId)
+            mResetButton->setCaption(formatText(tr("questman.svc.reset_cost"), { std::to_string(reset) }));
+        mSkipButton->setEnabled(available && plan.mOk);
+        mResetButton->setEnabled(available && canReset);
+
+        const std::string skipTip = !available ? tr("questman.svc.unavailable")
+            : (plan.mOk ? formatText(tr("questman.svc.skip_tip"), { std::to_string(skip), std::to_string(sServices.mSkipReputation) })
+                        : tr(plan.mReason));
+        const std::string resetTip = !available ? tr("questman.svc.unavailable")
+            : (canReset ? formatText(tr("questman.svc.reset_tip"), { std::to_string(reset) })
+                        : tr(quest->mAddon == "server" ? "questman.svc.no_server" : "questman.svc.no_reset_completed"));
+        for (const auto& pair : { std::make_pair(mSkipButton, skipTip), std::make_pair(mResetButton, resetTip) })
+        {
+            pair.first->setUserString("ToolTipType", "Layout");
+            pair.first->setUserString("ToolTipLayout", "TextToolTip");
+            pair.first->setUserString("Caption_Text", pair.second);
+        }
+    }
+
+    void QuestManagerWindow::refreshServices()
+    {
+        mServicesPoints->setCaption(formatText(tr("questman.svc.points"), { std::to_string(playerSkillPoints()) }));
+        if (!sServices.mReceived || !sServices.mEnabled)
+        {
+            mServicesInfo->setCaption(tr("questman.svc.unavailable"));
+            mClearJournalButton->setEnabled(false);
+            mLeaveFactionButton->setEnabled(false);
+        }
+        else
+        {
+            mServicesInfo->setCaption(formatText(tr("questman.svc.info"), {
+                std::to_string(sServices.mResetSmall), std::to_string(sServices.mResetLarge),
+                std::to_string(sServices.mSkip), std::to_string(sServices.mSkipFaction),
+                std::to_string(sServices.mSkipReputation), std::to_string(sServices.mClear),
+                std::to_string(sServices.mLeave) }));
+            mClearJournalButton->setEnabled(!sServices.mSharedJournal);
+        }
+        if (mArmedAction != "clear")
+            mClearJournalButton->setCaption(formatText(tr("questman.svc.clear_cost"), { std::to_string(sServices.mClear) }));
+
+        // Factions the character belongs to.
+        const std::size_t previous = mFactionList->getIndexSelected();
+        const std::string previousId = previous < mFactionIds.size() ? mFactionIds[previous] : std::string();
+        mFactionList->removeAllItems();
+        mFactionIds.clear();
+        const MWWorld::Ptr player = MWMechanics::getPlayer();
+        if (!player.isEmpty() && player.getClass().isNpc())
+        {
+            const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+            for (const auto& pair : player.getClass().getNpcStats(player).getFactionRanks())
+            {
+                std::string label = factionDisplayName(pair.first);
+                const ESM::Faction* faction = store.get<ESM::Faction>().search(pair.first);
+                if (faction != nullptr && pair.second >= 0 && pair.second < 10 && !faction->mRanks[pair.second].empty())
+                    label += " — " + faction->mRanks[pair.second];
+                mFactionList->addItem(label);
+                mFactionIds.push_back(pair.first);
+                if (Misc::StringUtils::ciEqual(pair.first, previousId))
+                    mFactionList->setIndexSelected(mFactionIds.size() - 1);
+            }
+        }
+        if (mFactionIds.empty())
+            mFactionList->addItem(tr("questman.svc.no_factions"));
+        const bool factionSelected = mFactionList->getIndexSelected() < mFactionIds.size();
+        mLeaveFactionButton->setEnabled(sServices.mReceived && sServices.mEnabled && !sServices.mSharedFactions
+            && factionSelected);
+        if (mArmedAction.rfind("leave:", 0) != 0)
+            mLeaveFactionButton->setCaption(formatText(tr("questman.svc.leave_cost"), { std::to_string(sServices.mLeave) }));
+    }
+
+    void QuestManagerWindow::notifyFactionSelected(MyGUI::ListBox*, std::size_t)
+    {
+        mArmedAction.clear();
+        refreshServices();
+    }
+
+    void QuestManagerWindow::notifySkipQuest(MyGUI::Widget*)
+    {
+        const QuestData* quest = selectedQuest();
+        if (quest == nullptr)
+            return;
+        const SkipPlan plan = planSkip(*quest);
+        if (!plan.mOk)
+            return;
+        const int cost = skipCost(*quest);
+        if (playerSkillPoints() < cost)
+        {
+            setStatus(formatText(tr("questman.svc.err.points"), { std::to_string(cost), std::to_string(playerSkillPoints()) }), true);
+            return;
+        }
+        if (!confirmAction("skip:" + quest->mId, mSkipButton, cost))
+            return;
+        setStatus(tr("questman.svc.sending"), false);
+        sendServiceCommand({ "skip", plan.mId, std::to_string(plan.mIndex) });
+        updateServiceButtons();
+    }
+
+    void QuestManagerWindow::notifyResetQuest(MyGUI::Widget*)
+    {
+        const QuestData* quest = selectedQuest();
+        if (quest == nullptr || quest->mAddon == "server" || quest->mCompleted)
+            return;
+        const int cost = resetCost(*quest);
+        if (playerSkillPoints() < cost)
+        {
+            setStatus(formatText(tr("questman.svc.err.points"), { std::to_string(cost), std::to_string(playerSkillPoints()) }), true);
+            return;
+        }
+        if (!confirmAction("reset:" + quest->mId, mResetButton, cost))
+            return;
+        std::string ids;
+        for (const std::string& id : quest->mIds)
+        {
+            if (!ids.empty())
+                ids += ",";
+            ids += id;
+        }
+        setStatus(tr("questman.svc.sending"), false);
+        sendServiceCommand({ "reset", ids });
+        updateServiceButtons();
+    }
+
+    void QuestManagerWindow::notifyClearJournal(MyGUI::Widget*)
+    {
+        if (playerSkillPoints() < sServices.mClear)
+        {
+            setStatus(formatText(tr("questman.svc.err.points"), { std::to_string(sServices.mClear), std::to_string(playerSkillPoints()) }), true);
+            return;
+        }
+        if (!confirmAction("clear", mClearJournalButton, sServices.mClear))
+            return;
+        // Finished quests keep their finishing entry on the server (so they stay
+        // completed after a relog); the server hides its text from then on.
+        std::string finished;
+        MWBase::Journal* journal = MWBase::Environment::get().getJournal();
+        for (auto it = journal->questBegin(); it != journal->questEnd(); ++it)
+        {
+            if (!it->second.isFinished())
+                continue;
+            if (!finished.empty())
+                finished += ";";
+            finished += it->first + ":" + std::to_string(it->second.getIndex());
+        }
+        setStatus(tr("questman.svc.sending"), false);
+        sendServiceCommand({ "clear", finished });
+        refreshServices();
+    }
+
+    void QuestManagerWindow::notifyLeaveFaction(MyGUI::Widget*)
+    {
+        const std::size_t selected = mFactionList->getIndexSelected();
+        if (selected >= mFactionIds.size())
+            return;
+        if (playerSkillPoints() < sServices.mLeave)
+        {
+            setStatus(formatText(tr("questman.svc.err.points"), { std::to_string(sServices.mLeave), std::to_string(playerSkillPoints()) }), true);
+            return;
+        }
+        if (!confirmAction("leave:" + mFactionIds[selected], mLeaveFactionButton, sServices.mLeave))
+            return;
+        setStatus(tr("questman.svc.sending"), false);
+        sendServiceCommand({ "leave", mFactionIds[selected] });
+    }
+
+    void QuestManagerWindow::handleServiceMessage(const std::string& payload)
+    {
+        const std::vector<std::string> raw = splitOn(payload, '\t');
+        if (raw.size() < 2 || raw[0] != "QUESTMAN")
+            return;
+        const std::string& kind = raw[1];
+        std::vector<std::string> f;
+        for (std::size_t i = 2; i < raw.size(); ++i)
+            f.push_back(servicePercentDecode(raw[i]));
+        const auto field = [&f](std::size_t i) { return i < f.size() ? f[i] : std::string(); };
+
+        MWDialogue::Journal* journal = dynamic_cast<MWDialogue::Journal*>(MWBase::Environment::get().getJournal());
+        std::string status;
+        bool error = false;
+        bool rebuild = false;
+
+        if (kind == "config")
+        {
+            sServices.mReceived = true;
+            sServices.mEnabled = toInt(field(0), 0) != 0;
+            sServices.mResetSmall = toInt(field(1), 5);
+            sServices.mResetLarge = toInt(field(2), 10);
+            sServices.mResetLargeFrom = toInt(field(3), 3);
+            sServices.mSkip = toInt(field(4), 10);
+            sServices.mSkipFaction = toInt(field(5), 15);
+            sServices.mSkipReputation = toInt(field(6), 2);
+            sServices.mClear = toInt(field(7), 10);
+            sServices.mLeave = toInt(field(8), 10);
+            sServices.mSharedJournal = toInt(field(9), 0) != 0;
+            sServices.mSharedFactions = toInt(field(10), 0) != 0;
+        }
+        else if (kind == "hide")
+        {
+            // Raw field: "quest:index;quest:index" with each quest id encoded.
+            if (journal != nullptr && raw.size() > 2)
+            {
+                for (const std::string& pair : splitOn(raw[2], ';'))
+                {
+                    const std::size_t colon = pair.rfind(':');
+                    if (colon == std::string::npos)
+                        continue;
+                    journal->hideEntry(servicePercentDecode(pair.substr(0, colon)), toInt(pair.substr(colon + 1), -1));
+                }
+            }
+            rebuild = true;
+        }
+        else if (kind == "skip_ok")
+        {
+            const std::string quest = field(0);
+            const int index = toInt(field(1), -1);
+            const MWWorld::Ptr player = MWMechanics::getPlayer();
+            try
+            {
+                // Same path as finishing the quest in dialogue: local entry
+                // (XP for completion) + PlayerJournal packet to the server.
+                MWBase::Journal* baseJournal = MWBase::Environment::get().getJournal();
+                if (mwmp::Main::isInitialized() && mwmp::Main::get().getLocalPlayer() != nullptr
+                    && !baseJournal->hasEntry(quest, index))
+                    mwmp::Main::get().getLocalPlayer()->sendJournalEntry(quest, index, player);
+                baseJournal->addEntry(quest, index, player);
+            }
+            catch (const std::exception& e)
+            {
+                Log(Debug::Warning) << "Questman: could not write the skipped quest's entry: " << e.what();
+            }
+            status = formatText(tr("questman.svc.ok.skip"), { questDisplayName(quest), field(2), field(3) });
+            if (toInt(field(4), 0) > 0)
+                status += " " + formatText(tr("questman.svc.ok.reputation"), { field(4), factionDisplayName(field(5)) });
+            rebuild = true;
+        }
+        else if (kind == "reset_ok")
+        {
+            const std::vector<std::string> ids = splitOn(field(0), ',');
+            if (journal != nullptr)
+                for (const std::string& id : ids)
+                    journal->resetQuest(id);
+            status = formatText(tr("questman.svc.ok.reset"), { ids.empty() ? std::string() : questDisplayName(ids.front()),
+                field(1), field(2) });
+            rebuild = true;
+        }
+        else if (kind == "clear_ok")
+        {
+            if (journal != nullptr)
+                journal->clearJournalText();
+            status = formatText(tr("questman.svc.ok.clear"), { field(0), field(1) });
+            rebuild = true;
+        }
+        else if (kind == "leave_ok")
+        {
+            const std::string faction = field(0);
+            const MWWorld::Ptr player = MWMechanics::getPlayer();
+            if (!player.isEmpty() && player.getClass().isNpc())
+            {
+                MWMechanics::NpcStats& stats = player.getClass().getNpcStats(player);
+                std::string key;
+                for (const auto& pair : stats.getFactionRanks())
+                    if (Misc::StringUtils::ciEqual(pair.first, faction))
+                        key = pair.first;
+                // NpcStats::lowerRank removes the membership once the rank
+                // drops below zero; the faction packet cannot express that.
+                for (int guard = 0; !key.empty() && stats.isInFaction(key) && guard < 16; ++guard)
+                    stats.lowerRank(key);
+                stats.clearExpelled(key.empty() ? faction : key);
+                stats.setFactionReputation(key.empty() ? Misc::StringUtils::lowerCase(faction) : key, 0);
+            }
+            status = formatText(tr("questman.svc.ok.leave"), { factionDisplayName(faction), field(1), field(2) });
+        }
+        else if (kind == "error")
+        {
+            error = true;
+            const std::string key = field(0);
+            if (key == "points")
+                status = formatText(tr("questman.svc.err.points"), { field(1), field(2) });
+            else
+                status = tr("questman.svc.err." + (key.empty() ? std::string("bad") : key));
+        }
+
+        if (sInstance == nullptr)
+            return;
+        sInstance->mArmedAction.clear();
+        if (!status.empty())
+            sInstance->setStatus(status, error);
+        if (sInstance->isVisible())
+        {
+            if (rebuild)
+                sInstance->rebuildData();
+            sInstance->refreshCurrentTab();
+            sInstance->updateServiceButtons();
+        }
     }
 
 }

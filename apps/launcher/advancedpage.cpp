@@ -436,8 +436,10 @@ namespace
         },
         {
             "Max Performance",
-            "Aggressive performance preset: simpler shader path, single-threaded rendering, and extra background work where it usually helps most.",
-            "SingleThreaded", false,
+            // P001: SingleThreaded serializes update, cull and draw, the slowest
+            // OSG model on any multi-core CPU, so "Max Performance" overlaps them.
+            "Aggressive performance preset: simpler shader path, overlapped cull and draw threads, and extra background work where it usually helps most.",
+            "DrawThreadPerContext", false,
             true, false,
             true,
             true, true, true,

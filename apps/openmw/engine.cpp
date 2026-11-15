@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include <components/settings/parser.hpp>
+#include <components/loadinglistener/loadinglistener.hpp>
 
 #include <iomanip>
 #include <fstream>
@@ -1149,10 +1150,15 @@ void OMW::Engine::prepareEngine (Settings::Manager & settings)
             window->playVideo(logo, true);
     }
 
+    // One loading card and one progress budget through plugins and the initial cell.
+    window->getLoadingScreen()->beginStartupProgress();
     // Create the world
     mEnvironment.setWorld( new MWWorld::World (mViewer, rootNode, mResourceSystem.get(), mWorkQueue.get(),
         mFileCollections, mContentFiles, mGroundcoverFiles, mEncoder, mActivationDistanceOverride, mCellName,
         mStartupScript, mResDir.string(), mCfgMgr.getUserDataPath().string()));
+
+    window->getLoadingScreen()->setProgressStage(Loading::Stage::World);
+    window->getLoadingScreen()->setProgressRange(1);
 
     // UI initialization can inspect or auto-equip inventory items. Register the
     // mechanics system first so canBeEquipped() never dereferences a null manager.
@@ -1182,6 +1188,7 @@ void OMW::Engine::prepareEngine (Settings::Manager & settings)
     mEnvironment.setJournal (new MWDialogue::Journal);
     mEnvironment.setDialogueManager (new MWDialogue::DialogueManager (mExtensions, mTranslationDataStorage));
     mEnvironment.setResourceSystem(mResourceSystem.get());
+    window->getLoadingScreen()->setProgress(1);
 
     // scripts
     if (mCompileAll)
@@ -1334,6 +1341,7 @@ void OMW::Engine::go()
         Handle post-initialization for multiplayer classes
     */
     mwmp::Main::postInit();
+    mEnvironment.getWindowManager()->getLoadingScreen()->endStartupProgress();
     /*
         End of tes3mp addition
     */
@@ -1356,6 +1364,8 @@ void OMW::Engine::go()
     mViewer->addEventHandler(statshandler);
 
     osg::ref_ptr<Resource::StatsHandler> resourceshandler = new Resource::StatsHandler(stats.is_open());
+    // P001: Ctrl+F4 toggles resource statistics; plain F4 stays the Bloom hotkey.
+    resourceshandler->setKey(osgGA::GUIEventAdapter::KEY_F4, osgGA::GUIEventAdapter::MODKEY_CTRL);
     mViewer->addEventHandler(resourceshandler);
 
     if (stats.is_open())

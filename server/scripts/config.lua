@@ -674,6 +674,31 @@ config.serverQuests = {
     journalUpdatePopup = true
 }
 
+-- QM1: Quest Manager services, paid with Skill Points from the player's
+-- Questman window (journal -> Quest Manager -> Services). Prices in points.
+--   reset:  forget a quest so it can be taken again. resetSmall for quests with
+--           fewer than resetLargeFromEntries journal entries, else resetLarge.
+--           Only unfinished quests are offered by the client.
+--   skip:   finish a quest: completion XP like a normal finish, plus
+--           skipReputation with the quest's faction (vanilla guilds/houses).
+--           Server quests are never offered; each quest once per character.
+--   clearJournal: wipe the journal text; every quest keeps its progress and
+--           every known dialogue topic is kept.
+--   leaveFaction: leave a faction (rank, expulsion and reputation are removed).
+-- Refused while config.shareJournal / config.shareFactionRanks are on.
+config.questmanServices = {
+    enabled = true,
+    resetSmall = 5,
+    resetLarge = 10,
+    resetLargeFromEntries = 3,
+    skip = 10,
+    skipFaction = 15,
+    skipReputation = 2,
+    clearJournal = 10,
+    leaveFaction = 10,
+    cooldownSeconds = 2
+}
+
 -- X042: modifying original Morrowind journal stages is disabled by default.
 -- Add exact vanilla quest IDs here only when an administrator intentionally
 -- wants a server quest to advance those original quests.

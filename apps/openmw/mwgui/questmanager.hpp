@@ -29,9 +29,16 @@ namespace MWGui
     {
     public:
         explicit QuestManagerWindow(std::function<void()> returnToJournal);
+        ~QuestManagerWindow() override;
+
+        /// QM1: a "QUESTMAN\t..." message from the server (prices, results,
+        /// hidden journal entries). Applies journal/faction changes even while
+        /// the window is closed; refreshes the window when it is open.
+        static void handleServiceMessage(const std::string& payload);
 
         void onOpen() override;
         bool exit() override;
+        void onFrame(float duration) override;
         void clear() override;
         void onResChange(int width, int height) override;
 
@@ -128,6 +135,31 @@ namespace MWGui
         void notifyTopicRelatedSelected(MyGUI::ListBox* sender, std::size_t index);
         void notifyWindowChanged(MyGUI::Window* sender);
 
+        // QM1: paid services (Skill Points). The server decides and persists.
+        struct SkipPlan
+        {
+            bool mOk = false;
+            std::string mId;
+            int mIndex = -1;
+            std::string mReason;  ///< l10n key when not possible
+        };
+        SkipPlan planSkip(const QuestData& quest) const;
+        int skipCost(const QuestData& quest) const;
+        int resetCost(const QuestData& quest) const;
+        const QuestData* selectedQuest() const;
+        void refreshServices();
+        void updateServiceButtons();
+        bool confirmAction(const std::string& action, MyGUI::Button* button, int cost);
+        void setStatus(const std::string& text, bool error);
+        void notifySkipQuest(MyGUI::Widget* sender);
+        void notifyResetQuest(MyGUI::Widget* sender);
+        void notifyClearJournal(MyGUI::Widget* sender);
+        void notifyLeaveFaction(MyGUI::Widget* sender);
+        void notifyFactionSelected(MyGUI::ListBox* sender, std::size_t index);
+        static void sendServiceCommand(const std::vector<std::string>& fields);
+        static int playerSkillPoints();
+        static QuestManagerWindow* sInstance;
+
         static Metadata classifyQuest(const std::string& id);
         static std::string lower(const std::string& value);
         static bool containsSearch(const std::string& haystack, const std::string& needle);
@@ -175,6 +207,18 @@ namespace MWGui
         MyGUI::EditBox* mRecordDetail = nullptr;
         MyGUI::EditBox* mStatsDetail = nullptr;
         MyGUI::Button* mCloseButton = nullptr;
+        MyGUI::Button* mSkipButton = nullptr;
+        MyGUI::Button* mResetButton = nullptr;
+        MyGUI::TextBox* mStatusText = nullptr;
+        MyGUI::TextBox* mServicesPoints = nullptr;
+        MyGUI::EditBox* mServicesInfo = nullptr;
+        MyGUI::Button* mClearJournalButton = nullptr;
+        MyGUI::TextBox* mFactionLabel = nullptr;
+        MyGUI::ListBox* mFactionList = nullptr;
+        MyGUI::Button* mLeaveFactionButton = nullptr;
+        std::vector<std::string> mFactionIds;
+        std::string mArmedAction;
+        double mArmedAt = 0.0;
 
         std::vector<QuestData> mQuests;
         std::vector<TopicData> mTopics;

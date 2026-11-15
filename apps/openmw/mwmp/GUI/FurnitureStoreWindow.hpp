@@ -50,6 +50,9 @@ namespace mwmp
         void updateSelection();
         void resizeToViewport();
         void localize();
+        /// UI3: gold icons on the tabs and action buttons; page arrows and close
+        /// are icon-only with their name as the tooltip.
+        void refreshIcons();
         void cacheGeometry(MyGUI::Widget* widget);
         void hideEmbeddedSiblings();
         void onTabShop(MyGUI::Widget*);

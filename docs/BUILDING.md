@@ -104,3 +104,9 @@ GitHub Releases publication and the launcher's manifest-based update service are
 The complete `extern/LuaJIT` source tree, particularly authored `src/Makefile` and `src/luajit_rolling.h`, must be present after checkout. `src/luajit.h` is **generated during compilation**. Run `git add -A` and `python3 CI/verify-rubic0n-vendor.py` before pushing; on Actions the verifier rejects missing or untracked authored inputs. Do not switch to a stock/system LuaJIT.
 
 The Windows workflow uses `CI/vcpkg-triplets/x64-windows-release.cmake` with `VCPKG_BUILD_TYPE=release`; publisher OpenSSL installs into `C:/vcpkg/installed/x64-windows-release`, eliminating the unnecessary Debug variant. This is separate from the Qt 5 TLS compatibility runtime.
+
+## Private complete-source Android build and original APK signature
+
+The **private complete source edition only** also contains `android/`, whose maintained Android ARM64 job builds the native game client, embedded local server and signed `assembleMainlineRelease` APK. The original owner's `android/signing-local/ArenaMP-release.jks` and `signing.properties` are deliberately retained so installed APKs can be updated without changing signing identity. **Do not upload this complete source tree to a public repository.** The Android CI job checks repository privacy and verifies the release signing certificate fingerprint.
+
+The publicly distributable Windows/Linux-only edition contains no Android source, Android workflow or private signing files. GitHub Release *source attachments* generated from the private edition use Git archive export rules to exclude the original key and credentials. For Android build specifics, see [Android README](../android/README.md) and [Android build notes](ANDROID_RU.md).

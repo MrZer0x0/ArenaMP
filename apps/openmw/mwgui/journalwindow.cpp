@@ -271,6 +271,14 @@ namespace
             MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(getWidget<MyGUI::Widget>(CloseBTN));
         }
 
+        void onFrame(float duration) override
+        {
+            // QM1: the Quest Manager is owned by the journal, not by a GUI mode,
+            // so it gets its per-frame update (confirmation timeout) from here.
+            if (mQuestManager && mQuestManager->isVisible())
+                mQuestManager->onFrame(duration);
+        }
+
         void onClose() override
         {
             if (mQuestManager && mQuestManager->isVisible())

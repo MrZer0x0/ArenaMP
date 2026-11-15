@@ -2,6 +2,7 @@
 #define MGUI_CONTAINER_H
 
 #include "windowbase.hpp"
+#include "arenafiltercolumn.hpp"
 #include "referenceinterface.hpp"
 
 #include "itemmodel.hpp"
@@ -91,6 +92,8 @@ namespace MWGui
         MyGUI::Button* mViewModeButton;
         MyGUI::ImageBox* mViewModeIcon;
         MyGUI::Button* mSingleTransferButton;
+        // UI8: filter column shared with the inventory and merchant windows.
+        ArenaUi::FilterColumn mFilterColumn;
 
         void onItemSelected(int index);
         void onItemDragStarted(int index);

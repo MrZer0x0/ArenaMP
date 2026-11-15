@@ -244,6 +244,8 @@ namespace MWBase
             virtual bool isReadyToBlock (const MWWorld::Ptr& ptr) const = 0;
             virtual bool isWeaponTransition(const MWWorld::Ptr& ptr) const = 0;
             virtual bool isAttackingOrSpell(const MWWorld::Ptr &ptr) const = 0;
+            /// ArenaMP UI9: current wind-up of the actor's attack, 0..1 (bow draw).
+            virtual float getAttackStrength(const MWWorld::Ptr &ptr) const = 0;
 
             /*
                 Start of tes3mp addition
