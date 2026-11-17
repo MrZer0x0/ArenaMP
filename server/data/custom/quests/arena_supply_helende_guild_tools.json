@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_helende_guild_tools",
+  "version": 1,
+  "name": "Инструменты второго шанса",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "big helende",
+    "cell": "Sadrith Mora, Dirty Muriel's Cornerclub"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_helende_guild_tools_topic",
+      "text": "запасные инструменты",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Большой Хеленд необходимы четыре порции скрибового желе.",
+      "dialogue": "«Первый замок у каждого выходит неуклюже. Главное — чтобы вторая попытка была умнее первой».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Забирай комплект. У хороших инструментов есть цена, а у плохих — последствия».",
+      "dialogue": "«Забирай комплект. У хороших инструментов есть цена, а у плохих — последствия».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_scrib_jelly_01",
+          "operator": ">=",
+          "count": 4,
+          "value": 4
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_scrib_jelly_01",
+          "count": 4
+        },
+        {
+          "type": "giveItem",
+          "refId": "pick_journeyman_01",
+          "count": 1
+        },
+        {
+          "type": "giveItem",
+          "refId": "probe_journeyman_01",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 140
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Большая Хеленд хочет сделать тихий состав для обработки сложных замков. За скрибовое желе выдаст надёжные инструменты.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Tools for a Second Chance",
+      "topics": {
+        "arena_supply_helende_guild_tools_topic": "spare tools"
+      },
+      "offer": {
+        "dialogue": "Big Helende wants a quiet lubricant for stubborn locks. Bring scrib jelly and she will provide reliable tools.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I need to bring Big Helende four portions of scrib jelly.",
+          "dialogue": "\"Everyone fumbles their first lock. The trick is making the second attempt smarter than the first.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"Take the kit. Good tools have a price; bad ones have consequences.\"",
+          "dialogue": "\"Take the kit. Good tools have a price; bad ones have consequences.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

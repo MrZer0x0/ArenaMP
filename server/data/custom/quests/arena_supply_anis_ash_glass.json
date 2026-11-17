@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_anis_ash_glass",
+  "version": 1,
+  "name": "Пепел на донышке",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "anis seloth",
+    "cell": "Sadrith Mora, Anis Seloth: Alchemist"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_anis_ash_glass_topic",
+      "text": "проверка сосудов",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Анис нужны две порции солей пепла и два пучка виквита для опытов.",
+      "dialogue": "«Пепел проверяет сосуд лучше любого торговца. Не суй пальцы в горячую смесь и не вдыхай пары».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Материал выдержал нагрев. А эти сосуды не понадобились; можешь забрать все восемь».",
+      "dialogue": "«Материал выдержал нагрев. А эти сосуды не понадобились; можешь забрать все восемь».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_ash_salts_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "ingred_wickwheat_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_ash_salts_01",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_wickwheat_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "MR_Empty_Potion_Bottle_03",
+          "count": 8
+        },
+        {
+          "type": "xp",
+          "amount": 110
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Анис Селот испытывает жаропрочность стекла. Доставь соли пепла и виквит — получишь набор пустой тары.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Ash in the Glass",
+      "topics": {
+        "arena_supply_anis_ash_glass_topic": "vessel testing"
+      },
+      "offer": {
+        "dialogue": "Anis Seloth tests glass against heat and ash. Deliver ash salts and wickwheat for a set of empty vessels.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Anis needs two portions of ash salts and two bundles of wickwheat for her tests.",
+          "dialogue": "\"Ash tests a vessel better than any merchant. Do not put your fingers in the hot mixture, and do not breathe the fumes.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"The material survived the heat. These eight vessels are spare; you may take them.\"",
+          "dialogue": "\"The material survived the heat. These eight vessels are spare; you may take them.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_sottilde_soft_footsteps",
+  "version": 1,
+  "name": "Тихие шаги",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "sottilde",
+    "cell": "Balmora, South Wall Cornerclub"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_sottilde_soft_footsteps_topic",
+      "text": "тихие шаги",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Соттильд нужны две порции костяной муки и две порции кожи нетча.",
+      "dialogue": "«Вор, который громыхает железом, — просто богатая мишень. Кожа и смекалка важнее силы».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Вот хитиновый кинжал и пара отмычек. Не трать их на первую попавшуюся дверь».",
+      "dialogue": "«Вот хитиновый кинжал и пара отмычек. Не трать их на первую попавшуюся дверь».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_bonemeal_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "ingred_netch_leather_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_bonemeal_01",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_netch_leather_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "chitin dagger",
+          "count": 1
+        },
+        {
+          "type": "giveItem",
+          "refId": "pick_apprentice_01",
+          "count": 2
+        },
+        {
+          "type": "xp",
+          "amount": 90
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Соттильд собирает материалы для защитных накладок на снаряжение. Принеси костяную муку и кожу нетча — получишь лёгкое оружие и отмычки.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Quiet Footsteps",
+      "topics": {
+        "arena_supply_sottilde_soft_footsteps_topic": "quiet footsteps"
+      },
+      "offer": {
+        "dialogue": "Sottilde is gathering supplies for soft protective equipment pads. Bring bonemeal and netch leather to earn light gear and lockpicks.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Sottilde wants two portions of bonemeal and two of netch leather.",
+          "dialogue": "\"A thief who rattles in iron is just a wealthy target. Leather and cleverness beat brute force.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"Here is a chitin dagger and a pair of lockpicks. Do not waste them on the first door you find.\"",
+          "dialogue": "\"Here is a chitin dagger and a pair of lockpicks. Do not waste them on the first door you find.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

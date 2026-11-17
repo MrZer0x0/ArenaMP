@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_silent_manifest",
+  "version": 1,
+  "name": "Молчаливая накладная",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "Canctunian Ponius",
+    "cell": "Ebonheart, East Empire Company Hall"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_silent_manifest_topic",
+      "text": "потерянные накладные",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Цанктуниан Пониус выслушал сведения о ложных маяках, но потребовал материальное доказательство.",
+      "dialogue": "«Слухи легко доставить письмом. А вот настоящий образец поддельной линзы должен оставить след, который нельзя спрятать в шкаф».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Пониус согласится продолжить расследование, если принести одну порцию стекла-сырца для сверки состава.",
+      "dialogue": "«Одного стекла-сырца хватит для сравнительного анализа. Тогда я открою не общий журнал, а реестр частных поставок».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "В частном реестре обнаружилась сеть поставок на вымышленные склады. Часть грузов исчезла, но среди платежей значится содержание переселенцев.",
+      "dialogue": "«Это хуже контрабанды. Здесь записаны платы за продовольствие людям, которых официально нет. Кто-то обманывает Компанию и одновременно кормит беженцев. В Суране ищи Брадасу Ротандуса».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_raw_glass_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_raw_glass_01",
+          "count": 1
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Пониус обнаружил настоящие выплаты, скрытые под фиктивными грузами. Теперь нужно узнать, кто пользовался этими поставками.",
+      "dialogue": "«Прежде чем кого-то обвинять, найди живых свидетелей. Бумаги умеют лгать, голодные люди — реже».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 240
+        },
+        {
+          "type": "xp",
+          "amount": 230
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "На столе лежит письмо из Гнисиса. Кто-то обвиняет мою компанию в подделке маячных сигналов. Прежде чем называть это заговором, покажи мне вещественное подтверждение.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The Silent Manifest",
+      "topics": {
+        "arena_ashreg_silent_manifest_topic": "missing manifests"
+      },
+      "offer": {
+        "dialogue": "There is a letter from Gnisis on my desk. Someone accuses my company of faking beacon signals. Before we call this a conspiracy, show me physical proof.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Canctunian Ponius heard the story of the false beacons, but demanded material evidence.",
+          "dialogue": "“Rumours travel well by letter. A real sample of the false lens must leave a trace that cannot be locked in a cabinet.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Ponius will continue the inquiry if I bring one piece of raw glass for comparison.",
+          "dialogue": "“One piece of raw glass will suffice for comparison. Then I shall open the private orders register, not the general log.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "The private register reveals deliveries to invented warehouses. Some cargo vanished, yet payments include provisions for displaced families.",
+          "dialogue": "“This is worse than smuggling. These records pay for food for people who officially do not exist. Someone cheats the Company while feeding refugees. Find Bradasou Rothandus in Suran.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "Ponius found genuine payments hidden behind phantom cargo. I must now learn who benefited from those deliveries.",
+          "dialogue": "“Before accusing anyone, find living witnesses. Documents can lie; hungry people seldom do.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

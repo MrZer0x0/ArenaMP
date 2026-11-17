@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_eydis_watch",
+  "version": 1,
+  "name": "Запас стражи",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "eydis fire-eye",
+    "cell": "Balmora, Guild of Fighters"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_eydis_watch_topic",
+      "text": "запас для дозора",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Эйдис попросила четыре порции крабового мяса для бойцов на карауле.",
+      "dialogue": "«На голодный желудок и простой пост кажется осадой. Выйди на берег и добудь припасы».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Держи короткий меч и кожаный щит. Провиант у нас, а тебе пора научиться защищаться».",
+      "dialogue": "«Держи короткий меч и кожаный щит. Провиант у нас, а тебе пора научиться защищаться».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_crab_meat_01",
+          "operator": ">=",
+          "count": 4,
+          "value": 4
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_crab_meat_01",
+          "count": 4
+        },
+        {
+          "type": "giveItem",
+          "refId": "iron shortsword",
+          "count": 1
+        },
+        {
+          "type": "giveItem",
+          "refId": "netch_leather_shield",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 85
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Эйдис Огненный Глаз нужен провиант для ночного дозора. Принеси крабовое мясо, а она выделит учебное снаряжение.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Guard Supplies",
+      "topics": {
+        "arena_supply_eydis_watch_topic": "supplies for the watch"
+      },
+      "offer": {
+        "dialogue": "Eydis Fire-Eye needs rations for the night watch. Bring crab meat and she will issue starter equipment.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Eydis asked me to bring four portions of crab meat for the fighters on guard.",
+          "dialogue": "\"On an empty stomach even a quiet watch feels like a siege. Go to the shore and gather supplies.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"Take this short sword and leather shield. We have the rations, and you have a chance to learn how to defend yourself.\"",
+          "dialogue": "\"Take this short sword and leather shield. We have the rations, and you have a chance to learn how to defend yourself.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

@@ -75,8 +75,8 @@
 			
 			        <!-- Selected spell box -->
         <Widget type="Button" skin="" position="174 0 26 26" align="Left Bottom" name="SpellBox">
-            <!-- UI9.3: round frame; hidden while nothing is selected. The 18 px icon's
-                 corners lie under the opaque ring, so it reads as a full circle. -->
+            <!-- Centered 16 px icon above icon_disc; icon_ring is drawn last
+                 to frame it, keeping its corners inside the outer circle. -->
             <Widget type="Widget" skin="" position="0 0 26 26" name="SpellRing">
                 <Property key="Visible" value="false"/>
                 <Property key="NeedMouse" value="false"/>
@@ -84,7 +84,7 @@
                     <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_disc.png"/>
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
-                <Widget type="SpellWidget" skin="ArenaHUD_RoundIcon" position="4 4 18 18" name="SpellImage">
+                <Widget type="SpellWidget" skin="ArenaHUD_RoundIcon" position="5 5 16 16" name="SpellImage">
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
                 <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">
@@ -148,8 +148,8 @@
             </Widget>
 			
         <Widget type="Button" skin="" position="0 0 26 26" align="Right Bottom" name="WeapBox">
-            <!-- UI9.3: round frame; hidden while nothing is selected. The 18 px icon's
-                 corners lie under the opaque ring, so it reads as a full circle. -->
+            <!-- Centered 16 px icon above icon_disc; icon_ring is drawn last
+                 to frame it, keeping its corners inside the outer circle. -->
             <Widget type="Widget" skin="" position="0 0 26 26" name="WeapRing">
                 <Property key="Visible" value="false"/>
                 <Property key="NeedMouse" value="false"/>
@@ -157,7 +157,7 @@
                     <Property key="ImageTexture" value="textures\ui\arenamw\hud\icon_disc.png"/>
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
-                <Widget type="ItemWidget" skin="ArenaHUD_RoundIcon" position="4 4 18 18" name="WeapImage">
+                <Widget type="ItemWidget" skin="ArenaHUD_RoundIcon" position="5 5 16 16" name="WeapImage">
                     <Property key="NeedMouse" value="false"/>
                 </Widget>
                 <Widget type="ImageBox" skin="ImageBox" position="0 0 26 26">

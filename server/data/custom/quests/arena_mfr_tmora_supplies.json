@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_tmora_supplies",
+  "version": 1,
+  "name": "Запасы дома целительниц",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "OAAB_NPC_TMora_healer02",
+    "cell": "Тель Мора, Дом целительниц"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_tmora_supplies_topic",
+      "text": "запасы целительниц",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Эдрелль Мен попросила пополнить запасы дома целительниц в Тель Море: нужны две стопки ткани и одно зелье лечения отравлений.",
+      "dialogue": "Нужны две стопки чистой ткани и одно зелье лечения отравлений. Принесёшь всё сразу — рассчитаюсь на месте.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "hand_over",
+          "text": "Всё необходимое у меня с собой.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я ещё собираю припасы.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я передал Эдрелль Мен ткань и зелье. В благодарность мне дали деньги и письмо для Мехры Отан.",
+      "dialogue": "Отлично. Вот плата. И ещё — возьми это письмо. Если увидишь Мехру Отан, передай лично.",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "misc_de_foldedcloth00",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "p_cure_poison_s",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "misc_de_foldedcloth00",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "p_cure_poison_s",
+          "count": 1
+        },
+        {
+          "type": "gold",
+          "amount": 80
+        },
+        {
+          "type": "xp",
+          "amount": 70
+        },
+        {
+          "type": "giveItem",
+          "refId": "OAAB_note_toMehraOthan",
+          "count": 1
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "В доме целительниц расходники исчезают быстрее, чем их успевают раскладывать по полкам. Поможешь пополнить запас?",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Что нужно принести?",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Healers' Supplies",
+      "topics": {
+        "arena_mfr_tmora_supplies_topic": "healers' supplies"
+      },
+      "offer": {
+        "dialogue": "The healers' house burns through supplies faster than we can put them on the shelves. Can you help restock us?",
+        "choices": {
+          "accept": "What do you need?",
+          "decline": "Not right now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Edrelle Men asked me to restock the healers' house in Tel Mora: two bundles of cloth and one Cure Poison potion.",
+          "dialogue": "I need two bundles of clean cloth and one Cure Poison potion. Bring everything together and I will pay you here.",
+          "choices": {
+            "hand_over": "I have everything you asked for.",
+            "later": "I am still gathering the supplies."
+          }
+        },
+        "20": {
+          "journal": "I gave Edrelle Men the cloth and potion. I was paid and given a letter for Mehra Othan.",
+          "dialogue": "Excellent. Here is your pay. One more thing—take this letter. If you see Mehra Othan, give it to her personally."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_brass_echo",
+  "version": 1,
+  "name": "Латунное эхо",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "skinkintreesshade",
+    "cell": "Sadrith Mora, Wolverine Hall: Mage's Guild"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_brass_echo_topic",
+      "text": "механизм ложного света",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Сцинк-в-Тени-Дерева согласился разобрать устройство ложного маяка.",
+      "dialogue": "«У механизма нет намерений. Намерения принадлежат рукам, которые его собирали. Давай отделим одно от другого».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Для опыта необходимы одна ржавая двемерская деталь и одна порция солей пепла.",
+      "dialogue": "«Принеси ржавую двемерскую деталь и соли пепла. По их износу можно определить, откуда брали образцы для сборки».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "Сцинк доказал, что механизм собирали из дешёвых деталей на месте. Им пользовались для сигналов торговым судам, а не для религиозных обрядов или разрушительных чар.",
+      "dialogue": "«Никакого древнего пророчества, увы. Только расчёт, свет и власть над маршрутами. Кто контролирует путь товара, тот контролирует и судьбы людей. Об этом стоит сообщить Пониусу».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "misc_dwrv_gear00",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        },
+        {
+          "type": "item",
+          "refId": "ingred_ash_salts_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "misc_dwrv_gear00",
+          "count": 1
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_ash_salts_01",
+          "count": 1
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я узнал устройство ложных маяков. Теперь можно вернуться к Цанктуниану Пониусу и решить судьбу собранных доказательств.",
+      "dialogue": "«Привези заключение в Эбенгард. И не путай разоблачение преступления с наказанием невиновных».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 335
+        },
+        {
+          "type": "xp",
+          "amount": 300
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Мне сообщили о странном сочетании двемерской передачи и отражающей линзы. Большинство сочтёт это древней магией. Я предпочитаю сначала проверить механизм.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The Brass Echo",
+      "topics": {
+        "arena_ashreg_brass_echo_topic": "false-light mechanism"
+      },
+      "offer": {
+        "dialogue": "I have heard of an odd pairing of Dwemer gearing and a reflecting lens. Most would call it ancient magic. I prefer to examine the mechanism first.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Skink-in-Tree’s-Shade agreed to examine a false-beacon mechanism.",
+          "dialogue": "“A machine has no intentions. Intentions belong to the hands that assembled it. Let us distinguish the two.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "The experiment requires one rusty Dwemer gear and one portion of ash salts.",
+          "dialogue": "“Bring a rusty Dwemer component and ash salts. Their wear may tell us where the builders acquired their samples.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "Skink proved the device was assembled locally from cheap components. It served to signal merchant ships, not to perform rites or destructive magic.",
+          "dialogue": "“No ancient prophecy, I am afraid. Only calculation, light and control of trade routes. Whoever controls goods also controls lives. Tell Ponius.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I learned how the false beacons function. I can return to Canctunian Ponius and decide what to do with the evidence.",
+          "dialogue": "“Take the findings to Ebonheart. And do not confuse exposing a crime with punishing the innocent.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

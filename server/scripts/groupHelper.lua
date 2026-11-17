@@ -1260,7 +1260,11 @@ local function processCommand(pid, cmd)
     else
         ok, message = false, "Unknown group action"
     end
-    if message ~= nil then sendNotice(pid, message, not ok) end
+    -- UI already displays successful actions; keep errors and meaningful invitations.
+    local quietSuccess = sub == "journal" or sub == "topics" or lower(cmd[1] or "") == "groupui"
+    if message ~= nil and (not ok or not quietSuccess) then
+        sendNotice(pid, message, not ok)
+    end
     groupHelper.SendState(pid)
     local group = groupHelper.GetPlayerGroup(pid)
     if group ~= nil then broadcastState(group) end
@@ -1320,7 +1324,11 @@ customEventHooks.registerHandler("OnGUIAction", function(eventStatus, pid, idGui
         ok, message = declineInvite(pid)
     end
 
-    if message ~= nil then sendNotice(pid, message, not ok) end
+    -- UI already displays successful actions; keep errors and meaningful invitations.
+    local quietSuccess = sub == "journal" or sub == "topics" or lower(cmd[1] or "") == "groupui"
+    if message ~= nil and (not ok or not quietSuccess) then
+        sendNotice(pid, message, not ok)
+    end
     groupHelper.SendState(pid)
     local group = groupHelper.GetPlayerGroup(pid)
     if group ~= nil then broadcastState(group) end

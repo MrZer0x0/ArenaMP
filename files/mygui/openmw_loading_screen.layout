@@ -5,9 +5,13 @@
             <Property key="NeedMouseFocus" value="false"/>
         </Widget>
         <Widget type="Widget" position="0 0 800 600" align="Stretch" name="LoadingBox">
-            <Widget type="Widget" skin="MW_Dialog" position="40 360 720 176" name="LoadingPanel">
+            <Widget type="Widget" position="40 360 720 176" name="LoadingPanel">
                 <Property key="NeedMouseFocus" value="false"/>
                 <Property key="NeedKeyFocus" value="false"/>
+                <Widget type="Widget" skin="MW_Dialog" position="0 0 720 176" align="Stretch" name="LoadingFrame">
+                    <Property key="NeedMouseFocus" value="false"/>
+                    <Property key="NeedKeyFocus" value="false"/>
+                </Widget>
                 <Widget type="TextBox" skin="SandText" position="24 24 664 26" name="LoadingTipTitle">
                     <Property key="FontName" value="ArenaLoadingFont"/>
                     <Property key="FontHeight" value="18"/>
@@ -35,6 +39,7 @@
                     <Property key="FontHeight" value="15"/>
                     <Property key="TextAlign" value="HCenter VCenter"/>
                     <Property key="TextShadow" value="true"/>
+                    <Property key="TextShadowColour" value="0 0 0"/>
                     <Property key="NeedMouseFocus" value="false"/>
                     <Property key="NeedKeyFocus" value="false"/>
                 </Widget>

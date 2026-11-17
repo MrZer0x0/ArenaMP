@@ -25,6 +25,15 @@ namespace ArenaUpdater
             if (at == std::string::npos) return ServerFilePolicy::NotServer;
             tail = path.substr(at + marker.size());
         }
+        // Server quest definitions are user data: deliver newly bundled JSON
+        // once, but NEVER overwrite a host-edited quest or its live index.
+        // After the update the server scans this directory and merges the index.
+        const std::string questPrefix = "data/custom/quests/";
+        if (tail.compare(0, questPrefix.size(), questPrefix) == 0 &&
+            tail.size() > questPrefix.size() + 5 &&
+            tail.compare(tail.size() - 5, 5, ".json") == 0 &&
+            tail.find('/', questPrefix.size()) == std::string::npos)
+            return ServerFilePolicy::SeedOnly;
         // Host configuration and extension entry points are installed only
         // when missing. Unknown/local files are never pruned by the updater.
         if (tail == "scripts/config.lua" || tail == "scripts/customscripts.lua"

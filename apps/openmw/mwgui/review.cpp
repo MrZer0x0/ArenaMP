@@ -179,12 +179,12 @@ namespace MWGui
         getWidget(okButton, "OKButton");
         okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ReviewDialog::onOkClicked);
 
-        // UI3: icons on the edit and navigation buttons. Narrow buttons fall back
-        // to the icon alone, with the caption as a tooltip.
+        // Keep every action button icon-only; show the localized label in its
+        // hover tooltip, without rendering text over the icon.
         const auto decorate = [this](const char* name, const char* icon) {
             MyGUI::Button* widget = nullptr;
             getWidget(widget, name);
-            ArenaUi::decorate(widget, icon, widget->getCaption().asUTF8(), ArenaUi::IconMode::IconAndCaption);
+            ArenaUi::decorate(widget, icon, widget->getCaption().asUTF8(), ArenaUi::IconMode::IconOnly);
         };
         decorate("NameButton", "btn_rename");
         decorate("RaceButton", "menu_players");

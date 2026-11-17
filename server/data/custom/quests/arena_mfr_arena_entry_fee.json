@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_arena_entry_fee",
+  "version": 1,
+  "name": "Взнос перед боем",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "arena_dealer",
+    "cell": "Vivec, Arena Pit"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_arena_entry_topic",
+      "text": "допуск к тренировке",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Бондеиус Варо предложил тренировочный допуск на Арену за 100 золотых.",
+      "dialogue": "Сто септимов. После оплаты получишь тренировочный длинный меч и сможешь обратиться к мастеру синей команды.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "pay",
+          "text": "Вот сто септимов.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Сначала добуду деньги.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я оплатил тренировочный допуск на Арену и получил тренировочный длинный меч.",
+      "dialogue": "Оплачено. Держи учебный клинок. Не потеряй — мастер спросит его обратно.",
+      "requirements": [
+        {
+          "type": "gold",
+          "operator": ">=",
+          "value": 100
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "gold_001",
+          "count": 100
+        },
+        {
+          "type": "giveItem",
+          "refId": "Arena_training_longsword",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 50
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "На Арене за место и снаряжение платят заранее. Хочешь тренировочный допуск — внеси сто септимов.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я внесу плату.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сегодня.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The Training Fee",
+      "topics": {
+        "arena_mfr_arena_entry_topic": "training admission"
+      },
+      "offer": {
+        "dialogue": "On the Arena, space and equipment are paid for up front. Want a training pass? Put down one hundred septims.",
+        "choices": {
+          "accept": "I will pay the fee.",
+          "decline": "Not today."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Bondeius Varo offered me Arena training admission for 100 gold.",
+          "dialogue": "One hundred septims. Once you pay, you get a training longsword and can speak with the Blue Team master.",
+          "choices": {
+            "pay": "Here are one hundred septims.",
+            "later": "I need to get the money first."
+          }
+        },
+        "20": {
+          "journal": "I paid the Arena training fee and received a training longsword.",
+          "dialogue": "Paid in full. Take the practice blade. Do not lose it—the master will want it back."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

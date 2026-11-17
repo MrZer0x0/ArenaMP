@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_cienne_mortar",
+  "version": 1,
+  "name": "Ступка и стекло",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "cienne sintieve",
+    "cell": "Ald-ruhn, Cienne Sintieve: Alchemist"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_cienne_mortar_topic",
+      "text": "проверка ступки",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Мне поручено принести Циенн три порции скаттла и две порции крабового мяса.",
+      "dialogue": "«Магию оставим магам. Хорошая алхимия начинается с рук, терпения и чистого сосуда».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Ты помог мне не испортить новую ступку. Возьми простые бутылки и несколько монет за дорогу».",
+      "dialogue": "«Ты помог мне не испортить новую ступку. Возьми простые бутылки и несколько монет за дорогу».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_scuttle_01",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        },
+        {
+          "type": "item",
+          "refId": "ingred_crab_meat_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_scuttle_01",
+          "count": 3
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_crab_meat_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "MR_Empty_Potion_Bottle_01",
+          "count": 10
+        },
+        {
+          "type": "xp",
+          "amount": 75
+        },
+        {
+          "type": "gold",
+          "amount": 25
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Циенн Синтив проверяет новую партию ступок. Для безопасного пробного помола ей нужны скаттл и крабовое мясо.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Mortar and Glass",
+      "topics": {
+        "arena_supply_cienne_mortar_topic": "mortar test"
+      },
+      "offer": {
+        "dialogue": "Cienne Sintieve is testing a new batch of mortars. She needs scuttle and crab meat for a harmless trial grind.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I was asked to bring Cienne three portions of scuttle and two of crab meat.",
+          "dialogue": "\"Let the mages have their spells. Good alchemy begins with steady hands, patience, and a clean vessel.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"You helped me save a new mortar from damage. Take these plain bottles and a little travel money.\"",
+          "dialogue": "\"You helped me save a new mortar from damage. Take these plain bottles and a little travel money.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

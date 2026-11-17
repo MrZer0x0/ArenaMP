@@ -159,11 +159,11 @@
          magic-item backdrop ("Frame") is collapsed to nothing so it cannot show
          outside the circle; only the icon itself is drawn. -->
     <Resource type="ResourceLayout" name="ArenaHUD_RoundIcon" version="3.2.0">
-        <Widget type="Widget" skin="" position="0 0 18 18" name="Root">
+        <Widget type="Widget" skin="" position="0 0 16 16" name="Root">
             <Widget type="ImageBox" skin="ImageBox" position="0 0 0 0" align="Left Top" name="Frame">
                 <Property key="Visible" value="false"/>
             </Widget>
-            <Widget type="ImageBox" skin="ImageBox" position="0 0 18 18" align="Stretch" name="Item"/>
+            <Widget type="ImageBox" skin="ImageBox" position="0 0 16 16" align="Stretch" name="Item"/>
             <Widget type="TextBox" skin="CountText" position="0 0 0 0" align="Right Bottom" name="Text"/>
         </Widget>
     </Resource>

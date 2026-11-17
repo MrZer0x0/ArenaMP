@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_cargo_without_ship",
+  "version": 1,
+  "name": "Груз без корабля",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Ingwold_Thane",
+    "cell": "Caldera, Shenk's Shovel"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_cargo_without_ship_topic",
+      "text": "счёт из Кальдеры",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Ингволд Тан знает о фиктивных перевозках. Он предложил показать запись за небольшую плату.",
+      "dialogue": "«Никаких имён, пока мы не договорились. Мои гости доверяют мне больше, чем Империи».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Ингволд требует 50 золотых за копию подозрительного счёта.",
+      "dialogue": "«Пятьдесят септимов. Не за бумагу — за то, чтобы я больше не видел тебя и этот счёт вместе».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "В документе указан фиктивный груз «масла для маячных линз». Оплата проведена через Имперскую торговую компанию, но получатель — несуществующий склад.",
+      "dialogue": "«Заметил? Платили не за товар, а за доставку в пустоту. Если хочется знать, кто зажигает ложные маяки, поговори с Фавеном Реладреном в Гнисисе».",
+      "requirements": [
+        {
+          "type": "gold",
+          "operator": ">=",
+          "value": 50
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "gold_001",
+          "count": 50
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я заплатил Ингволду за сведения. Он направил меня к маяку Фавена Реладрена в Гнисисе.",
+      "dialogue": "«Считай, мы не знакомы. И береги ноги на дороге в Гнисис».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 145
+        },
+        {
+          "type": "xp",
+          "amount": 115
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "В моей таверне останавливаются перевозчики. Один рассказывал о пошлине за корабль, который никогда не заходил в порт. У меня осталась копия счёта, но бесплатно такие истории не рассказывают.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Cargo Without a Ship",
+      "topics": {
+        "arena_ashreg_cargo_without_ship_topic": "the Caldera account"
+      },
+      "offer": {
+        "dialogue": "Carriers stop at my tavern. One spoke of a duty charged to a ship that never reached port. I kept a copy of the account, but stories like this are not free.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Ingwold Thane knows about phantom shipments. He offered to show me a record for a modest fee.",
+          "dialogue": "“No names until we have an arrangement. My patrons trust me more than they trust the Empire.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Ingwold wants 50 gold for a copy of the suspicious account.",
+          "dialogue": "“Fifty septims. Not for the paper — for the privilege of never seeing you and that account together again.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "The account lists a phantom cargo of “oil for beacon lenses.” Payment passed through the East Empire Company, but the destination warehouse does not exist.",
+          "dialogue": "“See? They paid to deliver goods to nowhere. If you want to know who lit the false beacons, speak to Faven Reladren in Gnisis.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I paid Ingwold for information. He directed me to Faven Reladren’s lighthouse in Gnisis.",
+          "dialogue": "“We have never met. Watch your step on the road to Gnisis.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

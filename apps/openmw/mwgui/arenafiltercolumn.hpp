@@ -75,12 +75,19 @@ namespace ArenaUi
             return;
         column.mLaidOutHeight = columnHeight;
 
+        std::size_t visibleButtons = 0;
+        for (MyGUI::Button* button : column.mButtons)
+            if (button != nullptr && button->getVisible())
+                ++visibleButtons;
+        if (visibleButtons == 0)
+            return;
+
         int gap = sFilterColumnGap;
-        int height = (columnHeight - gap * 5) / 6;
+        int height = (columnHeight - gap * static_cast<int>(visibleButtons - 1)) / static_cast<int>(visibleButtons);
         if (height < 26)
         {
             gap = 2;
-            height = (columnHeight - gap * 5) / 6;
+            height = (columnHeight - gap * static_cast<int>(visibleButtons - 1)) / static_cast<int>(visibleButtons);
         }
         height = std::max(16, std::min(32, height));
         const int width = column.mColumn->getWidth();
@@ -88,7 +95,7 @@ namespace ArenaUi
         int y = 0;
         for (std::size_t i = 0; i < column.mButtons.size(); ++i)
         {
-            if (column.mButtons[i] == nullptr)
+            if (column.mButtons[i] == nullptr || !column.mButtons[i]->getVisible())
                 continue;
             column.mButtons[i]->setCoord(0, y, width, height);
             if (column.mIcons[i] != nullptr)
@@ -103,7 +110,10 @@ namespace ArenaUi
         for (std::size_t i = 0; i < column.mButtons.size(); ++i)
         {
             if (column.mButtons[i] != nullptr && column.mIcons[i] != nullptr)
+            {
+                column.mIcons[i]->setVisible(column.mButtons[i]->getVisible());
                 column.mIcons[i]->setAlpha(column.mButtons[i]->getStateSelected() ? 1.f : 0.6f);
+            }
         }
     }
 }

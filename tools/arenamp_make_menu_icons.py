@@ -200,6 +200,24 @@ def inv_keys():
     return rotated(m, -40)
 
 
+def inv_writing_desk():
+    mask = canvas()
+    draw = ImageDraw.Draw(mask)
+    # Desktop, drawer apron and two tapered legs.
+    draw.rounded_rectangle(p(4, 28, 60, 35), radius=2 * K, fill=255)
+    draw.rounded_rectangle(p(9, 35, 55, 46), radius=2 * K, fill=255)
+    draw.polygon(p(10, 42, 18, 42, 16, 59, 10, 59), fill=255)
+    draw.polygon(p(46, 42, 54, 42, 54, 59, 48, 59), fill=255)
+    draw.rounded_rectangle(p(25, 39, 39, 42), radius=K, fill=0)
+
+    # Open book and inkwell on the desktop. Leave space between the pages.
+    draw.polygon(p(11, 13, 18, 11, 27, 15, 27, 25, 19, 22, 10, 24), fill=255)
+    draw.polygon(p(30, 15, 39, 11, 43, 13, 44, 24, 38, 22, 30, 25), fill=255)
+    draw.rounded_rectangle(p(48, 19, 56, 25), radius=2 * K, fill=255)
+    draw.rectangle(p(50, 16, 54, 20), fill=255)
+    return mask
+
+
 # ------------------------------------------------- map waypoint flag (WF1)
 
 def map_flag():
@@ -858,6 +876,7 @@ ICONS = {
     "inv_magic": inv_magic,
     "inv_misc": inv_misc,
     "inv_keys": inv_keys,
+    "inv_writing_desk": inv_writing_desk,
     "menu_chat": chat,
     "menu_group": group,
     "menu_players": players,

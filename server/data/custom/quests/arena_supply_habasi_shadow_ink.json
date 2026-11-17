@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_habasi_shadow_ink",
+  "version": 1,
+  "name": "След без отпечатков",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "habasi",
+    "cell": "Balmora, South Wall Cornerclub"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_habasi_shadow_ink_topic",
+      "text": "воровские чернила",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Для Хабаси нужно добыть три порции чёрного пыльника.",
+      "dialogue": "«Тишина стоит дороже золота. А хороший инструмент работает без стука и лишних вопросов».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Запомни: отмычка открывает дверь, но не заменяет голову. Вот твой первый комплект».",
+      "dialogue": "«Запомни: отмычка открывает дверь, но не заменяет голову. Вот твой первый комплект».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_black_anther_01",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_black_anther_01",
+          "count": 3
+        },
+        {
+          "type": "giveItem",
+          "refId": "pick_apprentice_01",
+          "count": 3
+        },
+        {
+          "type": "giveItem",
+          "refId": "probe_apprentice_01",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 75
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Сладкоголосая Хабаси ищет тёмный пыльник для маркировки безопасных тайников. За него выдаст набор новичка: отмычки и щуп.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "A Trace without Prints",
+      "topics": {
+        "arena_supply_habasi_shadow_ink_topic": "thieves ink"
+      },
+      "offer": {
+        "dialogue": "Sugar-Lips Habasi needs dark anther to mark safe hiding places. In return she offers a beginner’s lockpick and probe kit.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I need to bring Habasi three portions of black anther.",
+          "dialogue": "\"Silence is worth more than gold. A good tool works without knocking or unwanted questions.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"Remember: a lockpick opens doors; it does not replace your wits. Here is your first kit.\"",
+          "dialogue": "\"Remember: a lockpick opens doors; it does not replace your wits. Here is your first kit.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

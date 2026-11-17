@@ -9,6 +9,8 @@ local serverQuestSystem = {}
 local privateCellInstances = require("privateCellInstances")
 -- QW1: beginner-friendly Quest Studio wizard (templates, plain-language checks).
 local questWizard = require("questWizard")
+-- Reuse the cross-platform JSON directory lister (lfs / UTF-8 PowerShell / find).
+local questFileIndex = require("cellResetIndex")
 local unpackValues = table.unpack or unpack
 
 local INDEX_PATH = "custom/quests/index.json"
@@ -34,6 +36,8 @@ serverQuestSystem.quests = {}
 serverQuestSystem.index = { schemaVersion = SCHEMA_VERSION, quests = {} }
 serverQuestSystem.editor = {}
 serverQuestSystem.validation = {}
+-- Index records whose quest files are temporarily missing are retained.
+serverQuestSystem.unavailableQuestEntries = {}
 
 local function log(level, message)
     tes3mp.LogMessage(level, "[ArenaMP Core] " .. tostring(message))
@@ -299,10 +303,15 @@ local function questText(pid, key, variables)
 end
 
 local function saveJson(path, value)
-    local ok, err = pcall(jsonInterface.save, path, value)
-    if not ok then
-        log(enumerations.log.ERROR, "Could not save " .. path .. ": " .. tostring(err))
-        return false, tostring(err)
+    -- The index is runtime data. Write it atomically, so a crash during a
+    -- restart/update cannot truncate the only manifest of server quests.
+    local writer = path == INDEX_PATH and type(jsonInterface.saveAtomic) == "function"
+        and jsonInterface.saveAtomic or jsonInterface.save
+    local ok, result = pcall(writer, path, value)
+    if not ok or result ~= true then
+        local err = ok and "write returned false" or tostring(result)
+        log(enumerations.log.ERROR, "Could not save " .. path .. ": " .. err)
+        return false, err
     end
     return true
 end
@@ -452,11 +461,26 @@ end
 
 function serverQuestSystem.SaveIndex()
     local entries = {}
+    local included = {}
     for _, id in ipairs(sortedQuestIds()) do
         table.insert(entries, questSummary(serverQuestSystem.quests[id]))
+        included[id] = true
     end
-    serverQuestSystem.index = { schemaVersion = SCHEMA_VERSION, quests = entries, updatedAt = os.time() }
-    return saveJson(INDEX_PATH, serverQuestSystem.index)
+    -- Never erase an indexed quest merely because its JSON was inaccessible
+    -- during a reset, update, or partial copy. If it comes back on the next
+    -- boot, the disk definition replaces this retained summary.
+    for id, entry in pairs(serverQuestSystem.unavailableQuestEntries or {}) do
+        if not included[id] and validId(id) and type(entry) == "table" then
+            table.insert(entries, copy(entry))
+        end
+    end
+    table.sort(entries, function(a, b)
+        return tostring(a.id):lower() < tostring(b.id):lower()
+    end)
+    local nextIndex = { schemaVersion = SCHEMA_VERSION, quests = entries, updatedAt = os.time() }
+    local ok, err = saveJson(INDEX_PATH, nextIndex)
+    if ok then serverQuestSystem.index = nextIndex end
+    return ok, err
 end
 
 function serverQuestSystem.SaveQuest(quest, actor, action)
@@ -464,15 +488,22 @@ function serverQuestSystem.SaveQuest(quest, actor, action)
     normalizeQuest(quest)
     quest.updatedAt = os.time()
     if actor ~= nil and action ~= nil then appendAudit(quest, actor, action) end
-    serverQuestSystem.quests[quest.id] = quest
     local errors, warnings = {}, {}
     if serverQuestSystem.ValidateQuest ~= nil then
         errors, warnings = serverQuestSystem.ValidateQuest(quest)
     end
-    serverQuestSystem.validation[quest.id] = { errors = errors or {}, warnings = warnings or {} }
     local ok, err = saveJson(QUEST_DIR .. quest.id .. ".json", quest)
     if not ok then return false, err end
-    serverQuestSystem.SaveIndex()
+    serverQuestSystem.quests[quest.id] = quest
+    serverQuestSystem.validation[quest.id] = { errors = errors or {}, warnings = warnings or {} }
+    serverQuestSystem.unavailableQuestEntries[quest.id] = nil
+    -- Failure to save the index doesn't lose the quest: the JSON is already
+    -- stored and LoadAll discovers it at the next launch/reload.
+    local indexed = serverQuestSystem.SaveIndex()
+    if not indexed then
+        log(enumerations.log.WARN, "Saved quest " .. quest.id ..
+            " but its index could not be refreshed; next startup will rescan")
+    end
     if serverQuestSystem.SyncAll ~= nil then
         serverQuestSystem.SyncAll()
     end
@@ -482,38 +513,103 @@ end
 function serverQuestSystem.LoadAll()
     serverQuestSystem.quests = {}
     serverQuestSystem.validation = {}
-    local index = loadJson(INDEX_PATH)
-    if index == nil or type(index.quests) ~= "table" then
-        serverQuestSystem.SaveIndex()
-        log(enumerations.log.WARN, "Quest index missing or invalid; created an empty index")
-        return
-    end
+    serverQuestSystem.unavailableQuestEntries = {}
 
-    local loaded = 0
-    for _, entry in ipairs(index.quests) do
-        local id = type(entry) == "table" and entry.id or entry
-        id = normalizeId(id)
-        if validId(id) then
-            local quest, err = loadJson(QUEST_DIR .. id .. ".json")
-            if quest ~= nil then
-                normalizeQuest(quest)
-                serverQuestSystem.quests[id] = quest
-                local errors, warnings = serverQuestSystem.ValidateQuest(quest)
-                serverQuestSystem.validation[id] = { errors = errors, warnings = warnings }
-                if quest.status == "published" and #errors > 0 then
-                    log(enumerations.log.ERROR, "Published quest " .. id .. " is runtime-disabled by " .. #errors .. " validation error(s)")
-                end
-                loaded = loaded + 1
-            else
-                log(enumerations.log.ERROR, "Failed to load quest " .. id .. ": " .. tostring(err))
+    local index = loadJson(INDEX_PATH)
+    local validIndex = type(index) == "table" and type(index.quests) == "table"
+    serverQuestSystem.index = validIndex and index or { schemaVersion = SCHEMA_VERSION, quests = {} }
+
+    -- Keep the existing manifest as a fallback for builds that disallow
+    -- directory enumeration, but also scan the actual server/data/custom/quests
+    -- directory. Otherwise newly copied JSON files never become playable.
+    local paths = {}
+    local indexEntries = {}
+    if validIndex then
+        for _, entry in ipairs(index.quests) do
+            local id = normalizeId(type(entry) == "table" and entry.id or entry)
+            if validId(id) and paths[id] == nil then
+                paths[id] = QUEST_DIR .. id .. ".json"
+                indexEntries[id] = type(entry) == "table" and entry or { id = id }
             end
         end
     end
-    serverQuestSystem.SaveIndex()
+
+    local directory = tostring(config.dataPath or tes3mp.GetModDir()) .. "/" .. QUEST_DIR
+    local files, scanned = questFileIndex.List(directory)
+    local added = 0
+    if scanned then
+        for _, filename in ipairs(files) do
+            local id = filename:match("^(.-)%.json$")
+            -- index.json isn't a quest. Files beginning with '_' are templates
+            -- or backups; they should never become runtime quest definitions.
+            if id and id:lower() ~= "index" and id:sub(1, 1) ~= "_" then
+                local normalized = normalizeId(id)
+                if validId(normalized) and normalized == id:lower() then
+                    if paths[normalized] == nil then added = added + 1 end
+                    -- Prefer the actual filename on case-sensitive systems.
+                    paths[normalized] = QUEST_DIR .. filename
+                else
+                    log(enumerations.log.WARN, "Ignoring quest file with unsafe name: " .. filename)
+                end
+            end
+        end
+    else
+        log(enumerations.log.WARN,
+            "Could not enumerate " .. directory .. "; using only existing quest index")
+    end
+
+    local loaded, unavailable = 0, 0
+    for _, id in ipairs(sortQuestIds((function()
+        local ids = {}
+        for questId in pairs(paths) do table.insert(ids, questId) end
+        return ids
+    end)())) do
+        local quest, err = loadJson(paths[id])
+        if quest ~= nil then
+            -- The filename is the stable identity used by journal progress and
+            -- future server loads. Do not silently alias a different quest id.
+            normalizeQuest(quest)
+            if quest.id ~= id then
+                err = "file ID " .. id .. " differs from JSON quest.id " .. tostring(quest.id)
+                quest = nil
+            end
+        end
+        if quest ~= nil then
+            serverQuestSystem.quests[id] = quest
+            local errors, warnings = serverQuestSystem.ValidateQuest(quest)
+            serverQuestSystem.validation[id] = { errors = errors, warnings = warnings }
+            if quest.status == "published" and #errors > 0 then
+                log(enumerations.log.ERROR, "Published quest " .. id ..
+                    " is runtime-disabled by " .. #errors .. " validation error(s)")
+            end
+            loaded = loaded + 1
+        else
+            -- Retain metadata from the old index, even if the quest JSON is
+            -- currently missing/unreadable. We never delete the actual file.
+            if indexEntries[id] ~= nil then
+                serverQuestSystem.unavailableQuestEntries[id] = indexEntries[id]
+                unavailable = unavailable + 1
+            end
+            log(enumerations.log.ERROR, "Failed to load quest " .. id .. ": " .. tostring(err))
+        end
+    end
+
+    -- Do not overwrite an unreadable manifest if enumeration also failed.
+    -- Likewise, a broken index and an empty/unreadable directory must never
+    -- turn into an empty index and permanently discard its references.
+    if scanned and (validIndex or loaded > 0) then
+        local ok, err = serverQuestSystem.SaveIndex()
+        if not ok then log(enumerations.log.WARN, "Quest index rebuild failed: " .. tostring(err)) end
+    elseif not validIndex then
+        log(enumerations.log.WARN,
+            "Quest index invalid/missing; not overwriting it without readable quest files")
+    end
+
     if serverQuestSystem.SyncAll ~= nil then
         serverQuestSystem.SyncAll()
     end
-    log(enumerations.log.INFO, "Loaded " .. loaded .. " server quest definition(s)")
+    log(enumerations.log.INFO, "Loaded " .. loaded .. " server quest definition(s), " ..
+        added .. " new file(s) discovered, " .. unavailable .. " previous index entries retained")
 end
 
 function serverQuestSystem.ValidateQuest(quest)

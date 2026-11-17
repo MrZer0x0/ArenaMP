@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_caius_cipher",
+  "version": 1,
+  "name": "Условный знак",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "caius cosades",
+    "cell": "Balmora, Caius Cosades' House"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_caius_cipher_topic",
+      "text": "условный знак",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Кай попросил две порции чёрного пыльника и одну порцию комуники, чтобы приготовить условные чернила.",
+      "dialogue": "«Секрет не в шифре, а в том, кто знает, что передавать. Принеси материалы — покажу наглядно».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Теперь понимаешь, почему самый скучный документ бывает опаснее меча? Запомни этот урок».",
+      "dialogue": "«Теперь понимаешь, почему самый скучный документ бывает опаснее меча? Запомни этот урок».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_black_anther_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "ingred_comberry_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_black_anther_01",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_comberry_01",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 200
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Кай Косадес учит отличать поддельную записку от настоящей. Для безобидного опыта ему нужны черный пыльник и комуника.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The Agreed Signal",
+      "topics": {
+        "arena_supply_caius_cipher_topic": "agreed signal"
+      },
+      "offer": {
+        "dialogue": "Caius Cosades is teaching me to spot a forged note. He needs black anther and comberry for a harmless experiment.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Caius asked for two portions of black anther and one comberry to prepare a simple coded ink.",
+          "dialogue": "\"The secret is not the cipher, but who knows what to pass along. Bring the ingredients and I will demonstrate.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"Now you understand why the dullest document can be more dangerous than a sword. Remember the lesson.\"",
+          "dialogue": "\"Now you understand why the dullest document can be more dangerous than a sword. Remember the lesson.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

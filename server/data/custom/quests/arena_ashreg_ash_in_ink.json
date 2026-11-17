@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_ash_in_ink",
+  "version": 1,
+  "name": "Пепел в чернилах",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "ajira",
+    "cell": "Balmora, Guild of Mages"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_ash_in_ink_topic",
+      "text": "пепельные чернила",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Ажира согласилась проверить необычные чернила. Судя по её словам, ими могли подделывать судовые журналы.",
+      "dialogue": "«Ажира любит загадки. Особенно если загадка не пытается укусить Ажиру. Сперва сравним образец с настоящими пепельными солями».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Для опыта Ажире нужны две порции солей пепла.",
+      "dialogue": "«Принеси две порции солей пепла. Неправильный сорт выдаст чернила, даже если имя писца нам неизвестно».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "Ажира выявила в чернилах добавку, реагирующую на тепло: цифры исчезают быстрее подписей. Это удобный способ скрывать стоимость пропавших грузов.",
+      "dialogue": "«Смотри: сумма исчезла, а печать осталась! Кто-то хотел, чтобы документ выглядел подлинным, когда его содержание уже нельзя прочесть. В Кальдере ищи Ингволда Тана».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_ash_salts_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_ash_salts_01",
+          "count": 2
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я узнал о чернилах, стирающих суммы в грузовых документах. Следующая зацепка — Ингволд Тан в Кальдере.",
+      "dialogue": "«Запомни: когда счёт исчезает, исчезают не всегда деньги. Иногда исчезают люди».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 160
+        },
+        {
+          "type": "xp",
+          "amount": 140
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Мне принесли странный образец чернил из приморских журналов. Он не стареет, но выцветает рядом с лампой. Проверим, не вмешались ли сюда алхимики?",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Ash in the Ink",
+      "topics": {
+        "arena_ashreg_ash_in_ink_topic": "ash-stained ink"
+      },
+      "offer": {
+        "dialogue": "Someone brought me an odd sample of ink from coastal logbooks. It does not age, but fades near a lantern. Shall we find out whether alchemists are involved?",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Ajira agreed to examine the unusual ink. She suspects it may have been used to forge ships’ logs.",
+          "dialogue": "“Ajira likes puzzles. Especially puzzles that do not try to bite Ajira. First, we compare the sample with real ash salts.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Ajira needs two portions of ash salts for her experiment.",
+          "dialogue": "“Bring two portions of ash salts. The wrong mineral will expose the ink even when we do not know the scribe’s name.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "Ajira found a heat-sensitive additive: numbers fade faster than signatures. It could conceal the value of missing cargo.",
+          "dialogue": "“Look! The total is gone, but the seal remains! Someone wanted the document to appear genuine after its contents became illegible. Ask Ingwold Thane in Caldera.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I learned about ink that erases figures in cargo records. My next lead is Ingwold Thane in Caldera.",
+          "dialogue": "“Remember: when an account disappears, it is not always the money that vanishes. Sometimes it is people.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

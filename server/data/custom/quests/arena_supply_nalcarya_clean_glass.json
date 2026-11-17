@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_nalcarya_clean_glass",
+  "version": 1,
+  "name": "Тара без примесей",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "nalcarya of white haven",
+    "cell": "Balmora, Nalcarya of White Haven: Fine Alchemist"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_nalcarya_clean_glass_topic",
+      "text": "чистая тара",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Нужно доставить Налькарии три порции комуники и две порции чёрного пыльника.",
+      "dialogue": "«У хорошей тары нет ни запаха, ни цвета. Принесёшь красители — узнаешь, почему я отбраковываю каждую десятую бутылку».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Вот так. В этих бутылках можно хранить и тонкие составы. Забирай: пригодятся тебе больше, чем мне».",
+      "dialogue": "«Вот так. В этих бутылках можно хранить и тонкие составы. Забирай: пригодятся тебе больше, чем мне».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_comberry_01",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        },
+        {
+          "type": "item",
+          "refId": "ingred_black_anther_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_comberry_01",
+          "count": 3
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_black_anther_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "MR_Empty_Potion_Bottle_02",
+          "count": 6
+        },
+        {
+          "type": "xp",
+          "amount": 90
+        },
+        {
+          "type": "gold",
+          "amount": 45
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Налькария ищет краситель для проверки стекла. За комунику и чёрный пыльник она готова выделить несколько пустых бутылок.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Unblemished Glass",
+      "topics": {
+        "arena_supply_nalcarya_clean_glass_topic": "clean glassware"
+      },
+      "offer": {
+        "dialogue": "Nalcarya needs dye to inspect glass for imperfections. She will part with empty bottles in exchange for comberry and black anther.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I should bring Nalcarya three comberries and two black anthers.",
+          "dialogue": "\"Good glass has neither scent nor colour. Bring the dyes, and I shall show you why I reject every tenth bottle.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"There. These bottles are suitable even for delicate mixtures. Take them; you need them more than I do.\"",
+          "dialogue": "\"There. These bottles are suitable even for delicate mixtures. Take them; you need them more than I do.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

@@ -91,12 +91,14 @@ namespace MWGui
         getWidget(mFilterMagic, "MagicButton");
         getWidget(mFilterMisc, "MiscButton");
         getWidget(mFilterKeys, "KeysButton");
+        if (mFilterKeys)
+            mFilterKeys->setVisible(false);
         // UI8: category filters are an icon column left of the list.
         {
             MyGUI::Widget* categories = nullptr;
             getWidget(categories, "Categories");
             ArenaUi::setupFilterColumn(mFilterColumn, categories,
-                { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys });
+                { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, nullptr });
         }
 
         getWidget(mMaxSaleButton, "MaxSaleButton");
@@ -144,7 +146,6 @@ namespace MWGui
         mFilterApparel->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterMagic->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterMisc->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
-        mFilterKeys->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onFilterChanged);
         mFilterEdit->eventEditTextChange += MyGUI::newDelegate(this, &TradeWindow::onNameFilterChanged);
         mViewModeButton->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onViewModeClicked);
         mSingleTransferButton->eventMouseButtonClick += MyGUI::newDelegate(this, &TradeWindow::onSingleTransferClicked);
@@ -332,7 +333,8 @@ namespace MWGui
         mFilterApparel->setStateSelected(false);
         mFilterMagic->setStateSelected(false);
         mFilterMisc->setStateSelected(false);
-        mFilterKeys->setStateSelected(false);
+        if (mFilterKeys)
+            mFilterKeys->setStateSelected(false);
 
         _sender->castType<MyGUI::Button>()->setStateSelected(true);
         ArenaUi::refreshFilterColumn(mFilterColumn);

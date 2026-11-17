@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_borrowed_names",
+  "version": 1,
+  "name": "Имена взаймы",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Bradasou_Rothandus",
+    "cell": "Suran, The Black Goblet"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_borrowed_names_topic",
+      "text": "люди без имён",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Брадасу Ротандус рассказал о переселенцах, скрывающихся под чужими именами, чтобы не попасть в долговые списки.",
+      "dialogue": "«Поймать подделывателя легко. А сможешь потом объяснить ребёнку, почему его мать опять отправили на рудник?»",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Брадасу просит три листа хакльлоу для больного курьера, который знает место тайных разгрузок.",
+      "dialogue": "«Один из наших курьеров слёг. Принеси три листа хакльлоу. Это не выкуп за сведения — просто дай ему пережить ночь».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "Курьер выжил и рассказал: через тайные бухты увозили не только продовольствие, но и детали двемерских механизмов для маячных линз.",
+      "dialogue": "«Теперь ты знаешь, за что мы платили. Не все в этой схеме невинны. Часть людей наживалась на чужом страхе. Спроси Сцинка-в-Тени-Дерева об этих деталях».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_hackle-lo_leaf_01",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_hackle-lo_leaf_01",
+          "count": 3
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я помог курьеру и узнал о двемерских деталях в тайных поставках. Следующий этап — консультация в Садрит Море.",
+      "dialogue": "«Что бы ты ни решил в конце, не своди всех этих людей к строчке в журнале».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 275
+        },
+        {
+          "type": "xp",
+          "amount": 245
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Если ты пришёл по поводу пропавших накладных, говори тише. Здесь есть семьи, которых перестали считать людьми после пепельных бурь и долгов. Им нужна помощь, а не допрос.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Borrowed Names",
+      "topics": {
+        "arena_ashreg_borrowed_names_topic": "people without names"
+      },
+      "offer": {
+        "dialogue": "If you are here about the missing manifests, lower your voice. Families here ceased to count as people after the ash storms and their debts. They need help, not an interrogation.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Bradasou Rothandus told me about displaced families using borrowed names to avoid being returned to debt records.",
+          "dialogue": "“Finding the forger is easy. Can you explain to a child why their mother has been sent back to the mine?”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Medenb wants three hackle-lo leaves for a sick courier who knows where the secret landings take place.",
+          "dialogue": "“One of our couriers is ill. Bring three hackle-lo leaves. This is no price for information. Just help him survive the night.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "The courier survived and revealed that hidden coves received food and Dwemer mechanical parts used for the beacon lenses.",
+          "dialogue": "“Now you know what we paid for. Not everyone in this scheme is innocent. Some profited from fear. Ask Skink-in-Tree’s-Shade about those parts.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I helped the courier and learned about Dwemer parts hidden among the shipments. My next step is to seek advice in Sadrith Mora.",
+          "dialogue": "“Whatever you decide at the end, do not reduce these people to a line in a ledger.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

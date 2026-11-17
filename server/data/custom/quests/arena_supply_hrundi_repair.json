@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_hrundi_repair",
+  "version": 1,
+  "name": "Перевязи для клинков",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "hrundi",
+    "cell": "Sadrith Mora, Wolverine Hall: Fighter's Guild"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_hrundi_repair_topic",
+      "text": "ремонтное снаряжение",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Хрунди ждёт две порции кожи нетча и две порции скаттла.",
+      "dialogue": "«Перед схваткой проверь ремни и ножны. Иначе останешься с голыми руками в самый плохой момент».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Меч в порядке. Не геройствуй без нужды: сначала защита, потом удар».",
+      "dialogue": "«Меч в порядке. Не геройствуй без нужды: сначала защита, потом удар».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_netch_leather_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "ingred_scuttle_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_netch_leather_01",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_scuttle_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "steel shortsword",
+          "count": 1
+        },
+        {
+          "type": "xp",
+          "amount": 125
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Хрунди собирает материалы для ремонта учебных мечей. За кожу нетча и скаттл он выдаст исправный клинок.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Straps for Blades",
+      "topics": {
+        "arena_supply_hrundi_repair_topic": "repair supplies"
+      },
+      "offer": {
+        "dialogue": "Hrundi is gathering materials to repair training swords. Bring netch leather and scuttle, and he will issue a serviceable blade.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Hrundi expects two portions of netch leather and two of scuttle.",
+          "dialogue": "\"Check your straps and scabbard before a fight, or you will find yourself empty-handed at the worst moment.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"The sword is sound. Do not play the hero needlessly: defence first, then the strike.\"",
+          "dialogue": "\"The sword is sound. Do not play the hero needlessly: defence first, then the strike.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

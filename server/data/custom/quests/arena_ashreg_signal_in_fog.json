@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_signal_in_fog",
+  "version": 1,
+  "name": "Сигнал из тумана",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Helvia",
+    "cell": "Seyda Neen, Helvia's Shack"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_signal_in_fog_topic",
+      "text": "три огня в бухте",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Хельвия рассказала о загадочных огнях в бухте Сейда Нин. Нужно узнать, чем они отличаются от обычных маячных сигналов.",
+      "dialogue": "Хельвия протягивает мне клочок мокрой карты. «Посмотри на этот угол бухты. Там нет ни башни, ни сигнальной площадки. И всё же каждую ночь кто-то зажигает огни».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Для проверки остатков сигнальной смеси Хельвии нужны две порции скрибового желе.",
+      "dialogue": "«Желе скриба связывает сажу, не меняя её оттенка. Принеси две порции — и я скажу, что горело на воде».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "Хельвия установила: огни создавались искусственно и не могли быть обычными маячными сигналами. На стекле остался след пепельной соли.",
+      "dialogue": "«Это не колдовство. Кто-то смешал обычную сажу с минеральной пылью и направил свет через стекло. В Балморе Ажира сможет определить примесь».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_scrib_jelly_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_scrib_jelly_01",
+          "count": 2
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я помог Хельвии распознать ложные сигналы. След ведёт к Ажире в Гильдии магов Балморы.",
+      "dialogue": "«Хочешь найти тех, кто это устроил? Начни с Ажиры. И не говори стражникам, от кого узнал о смеси».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 110
+        },
+        {
+          "type": "xp",
+          "amount": 85
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "В Сейда Нин видели три сигнальных огня там, где не должно быть ни одного. Рыбаки обходят бухту стороной, а стража делает вид, что ничего не случилось. Поможешь разобраться?",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Signal in the Fog",
+      "topics": {
+        "arena_ashreg_signal_in_fog_topic": "three lights in the bay"
+      },
+      "offer": {
+        "dialogue": "Three signal lights have appeared where none should be. The fishers avoid the bay, and the guards pretend nothing happened. Will you investigate?",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Helvia told me about mysterious lights in the Seyda Neen bay. I need to learn what makes them different from normal beacons.",
+          "dialogue": "Helvia shows me a damp scrap of a map. “See that part of the bay? No tower, no signal platform. Yet someone lights it every night.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Helvia needs two portions of scrib jelly to examine the residue from the signal mixture.",
+          "dialogue": "“Scrib jelly binds soot without altering its colour. Bring me two portions, and I will tell you what burned on the water.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "Helvia determined that the lights were artificial, not ordinary beacon signals. Ash-salt residue clung to the glass.",
+          "dialogue": "“This is no sorcery. Someone mixed soot with mineral dust and focused the light through glass. Ajira in Balmora can identify the additive.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I helped Helvia identify the false signals. The trail leads to Ajira at the Balmora Mages Guild.",
+          "dialogue": "“If you want the people behind this, start with Ajira. And do not tell the guards who identified the mixture.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

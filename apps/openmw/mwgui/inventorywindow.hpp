@@ -108,9 +108,8 @@ namespace MWGui
             MyGUI::Button* mPaperDollButton;
             MyGUI::ImageBox* mPaperDollIcon;
             MyGUI::Button* mViewModeButton;
-            MyGUI::Widget* mWriterButton;
-            MyGUI::Button* mFurnitureButton = nullptr;
-            MyGUI::ImageBox* mWriterIcon;
+            MyGUI::Button* mWriterButton;
+            MyGUI::Button* mPlayerMenuButton = nullptr;
             MyGUI::ImageBox* mViewModeIcon;
             MyGUI::ImageBox* mGoldIcon;
             MyGUI::TextBox* mGoldLabel;
@@ -182,10 +181,10 @@ namespace MWGui
             // toggle, or because selecting a wearable/usable item revealed it
             // for the duration of this inventory session.
             bool paperDollShown() const { return mPaperDollVisible || mPaperDollAutoRevealed; }
-            void refreshWriterButtonVisual();
+            void refreshInventoryActionTooltips();
             void onViewModeClicked(MyGUI::Widget* _sender);
             void onWriterClicked(MyGUI::Widget* _sender);
-            void onFurnitureClicked(MyGUI::Widget* _sender);
+            void onPlayerMenuClicked(MyGUI::Widget* _sender);
             void onKeyRingClicked(MyGUI::Widget* _sender);
             void onPinToggled() override;
 

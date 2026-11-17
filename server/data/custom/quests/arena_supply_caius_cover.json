@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_caius_cover",
+  "version": 1,
+  "name": "Легенда для агента",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "caius cosades",
+    "cell": "Balmora, Caius Cosades' House"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_caius_cover_topic",
+      "text": "легенда для агента",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Кай согласился обсудить маскировку и наблюдательность, когда я достигну третьего уровня.",
+      "dialogue": "«Только не выдавай себя героям из дешёвых баллад. Путник, который не вызывает вопросов, живёт дольше».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я готов рассказать, что запомнил.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Годится. У хорошего агента под рукой всегда есть объяснение, почему он здесь и куда идёт».",
+      "dialogue": "«Годится. У хорошего агента под рукой всегда есть объяснение, почему он здесь и куда идёт».",
+      "requirements": [
+        {
+          "type": "level",
+          "operator": ">=",
+          "value": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "xp",
+          "amount": 120
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Кай предлагает короткое испытание: выбрать правдоподобную историю для путешествия по Вварденфеллу. За усвоенный урок он начислит опыт.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "An Agent’s Cover",
+      "topics": {
+        "arena_supply_caius_cover_topic": "agent cover story"
+      },
+      "offer": {
+        "dialogue": "Caius offers a small test: learn a believable reason to travel across Vvardenfell. Complete the lesson to gain experience.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Caius agreed to teach me about cover stories and observation once I reach level three.",
+          "dialogue": "\"Do not pretend to be a hero from a cheap ballad. A traveller who raises no questions tends to live longer.\"",
+          "choices": {
+            "deliver": "I am ready to show what I learned.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"That will do. A good agent can always explain why he is here and where he is going.\"",
+          "dialogue": "\"That will do. A good agent can always explain why he is here and where he is going.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

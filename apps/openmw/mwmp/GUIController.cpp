@@ -490,6 +490,12 @@ void mwmp::GUIController::beginFurnitureCapture()
     ArenaHousing::get().armFurnitureCapture();
 }
 
+void mwmp::GUIController::openPlayerMenu()
+{
+    if (mChat != nullptr)
+        mChat->openPlayerMenu();
+}
+
 void mwmp::GUIController::openFurniturePlayerMenu()
 {
     if (mChat != nullptr)

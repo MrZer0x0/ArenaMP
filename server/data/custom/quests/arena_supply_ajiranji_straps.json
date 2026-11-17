@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_ajiranji_straps",
+  "version": 1,
+  "name": "Снаряжение без герба",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Ajiranji",
+    "cell": "Caldera"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_ajiranji_straps_topic",
+      "text": "кожаные ремни",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Аджиранджи ждёт три связки кожаных ремней из нетча.",
+      "dialogue": "«Никаких гербов, никаких имён. Хорошая экипировка не рассказывает чужим, кто ты».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Сапоги целы, отмычки тоже. Надевай и не оставляй следов на мокром камне».",
+      "dialogue": "«Сапоги целы, отмычки тоже. Надевай и не оставляй следов на мокром камне».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "MR_Leather_Strips",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "MR_Leather_Strips",
+          "count": 3
+        },
+        {
+          "type": "giveItem",
+          "refId": "netch_leather_boots",
+          "count": 1
+        },
+        {
+          "type": "giveItem",
+          "refId": "pick_apprentice_01",
+          "count": 2
+        },
+        {
+          "type": "xp",
+          "amount": 100
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Аджиранджи собирает кожаные ремни для неприметного походного снаряжения. За помощь выдаст сапоги и пару отмычек.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Gear without a Crest",
+      "topics": {
+        "arena_supply_ajiranji_straps_topic": "leather straps"
+      },
+      "offer": {
+        "dialogue": "Ajiranji needs leather straps for discreet travelling gear. In return, he offers a pair of boots and lockpicks.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Ajiranji expects three bundles of netch leather straps.",
+          "dialogue": "\"No crests, no names. Good equipment tells strangers nothing about who wears it.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"The boots are sound, and so are the lockpicks. Wear them and leave no marks on the wet stone.\"",
+          "dialogue": "\"The boots are sound, and so are the lockpicks. Wear them and leave no marks on the wet stone.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

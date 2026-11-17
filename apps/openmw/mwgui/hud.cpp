@@ -2203,9 +2203,9 @@ namespace MWGui
         icon.insert(slashPos+1, "b_");
         icon = MWBase::Environment::get().getWindowManager()->correctIconPath(icon);
 
-        // UI9.3: every icon is 18 px in the 26 px frame; the opaque ring covers its
-        // corners, so it fills the round window and never sticks out of the frame.
-        mSpellImage->setCoord(4, 4, 18, 18);
+        // Keep the selected spell icon centered inside the 26 px disc and under
+        // the decorative ring, without relying on z-order changes or masking.
+        mSpellImage->setCoord(5, 5, 16, 16);
         mSpellImage->setSpellIcon(icon);
         mSpellRing->setVisible(true);
         mSpellBox->setNeedMouseFocus(true);
@@ -2230,7 +2230,7 @@ namespace MWGui
         mSpellBox->setUserString("ToolTipType", "ItemPtr");
         mSpellBox->setUserData(MWWorld::Ptr(item));
 
-        mSpellImage->setCoord(4, 4, 18, 18);
+        mSpellImage->setCoord(5, 5, 16, 16);
         mSpellImage->setItem(item);
         mSpellRing->setVisible(true);
         mSpellBox->setNeedMouseFocus(true);

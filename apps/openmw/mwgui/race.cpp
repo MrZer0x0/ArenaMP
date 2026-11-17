@@ -438,8 +438,8 @@ namespace MWGui
         for (const char* name : { "NextRaceButton", "NextGenderButton", "NextFaceButton", "NextHairButton" })
             ArenaUi::decorate(button(name), "btn_next", std::string(), IconMode::IconOnly);
 
-        // The three narrow random-class buttons become icons with their name as a
-        // tooltip; the wide ones keep the caption beside the icon.
+        // Character creation uses icon-only action buttons. Keep the localized
+        // captions as hover tooltips so the controls remain understandable.
         const auto keep = [](MyGUI::Button* widget) { return widget->getCaption().asUTF8(); };
         MyGUI::Button* combat = button("RandomCombatButton");
         ArenaUi::decorate(combat, "inv_weapon", keep(combat), IconMode::IconOnly);
@@ -448,10 +448,10 @@ namespace MWGui
         MyGUI::Button* stealth = button("RandomStealthButton");
         ArenaUi::decorate(stealth, "inv_keys", keep(stealth), IconMode::IconOnly);
         MyGUI::Button* any = button("RandomAnyButton");
-        ArenaUi::decorate(any, "btn_try", keep(any), IconMode::IconAndCaption);
-        ArenaUi::decorate(mRaceDetailsButton, "btn_journal", keep(mRaceDetailsButton), IconMode::IconAndCaption);
-        ArenaUi::decorate(mNextArchetypeButton, "btn_next", keep(mNextArchetypeButton), IconMode::IconAndCaption);
-        ArenaUi::decorate(mTutorialAcceptButton, "btn_accept", keep(mTutorialAcceptButton), IconMode::IconAndCaption);
+        ArenaUi::decorate(any, "btn_try", keep(any), IconMode::IconOnly);
+        ArenaUi::decorate(mRaceDetailsButton, "btn_journal", keep(mRaceDetailsButton), IconMode::IconOnly);
+        ArenaUi::decorate(mNextArchetypeButton, "btn_next", keep(mNextArchetypeButton), IconMode::IconOnly);
+        ArenaUi::decorate(mTutorialAcceptButton, "btn_accept", keep(mTutorialAcceptButton), IconMode::IconOnly);
 
         // Step icon left of the step title.
         if (mStepTitle != nullptr && mStepIcon == nullptr)
@@ -617,12 +617,12 @@ namespace MWGui
         mNextButton->setCaption(mPage == Page_Birth
             ? MWBase::Environment::get().getWindowManager()->getGameSettingString("sOK", "OK")
             : MWBase::Environment::get().getWindowManager()->getGameSettingString("sNext", "Next"));
-        // UI3: icons beside the navigation captions.
+        // Icon-only navigation. Descriptive captions are shown as tooltips.
         ArenaUi::decorate(mBackButton, "btn_prev",
             MWBase::Environment::get().getWindowManager()->getGameSettingString("sBack", "Back"),
-            ArenaUi::IconMode::IconAndCaption);
+            ArenaUi::IconMode::IconOnly);
         ArenaUi::decorate(mNextButton, mPage == Page_Birth ? "btn_accept" : "btn_next",
-            mNextButton->getCaption().asUTF8(), ArenaUi::IconMode::IconAndCaption);
+            mNextButton->getCaption().asUTF8(), ArenaUi::IconMode::IconOnly);
     }
 
     void RaceDialog::updatePageHeader()

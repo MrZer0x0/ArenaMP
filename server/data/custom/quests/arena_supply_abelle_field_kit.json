@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_supply_abelle_field_kit",
+  "version": 1,
+  "name": "Зелья для дороги",
+  "author": "ArenaMP Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Abelle_Caria",
+    "cell": "Pelagiad, Abelle: Alchemist"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_supply_abelle_field_kit_topic",
+      "text": "дорожные смеси",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Абель просит три порции солёного риса и два стебля болотного тростника.",
+      "dialogue": "«На дороге важнее надёжность, а не красота бутылки. Сначала научись беречь ингредиенты».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "deliver",
+          "text": "Я принёс всё необходимое.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Задание выполнено. «Этого хватит для дорожной аптечки. Возьми запас пустых бутылок для собственных попыток».",
+      "dialogue": "«Этого хватит для дорожной аптечки. Возьми запас пустых бутылок для собственных попыток».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_saltrice_01",
+          "operator": ">=",
+          "count": 3,
+          "value": 3
+        },
+        {
+          "type": "item",
+          "refId": "ingred_marshmerrow_01",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_saltrice_01",
+          "count": 3
+        },
+        {
+          "type": "takeItem",
+          "refId": "ingred_marshmerrow_01",
+          "count": 2
+        },
+        {
+          "type": "giveItem",
+          "refId": "MR_Empty_Potion_Bottle_01",
+          "count": 7
+        },
+        {
+          "type": "xp",
+          "amount": 65
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Абель Кария собирает недорогие припасы для путников. За солёный рис и болотный тростник выдаёт пустые сосуды.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Согласен, помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Potions for the Road",
+      "topics": {
+        "arena_supply_abelle_field_kit_topic": "travel mixtures"
+      },
+      "offer": {
+        "dialogue": "Abelle Caria is assembling inexpensive supplies for travellers. She offers empty vessels in exchange for saltrice and marshmerrow.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Abelle wants three portions of saltrice and two marshmerrow stalks.",
+          "dialogue": "\"On the road, a sturdy bottle matters more than a pretty one. First learn not to waste your ingredients.\"",
+          "choices": {
+            "deliver": "I have everything you asked for.",
+            "later": "I will return later."
+          }
+        },
+        "20": {
+          "journal": "Quest complete. \"This is enough for a travelling kit. Take these empty bottles for your own experiments.\"",
+          "dialogue": "\"This is enough for a travelling kit. Take these empty bottles for your own experiments.\""
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Quest Team",
+      "action": "New original one-time NPC side quest; resource IDs verified against supplied Rebirth export except vanilla pick/probe IDs; giveItem reward handler needs live verification."
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_calia_hearth_talk",
+  "version": 1,
+  "name": "Разговор у очага",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "compCalia",
+    "cell": "Хижина Калии"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_calia_hearth_topic",
+      "text": "разговор у очага",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Калия Закареш предложила немного поговорить в её хижине. Я могу расспросить её о дороге или о доме.",
+      "dialogue": "Спрашивай. Только выбери что-нибудь одно, иначе просидим до утра.",
+      "requirements": [
+        {
+          "type": "level",
+          "operator": ">=",
+          "value": 3
+        }
+      ],
+      "rewards": [],
+      "next": [
+        20,
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "road",
+          "text": "Расскажи о дороге.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "home",
+          "text": "Расскажи об этом доме.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Калия рассказала, что в дороге ценит не скорость, а возможность вовремя остановиться и понять, куда идёшь.",
+      "dialogue": "Самая плохая дорога — та, по которой идёшь только потому, что уже сделал первый шаг. Иногда лучше остановиться и выбрать заново.",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "xp",
+          "amount": 55
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    },
+    {
+      "index": 30,
+      "journal": "Калия рассказала о своей хижине: для неё это не убежище от мира, а место, куда можно вернуться после любой дороги.",
+      "dialogue": "Дом — это не стены. Это место, где тебе не нужно доказывать, зачем ты вернулся. Если такое место есть — береги его.",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "xp",
+          "amount": 55
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "Если никуда не спешишь, посиди немного. В дороге полезно иногда услышать чужую историю, а не только звон оружия.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Хорошо, поговорим.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "В другой раз.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "A Talk by the Hearth",
+      "topics": {
+        "arena_mfr_calia_hearth_topic": "a talk by the hearth"
+      },
+      "offer": {
+        "dialogue": "If you are not in a hurry, sit for a while. On the road it helps to hear someone else's story now and then, not only the ring of weapons.",
+        "choices": {
+          "accept": "All right. Let us talk.",
+          "decline": "Another time."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Calia Zakaresh offered to talk for a while in her hut. I can ask about the road or about her home.",
+          "dialogue": "Ask. Just choose one thing, or we will be here until morning.",
+          "choices": {
+            "road": "Tell me about the road.",
+            "home": "Tell me about this house."
+          }
+        },
+        "20": {
+          "journal": "Calia told me that on the road she values not speed, but knowing when to stop and understand where you are going.",
+          "dialogue": "The worst road is the one you keep walking only because you already took the first step. Sometimes it is better to stop and choose again."
+        },
+        "30": {
+          "journal": "Calia told me about her hut: to her it is not a hiding place from the world, but somewhere she can return after any road.",
+          "dialogue": "A home is not walls. It is the place where you do not have to prove why you came back. If you have such a place, protect it."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

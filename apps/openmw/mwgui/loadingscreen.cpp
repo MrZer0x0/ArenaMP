@@ -306,6 +306,27 @@ namespace MWGui
         mBlackBackground->setCoord(0, 0, view.width, view.height);
         mBackgroundImage->setCoord(MyGUI::IntCoord(0, 0, view.width, view.height));
         mSceneImage->setCoord(MyGUI::IntCoord(0, 0, view.width, view.height));
+        // Only desktop exterior streaming uses the compact, frameless overlay.
+        const bool compact = !mShowWallpaper && mDestinationKind == DestinationKind::Exterior;
+        MyGUI::Widget* frame = nullptr;
+        getWidget(frame, "LoadingFrame");
+        frame->setVisible(!compact);
+        mTipTitle->setVisible(!compact);
+        mTipText->setVisible(!compact);
+        mProgressText->setVisible(!compact);
+        if (compact)
+        {
+            const int width = std::max(1, std::min(500, view.width - 2 * margin));
+            // UI: raise the compact PC exterior streaming bar slightly while
+            // keeping Android's wallpaper loading presentation unchanged.
+            mLoadingPanel->setCoord((view.width - width) / 2,
+                std::max(0, view.height - margin - 18 - 22), width, 18);
+            mProgressBar->setCoord(0, 0, width, 18);
+            mProgressBar->setProgressPosition(static_cast<size_t>(mProgress.fraction() * 1000.));
+            fitShapedProgressBar(mProgressBar);
+            mTipLayoutDirty = true; // Restore the full card on the next non-compact load.
+            return;
+        }
         // Reflow only after a resize or a new hint, not on every progress tick.
         if (mTipLayoutDirty || mLayoutWidth != view.width || mLayoutHeight != view.height)
         {

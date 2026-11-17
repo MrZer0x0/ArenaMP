@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_who_owns_the_light",
+  "version": 1,
+  "name": "Кому принадлежит свет",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "Canctunian Ponius",
+    "cell": "Ebonheart, East Empire Company Hall"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_who_owns_the_light_topic",
+      "text": "судьба реестра",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Я вернулся к Цанктуниану Пониусу. Осталось представить доказательства поддельных маяков и решить судьбу переселенцев.",
+      "dialogue": "«Покажи мне, что у нас есть не только показания, но и способ производства ложных огней. Тогда я смогу принять решение».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "proof",
+          "text": "Вот мои доказательства.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я ещё подумаю.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я передал Пониусу образцы. Он предлагает два выхода: огласить все имена или раскрыть преступную схему, не раскрывая имён переселенцев.",
+      "dialogue": "«Открыть весь реестр — значит найти подделывателей, но выдать и тех, кто бежал от долгов. Скрыть имена переселенцев — значит затруднить обвинение. Что выберешь?»",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_raw_glass_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        },
+        {
+          "type": "item",
+          "refId": "misc_dwrv_gear00",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_raw_glass_01",
+          "count": 1
+        },
+        {
+          "type": "takeItem",
+          "refId": "misc_dwrv_gear00",
+          "count": 1
+        }
+      ],
+      "next": [
+        40,
+        50
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "expose",
+          "text": "Опубликовать весь реестр.",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "protect",
+          "text": "Защитить имена переселенцев.",
+          "action": "advance",
+          "targetStage": 50,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно обдумать выбор.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я передал полный реестр следователям. Подделка раскрыта, но некоторым переселенцам теперь грозят судебные разбирательства.",
+      "dialogue": "«Публичный отчёт отправлен. Мы найдём виновных. Но я не стану обещать, что закон будет милосерден ко всем».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 550
+        },
+        {
+          "type": "xp",
+          "amount": 475
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    },
+    {
+      "index": 50,
+      "journal": "Я помог раскрыть механизм ложных маяков, сохранив имена переселенцев в тайне. Часть виновных может избежать наказания, зато семьи не выданы кредиторам.",
+      "dialogue": "«В отчёте останутся схемы, суммы и поставщики. Имена семей я опечатаю отдельно. Это решение не чистое, но, возможно, человеческое».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 350
+        },
+        {
+          "type": "xp",
+          "amount": 530
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Я получил твои выводы. Теперь осталось самое трудное: решить, какие имена появятся в официальном реестре, а какие будут защищены молчанием.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я готов принять решение.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Пока рано.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Who Owns the Light",
+      "topics": {
+        "arena_ashreg_who_owns_the_light_topic": "fate of the register"
+      },
+      "offer": {
+        "dialogue": "I have received your findings. Now comes the hardest part: deciding which names enter the official register and which remain protected by silence.",
+        "choices": {
+          "accept": "I am ready to make a decision.",
+          "decline": "Not yet."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I returned to Canctunian Ponius. I must present evidence of the false beacons and decide the displaced families’ fate.",
+          "dialogue": "“Show me that we have more than testimony — that we can demonstrate how the false lights were made. Then I can make a decision.”",
+          "choices": {
+            "proof": "Here is my evidence.",
+            "later": "I need more time."
+          }
+        },
+        "20": {
+          "journal": "I gave Ponius the samples. He offers two paths: publish every name or expose the fraud while shielding the displaced families.",
+          "dialogue": "“Publish the entire register and we catch the forgers, but expose those fleeing their debts. Conceal the displaced families and prosecution becomes harder. Which do you choose?”",
+          "choices": {
+            "expose": "Publish the entire register.",
+            "protect": "Protect the displaced families’ names.",
+            "later": "I need to consider this choice."
+          }
+        },
+        "40": {
+          "journal": "I handed the full register to investigators. The fraud was exposed, but some displaced families now face legal proceedings.",
+          "dialogue": "“The public report has been sent. We will find the guilty. But I cannot promise that the law will be merciful to everyone.”"
+        },
+        "50": {
+          "journal": "I exposed the false-beacon scheme while protecting the displaced families’ names. Some culprits may escape prosecution, but the families were not surrendered to creditors.",
+          "dialogue": "“The report will include methods, sums and suppliers. I will seal the families’ names separately. This is not a clean solution, but perhaps a humane one.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original ethical conclusion with exclusive player-side terminal branches. No world-state effect claimed."
+    }
+  ]
+}

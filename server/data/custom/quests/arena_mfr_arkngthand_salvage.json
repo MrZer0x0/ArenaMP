@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_arkngthand_salvage",
+  "version": 1,
+  "name": "Масло и металл",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "brennan",
+    "cell": "Аркнтанд, Эбонитовые залежи"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_arkngthand_salvage_topic",
+      "text": "двемерские припасы",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Бреннан в эбонитовых залежах Аркнтанда попросил принести две порции двемерского масла и одну двемерскую пластину.",
+      "dialogue": "Две порции двемерского масла и одна целая пластина. Не геройствуй — мне нужны детали, а не твой надгробный камень.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "hand_over",
+          "text": "Я принёс масло и пластину.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Пока не нашёл всё нужное.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я передал Бреннану двемерское масло и пластину. Он расплатился за пригодные детали.",
+      "dialogue": "Вот это уже можно пустить в дело. Держи деньги. В руинах золото бесполезно, пока не выберешься наружу.",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_dwarven_oil",
+          "operator": ">=",
+          "count": 2,
+          "value": 2
+        },
+        {
+          "type": "item",
+          "refId": "dwemer_plate",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_dwarven_oil",
+          "count": 2
+        },
+        {
+          "type": "takeItem",
+          "refId": "dwemer_plate",
+          "count": 1
+        },
+        {
+          "type": "gold",
+          "amount": 180
+        },
+        {
+          "type": "xp",
+          "amount": 170
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "Если всё равно шаришь по этим залам, принеси то, что ещё можно использовать: двемерское масло и целую пластину.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Сколько нужно?",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "У меня другие дела.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Oil and Metal",
+      "topics": {
+        "arena_mfr_arkngthand_salvage_topic": "Dwemer supplies"
+      },
+      "offer": {
+        "dialogue": "If you are searching these halls anyway, bring me what can still be used: Dwemer oil and an intact plate.",
+        "choices": {
+          "accept": "How much do you need?",
+          "decline": "I have other business."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Brennan in Arkngthand's ebony deposits asked for two portions of Dwemer oil and one Dwemer plate.",
+          "dialogue": "Two portions of Dwemer oil and one intact plate. Do not play the hero—I need parts, not your tombstone.",
+          "choices": {
+            "hand_over": "I brought the oil and plate.",
+            "later": "I have not found everything yet."
+          }
+        },
+        "20": {
+          "journal": "I gave Brennan the Dwemer oil and plate. He paid me for the usable parts.",
+          "dialogue": "Now this I can use. Take the money. Gold is useless in a ruin until you make it back outside."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

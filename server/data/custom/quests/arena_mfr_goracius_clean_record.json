@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_goracius_clean_record",
+  "version": 1,
+  "name": "Чистый реестр",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "goracius_carbo",
+    "cell": "Сейда Нин, Внутренние помещения Имперской Канцелярии"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_goracius_record_topic",
+      "text": "чистый реестр",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Горациус Карбо предложил проверить мою запись в имперском реестре. Если на мне нет штрафа, можно получить небольшой дорожный аванс.",
+      "dialogue": "Условие простое: никакого непогашенного штрафа. Если запись чистая, я поставлю отметку.",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "check",
+          "text": "Моя запись чиста.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Сначала улажу свои дела.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Горациус Карбо подтвердил, что моя запись чиста, и выдал небольшой дорожный аванс.",
+      "dialogue": "Штрафов нет. Всё в порядке. Вот дорожный аванс — и постарайся не вернуться сюда уже в другом качестве.",
+      "requirements": [
+        {
+          "type": "bounty",
+          "operator": "<=",
+          "value": 0
+        },
+        {
+          "type": "level",
+          "operator": ">=",
+          "value": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 40
+        },
+        {
+          "type": "xp",
+          "amount": 45
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "Канцелярия иногда выдаёт небольшие дорожные деньги тем, у кого чистая запись. Хочешь, проверю реестр?",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Проверяйте.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "В другой раз.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "A Clean Record",
+      "topics": {
+        "arena_mfr_goracius_record_topic": "a clean record"
+      },
+      "offer": {
+        "dialogue": "The office sometimes gives a little road money to people with a clean record. Want me to check the register?",
+        "choices": {
+          "accept": "Check it.",
+          "decline": "Another time."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Goracius Carbo offered to check my Imperial record. If I have no outstanding bounty, I can receive a small travel advance.",
+          "dialogue": "The condition is simple: no unpaid bounty. If the record is clean, I will mark it down.",
+          "choices": {
+            "check": "My record is clean.",
+            "later": "I will settle my affairs first."
+          }
+        },
+        "20": {
+          "journal": "Goracius Carbo confirmed that my record is clean and issued a small travel advance.",
+          "dialogue": "No bounty. Everything is in order. Here is the travel advance—and try not to come back here in a different capacity."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

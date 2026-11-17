@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_arena_jolgard_lesson",
+  "version": 1,
+  "name": "Урок Жолгарда",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "arena master",
+    "cell": "Vivec, Arena Blue Team's Bloodworks"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_arena_jolgard_topic",
+      "text": "урок Жолгарда",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Жолгард согласился продолжить мою тренировку. Нужно достичь хотя бы 5 уровня и вернуть тренировочный длинный меч.",
+      "dialogue": "Вернёшь мне учебный меч и придёшь хотя бы пятого уровня — сменим стойку и оружие.",
+      "requirements": [
+        {
+          "type": "questCompleted",
+          "questId": "arena_mfr_arena_entry_fee"
+        }
+      ],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "prove",
+          "text": "Я готов. Забирай меч.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне ещё нужно потренироваться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я вернул Жолгарду тренировочный длинный меч. Он выдал мне тренировочное копьё и оплатил следующую часть подготовки.",
+      "dialogue": "Уже лучше. Клинок оставь здесь. Теперь попробуй копьё — дистанция научит тебя не лезть под каждый удар.",
+      "requirements": [
+        {
+          "type": "level",
+          "operator": ">=",
+          "value": 5
+        },
+        {
+          "type": "item",
+          "refId": "Arena_training_longsword",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "Arena_training_longsword",
+          "count": 1
+        },
+        {
+          "type": "giveItem",
+          "refId": "Arena_training_spear",
+          "count": 1
+        },
+        {
+          "type": "gold",
+          "amount": 75
+        },
+        {
+          "type": "xp",
+          "amount": 140
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "Варо выдал тебе учебный меч? Хорошо. Я посмотрю, чему ты научился, но сначала докажи, что не бросил оружие в первой же таверне.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я готов к проверке.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Позже.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "Jolgard's Lesson",
+      "topics": {
+        "arena_mfr_arena_jolgard_topic": "Jolgard's lesson"
+      },
+      "offer": {
+        "dialogue": "Varo gave you a practice sword? Good. I will see what you learned, but first prove you did not leave the weapon in the first tavern you found.",
+        "choices": {
+          "accept": "I am ready for the test.",
+          "decline": "Later."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Jolgard agreed to continue my training. I need to reach at least level 5 and return the training longsword.",
+          "dialogue": "Bring back the practice sword and come to me at level five or higher. Then we change stance and weapon.",
+          "choices": {
+            "prove": "I am ready. Take the sword.",
+            "later": "I need more practice."
+          }
+        },
+        "20": {
+          "journal": "I returned the training longsword to Jolgard. He gave me a training spear and paid for the next part of my preparation.",
+          "dialogue": "Better. Leave the blade here. Now try the spear—distance will teach you not to step into every blow."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}

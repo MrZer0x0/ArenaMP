@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_ashreg_false_star",
+  "version": 1,
+  "name": "Ложная звезда",
+  "author": "ArenaMP Original Quest Team",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "MR_Faven_Reladren",
+    "cell": "Gnisis, Faven Reladren's Lighthouse"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_ashreg_false_star_topic",
+      "text": "неверный свет",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Фавен Реладрен считает, что сигналы подделывают при помощи преломляющего стекла.",
+      "dialogue": "«Огонь можно прикрыть заслонкой. Но чужой свет, отражённый от скалы, подчиняется другому правилу. Я хочу это доказать».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "ask",
+          "text": "Расскажи, что требуется.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Мне нужно подготовиться.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Фавену нужны одна порция стекла-сырца и один крохотный камень душ.",
+      "dialogue": "«Принеси стекло-сырец и крохотный камень душ. Камень уравняет свечение. Тогда поймём, что огонь был отражением, а не сигналом».",
+      "requirements": [],
+      "rewards": [],
+      "next": [
+        30
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "give",
+          "text": "У меня есть всё необходимое.",
+          "action": "advance",
+          "targetStage": 30,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Вернусь с находками.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "journal": "Опыт показал: злоумышленники используют линзы, чтобы уводить суда от настоящих маяков. На оправах встречается знак Имперской торговой компании.",
+      "dialogue": "«Линзы были собраны наспех, но металлические оправы делали по заказу. На них клеймо В.И.К. С такими вещами идут к Цанктуниану Пониусу в Эбенгарде».",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "ingred_raw_glass_01",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        },
+        {
+          "type": "item",
+          "refId": "Misc_SoulGem_Petty",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "ingred_raw_glass_01",
+          "count": 1
+        },
+        {
+          "type": "takeItem",
+          "refId": "Misc_SoulGem_Petty",
+          "count": 1
+        }
+      ],
+      "next": [
+        40
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "next",
+          "text": "Что делать с этой находкой дальше?",
+          "action": "advance",
+          "targetStage": 40,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Я вернусь позже.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "journal": "Я разоблачил способ изготовления ложных маяков. След ведёт в зал Имперской торговой компании Эбенгарда.",
+      "dialogue": "«Если моё имя всплывёт в отчёте, они снимут меня с маяка. Пожалуйста, оставь его при себе».",
+      "requirements": [],
+      "rewards": [
+        {
+          "type": "gold",
+          "amount": 250
+        },
+        {
+          "type": "xp",
+          "amount": 205
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "offer": {
+    "dialogue": "Я смотрю за огнями побережья. Последние недели кто-то отвечает на мои сигналы с суши, и торговые суда уходят к пустым бухтам. Нужны образцы стекла и душевой камень для проверки.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Я помогу.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Не сейчас.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "The False Star",
+      "topics": {
+        "arena_ashreg_false_star_topic": "the false beacon"
+      },
+      "offer": {
+        "dialogue": "I watch the coastal lights. For weeks, someone ashore has answered my signals and sent merchant ships toward empty coves. I need glass and a small soul gem for a test.",
+        "choices": {
+          "accept": "I will help.",
+          "decline": "Not now."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "Faven Reladren believes the signals are forged with refracting glass.",
+          "dialogue": "“A lantern can be shuttered. But another light reflected off the cliff obeys a different rule. I mean to prove it.”",
+          "choices": {
+            "ask": "Tell me what you need.",
+            "later": "I need to prepare."
+          }
+        },
+        "20": {
+          "journal": "Faven needs one piece of raw glass and one petty soul gem.",
+          "dialogue": "“Bring raw glass and a petty soul gem. The gem will steady the glow. Then we will know whether the light was a reflection, not a signal.”",
+          "choices": {
+            "give": "I have everything required.",
+            "later": "I will return with the materials."
+          }
+        },
+        "30": {
+          "journal": "The experiment proved that the culprits use lenses to draw ships away from real beacons. Their frames bear an East Empire Company mark.",
+          "dialogue": "“The lenses were crude, but the frames were made to order. They bear the Company’s stamp. Take this news to Canctunian Ponius in Ebonheart.”",
+          "choices": {
+            "next": "What should I do with this discovery?",
+            "later": "I will come back later."
+          }
+        },
+        "40": {
+          "journal": "I exposed the method behind the false beacons. The trail leads to the East Empire Company Hall in Ebonheart.",
+          "dialogue": "“If my name appears in a report, they will remove me from this lighthouse. Please keep it to yourself.”"
+        }
+      }
+    }
+  },
+  "audit": [
+    {
+      "time": 0,
+      "by": "ArenaMP Original Quest Team",
+      "action": "Original scenario inspired only by general investigative storytelling. Explicit Rebirth NPC refs and supported ArenaMP quest JSON mechanics."
+    }
+  ]
+}

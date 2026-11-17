@@ -71,6 +71,8 @@ namespace mwmp
         // Close the Player Menu, then arm the one-shot world furniture picker.
         // Used by the integrated Decorations page's "Add furniture" button.
         void beginFurnitureCapture();
+        // Open the normal Player Menu without selecting the furniture page.
+        void openPlayerMenu();
         void openFurniturePlayerMenu();
         void refreshServerQuestEditor();
         // QW1: beginner quest wizard. showQuestWizard() is called after an editor

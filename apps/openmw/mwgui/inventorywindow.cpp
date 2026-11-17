@@ -68,10 +68,29 @@
 
 namespace
 {
+    constexpr int sInventoryActionButtonSize = 28;
 
     std::string arenaText(const std::string& key)
     {
         return MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=" + key + "}");
+    }
+
+    MyGUI::ImageBox* createInventoryButtonIcon(MyGUI::Button* button, const char* texture)
+    {
+        constexpr int iconSize = 24;
+        MyGUI::ImageBox* icon = button->createWidget<MyGUI::ImageBox>("ImageBox",
+            MyGUI::IntCoord((button->getWidth() - iconSize) / 2, (button->getHeight() - iconSize) / 2,
+                iconSize, iconSize), MyGUI::Align::Center);
+        icon->setImageTexture(texture);
+        icon->setNeedMouseFocus(false);
+        return icon;
+    }
+
+    void setInventoryButtonTooltip(MyGUI::Button* button, const std::string& caption)
+    {
+        button->setUserString("ToolTipType", "Layout");
+        button->setUserString("ToolTipLayout", "TextToolTipOneLine");
+        button->setUserString("Caption_TextOneLine", caption);
     }
 
     bool isRightHandWeapon(const MWWorld::Ptr& item)
@@ -127,7 +146,6 @@ namespace MWGui
         , mPaperDollIcon(nullptr)
         , mViewModeButton(nullptr)
         , mWriterButton(nullptr)
-        , mWriterIcon(nullptr)
         , mViewModeIcon(nullptr)
         , mPaperDollVisible(false)
         , mFilterKeys(nullptr)
@@ -217,27 +235,21 @@ namespace MWGui
         mViewModeIcon->setNeedMouseFocus(false);
         mViewModeIcon->setColour(MyGUI::Colour(0.93f, 0.82f, 0.58f));
 
-        // Native writing button. Keep the click target borderless and move the
-        // quill one full icon slot to the right of the view toggle in
-        // updateBottomControls(), matching the requested layout.
-        mWriterButton = mBottomBar->createWidget<MyGUI::Widget>("",
-            MyGUI::IntCoord(0, 2, 30, 26), MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaBookWriterButton");
+        const MyGUI::IntCoord actionButtonCoord(0, 2, sInventoryActionButtonSize, sInventoryActionButtonSize);
+        mWriterButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button", actionButtonCoord,
+            MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaBookWriterButton");
         mWriterButton->setNeedKeyFocus(false);
         mWriterButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onWriterClicked);
-        mWriterIcon = mWriterButton->createWidget<MyGUI::ImageBox>("ImageBox",
-            MyGUI::IntCoord(2, 0, 26, 26), MyGUI::Align::Center, "ArenaBookWriterIcon");
-        mWriterIcon->setNeedMouseFocus(false);
-        mWriterIcon->setImageTexture("textures/ui/arenamw/quill_white.png");
-        refreshWriterButtonVisual();
+        createInventoryButtonIcon(mWriterButton, "textures/ui/arenamw/inv_writing_desk.png");
 
-        // Furniture is a separate wallet/inventory. Open it from the normal
-        // inventory without turning any static into a player-held TES3 item.
-        mFurnitureButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button",
-            MyGUI::IntCoord(0, 2, 66, 26), MyGUI::Align::Left | MyGUI::Align::VCenter,
-            "ArenaFurnitureButton");
-        mFurnitureButton->setCaption(MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=furniture.button}"));
-        mFurnitureButton->setNeedKeyFocus(false);
-        mFurnitureButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onFurnitureClicked);
+        // Open the full ArenaMP Player Menu from inventory, not its Decorations page.
+        mPlayerMenuButton = mBottomBar->createWidget<MyGUI::Button>("MW_Button", actionButtonCoord,
+            MyGUI::Align::Left | MyGUI::Align::VCenter, "ArenaPlayerMenuButton");
+        mPlayerMenuButton->setCaption("");
+        mPlayerMenuButton->setNeedKeyFocus(false);
+        mPlayerMenuButton->eventMouseButtonClick += MyGUI::newDelegate(this, &InventoryWindow::onPlayerMenuClicked);
+        createInventoryButtonIcon(mPlayerMenuButton, "textures/ui/arenamw/menu_stats.png");
+        refreshInventoryActionTooltips();
 
         // Barter gold uses the same visual language as an inventory stack:
         // the amount is drawn directly over the coin icon instead of taking a
@@ -438,7 +450,11 @@ namespace MWGui
         // the player actually pinned via the toggle.
         if (mode != mGuiMode)
             mPaperDollAutoRevealed = false;
+        const bool enteringBarter = mode == GM_Barter && mGuiMode != GM_Barter;
         mGuiMode = mode;
+        mFilterKeys->setVisible(mode != GM_Barter);
+        if (enteringBarter && mSortModel && mFilterKeys->getStateSelected())
+            onFilterChanged(mFilterAll);
         if (mItemView)
             mItemView->setSingleClickActionEnabled(mode == GM_Inventory || mode == GM_Barter
                 || mode == GM_Container || mode == GM_Companion);
@@ -985,7 +1001,7 @@ namespace MWGui
             MWBase::Environment::get().getWindowManager()->setKeyFocusWidget(mItemView);
 
         refreshPaperDollToggleVisual();
-        refreshWriterButtonVisual();
+        refreshInventoryActionTooltips();
 
         // Restore/finalize pane geometry first. Extended ItemView rows must be
         // created against the final RightPane width, not the 350px template size.
@@ -1125,13 +1141,8 @@ namespace MWGui
             if (button == nullptr)
                 continue;
             button->setCaption("");
-            button->setUserString("ToolTipType", "Layout");
-            button->setUserString("ToolTipLayout", "TextToolTipOneLine");
-            button->setUserString("Caption_TextOneLine", MyGUI::LanguageManager::getInstance().replaceTags(names[i]));
-            mFilterIcons[i] = button->createWidget<MyGUI::ImageBox>("ImageBox",
-                MyGUI::IntCoord(8, 2, 24, 24), MyGUI::Align::Default);
-            mFilterIcons[i]->setImageTexture(textures[i]);
-            mFilterIcons[i]->setNeedMouseFocus(false);
+            setInventoryButtonTooltip(button, MyGUI::LanguageManager::getInstance().replaceTags(names[i]));
+            mFilterIcons[i] = createInventoryButtonIcon(button, textures[i]);
         }
     }
 
@@ -1154,23 +1165,24 @@ namespace MWGui
     void InventoryWindow::layoutFilterColumn(int paneHeight)
     {
         MyGUI::Button* buttons[] = { mFilterAll, mFilterWeapon, mFilterApparel, mFilterMagic, mFilterMisc, mFilterKeys };
+        const int buttonCount = mGuiMode == GM_Barter ? 5 : 6;
         const int columnHeight = std::max(40, inventoryBottomTop(paneHeight) - sInventoryContentTop - sInventoryGap);
         mCategories->setCoord(0, sInventoryContentTop, sFilterColumnWidth, columnHeight);
 
         // 32 px square buttons with 4 px gaps; a short window shrinks the gaps
-        // first, then the buttons, so all six always stay inside the column.
+        // first, then the buttons, so the visible filters fit the column.
         int gap = sInventoryGap;
-        int height = (columnHeight - gap * 5) / 6;
+        int height = (columnHeight - gap * (buttonCount - 1)) / buttonCount;
         if (height < 26)
         {
             gap = 2;
-            height = (columnHeight - gap * 5) / 6;
+            height = (columnHeight - gap * (buttonCount - 1)) / buttonCount;
         }
         height = std::max(16, std::min(32, height));
         const int width = sFilterColumnWidth;
         const int iconSize = std::max(12, std::min(24, std::min(width, height) - 6));
         int y = 0;
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < buttonCount; ++i)
         {
             if (buttons[i] == nullptr)
                 continue;
@@ -1204,13 +1216,10 @@ namespace MWGui
             arenaText(paperDollShown() ? "inventory.paper_doll_hide" : "inventory.paper_doll_show"));
     }
 
-    void InventoryWindow::refreshWriterButtonVisual()
+    void InventoryWindow::refreshInventoryActionTooltips()
     {
-        if (!mWriterButton)
-            return;
-        mWriterButton->setUserString("ToolTipType", "Layout");
-        mWriterButton->setUserString("ToolTipLayout", "TextToolTipOneLine");
-        mWriterButton->setUserString("Caption_TextOneLine", arenaText("writer.tooltip_open"));
+        setInventoryButtonTooltip(mWriterButton, arenaText("writer.tooltip_open"));
+        setInventoryButtonTooltip(mPlayerMenuButton, arenaText("chat.menu.title"));
     }
 
     void InventoryWindow::revealPaperDollFor(const MWWorld::Ptr& item)
@@ -1269,12 +1278,12 @@ namespace MWGui
         }
     }
 
-    void InventoryWindow::onFurnitureClicked(MyGUI::Widget*)
+    void InventoryWindow::onPlayerMenuClicked(MyGUI::Widget*)
     {
-        if (mGuiMode != GM_Inventory) return;
-        // Furniture now lives in the Player Menu Decorations page.
-        if (mwmp::GUIController* gui=mwmp::Main::get().getGUIController())
-            gui->openFurniturePlayerMenu();
+        if (mGuiMode != GM_Inventory)
+            return;
+        if (mwmp::GUIController* gui = mwmp::Main::get().getGUIController())
+            gui->openPlayerMenu();
     }
 
     void InventoryWindow::onViewModeClicked(MyGUI::Widget*)
@@ -1504,7 +1513,13 @@ namespace MWGui
         // overlays the coin, but its text box may extend left into this reserve.
         const int goldBlockWidth = showGold ? 64 : 0;
 
-        const int weightWidth = std::max(72, std::min(110, width / 4));
+        constexpr int viewToggleWidth = 30;
+        constexpr int minFilterWidth = 40;
+        const int iconControlsWidth = viewToggleWidth + gap + 2 * (sInventoryActionButtonSize + gap);
+        const int preferredWeightWidth = std::max(72, std::min(110, width / 4));
+        const int weightWidth = paperDollAvailable
+            ? std::min(preferredWeightWidth, std::max(1, width - listLeft - gap - iconControlsWidth - minFilterWidth))
+            : preferredWeightWidth;
         if (mEncumbranceBar)
         {
             mEncumbranceBar->setCoord(x, 6, weightWidth, 18);
@@ -1515,8 +1530,8 @@ namespace MWGui
         {
             if (paperDollAvailable)
             {
-                mViewModeButton->setCoord(x, 2, 30, 26);
-                x += 30 + gap;
+                mViewModeButton->setCoord(x, 2, viewToggleWidth, 26);
+                x += viewToggleWidth + gap;
             }
             else
             {
@@ -1524,28 +1539,18 @@ namespace MWGui
             }
         }
 
-        const bool showWriter = (mGuiMode == GM_Inventory);
-        if (mWriterButton)
+        for (MyGUI::Button* button : { mWriterButton, mPlayerMenuButton })
         {
-            mWriterButton->setVisible(showWriter);
-            mWriterButton->setEnabled(showWriter);
-            if (showWriter)
+            button->setVisible(paperDollAvailable);
+            button->setEnabled(paperDollAvailable);
+            if (paperDollAvailable)
             {
-                mWriterButton->setCoord(x, 2, 30, 26);
-                x += 30 + gap;
+                button->setCoord(x, 2, sInventoryActionButtonSize, sInventoryActionButtonSize);
+                x += sInventoryActionButtonSize + gap;
             }
         }
 
-        if (mFurnitureButton)
-        {
-            const bool available = mGuiMode == GM_Inventory;
-            mFurnitureButton->setCaption(MyGUI::LanguageManager::getInstance().replaceTags("#{arenamp=furniture.button}"));
-            mFurnitureButton->setVisible(available);
-            mFurnitureButton->setEnabled(available);
-            if (available) { mFurnitureButton->setCoord(x, 2, 86, 26); x += 86 + gap; }
-        }
-
-        const int filterWidth = std::max(40, width - x - (showGold ? goldBlockWidth + gap : 0));
+        const int filterWidth = std::max(minFilterWidth, width - x - (showGold ? goldBlockWidth + gap : 0));
         if (mFilterEdit)
             mFilterEdit->setCoord(x, 2, filterWidth, 26);
 

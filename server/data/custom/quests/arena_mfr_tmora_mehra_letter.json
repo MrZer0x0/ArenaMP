@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "id": "arena_mfr_tmora_mehra_letter",
+  "version": 1,
+  "name": "Письмо Мехре Отан",
+  "author": "ArenaMP MFR Quest Pack Q001",
+  "status": "published",
+  "progressMode": "personal",
+  "giver": {
+    "refId": "OAAB_NPC_TMora_healer01",
+    "cell": "Тель Мора, Дом целительниц"
+  },
+  "initialStage": 10,
+  "topics": [
+    {
+      "id": "arena_mfr_tmora_mehra_topic",
+      "text": "письмо Мехре",
+      "enabled": true,
+      "green": true
+    }
+  ],
+  "stages": [
+    {
+      "index": 10,
+      "journal": "Я передал Мехре Отан письмо от Эдрелль Мен. После прочтения она попросила принести по одному зелью лечения обычных недугов и отравлений.",
+      "dialogue": "Да, почерк Эдрелль. Письмо я оставлю у себя. Раз уж ты помог с запасами, принеси ещё два лекарства: от обычных недугов и от яда.",
+      "requirements": [
+        {
+          "type": "questCompleted",
+          "questId": "arena_mfr_tmora_supplies"
+        },
+        {
+          "type": "item",
+          "refId": "OAAB_note_toMehraOthan",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "OAAB_note_toMehraOthan",
+          "count": 1
+        }
+      ],
+      "next": [
+        20
+      ],
+      "complete": false,
+      "fail": false,
+      "choices": [
+        {
+          "id": "hand_over",
+          "text": "Лекарства у меня.",
+          "action": "advance",
+          "targetStage": 20,
+          "requirements": []
+        },
+        {
+          "id": "later",
+          "text": "Пока не нашёл оба зелья.",
+          "action": "none",
+          "requirements": []
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "journal": "Я принёс Мехре Отан два нужных лекарства. За помощь она заплатила и дала несколько бинтов из запасов дома целительниц.",
+      "dialogue": "Именно то, что нужно. Забирай плату и эти бинты — в дороге они полезнее, чем на моей полке.",
+      "requirements": [
+        {
+          "type": "item",
+          "refId": "p_cure_common_s",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        },
+        {
+          "type": "item",
+          "refId": "p_cure_poison_s",
+          "operator": ">=",
+          "count": 1,
+          "value": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "takeItem",
+          "refId": "p_cure_common_s",
+          "count": 1
+        },
+        {
+          "type": "takeItem",
+          "refId": "p_cure_poison_s",
+          "count": 1
+        },
+        {
+          "type": "gold",
+          "amount": 120
+        },
+        {
+          "type": "xp",
+          "amount": 110
+        },
+        {
+          "type": "giveItem",
+          "refId": "OAAB_misc_bandages_02",
+          "count": 2
+        }
+      ],
+      "next": [],
+      "complete": true,
+      "fail": false,
+      "choices": []
+    }
+  ],
+  "audit": [
+    {
+      "time": 1788613146,
+      "by": "ArenaMP MFR Quest Pack Q001",
+      "action": "created from verified MFR.esm record ids"
+    }
+  ],
+  "offer": {
+    "dialogue": "У тебя ко мне письмо? Покажи. Если это от Эдрелль, я хочу прочитать его сейчас.",
+    "choices": [
+      {
+        "id": "accept",
+        "text": "Вот письмо.",
+        "action": "start",
+        "requirements": []
+      },
+      {
+        "id": "decline",
+        "text": "Я зайду позже.",
+        "action": "none",
+        "requirements": []
+      }
+    ]
+  },
+  "sourceLanguage": "RU",
+  "translations": {
+    "EN": {
+      "name": "A Letter for Mehra Othan",
+      "topics": {
+        "arena_mfr_tmora_mehra_topic": "a letter for Mehra"
+      },
+      "offer": {
+        "dialogue": "You have a letter for me? Let me see it. If it is from Edrelle, I want to read it now.",
+        "choices": {
+          "accept": "Here is the letter.",
+          "decline": "I will come back later."
+        }
+      },
+      "stages": {
+        "10": {
+          "journal": "I delivered Edrelle Men's letter to Mehra Othan. After reading it she asked me to bring one Cure Common Disease potion and one Cure Poison potion.",
+          "dialogue": "Yes, that is Edrelle's hand. I will keep the letter. Since you already helped with the stock, bring me two more medicines: one for common disease and one for poison.",
+          "choices": {
+            "hand_over": "I have the medicines.",
+            "later": "I have not found both potions yet."
+          }
+        },
+        "20": {
+          "journal": "I brought Mehra Othan the two medicines. She paid me and gave me a few bandages from the healers' stock.",
+          "dialogue": "Exactly what I needed. Take your pay and these bandages—they will do you more good on the road than on my shelf."
+        }
+      }
+    }
+  },
+  "updatedAt": 1788613146
+}
